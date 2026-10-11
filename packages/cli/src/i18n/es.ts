@@ -2279,6 +2279,7 @@ ${bold('EJEMPLOS')}
     noSessions: () => 'Ningún registro traía sesión, así que el crecimiento de conversación y los costes por conversación no están en este informe.',
     byLabelHeading: () => 'Por carga de trabajo',
     byModelHeading: () => 'Por modelo',
+    byMonthHeading: () => 'Por mes',
     findingsHeading: () => 'Qué movería esta factura',
     colLabel: () => 'carga',
     colModel: () => 'modelo',

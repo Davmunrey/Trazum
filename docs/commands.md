@@ -2999,6 +2999,13 @@ table by month to the statement, newest twelve shown and the rest counted, and
 names the `--since`/`--until` that bills the newest month on its own. A call
 with no timestamp is in the total and in no month, and the statement says how
 much that is rather than letting the rows fall short of the total unexplained.
+The PDF, HTML and Markdown documents carry the same table with every month in
+it, since a page has the room a terminal does not, and the web app's Bill tab
+draws it above the daily chart, where each month is a button that bills that
+month alone through the window and "Back to the whole log" returns. All of
+them sum the months with one function, `spendByMonth` in `@trazum/core`, so the
+three cannot disagree about which month a call at 23:59 UTC on the last day
+belongs to.
 
 **The bill for somebody else.** The receipt on stdout is for a machine. The
 person who signs the bill off reads an attachment, so `bill` writes the same

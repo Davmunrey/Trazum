@@ -1530,6 +1530,69 @@ export function sharesOf(breakdown: UsageBreakdown): UsageShares {
   };
 }
 
+/** One calendar month of a bill, UTC. */
+export interface MonthSpend {
+  /** `YYYY-MM`, UTC. */
+  month: string;
+  /** The first and last UTC day of the month, the `--since`/`--until` that bill it alone. */
+  firstDay: string;
+  lastDay: string;
+  calls: number;
+  usd: number;
+}
+
+/** A bill by calendar month, and the part of it that sits in no month. */
+export interface SpendByMonth {
+  /** Oldest first. Only months with priced, dated calls appear. */
+  months: MonthSpend[];
+  /**
+   * Priced calls with no clock: in the total and in no month. Zero calls when
+   * every priced call carried a timestamp. Without it the month rows add up
+   * short of the total, and the reader goes looking for an error that is not
+   * one.
+   */
+  undated: { calls: number; usd: number };
+}
+
+/**
+ * A bill by calendar month, summed from the report's own days.
+ *
+ * A year of Claude Code sessions in one total says what it all cost and not
+ * which month cost what, which is the next question. One function, so that
+ * the statement, the bill's documents and the browser cannot disagree about
+ * which month a call belongs to: a month is UTC, like the days it is summed
+ * from, and the days hold only priced calls that carry a clock.
+ */
+export function spendByMonth(report: Pick<UsageProfileReport, 'spendByDay' | 'total'>): SpendByMonth {
+  const byMonth = new Map<string, { calls: number; usd: number }>();
+  for (const day of report.spendByDay) {
+    const key = day.day.slice(0, 7);
+    const month = byMonth.get(key) ?? { calls: 0, usd: 0 };
+    month.calls += day.calls;
+    month.usd += day.usd;
+    byMonth.set(key, month);
+  }
+  const months = [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, { calls, usd }]) => {
+      const [year, monthNumber] = month.split('-').map(Number);
+      const lastDay = new Date(Date.UTC(year ?? 1970, monthNumber ?? 1, 0)).toISOString().slice(0, 10);
+      return { month, firstDay: `${month}-01`, lastDay, calls, usd };
+    });
+  const dated = months.reduce((sum, month) => ({ calls: sum.calls + month.calls, usd: sum.usd + month.usd }), {
+    calls: 0,
+    usd: 0,
+  });
+  const undatedCalls = report.total.calls - dated.calls;
+  return {
+    months,
+    undated:
+      undatedCalls > 0
+        ? { calls: undatedCalls, usd: Math.max(0, report.total.totalUsd - dated.usd) }
+        : { calls: 0, usd: 0 },
+  };
+}
+
 /**
  * How much of the input that could have been cached was.
  *

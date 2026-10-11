@@ -165,6 +165,7 @@ import {
   RULES,
   sharedPrefixes,
   sharesOf,
+  spendByMonth,
   isOffered,
   SOURCE_EXTENSIONS,
   suggestRewrites,
@@ -3827,36 +3828,20 @@ function printBillStatement(
     report's own days, oldest first, newest kept when there are many; shown
     only once the bill spans two calendar months, since one month is the total.
   */
-  const months = new Map<string, { calls: number; usd: number }>();
-  for (const day of report.spendByDay) {
-    const month = months.get(day.day.slice(0, 7)) ?? { calls: 0, usd: 0 };
-    month.calls += day.calls;
-    month.usd += day.usd;
-    months.set(day.day.slice(0, 7), month);
-  }
-  if (months.size >= 2) {
-    const ordered = [...months.entries()].sort(([a], [b]) => a.localeCompare(b));
-    const shown = ordered.slice(-LIMIT).map(([name, { calls, usd }]) => {
+  const { months, undated } = spendByMonth(report);
+  if (months.length >= 2) {
+    const shown = months.slice(-LIMIT).map(({ month, calls, usd }) => {
       const share = total > 0 ? usd / total : 0;
-      return [name, n(calls), formatUsd(usd), `${bar(share)} ${pct(share)}`];
+      return [month, n(calls), formatUsd(usd), `${bar(share)} ${pct(share)}`];
     });
-    if (ordered.length > LIMIT) shown.unshift([c.dim(t.bill.earlierMonths(ordered.length - LIMIT)), '', '', '']);
+    if (months.length > LIMIT) shown.unshift([c.dim(t.bill.earlierMonths(months.length - LIMIT)), '', '', '']);
     console.log();
     for (const line of table(columns(t.bill.colMonth()), shown)) console.log(line);
-    const dated = ordered.reduce((sum, [, month]) => ({ calls: sum.calls + month.calls, usd: sum.usd + month.usd }), {
-      calls: 0,
-      usd: 0,
-    });
-    const undatedCalls = report.total.calls - dated.calls;
-    if (undatedCalls > 0) {
-      console.log(c.dim(`  ${wrap(t.bill.monthsUndated(undatedCalls, formatUsd(total - dated.usd)), 74, '  ')}`));
+    if (undated.calls > 0) {
+      console.log(c.dim(`  ${wrap(t.bill.monthsUndated(undated.calls, formatUsd(undated.usd)), 74, '  ')}`));
     }
-    const newest = ordered[ordered.length - 1]?.[0];
-    if (newest !== undefined) {
-      const [year, month] = newest.split('-').map(Number);
-      const lastDay = new Date(Date.UTC(year ?? 1970, month ?? 1, 0)).toISOString().slice(0, 10);
-      console.log(c.dim(`  ${t.bill.monthHint(`${newest}-01`, lastDay)}`));
-    }
+    const newest = months[months.length - 1]!;
+    console.log(c.dim(`  ${t.bill.monthHint(newest.firstDay, newest.lastDay)}`));
   }
 
   console.log();

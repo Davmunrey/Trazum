@@ -8,7 +8,7 @@ import type {
   PromptProfile,
   RuleLevel,
 } from '@trazum/core';
-import { UNLABELLED, formatSignedUsd, formatUsd, getMessages, getModel, sharesOf } from '@trazum/core';
+import { UNLABELLED, formatSignedUsd, formatUsd, getMessages, getModel, sharesOf, spendByMonth } from '@trazum/core';
 import { dayOf, formatGap, median, spanDays } from './time.js';
 import type { AgainstDriver, BillLevers, CacheEconomics, ContextPressure, RepriceReport, UsageProfileReport } from '@trazum/core';
 
@@ -979,6 +979,25 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
       `> ⚠️ ${mdText(t.profile.duplicateLines(report.duplicateLines.count, formatUsd(report.duplicateLines.usd)))}`,
     );
     lines.push('');
+  }
+
+  // By month, once the report spans two, every month and the undated part
+  // said under it — the same rows as the HTML and PDF doors.
+  const { months, undated } = spendByMonth(report);
+  if (months.length >= 2) {
+    lines.push(`#### ${t.html.byMonthHeading()}`);
+    lines.push('');
+    lines.push(`| ${t.bill.colMonth()} | ${t.html.colCalls()} | USD | % |`);
+    lines.push('|---|---:|---:|---:|');
+    for (const { month, calls, usd } of months) {
+      const share = report.total.totalUsd > 0 ? pct(usd / report.total.totalUsd) : '—';
+      lines.push(`| ${month} | ${n(calls)} | ${formatUsd(usd)} | ${share} |`);
+    }
+    lines.push('');
+    if (undated.calls > 0) {
+      lines.push(`_${mdText(t.bill.monthsUndated(undated.calls, formatUsd(undated.usd)))}_`);
+      lines.push('');
+    }
   }
 
   // The most expensive day against the median day, loud past twice it — the

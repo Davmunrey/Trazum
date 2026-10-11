@@ -169,6 +169,45 @@ describe('a bill that spans months says which month cost what', () => {
     const out = await statement(DATED.slice(1));
     assert.doesNotMatch(out, /^\s*month\s+calls/m);
   });
+
+  /** The text a PDF viewer would show: every string drawn with Tj, unescaped. */
+  const shown = (pdf) =>
+    [...pdf.matchAll(/\(((?:\\.|[^\\)])*)\) Tj/g)]
+      .map(([, raw]) => raw.replace(/\\([0-7]{3})/g, (_, octal) => String.fromCharCode(parseInt(octal, 8))).replace(/\\(.)/g, '$1'))
+      .join(' ');
+
+  it('puts the same months, every one, in the documents for whoever pays', async () => {
+    const lines = [
+      ...Array.from({ length: 14 }, (_, i) => call(new Date(Date.UTC(2025, 8 + i, 15)).toISOString())),
+      call(null),
+    ];
+    const { dir, path } = await scratch(lines);
+    const html = join(dir, 'bill.html');
+    const markdown = join(dir, 'bill.md');
+    const pdf = join(dir, 'bill.pdf');
+    const result = run(['bill', path, '--receipt', '--html-out', html, '--markdown-out', markdown, '--pdf-out', pdf]);
+    assert.equal(result.status, 0, result.stderr);
+    for (const [what, text] of [
+      ['HTML', flat((await readFile(html, 'utf8')).replace(/<[^>]+>/g, ' '))],
+      ['Markdown', flat(await readFile(markdown, 'utf8'))],
+      ['PDF', flat(shown(await readFile(pdf, 'latin1')))],
+    ]) {
+      assert.match(text, /By month/, `the ${what} has no month table`);
+      // A page has room for every month: the oldest is there, not counted out.
+      for (const month of ['2025-09', '2025-10', '2026-10']) {
+        assert.ok(text.includes(month), `the ${what} lost ${month}`);
+      }
+      assert.match(text, /\$2\.00 from 1 call\(s\) with no timestamp is in the total and in no month\./, `the ${what} lets the months add up short in silence`);
+    }
+  });
+
+  it('puts no month table in a document for one month', async () => {
+    const { dir, path } = await scratch(DATED.slice(1));
+    const html = join(dir, 'bill.html');
+    const result = run(['bill', path, '--receipt', '--html-out', html]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(await readFile(html, 'utf8'), /By month/);
+  });
 });
 
 describe('trazum receipt takes the same period', () => {

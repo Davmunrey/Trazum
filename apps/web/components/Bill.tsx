@@ -41,6 +41,7 @@ import {
   reviewedForModels,
   STALE_PRICING_DAYS,
   sharesOf,
+  spendByMonth,
   verdictMatchesSlice,
 } from '@trazum/core';
 import type {
@@ -598,6 +599,17 @@ export function Bill({ t }: { t: WebMessages }) {
     if (logText !== null) analyze(logText, previousText, since, until, label);
   }
 
+  /**
+   * Bill one calendar month alone: a month row sets the window above to that
+   * month's first and last UTC day, so the window's own rules, its undated
+   * count and its Clear button, govern what follows.
+   */
+  function billMonth(firstDay: string, lastDay: string) {
+    setSince(firstDay);
+    setUntil(lastDay);
+    if (logText !== null) analyze(logText, previousText, firstDay, lastDay);
+  }
+
   return (
     <div className="flex flex-col gap-[18px]">
       {/*
@@ -880,6 +892,9 @@ export function Bill({ t }: { t: WebMessages }) {
           labelName={labelName}
           drillLabel={drillLabel}
           onDrill={drillTo}
+          onMonth={billMonth}
+          window={{ since, until }}
+          onWindowClear={() => billMonth('', '')}
           catalogue={catalogue}
           verdict={verdict}
           verdictError={verdictError}
@@ -906,6 +921,9 @@ function Report({
   labelName,
   drillLabel,
   onDrill,
+  onMonth,
+  window,
+  onWindowClear,
   catalogue,
   verdict,
   verdictError,
@@ -913,6 +931,16 @@ function Report({
   analysis: Analysis;
   drillLabel: string | null;
   onDrill: (label: string | null) => void;
+  /** Bill one month alone, by setting the window to its first and last day. */
+  onMonth: (firstDay: string, lastDay: string) => void;
+  /**
+   * The window as typed, and the way back to the whole log. Both sit beside
+   * the report's window line because the inputs live in the log card, which
+   * folds once there is a report: a month reached by a click would otherwise
+   * leave no visible way out of it.
+   */
+  window: { since: string; until: string };
+  onWindowClear: () => void;
   /**
    * The dropped routing measurement, or null. Passed down rather than read
    * here because the drop that produced it happens in the tab above, and one
@@ -941,6 +969,8 @@ function Report({
    * be a wrong number rather than a slow one.
    */
   const [whatIfModel, setWhatIfModel] = useState('');
+  /** Every month rather than the newest twelve, the CLI's cap, once asked. */
+  const [allMonths, setAllMonths] = useState(false);
   const whatIf =
     whatIfModel === '' ? null : repriceProfile(report, whatIfModel, catalogue);
 
@@ -1043,7 +1073,15 @@ function Report({
               figures are a floor on the period, and only this line says so.
             */}
             {report.timeWindow !== null && (
-              <span className="text-[13px] text-muted-foreground">{t.bill.windowLine}</span>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
+                <span className="font-mono tabular-nums text-foreground">
+                  {window.since || '…'} → {window.until || '…'}
+                </span>
+                <span>{t.bill.windowLine}</span>
+                <Button type="button" variant="ghost" size="sm" onClick={onWindowClear}>
+                  {t.bill.windowWhole}
+                </Button>
+              </div>
             )}
             {/*
               Looking at one workload alone. Said before the figures it
@@ -1081,6 +1119,73 @@ function Report({
               multiple of the median (a mean would let the spike inflate its
               own yardstick) and the label that drove it.
             */}
+            {/*
+              The bill by calendar month, before the days it is summed from:
+              the summary ahead of the detail, and the question a year of
+              sessions in one total raises first. Each month is a button that
+              bills that month alone through the window above. The newest
+              twelve by default, as in the terminal, and every month on request.
+            */}
+            {(() => {
+              const { months, undated } = spendByMonth(report);
+              if (months.length < 2) return null;
+              const MONTHS_SHOWN = 12;
+              const shown = allMonths ? months : months.slice(-MONTHS_SHOWN);
+              return (
+                <div>
+                  <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <span className="text-[13px] font-semibold">{t.bill.monthHeading}</span>
+                    <span className="text-xs text-muted-foreground">{t.bill.monthHint}</span>
+                  </div>
+                  {months.length > MONTHS_SHOWN && !allMonths && (
+                    <button
+                      type="button"
+                      onClick={() => setAllMonths(true)}
+                      className="mb-1 cursor-pointer text-xs text-muted-foreground underline decoration-dotted underline-offset-2 hover:text-foreground hover:decoration-solid"
+                    >
+                      {t.bill.monthsShowAll(months.length)}
+                    </button>
+                  )}
+                  <table className="w-full text-[13px]">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="py-1 pr-2 font-normal" />
+                        <th className="py-1 pr-2 text-right font-normal">{t.bill.spendColumn}</th>
+                        <th className="py-1 pr-2 text-right font-normal">{t.bill.shareColumn}</th>
+                        <th className="py-1 text-right font-normal">{t.bill.callsColumn}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.map((month) => (
+                        <tr key={month.month} className="border-t">
+                          <td className="py-1 pr-2">
+                            <button
+                              type="button"
+                              onClick={() => onMonth(month.firstDay, month.lastDay)}
+                              aria-label={t.bill.monthSelect(month.month)}
+                              title={t.bill.monthSelect(month.month)}
+                              className="cursor-pointer tabular-nums underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                            >
+                              {month.month}
+                            </button>
+                          </td>
+                          <td className="py-1 pr-2 text-right font-mono tabular-nums">{formatUsd(month.usd)}</td>
+                          <td className="py-1 pr-2 text-right tabular-nums">
+                            {pct(total.totalUsd > 0 ? month.usd / total.totalUsd : 0)}
+                          </td>
+                          <td className="py-1 text-right font-mono tabular-nums">{n(month.calls)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {undated.calls > 0 && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {t.bill.monthsUndated(undated.calls, formatUsd(undated.usd))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
             {report.spendByDay.length >= 2 && (() => {
               const days = report.spendByDay;
               const max = Math.max(...days.map((d) => d.usd));
@@ -1092,16 +1197,22 @@ function Report({
               if (max <= 0 || medianUsd <= 0) return null;
               return (
                 <div className="flex flex-col gap-1.5">
+                  {/*
+                    Past ~160 days a 2px floor and a 1px gap cannot fit the
+                    card, and a year of Claude Code sessions drew its bars
+                    straight out of it. Long spans drop both and draw an
+                    area; the peak keeps its colour either way.
+                  */}
                   <div
                     role="img"
                     aria-label={t.bill.dayChartLabel(days.length)}
-                    className="flex h-12 items-end gap-px"
+                    className={`flex h-12 items-end overflow-hidden ${days.length > 160 ? '' : 'gap-px'}`}
                   >
                     {days.map((d) => (
                       <div
                         key={d.day}
                         title={`${d.day}: ${formatUsd(d.usd)}`}
-                        className={`min-w-[2px] flex-1 rounded-t-[2px] ${
+                        className={`${days.length > 160 ? 'min-w-0' : 'min-w-[2px] rounded-t-[2px]'} flex-1 ${
                           d.day === peak.day ? 'bg-terracotta' : 'bg-muted-foreground/30'
                         }`}
                         style={{ height: `${Math.max(6, (d.usd / max) * 100)}%` }}

@@ -81,6 +81,16 @@ labels)` names both mismatches between a config's label→prompt map and the
 log: prompts mapped to labels with no traffic, and labels carrying money with
 no prompt mapped.
 
+## By month
+
+`spendByMonth(report)` sums a `profileUsage()` report's own days into UTC
+calendar months, oldest first, each with the first and last day that bill it
+alone as a window, and returns the priced calls with no timestamp separately
+as `undated`, so the months plus `undated` reconcile to `total` exactly. An
+unpriced call is in neither, because `total` never held it. The CLI's
+statement, its PDF, HTML and Markdown documents and the web app's Bill tab all
+use it, so no two of them can put one call in two different months.
+
 ## The fleet
 
 `assignSources(files, sources)` assigns log files to named services by the

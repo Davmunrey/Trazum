@@ -142,6 +142,38 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /profileUsage\(previous, \{\s*catalogue,\s*sinceMs,\s*untilMs,/);
   });
 
+  it('bills by month from the core function, and a month bills itself alone', () => {
+    // One implementation of which month a call belongs to, shared with the
+    // terminal and the documents: a second one here could disagree with them
+    // about a call at 23:59 on the last day of a month.
+    assert.match(bill, /spendByMonth\(report\)/);
+    assert.doesNotMatch(bill, /day\.day\.slice\(0, 7\)/, 'the tab sums its own months again');
+    // A month row sets the window to that month's own days and re-reads the
+    // log through it, so the window's rules and its Clear button govern it.
+    assert.match(bill, /onMonth\(month\.firstDay, month\.lastDay\)/);
+    assert.match(
+      bill,
+      /function billMonth\(firstDay: string, lastDay: string\) \{\s*setSince\(firstDay\);\s*setUntil\(lastDay\);\s*if \(logText !== null\) analyze\(logText, previousText, firstDay, lastDay\);/,
+    );
+    // The part with no clock is said under the rows, never dropped.
+    assert.match(bill, /t\.bill\.monthsUndated\(undated\.calls/);
+    // The summary ahead of the detail: the months render before the days.
+    assert.ok(bill.indexOf('spendByMonth(report)') < bill.indexOf('t.bill.dayChartLabel'));
+    // The inputs live in the log card, which folds once there is a report, so
+    // the report names the window and carries its own way back to the whole
+    // log: a month reached by a click must not be a room with no door.
+    assert.match(bill, /\{window\.since \|\| '…'\} → \{window\.until \|\| '…'\}/);
+    assert.match(bill, /onClick=\{onWindowClear\}/);
+    assert.match(bill, /onWindowClear=\{\(\) => billMonth\('', ''\)\}/);
+  });
+
+  it('keeps a year of days inside the card', () => {
+    // 2px bars with 1px gaps need 3px a day; a year of Claude Code sessions
+    // drew straight out of the card. Long spans drop both, and the chart clips.
+    assert.match(bill, /flex h-12 items-end overflow-hidden \$\{days\.length > 160 \? '' : 'gap-px'\}/);
+    assert.match(bill, /days\.length > 160 \? 'min-w-0' : 'min-w-\[2px\] rounded-t-\[2px\]'/);
+  });
+
   it('names the fields the log is missing, from counts rather than booleans', () => {
     assert.match(bill, /t\.bill\.coverageHeading/);
     assert.match(bill, /t\.bill\.needsLabel/);
@@ -358,6 +390,7 @@ describe('the bill copy agrees with its own numbers', () => {
     'truncatedWaste',
     'unpriced',
     'skipped',
+    'monthsUndated',
   ];
 
   /** The source of one message implementation, sliced out of a catalogue file. */
