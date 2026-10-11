@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.4.2**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.4.3**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,57 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.4.3 — Each call at its own price
+
+**Adoption, read 2026-10-11:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), GitHub stars: unavailable (HTTP 403), MCP registry latest 2.4.2.
+
+A patch with no new command. It makes the one line work on a first run, and
+prices every call as it was actually billed.
+
+### One line, nothing to configure
+
+```bash
+npx @trazum/cli bill
+```
+
+With no path, `bill` reads Claude Code's own folder (`$CLAUDE_CONFIG_DIR/projects`,
+`~/.claude/projects`, `~/.config/claude/projects`) and names it. Sessions are
+labelled by project, as `from-claude-code` has done since 1.77, so the bill says
+which project spent the money. On a terminal it prints a statement: the total, a
+table by project, a table by model, and what is not in the total. Piped, it still
+prints the JSON receipt, so scripts see no change; `--receipt` and `--table`
+force either. A folder of hundreds of transcripts is one line per shape.
+
+### Every call at the price of its own moment
+
+A bill priced every call at the date the report ran. A DeepSeek log read during
+peak hours came out entirely at peak, and read on a Saturday entirely off-peak;
+a call inside a promotion lost it once the promotion ended. Each call is now
+priced at its own timestamp. And a model's price can change inside a log:
+DeepSeek cut V4 Flash's price at 04:00 UTC on 2026-09-10 and retired it the same
+day, so the catalogue now carries both prices, each until the published instant.
+
+### Four providers re-read
+
+- **Google**: every price matched; caching is automatic on every Gemini, the
+  minimums moved (4,096 on 3.6 Flash, 2,048 on 2.5 Flash), and the 2.5 models
+  read the cache at 10%, not the 25% this table carried. Gemini 3.8 Flash added.
+- **DeepSeek**: V4.1 Flash (`deepseek-flash`) added at $0.15/$0.60; the old V4
+  Flash id bills at that price since the cut and at its own before it.
+- **Mistral**: every price matched, and it caches: cached input at 10%. How it
+  starts and its minimum are not published anywhere Trazum can read, so no
+  caching advice is given for it.
+- **OpenAI**: every price matched; the dated GPT-5 snapshot ids an OpenAI usage
+  export carries now price. The new generation (GPT-6, GPT-5.6) and Claude
+  Haiku 5.5 wait for per-request prompt sizes: each changes price above a prompt
+  length a usage log does not always state.
+
+### Elsewhere
+
+- The web app opens on the bill, and its tour starts there.
+- `@trazum/cli`'s npm listing names Claude Code, the sources it prices and the
+  PDF, so a search for what Claude Code cost can find it.
 
 ## 2.4.2 — The bill as an attachment
 

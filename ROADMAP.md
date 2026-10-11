@@ -1184,6 +1184,16 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.4.3 — Each call at its own price — released
+
+A patch, and no command. `bill` with no path reads Claude Code's own folder,
+labels sessions by project and prints a statement on a terminal. Every call is
+billed at its own timestamp, and a row can carry the prices it had before a
+published change, which DeepSeek's 2026-09-10 cut needed. Google, DeepSeek,
+Mistral and OpenAI re-read: DeepSeek's V4 Flash price had been cut, three
+providers' cache figures were wrong, and OpenAI's snapshot ids price. The new OpenAI generation and Claude Haiku 5.5
+wait for per-request prompt sizes.
+
 ## 2.4.2 — The bill as an attachment — released
 
 A patch, and no command. The Anthropic catalogue carries the models Claude
@@ -2712,8 +2722,9 @@ carry tests now that derive the claim from the code rather than trusting prose.
 **Nothing is planned that this repository can deliver alone.** [The 2.4
 plan](docs/plan-2.4.md) was the last thing planned, 2.4.0 delivered every
 move of it that did not need something held outside this repository,
-2.4.1 carried the door to the README's first line and the browser, and 2.4.2
-priced the models Claude Code runs today and gave the bill a PDF. [The
+2.4.1 carried the door to the README's first line and the browser, 2.4.2
+priced the models Claude Code runs today and gave the bill a PDF, and 2.4.3
+made the one line work with no path and priced each call at its own moment. [The
 1.83–2.0 plan](docs/plan-1.83-2.0.md) had asked a different question from
 every other plan in that directory — not what this should do next, but when
 it is finished — and 2.0.0 answered it by freezing the surface at 46
