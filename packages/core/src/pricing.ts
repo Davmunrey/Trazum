@@ -30,8 +30,13 @@ import type { ModelPricing, PricingTier, TierCondition } from './types.js';
  * catalogue's headline date derived as the oldest of them rather than typed.
  */
 export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze({
-  /* platform.claude.com/docs/en/about-claude/pricing, read 2026-08-27. */
-  anthropic: '2026-08-27',
+  /*
+   * platform.claude.com/docs/en/about-claude/pricing, the models overview and
+   * each model's own page, read 2026-10-10. Every existing row matched; five
+   * models were added and one (Claude Haiku 5.5) deliberately was not, see the
+   * comment above its would-be place in MODELS.
+   */
+  anthropic: '2026-10-10',
   /*
    * developers.openai.com/api/docs/pricing, read 2026-08-31.
    *
@@ -96,11 +101,12 @@ export const PRICING_LAST_REVIEWED: string = Object.values(PROVIDER_REVIEWED).re
 /**
  * The defaults, which are Anthropic's numbers.
  *
- * Still exported and still correct for every Anthropic model, but no longer the
- * whole story: a model can override any of these through `multipliers`, and
- * anything computing a cost should go through `multipliersFor` rather than
- * reading these directly. A cache read is ~10% of input on Anthropic and ~50%
- * on OpenAI, and using one number for both invents a saving.
+ * Still exported, and still Anthropic's numbers for every model up to Opus 5
+ * and Sonnet 5, but no longer the whole story even there: Claude Fable 5.1 and
+ * Mythos 5.1 read the cache at 0.025x and Opus 5.5 and Sonnet 5.5 at 0.05x, so
+ * a model overrides any of these through `multipliers`, and anything computing
+ * a cost should go through `multipliersFor` rather than reading these
+ * directly. Using one cache-read ratio for every model invents a saving.
  */
 export const COST_MULTIPLIERS = {
   /** Cache write with a 5-minute TTL. */
@@ -147,6 +153,47 @@ export function multipliersFor(model: ModelPricing): {
 
 export const MODELS: ModelPricing[] = [
   {
+    /*
+     * platform.claude.com/docs/en/about-claude/pricing and the Fable 5.1 model
+     * page, read 2026-10-10. The same $10/$50 as Fable 5; what moved is the
+     * cache read, $0.25 against $10 of input, a quarter of the 0.1x every
+     * earlier Claude model pays. Writes stay at 1.25x and 2x ($12.50, $20),
+     * and the Batch API halves both sides ($5/$25).
+     */
+    id: 'claude-fable-5-1',
+    provider: 'anthropic',
+    displayName: 'Claude Fable 5.1',
+    inputPerMTok: 10,
+    outputPerMTok: 50,
+    contextWindow: 1_000_000,
+    cacheMinTokens: 512,
+    multipliers: { cacheRead: 0.025, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: 'Cache hits cost 2.5% of the input price ($0.25). Requires 30-day data retention.',
+  },
+  {
+    /*
+     * The same page and prices as Fable 5.1, cache read included ($0.25,
+     * 0.025x). Sold only to verified organisations, so priced for the logs that
+     * carry it and never offered as somebody's cheaper alternative.
+     */
+    id: 'claude-mythos-5-1',
+    provider: 'anthropic',
+    displayName: 'Claude Mythos 5.1',
+    recommendable: false,
+    inputPerMTok: 10,
+    outputPerMTok: 50,
+    contextWindow: 1_000_000,
+    cacheMinTokens: 512,
+    multipliers: { cacheRead: 0.025, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes:
+      'Available only to organizations verified through Anthropic\'s verification programs.'
+      + ' Requires 30-day data retention.',
+  },
+  {
     id: 'claude-fable-5',
     provider: 'anthropic',
     displayName: 'Claude Fable 5',
@@ -156,7 +203,7 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 512,
     capability: 'frontier',
     tier: 'frontier',
-    notes: 'Highest capability. Requires 30-day data retention.',
+    notes: 'Legacy: superseded by Claude Fable 5.1 at the same prices. Requires 30-day data retention.',
   },
   {
     id: 'claude-mythos-5',
@@ -169,7 +216,28 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 512,
     capability: 'frontier',
     tier: 'frontier',
-    notes: 'Available only through Project Glasswing.',
+    notes:
+      'Available only to organizations verified through Anthropic\'s verification programs.'
+      + ' Requires 30-day data retention.',
+  },
+  {
+    /*
+     * The pricing page and the Opus 5.5 model page, read 2026-10-10. Cheaper
+     * than Opus 5 at both ends, $4/$20, and the overview now says to start
+     * there for most workloads. Cache read $0.20 is 0.05x, half the ratio of
+     * every earlier Opus; writes $5 and $8 are 1.25x and 2x; batch $2/$10.
+     */
+    id: 'claude-opus-5-5',
+    provider: 'anthropic',
+    displayName: 'Claude Opus 5.5',
+    inputPerMTok: 4,
+    outputPerMTok: 20,
+    contextWindow: 1_000_000,
+    cacheMinTokens: 512,
+    multipliers: { cacheRead: 0.05, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
+    capability: 'large',
+    tier: 'opus',
+    notes: 'Cache hits cost 5% of the input price ($0.20), against 10% on Opus 5 and earlier.',
   },
   {
     id: 'claude-opus-5',
@@ -217,6 +285,45 @@ export const MODELS: ModelPricing[] = [
     tier: 'opus',
   },
   {
+    /*
+     * Legacy and still served, and never carried here before, so every
+     * Claude Code log from late 2025 had it as an unpriced gap. The Opus 4.5
+     * model page, read 2026-10-10: model id claude-opus-4-5-20251101, alias
+     * claude-opus-4-5, 200K context, $5/$25, 4,096-token cache minimum (the
+     * prompt caching page). Like Haiku 4.5, the short alias is the id and the
+     * dated canonical form is declared, not derived.
+     */
+    id: 'claude-opus-4-5',
+    aliases: ['claude-opus-4-5-20251101'],
+    provider: 'anthropic',
+    displayName: 'Claude Opus 4.5',
+    inputPerMTok: 5,
+    outputPerMTok: 25,
+    contextWindow: 200_000,
+    cacheMinTokens: 4096,
+    capability: 'large',
+    tier: 'opus',
+    notes: '200K context window and a 64K output cap.',
+  },
+  {
+    /*
+     * The pricing page and the Sonnet 5.5 model page, read 2026-10-10. The
+     * same $2/$10 as Sonnet 5, with the cache read at $0.10, 0.05x, where
+     * Sonnet 5 reads at $0.20. Writes $2.50 and $4; batch $1/$5.
+     */
+    id: 'claude-sonnet-5-5',
+    provider: 'anthropic',
+    displayName: 'Claude Sonnet 5.5',
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    contextWindow: 1_000_000,
+    cacheMinTokens: 512,
+    multipliers: { cacheRead: 0.05, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: 'Cache hits cost 5% of the input price ($0.10), against 10% ($0.20) on Sonnet 5.',
+  },
+  {
     id: 'claude-sonnet-5',
     provider: 'anthropic',
     displayName: 'Claude Sonnet 5',
@@ -241,6 +348,18 @@ export const MODELS: ModelPricing[] = [
     capability: 'mid',
     tier: 'sonnet',
   },
+  /*
+   * Claude Haiku 5.5 is not here, on purpose, and its calls are an unpriced
+   * gap that names it. The pricing page (read 2026-10-10) prices it by prompt
+   * length: $0.10/$0.50 up to 100,000 tokens and $0.50/$2.50 above, where the
+   * length counts cache reads and writes and each request is priced on its
+   * own. A tier can say that, but nothing that prices a usage log passes one
+   * request's prompt length to `effectivePricing`: records are summed per
+   * workload, model and day before they are priced. Added today, every Haiku
+   * 5.5 call would fall to the undecided ceiling, five times the price most of
+   * them paid. It goes in with the change that prices tiered models per
+   * request, not before.
+   */
   {
     id: 'claude-haiku-4-5',
     // The dated form is the canonical API id and is what a real usage log

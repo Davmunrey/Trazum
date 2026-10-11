@@ -28,7 +28,7 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 | | |
 |---|---|
-| Cache read | 10% of input on Anthropic, OpenAI and Moonshot; **25%** on xAI. Two providers changed it **between generations**: DeepSeek V4 reads at about **3%** where V3 read at 10%, and Google's 3.6 Flash reads at 10% where the retired 2.5 models read at 25% |
+| Cache read | 10% of input on OpenAI, Moonshot and Anthropic up to Opus 5 and Sonnet 5; **25%** on xAI. Three providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.1 and Mythos 5.1 at **2.5%**, DeepSeek V4 reads at about **3%** where V3 read at 10%, and Google's 3.6 Flash reads at 10% where the retired 2.5 models read at 25% |
 | Cache write | 125% of input on Anthropic; 100% elsewhere |
 | Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek, xAI and Gemini Flash; 2,048 on the retired Gemini Pro |
 | How caching starts | You mark the prefix on Anthropic and Google; it is **automatic** on OpenAI, Moonshot, DeepSeek and xAI |
@@ -37,8 +37,9 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 **The cache minimum is the row to read twice, and it used to be wrong here.** This
 table said *"512 on Anthropic"* flatly. Anthropic's floor is a property of the
-model: 512 on Fable 5, Mythos 5 and Opus 5; 1,024 on Opus 4.8, Sonnet 5 and
-Sonnet 4.6; 2,048 on Opus 4.7; **4,096 on Opus 4.6 and Haiku 4.5**. A reader on
+model: 512 on Fable 5.1, Fable 5, Mythos 5.1, Mythos 5, Opus 5.5, Opus 5 and
+Sonnet 5.5; 1,024 on Opus 4.8, Sonnet 5 and Sonnet 4.6; 2,048 on Opus 4.7;
+**4,096 on Opus 4.6, Opus 4.5 and Haiku 4.5**. A reader on
 Haiku who trusted "512" would have built a prefix eight times too short and been
 told caching would save money that could never arrive — the one direction this
 tool must never be wrong in. `trazum models` prints the real figure per model,

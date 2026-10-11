@@ -47,28 +47,30 @@ describe('routing to a cheaper model', () => {
      * 400 calls of 9,000 input and 300 output on Opus 5 ($5/$25):
      * 3.6M input = $18.00, 120k output = $3.00, so $21.00.
      *
-     * The same tokens on Sonnet 5 at $2/$10: $7.20 + $1.20 =
+     * The same tokens on Sonnet 5.5 at $2/$10: $7.20 + $1.20 =
      * $8.40. The route is worth $12.60 — 60% of that slice, against the ~1% a
-     * rules pass over the prompt file would recover.
+     * rules pass over the prompt file would recover. Sonnet 5 lists at the same
+     * $2/$10; the tie goes to the first listed, the newer model, whose cache
+     * reads also cost half.
      */
     const [slice] = levers(many(400)).slices;
 
-    assert.equal(slice.route.candidate.id, 'claude-sonnet-5');
+    assert.equal(slice.route.candidate.id, 'claude-sonnet-5-5');
     assert.ok(Math.abs(slice.spentUsd - 21) < 1e-9, `spent ${slice.spentUsd}`);
     assert.ok(Math.abs(slice.route.savingUsd - 12.6) < 1e-9, `saving ${slice.route.savingUsd}`);
   });
 
   it('steps down one rung, not to the cheapest thing on the shelf', () => {
     /**
-     * Opus 5 is `large`, so the candidate is a `mid` model — Sonnet 5 — and not
-     * Haiku 4.5, which is `small` and would show a bigger number.
+     * Opus 5 is `large`, so the candidate is a `mid` model — Sonnet 5.5 — and
+     * not Haiku 4.5, which is `small` and would show a bigger number.
      *
      * The arithmetic must not lead the advice. Frontier to small is an 80% saving
      * and a different product, and a report that opens with it has chosen the
      * headline over the reader.
      */
     const [slice] = levers(many(400)).slices;
-    assert.equal(slice.route.candidate.id, 'claude-sonnet-5');
+    assert.equal(slice.route.candidate.id, 'claude-sonnet-5-5');
     assert.notEqual(slice.route.candidate.id, 'claude-haiku-4-5');
   });
 

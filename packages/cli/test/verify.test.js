@@ -33,7 +33,7 @@ const oldLog = () => {
 const newLog = () => {
   const rows = [];
   for (let i = 0; i < 6; i++) {
-    rows.push(line({ model: 'claude-sonnet-5', label: 'support', session: `n${i}`, ts: `2026-08-0${i + 1}T09:00:00Z`, usage: { input_tokens: 400_000, output_tokens: 1_200 } }));
+    rows.push(line({ model: 'claude-sonnet-5-5', label: 'support', session: `n${i}`, ts: `2026-08-0${i + 1}T09:00:00Z`, usage: { input_tokens: 400_000, output_tokens: 1_200 } }));
   }
   for (const [sess, minute] of [['t1', 0], ['t2', 10]]) {
     const at = (m) => `2026-08-05T10:${String(m).padStart(2, '0')}:00Z`;
@@ -74,7 +74,7 @@ describe('verify', () => {
     assert.match(out, /Did it work\? \d+ actions from the plan of \d{4}-\d{2}-\d{2}/);
     // The route arrived, and the movement of the world travels with it.
     assert.match(out, /Route and batch support .*, ARRIVED/);
-    assert.match(out, /dearest model is now claude-sonnet-5/);
+    assert.match(out, /dearest model is now claude-sonnet-5-5/);
     assert.match(out, /calls 3 → 6/);
     // The retry bill persists, priced.
     assert.match(out, /Fix the truncation retries on digest .*, DID NOT ARRIVE/);

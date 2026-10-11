@@ -11,6 +11,29 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+- **The Anthropic catalogue was reviewed on 2026-10-10 and carries the models
+  Claude Code runs today.** Until now a Claude Code log written on Claude Opus
+  5.5 or Fable 5.1 came out of `trazum bill` as nothing priced, because neither
+  id was in the table. Added from the pricing page, the models overview and
+  each model's own page: **Claude Fable 5.1** ($10/$50), **Claude Opus 5.5**
+  ($4/$20), **Claude Sonnet 5.5** ($2/$10), **Claude Mythos 5.1** ($10/$50,
+  priced and never recommended, as only verified organisations can call it)
+  and **Claude Opus 4.5** ($5/$25, legacy but still served, with its dated id
+  declared as an alias). The new generation reads the cache cheaper than the
+  0.1x every earlier Claude model pays: 0.05x on Opus 5.5 and Sonnet 5.5,
+  0.025x on Fable 5.1 and Mythos 5.1, and each row says so in its
+  multipliers rather than inheriting the default. Every existing row matched
+  the page; Fable 5's note now says it is superseded, and Mythos 5's no
+  longer names a programme the page has dropped. **Claude Haiku 5.5 is left
+  out on purpose:** it is priced by prompt length per request, above 100,000
+  tokens counting cache reads and writes, and nothing that prices a usage log
+  yet passes one request's length to the catalogue, so adding it today would
+  price every call at the ceiling, five times what most paid. Its calls stay
+  an unpriced gap that names it until that lands. The README's cache rows say
+  the new ratios and minimums.
+
 ### Security
 
 - **`next` 16.3.5 to 16.3.8 (#540), closing a critical remote code

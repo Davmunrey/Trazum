@@ -22,7 +22,11 @@
   "expectedUnreachable": [
     {
       "id": "claude-mythos-5",
-      "because": "priced as Glasswing-only and not recommendable"
+      "because": "sold only to organizations verified by Anthropic, priced and not recommendable"
+    },
+    {
+      "id": "claude-mythos-5-1",
+      "because": "sold only to organizations verified by Anthropic, priced and not recommendable"
     }
   ],
   "refused": [
@@ -59,6 +63,22 @@
     {
       "id": "grok-4",
       "because": "no probe is written for xai"
+    },
+    {
+      "id": "claude-fable-5-1",
+      "because": "added to the catalogue on 2026-10-10 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "claude-opus-5-5",
+      "because": "added to the catalogue on 2026-10-10 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "claude-sonnet-5-5",
+      "because": "added to the catalogue on 2026-10-10 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "claude-opus-4-5",
+      "because": "added to the catalogue on 2026-10-10 from the provider page, after this record was written; no key was available to ask"
     }
   ]
 }
