@@ -62,7 +62,7 @@ describe('deep links into a panel', () => {
   it('leaves the default alone, because which panel a bare visit opens is a product decision', () => {
     assert.match(
       app,
-      /useState\('optimise'\)/,
+      /const DEFAULT_TAB = 'bill';\s+const \[activeTab, setActiveTab\] = useState\(DEFAULT_TAB\)/,
       'the default panel changed, which is a product decision and not something a deep link may smuggle in',
     );
     assert.match(

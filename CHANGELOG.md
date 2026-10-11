@@ -11,6 +11,30 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+- **The web app opens on the bill.** Since 2.4.0 the README, the landing
+  page and the CLI all open on one thing, `trazum bill`, and the web app
+  opened on the prompt optimiser: a visitor sent by the line they had just
+  read landed on a different product. The bill is now the default panel, the
+  Measure group sits first on the rail, a bare `/` drops `?tab=bill` from the
+  address, and the guided tour starts on the bill. Every panel is where it
+  was, one click away, and `?tab=optimise` still opens the optimiser. The
+  deep-link guard that pinned the old default now pins this one, as the
+  product decision it says it is.
+
+- **The README's first section shows the PDF line and `npx skills add`.**
+  `--pdf-out bill.pdf` sits under the one-line start, and an agent that reads
+  Agent Skills from a repository is told it can install the skill with
+  `npx skills add Davmunrey/Trazum`, which lists it today.
+
+### Fixed
+
+- **The guided tour's welcome said nothing pasted is uploaded.** The bill is
+  read in the page; Optimise, Write and Compare post the prompt to the
+  server. The sentence now says which is which, in English and Spanish, and
+  `copy-claims.test.mjs` holds it.
+
 ## 2.4.2 — The bill as an attachment
 
 A patch on 2.4's terms with one new envelope. **The models Claude Code runs

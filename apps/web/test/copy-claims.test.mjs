@@ -22,6 +22,9 @@ describe('the page does not promise what the server refuses to do', () => {
 
     it(`${locale}: no claim that nothing leaves the machine`, () => {
       assert.doesNotMatch(catalogue(locale), /nothing leaves your machine|nada sale de tu máquina/);
+      // The tour's welcome said it of everything; Optimise, Write and Compare
+      // post the prompt to this server. Only the bill is read in the page.
+      assert.doesNotMatch(catalogue(locale), /nothing you paste or drop is uploaded|nada de lo que pegas o sueltas se sube/);
     });
   }
 });

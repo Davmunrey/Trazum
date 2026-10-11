@@ -102,7 +102,15 @@ export function App({
    * render has no storage), behind try/catch like every storage access here:
    * a private window shows the offer again, which is the right failure.
    */
-  const [activeTab, setActiveTab] = useState('optimise');
+  /*
+    The bill is the front door, decided in 2.4.2 as the product decision the
+    deep-link guard says it is. Since 2.4.0 the README, the landing page and
+    the CLI all open on one thing, `trazum bill`, and this page opened on a
+    prompt optimiser: a visitor sent here by the line they had just read
+    landed on a different product. The rail order below moved with it.
+  */
+  const DEFAULT_TAB = 'bill';
+  const [activeTab, setActiveTab] = useState(DEFAULT_TAB);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourOffered, setTourOffered] = useState(false);
   useEffect(() => {
@@ -394,33 +402,32 @@ export function App({
   */
   const GROUPS = [
     {
-      label: t.page.groupWork,
+      label: t.page.groupMeasure,
       items: [
         /*
-          Optimise stays first because it is what `defaultValue` opens.
+          The bill stays first because it is what a bare visit opens.
 
-          Write was first in this list for a moment, which put a rail whose top
-          item is not the panel on screen — the reader lands on the second row
-          highlighted. The order of the rail and the default tab are one
-          decision, not two, and moving the front door is a product change
-          rather than something to smuggle in with a new mode.
+          Write was once first in the other group for a moment, which put a
+          rail whose top item is not the panel on screen: the reader lands on
+          the second row highlighted. The order of the rail and the default
+          tab are one decision, not two.
         */
+        { value: 'bill', label: t.bill.tab, Icon: Receipt },
+        // The playground demonstrates the tool the tabs here only allude to:
+        // the CLI's pure subset, run in the page on sample data. Public on
+        // purpose — it is the demo, and it holds nothing personal.
+        { value: 'playground', label: t.playground.tab, Icon: SquareTerminal },
+      ],
+    },
+    {
+      label: t.page.groupWork,
+      items: [
         { value: 'optimise', label: t.compare.optimiseTab, Icon: Wand2 },
         { value: 'write', label: t.write.tab, Icon: PenLine },
         { value: 'compare', label: t.compare.tab, Icon: GitCompare },
         // The library holds prompt text, so it lives with the text tools —
         // and only for a signed-in reader, same rule as its panel.
         ...(signedIn ? [{ value: 'library', label: t.library.tab, Icon: BookMarked }] : []),
-      ],
-    },
-    {
-      label: t.page.groupMeasure,
-      items: [
-        { value: 'bill', label: t.bill.tab, Icon: Receipt },
-        // The playground demonstrates the tool the tabs above only allude to:
-        // the CLI's pure subset, run in the page on sample data. Public on
-        // purpose — it is the demo, and it holds nothing personal.
-        { value: 'playground', label: t.playground.tab, Icon: SquareTerminal },
       ],
     },
   ];
@@ -442,11 +449,11 @@ export function App({
    * The README could send somebody to the Playground and could not land them
    * on it: the demo that runs without installing anything was a link plus an
    * instruction to find a tab. A visitor who does not take the second step
-   * lands on Optimise and never sees the thing they were sent for.
+   * landed on Optimise and never saw the thing they were sent for.
    *
-   * The default is untouched. With no parameter this still opens Optimise,
-   * because which panel a bare visit lands on is a product decision and this
-   * is a way to bypass it deliberately, not to move it.
+   * The default is untouched. With no parameter this opens the bill, because
+   * which panel a bare visit lands on is a product decision and this is a way
+   * to bypass it deliberately, not to move it.
    *
    * The set is read off `GROUPS` rather than listed here, so a panel added to
    * the rail is linkable the day it lands. An unknown value is ignored rather
@@ -479,7 +486,7 @@ export function App({
     setActiveTab(value);
     try {
       const url = new URL(window.location.href);
-      if (value === 'optimise') url.searchParams.delete('tab');
+      if (value === DEFAULT_TAB) url.searchParams.delete('tab');
       else url.searchParams.set('tab', value);
       window.history.replaceState(null, '', url);
     } catch {

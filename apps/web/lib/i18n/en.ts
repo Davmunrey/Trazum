@@ -8,7 +8,7 @@ export const en: WebMessages = {
 
   meta: {
     title: 'Trazum: where your prompt spend goes',
-    tagline: 'prompt cost analyser',
+    tagline: 'AI spend, measured',
     description:
       'Cut the cost of your AI calls: shorten the prompt without changing what it asks for, and see what that is worth per month. Or read your usage log (entirely in the browser, nothing uploaded) and see where the money actually went.',
     ogLocale: 'en_US',
@@ -1006,7 +1006,7 @@ export const en: WebMessages = {
       welcome: {
         title: 'What Trazum answers',
         body:
-          'What does this prompt cost, what would this change do to the bill, and what would actually move it. Everything here runs in your browser: nothing you paste or drop is uploaded anywhere.',
+          'Where your AI spend went, what would actually move it, and what a prompt or a change costs before you ship it. Your bill is read in this browser: a log or folder you drop is never uploaded. A prompt you optimise, write or compare is sent to this server for that answer and not stored.',
       },
       optimise: {
         title: 'Optimise',
