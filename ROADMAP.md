@@ -1184,6 +1184,15 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.5.1 — A bill for a period — released
+
+A patch, and no command. `bill` and `receipt` take `--since`/`--until`, refuse
+a period the log does not reach rather than print $0, and name the undated
+calls a window leaves out, on the receipt as a new gap. A bill spanning months
+adds a table by month. A Claude Code bill says it is priced at API rates, which
+a Pro or Max plan did not pay, on every surface. A prefixed model id is no
+longer called an OpenRouter slug by default.
+
 ## 2.5.0 — Each request at its own size — released
 
 A minor for two fields in published formats, and no command. A model priced by
@@ -2737,7 +2746,8 @@ move of it that did not need something held outside this repository,
 priced the models Claude Code runs today and gave the bill a PDF, 2.4.3
 made the one line work with no path and priced each call at its own moment, and
 2.5.0 priced each request at its own size, which let the current models of
-OpenAI, Moonshot and xAI, Claude Haiku 5.5 and Gemini 3.1 Pro in. [The
+OpenAI, Moonshot and xAI, Claude Haiku 5.5 and Gemini 3.1 Pro in, and 2.5.1
+billed a period and said what a Claude Code bill's figure is. [The
 1.83–2.0 plan](docs/plan-1.83-2.0.md) had asked a different question from
 every other plan in that directory — not what this should do next, but when
 it is finished — and 2.0.0 answered it by freezing the surface at 46
