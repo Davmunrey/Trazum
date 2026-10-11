@@ -75,7 +75,20 @@ describe('a Responses API usage object', () => {
     assert.equal(parsed.inputTokens, 40_000);
     assert.equal(parsed.cacheReadTokens, 50_000);
     assert.equal(parsed.cacheWrite5mTokens, 10_000);
-    assert.equal(parsed.writeTtlKnown, true, 'an OpenAI write has one TTL, and nothing was assumed');
+    // The line names no TTL; the model, which sells one kind of entry, settles it.
+    assert.equal(parsed.writeTtlKnown, false);
+    const report = bill([
+      {
+        model: 'gpt-6-astra',
+        ts: '2026-10-05T12:00:00Z',
+        usage: {
+          input_tokens: 100_000,
+          output_tokens: 1_000,
+          input_tokens_details: { cached_tokens: 50_000, cache_write_tokens: 10_000 },
+        },
+      },
+    ]);
+    assert.equal(report.total.assumedWriteTtlCalls, 0, 'a single-TTL write was reported as an assumption');
   });
 });
 

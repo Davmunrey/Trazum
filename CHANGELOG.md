@@ -62,7 +62,10 @@ merged commit with no entry is a change only `git log` remembers.
   a cache that expires before it is read. Each verdict now reads the model's
   own entry, carries it (`entryTtlMs`, `longerTtlMs`), and on a model with
   one kind of entry says so instead of suggesting the hour, in the CLI, the
-  documents, the MCP report and the web app.
+  documents, the MCP report and the web app. A write reported as
+  `cache_write_tokens` names no TTL, so it is an assumption only on a model
+  that sells two entries at two prices (Kimi K3); on one that sells one, or
+  two at one price, nothing is assumed and nothing is said.
 
 - **A model priced by prompt length is billed one request at a time.** A call
   is billed in its own band. A row that sums requests gives only a bound, its
@@ -137,6 +140,11 @@ merged commit with no entry is a change only `git log` remembers.
   and priced as a write. The 12-hour write, `input_cache_write_12h_tokens`,
   has no published price Trazum can read, so it stays in the total at the
   input rate and `from-openai` names it as a floor.
+
+- **The VS Code extension's tests could read a half-written build.** One
+  packaging test rebuilt `dist/` in place while the shim's tests, running in
+  parallel, imported it; CI caught fourteen of them failing with "activate is
+  not a function". It builds into a directory of its own now.
 
 - **`--exact-tokens` told somebody to install a package they had.** On a
   model `@trazum/tokenizer-openai` holds no rank table for, GPT-6 among them,

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
@@ -178,7 +179,16 @@ describe('the packaging command exists and says what it does', () => {
       a marketplace can hold. A rename that left the root scripts pointing at
       the old name would fail here rather than in somebody's release.
     */
-    const out = execFileSync('npm', ['run', 'build', '-w', manifest.name], {
+    /*
+      Into a directory of its own. Built in place, this rewrote `dist/` while
+      the shim's tests, running alongside in another process, were importing
+      it, and `tsc` does not write a file atomically: CI caught one of them
+      reading a half-written `extension.js` and fourteen tests failed with
+      "activate is not a function". The script and its name are what is under
+      test, not where the output lands.
+    */
+    const outDir = mkdtempSync(join(tmpdir(), 'trazum-vscode-build-'));
+    const out = execFileSync('npm', ['run', 'build', '-w', manifest.name, '--', '--outDir', outDir], {
       cwd: repoRoot,
       encoding: 'utf8',
       env: SPAWN_ENV,

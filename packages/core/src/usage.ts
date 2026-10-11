@@ -1,4 +1,4 @@
-import { effectivePricing, multipliersFor } from './pricing.js';
+import { cacheTtlOf, effectivePricing, multipliersFor } from './pricing.js';
 import { billedAt, promptSizeOf } from './billing.js';
 import { createConversationTracker } from './conversation.js';
 import { createOutputShapeTracker } from './output-shape.js';
@@ -857,7 +857,8 @@ export function parseUsageLine(line: string): UsageRecord | null {
      */
     cacheWrite5mTokens: (hasSplit ? split5m : flatWrite) + openAiWritten,
     cacheWrite1hTokens: hasSplit ? split1h : 0,
-    writeTtlKnown: hasSplit || flatWrite === 0,
+    // `cache_write_tokens` names no TTL either; see the note in `profileUsage`.
+    writeTtlKnown: hasSplit || (flatWrite === 0 && openAiWritten === 0),
     outputTokens: valueOf(counts.output!),
     /**
      * Trimmed and internally normalised: any whitespace run becomes one space.
@@ -1187,10 +1188,29 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     const line = lines[i]!.trim();
     if (line === '') continue;
 
-    const record = parseUsageLine(line);
+    let record = parseUsageLine(line);
     if (!record) {
       skippedLines.push(i + 1);
       continue;
+    }
+    /**
+     * A write whose TTL the line did not state is an assumption only where
+     * there was a choice. `cache_write_tokens` carries no TTL: on Kimi K3,
+     * which sells a 5-minute and a 1-hour entry, the cheaper is assumed and
+     * the report says so; on OpenAI's GPT-5.6 and later, which sell one, and
+     * on its earlier models, whose writes cost what input costs whatever they
+     * last, there is nothing to assume and nothing is said.
+     */
+    if (!record.writeTtlKnown) {
+      const priced = catalogue.byId.get(record.model);
+      // One kind of entry, or two at one price: an assumption that cannot move the bill is not one.
+      if (
+        priced !== undefined
+        && (cacheTtlOf(priced).longerMs === null
+          || multipliersFor(priced).cacheWrite1h === multipliersFor(priced).cacheWrite5m)
+      ) {
+        record = { ...record, writeTtlKnown: true };
+      }
     }
 
     // The drill-down: after the skip accounting, so a corrupt line is reported

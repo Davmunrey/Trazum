@@ -111,7 +111,8 @@ describe('the usage report becomes records in the shape the parser reads OpenAI'
     assert.equal(parsed.outputTokens, 500);
     assert.equal(parsed.cacheReadTokens, 400);
     assert.equal(parsed.cacheWrite5mTokens, 100);
-    assert.equal(parsed.writeTtlKnown, true);
+    // No TTL on the line: a model's own catalogue row settles it in a profile.
+    assert.equal(parsed.writeTtlKnown, false);
   });
 
   it('reads the bucket clock as Unix seconds, not milliseconds', () => {
