@@ -536,6 +536,8 @@ describe('database TLS', () => {
   it('does not demand a certificate from your own machine', () => {
     assert.equal(storeIndex.resolveSslMode({}, 'postgres://u:p@localhost:5432/trazum'), false);
     assert.equal(storeIndex.resolveSslMode({}, 'postgres://u:p@127.0.0.1:5432/trazum'), false);
+    // IPv6 loopback: the URL parser keeps the brackets, and the check once compared without them.
+    assert.equal(storeIndex.resolveSslMode({}, 'postgres://u:p@[::1]:5432/trazum'), false);
   });
 
   it('lets the operator downgrade, but only to a mode that exists', () => {

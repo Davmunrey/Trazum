@@ -24,6 +24,9 @@ const ENV = {
   TRAZUM_GITHUB_CLIENT_ID: 'Iv1.abc',
   TRAZUM_GITHUB_CLIENT_SECRET: 'shhh',
   TRAZUM_PUBLIC_URL: ORIGIN,
+  // Sign-in is closed by default; these tests are about the flow, so the
+  // operator has opened it. The gate itself is tested below with it closed.
+  TRAZUM_OPEN_SIGNUP: '1',
 };
 
 let signIn;
@@ -714,5 +717,65 @@ describe('GET /api/auth/session', () => {
       }),
     );
     assert.equal((await response.json()).user, null);
+  });
+});
+
+describe('who may sign in is the operator\'s decision, closed by default', () => {
+  /** Runs the flow up to the callback's answer, with sign-in policy as given. */
+  async function attempt(env, identity) {
+    delete process.env.TRAZUM_OPEN_SIGNUP;
+    delete process.env.TRAZUM_ALLOWED_USERS;
+    delete process.env.TRAZUM_ADMINS;
+    Object.assign(process.env, env);
+    globalThis.fetch = identity ? fakeGitHub({ identity }) : fakeGitHub();
+    const started = await signIn(req(`${ORIGIN}/api/auth/github`));
+    if (started.status !== 303) return started;
+    const stateCookie = cookieNamed(started, '__Host-trazum_oauth');
+    const packed = stateCookie.slice(stateCookie.indexOf('=') + 1, stateCookie.indexOf(';'));
+    const nonce = packed.slice(0, packed.indexOf('.'));
+    return callback(
+      req(`${ORIGIN}/api/auth/github/callback?code=abc&state=${nonce}`, {
+        headers: { cookie: `__Host-trazum_oauth=${packed}` },
+      }),
+    );
+  }
+
+  it('with nobody listed, refuses before asking GitHub and names what to set', async () => {
+    const response = await attempt({});
+    assert.equal(response.status, 503);
+    const { error } = await response.json();
+    assert.match(error, /TRAZUM_ALLOWED_USERS/);
+    assert.match(error, /TRAZUM_OPEN_SIGNUP=1/);
+    assert.equal(calls.length, 0, 'GitHub was asked anyway');
+  });
+
+  it('refuses an account that is not on the list, and issues no session', async () => {
+    const response = await attempt({ TRAZUM_ALLOWED_USERS: 'someone-else,42' });
+    assert.equal(response.status, 403);
+    assert.match((await response.json()).error, /octocat cannot sign in/);
+    assert.equal(cookieNamed(response, '__Host-trazum_session'), null);
+  });
+
+  it('lets a listed login in, case-insensitively', async () => {
+    const response = await attempt({ TRAZUM_ALLOWED_USERS: 'OctoCat' });
+    assert.equal(response.status, 303);
+    assert.ok(cookieNamed(response, '__Host-trazum_session'));
+  });
+
+  it('lets a listed numeric id in, which survives a rename', async () => {
+    const response = await attempt({ TRAZUM_ALLOWED_USERS: '583231' }, { id: 583231, login: 'renamed-cat', name: null, avatar_url: null });
+    assert.equal(response.status, 303);
+  });
+
+  it('always lets an admin in', async () => {
+    const response = await attempt({ TRAZUM_ADMINS: 'octocat' });
+    assert.equal(response.status, 303);
+  });
+
+  it('lets anyone in only when the operator says so out loud', async () => {
+    const response = await attempt({ TRAZUM_OPEN_SIGNUP: '1' }, { id: 7, login: 'stranger', name: null, avatar_url: null });
+    assert.equal(response.status, 303);
+    const notQuite = await attempt({ TRAZUM_OPEN_SIGNUP: 'true', TRAZUM_ALLOWED_USERS: 'octocat' }, { id: 7, login: 'stranger', name: null, avatar_url: null });
+    assert.equal(notQuite.status, 403);
   });
 });

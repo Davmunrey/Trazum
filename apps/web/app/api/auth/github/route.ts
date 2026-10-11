@@ -1,3 +1,4 @@
+import { nobodyMaySignIn, signInPolicy } from '../../../../lib/auth/allowlist';
 import { authConfig } from '../../../../lib/auth/config';
 import { serializeCookie } from '../../../../lib/auth/cookies';
 import { authorizeUrl, mintNonce, packState, safeNextPath } from '../../../../lib/auth/github';
@@ -18,6 +19,17 @@ export const runtime = 'nodejs';
 export async function GET(request: Request): Promise<Response> {
   const config = authConfig();
   if (!config.enabled) return authDisabled(config);
+
+  // Before GitHub is asked anything: a deployment that lets nobody in should
+  // say so to its operator here, not after a round trip to GitHub.
+  if (nobodyMaySignIn(signInPolicy())) {
+    return jsonError(
+      'sign-in is closed on this deployment: its operator has not said who may sign in. '
+        + 'Set TRAZUM_ALLOWED_USERS (GitHub logins or numeric ids) or TRAZUM_ADMINS, '
+        + 'or TRAZUM_OPEN_SIGNUP=1 to let any GitHub account in.',
+      503,
+    );
+  }
 
   if (authRateLimited(request, Date.now())) {
     return jsonError('too many sign-in attempts, try again in a minute', 429);

@@ -102,7 +102,7 @@ export const es: WebMessages = {
     apiKey: 'Clave de API',
     apiKeyPlaceholder: 'tu clave',
     keyNote:
-      'La clave viaja a este servidor para hacer la llamada y se descarta al terminar: no se guarda ni se registra. Si prefieres no escribirla aquí, define las variables de entorno en el servidor y deja los campos vacíos.',
+      'La clave viaja a este servidor para hacer la llamada y se descarta al terminar: no se guarda ni se registra. Este servidor nunca presta una clave propia, así que la pasada con modelo necesita la tuya en cada petición; usa la CLI si prefieres que la clave no salga nunca de tu máquina.',
     safetyNote:
       'El resultado del LLM solo se acepta si es más corto y conserva intactos el código, las URLs y los marcadores de plantilla. Si no, se descarta y te quedas con la versión determinista.',
   },
@@ -114,7 +114,7 @@ export const es: WebMessages = {
     perMonth: (amount) => `${amount}/mes`,
     restoreTitle: 'Restaurar este prompt y su escenario',
     tooLongTitle: 'Prompt demasiado largo para guardarlo; solo se conserva el resumen.',
-    privacyNote: 'El historial se guarda solo en este navegador; nada sale de tu máquina.',
+    privacyNote: 'El historial se guarda solo en este navegador y sigue ahí tras cerrar sesión hasta que lo borres. El prompt se envía a este servidor para optimizarlo y no se guarda allí.',
   },
 
   account: {
@@ -1088,6 +1088,19 @@ export const es: WebMessages = {
     promptTooLong: (limit) => `El prompt supera el límite de ${limit} caracteres.`,
     unknownRule: (id) => `Regla desconocida: "${id}".`,
     unknownModel: (id) => `Modelo desconocido: "${id}".`,
+    usageNotAnObject: '"usage" debe ser un objeto, como {"model": "claude-opus-5", "callsPerMonth": 10000}.',
+    usageUnknownField: (field, known) =>
+      `"usage.${field}" no es un campo, y se habría usado su valor por defecto sin avisar. Campos: ${known}.`,
+    usageBadField: (field, expected) => {
+      const wanted = {
+        text: 'un id de modelo',
+        count: 'un número de llamadas, 0 o más',
+        tokens: 'un número de tokens, 0 o más',
+        rate: 'una fracción de 0 a 1, como 0.6 para el 60%',
+        boolean: 'true o false',
+      }[expected];
+      return `"usage.${field}" debe ser ${wanted}. Un valor fuera de eso se cobraría como si fuera real.`;
+    },
     answersNotAnObject: 'Las respuestas deben ser un objeto de ids de slot y respuestas.',
     unknownSlot: (id) => `"${id}" no es una de las preguntas que hace esta entrevista.`,
     answerNotText: (id) => `La respuesta a "${id}" debe ser texto, o null para declinarla.`,

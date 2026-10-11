@@ -236,6 +236,37 @@ describe('creating a link is a deliberate publication', () => {
     assert.equal(response.status, 409);
     assert.equal((await store.shares.listShares(alice.user.id, new Date())).length, limits.MAX_SHARES_PER_OWNER);
   });
+
+  it('does not count links that have expired, and deletes their text', async () => {
+    const store = await getStore();
+    const yesterday = new Date(Date.now() - 86_400_000);
+    const lapsed = [];
+    for (let i = 0; i < limits.MAX_SHARES_PER_OWNER; i++) {
+      const token = api.mintShareToken();
+      lapsed.push(token);
+      await store.shares.createShare({
+        token,
+        ownerId: mallory.user.id,
+        ownerLogin: 'mallory',
+        beforeText: BEFORE,
+        afterText: AFTER,
+        settings: { level: 'safe', optimizeBoth: false, disableRules: [], model: 'm', callsPerMonth: 1, avgOutputTokens: 1, cacheHitRate: 0, batchEligible: false },
+        now: new Date(yesterday.getTime() - 1000),
+        expiresAt: yesterday,
+      });
+    }
+
+    // A hundred links, all lapsed: the hundred and first is a new link, not a 409.
+    const response = await sharesRoute.POST(
+      req(`${ORIGIN}/api/shares`, post({ before: BEFORE, after: AFTER }, mallory.cookie)),
+    );
+    assert.equal(response.status, 201);
+    // And the lapsed ones are gone, not merely hidden: asked for as of their
+    // own lifetime, they no longer exist.
+    for (const token of lapsed.slice(0, 3)) {
+      assert.equal(await store.shares.findShare(token, new Date(yesterday.getTime() - 500)), null);
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -13,8 +13,8 @@ lasts.
 
 ## Turning it on
 
-Three environment variables, and a fourth if you want the sign-in to survive a
-restart.
+Three environment variables, a fourth that says who may sign in, and a fifth if
+you want the sign-in to survive a restart.
 
 | Variable | Required | What it is |
 | --- | --- | --- |
@@ -24,7 +24,21 @@ restart.
 | `TRAZUM_DATABASE_URL` | no | Any Postgres. Without it, sessions live in memory |
 | `TRAZUM_DATABASE_SSL` | no | `verify-full` (default for remote hosts), `require`, `prefer`, `allow`, `disable` |
 | `TRAZUM_DATABASE_POOL` | no | Connections per instance. Default `4` |
+| `TRAZUM_ALLOWED_USERS` | one of these two | GitHub logins or numeric ids, comma-separated, who may sign in. Admins are always allowed |
+| `TRAZUM_OPEN_SIGNUP` | one of these two | `1` lets any GitHub account sign in. Anything else is closed |
 | `TRAZUM_ADMINS` | no | Who may see the deployment overview. Empty means nobody, and the page does not exist |
+
+**Sign-in is closed until you say who may use it.** With none of
+`TRAZUM_ALLOWED_USERS`, `TRAZUM_ADMINS` or `TRAZUM_OPEN_SIGNUP=1` set, the
+sign-in button answers `503` and names these variables, before GitHub is
+asked anything. An account not on the list gets `403` at the callback and no
+row is written. The list is checked on every sign-in, so removing somebody
+takes effect the next time they sign in. Until 2.4.2 any GitHub account could
+sign in to a deployment with accounts on, which made a team's prompt library
+a free prompt store for anyone who found it, up to the per-account caps and
+at the operator's database bill. Prefer numeric ids: a login can be renamed
+and claimed by somebody else, exactly as the `TRAZUM_ADMINS` section below
+explains.
 
 ### 1. Register a GitHub OAuth app
 

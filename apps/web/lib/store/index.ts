@@ -27,7 +27,8 @@ type SslMode = (typeof SSL_MODES)[number];
 function isLoopback(url: string): boolean {
   try {
     const { hostname } = new URL(url);
-    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+    // WHATWG URL keeps the brackets on an IPv6 host: `[::1]`, never `::1`.
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
   } catch {
     return false;
   }

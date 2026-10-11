@@ -34,6 +34,17 @@ function toShare(row: Row): ShareRecord {
 export function sharesInPostgres(sql: SqlClient): ShareStore {
   return {
     async createShare(input): Promise<ShareRecord | null> {
+      /*
+        This owner's expired links go first. They counted toward the limit
+        while opening nothing, so an owner whose hundred links had all lapsed
+        could never make another, and their prompt text stayed in this table
+        for as long as the table did. Expired is absent everywhere else here;
+        now it is absent from the count and from the disk too.
+      */
+      await sql`
+        delete from trazum_shares
+        where owner_id = ${input.ownerId} and expires_at is not null and expires_at <= ${input.now}
+      `;
       const [count] = await sql<Row>`
         select count(*) as total from trazum_shares where owner_id = ${input.ownerId}
       `;
