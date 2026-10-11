@@ -40,6 +40,15 @@ merged commit with no entry is a change only `git log` remembers.
   2.5.0's release commit**, the one `v2.5.0` points at, in the pull request
   after the release as `docs/releasing.md` says it must.
 
+- **A Claude Code bill did not say it is an API-rate equivalent.** `bill`
+  over Claude Code transcripts prints "Your bill" at Anthropic's API rates,
+  and somebody on a Pro or Max plan paid the plan, not that figure. The
+  README said so in its subscription section; the statement, the PDF, HTML
+  and Markdown documents and the web app's Bill tab did not. Each now says
+  it whenever transcripts were read, and never over a metered API log, where
+  the figure is money billed. The README picture is redrawn from the new
+  output.
+
 - **`bill` called every model id with a slash an OpenRouter slug.**
   `gemini/`, `xai/` and `moonshot/` are LiteLLM's prefixes (OpenRouter writes
   `google/`, `x-ai/`, `moonshotai/`), so the hint stated a fact it did not

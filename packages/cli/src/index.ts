@@ -3553,6 +3553,8 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   */
   const labelFromProject = boolFlag(args, 'label-from-project', true);
   let labelledByProject = 0;
+  /* Claude Code transcripts read: their money is an API-rate equivalent. */
+  let claudeCodeFiles = 0;
   const lines: string[] = [];
   let sources = 0;
   /*
@@ -3587,6 +3589,7 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
     let leftOut = 0;
     switch (shape) {
       case 'claude-code': {
+        claudeCodeFiles += 1;
         const project =
           label === undefined && labelFromProject && walked.has(file) ? projectLabelFor(file) : undefined;
         if (project !== undefined && project !== '') labelledByProject += 1;
@@ -3694,8 +3697,8 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   }
   console.error(t.bill.sources(sources, files.length));
   printReceiptSummary(document, t);
-  if (statement) printBillStatement(report, labelledByProject > 0, t, period.words);
-  await writeBillSideFiles(args, report, pricing, csvShape, t, period.words);
+  if (statement) printBillStatement(report, labelledByProject > 0, t, period.words, claudeCodeFiles > 0);
+  await writeBillSideFiles(args, report, pricing, csvShape, t, period.words, claudeCodeFiles > 0);
 
   /*
     A slug with a slash in it is how OpenRouter names a model, and the bundled
@@ -3761,6 +3764,7 @@ function printBillStatement(
   byProject: boolean,
   t: CliMessages,
   window?: { since: string; until: string },
+  apiEquivalent = false,
 ): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
@@ -3790,6 +3794,12 @@ function printBillStatement(
   }
   // The period asked for, as typed: the span above is when the calls in it fell.
   if (window !== undefined) console.log(c.dim(`  ${wrap(t.profile.windowLine(window.since, window.until), 74, '  ')}`));
+  /*
+    "Your bill" over Claude Code transcripts is the API's list price for the
+    work. On a Pro or Max plan the plan is what was paid, and a statement that
+    did not say so would hand somebody a figure they never owed.
+  */
+  if (apiEquivalent) console.log(`  ${c.yellow(wrap(t.bill.apiEquivalent(), 74, '  '))}`);
 
   const labelled = report.byLabel.filter((row) => row.label !== UNLABELLED);
   if (labelled.length > 0) {
@@ -3881,6 +3891,7 @@ async function writeBillSideFiles(
   csvShape: ProfileCsvShape,
   t: CliMessages,
   window?: { since: string; until: string },
+  apiEquivalent = false,
 ): Promise<void> {
   const markdownOut = stringFlag(args, 'markdown-out');
   const htmlOut = stringFlag(args, 'html-out');
@@ -3896,6 +3907,7 @@ async function writeBillSideFiles(
     cache: cacheEconomics(report.total),
     t,
     ...(window !== undefined ? { window } : {}),
+    ...(apiEquivalent ? { apiEquivalent } : {}),
     ...(ageDays !== null && ageDays > STALE_PRICING_DAYS ? { stalePricing: { date: reviewed, days: ageDays } } : {}),
   };
   if (markdownOut !== undefined) {

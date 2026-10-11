@@ -472,6 +472,8 @@ export const en: WebMessages = {
     otelSkipped: (spans) => `${spans} non-LLM span(s) skipped: counted, never priced.`,
     otelNoCache: (spans) =>
       `${spans} span(s) carried no cache data: OTel has not standardised the cache TTL split, so their cache verdicts read "cannot tell" rather than a guessed one.`,
+    transcriptApiEquivalent:
+      "Claude Code transcripts are priced at Anthropic's API rates. On a Pro or Max plan you paid the plan, not this: read it as what the same work would cost through the API.",
     transcriptPrivacy:
       'The transcripts were read in this tab. The numbers were kept and the words were not: no message text, no paths, no branches crossed the conversion.',
     orPaste: 'or paste the log below',

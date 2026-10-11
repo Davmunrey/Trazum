@@ -735,6 +735,13 @@ export function Bill({ t }: { t: WebMessages }) {
                   {t.bill.transcriptSummary(ingest.transcripts, ingest.convertedCalls)}
                 </div>
               )}
+              {/*
+                The CLI's statement says the same. A Pro or Max plan pays the
+                plan, so a figure headed "bill" over transcripts is an API-rate
+                equivalent, and a reader not told so is handed money they never
+                owed.
+              */}
+              {ingest.transcripts > 0 && <div>{t.bill.transcriptApiEquivalent}</div>}
               {ingest.otelExports > 0 && (
                 <div className="font-semibold">
                   {t.bill.otelSummary(ingest.otelExports, ingest.otelSpans)}

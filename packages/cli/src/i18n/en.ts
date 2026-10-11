@@ -2055,6 +2055,8 @@ ${bold('EXAMPLES')}
     sources: (read, seen) => `${read} of ${seen} file(s) read as usage.`,
     pricingLiveHint: (count) =>
       `${count} unpriced model id(s) carry a provider prefix, the way OpenRouter and LiteLLM name models, and the bundled catalogue does not carry those. Run again with --pricing-live to price OpenRouter's slugs from its own list.`,
+    apiEquivalent: () =>
+      'Claude Code transcripts are priced at Anthropic\'s API rates. On a Pro or Max plan you paid the plan, not this: read it as what the same work would cost through the API.',
     prefixedKnown: (ids) =>
       `${ids}: the model after the slash is priced here under its own name. The prefix is not stripped for you, because the same model through a router can bill differently. If those calls went straight to the provider, log the model without the prefix.`,
     windowMatchesNothing: (from, to) =>
