@@ -11,6 +11,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 2.4.3 — Each call at its own price
+
+A patch with no new command. **The one line works on a first run**:
+`npx @trazum/cli bill` with no path reads Claude Code's own folder, labels each
+session by project, and prints a statement on a terminal. **Every call is billed
+at its own moment**: a report used to price every call at the date it ran, so a
+clock-priced log read at peak was all peak and a promotion vanished once it
+ended; and a row can now carry the prices it had before a published change,
+which DeepSeek's 2026-09-10 cut needed. **Google, DeepSeek, Mistral and OpenAI
+were re-read**: DeepSeek had cut V4 Flash's price, the cache figures were wrong
+on Google, Mistral and DeepSeek, and the ids OpenAI's own usage records carry
+now price. The web app opens
+on the bill, and the npm listing names Claude Code.
+
 ### Changed
 
 - **OpenAI, re-read on 2026-10-11: the ids OpenAI's usage records carry now
