@@ -182,6 +182,7 @@ import type {
   EvalReport,
   FleetSource,
   HistoryRun,
+  ProfileCsvShape,
   MeasuredUsage,
   PruneReport,
   PlanDocument,
@@ -285,7 +286,9 @@ import {
   renderRankMarkdown,
   renderProfileMarkdown,
 } from './markdown.js';
+import type { ProfileMarkdownInput } from './markdown.js';
 import { renderPositionHtml, renderProfileHtml, renderRollupHtml } from './html.js';
+import { renderProfilePdf } from './pdf.js';
 import type { CliMessages } from './i18n/index.js';
 
 // --------------------------------------------------------------------------
@@ -382,6 +385,7 @@ const VALUE_FLAGS = new Set([
   'config',
   'markdown-out',
   'html-out',
+  'pdf-out',
   'otlp-out',
   'pricing',
   'prompt',
@@ -736,7 +740,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline', 'files-from'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'html-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source', 'allow-empty'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'html-out', 'pdf-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source', 'allow-empty'],
   plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
   verify: ['against', 'gate', 'json', 'markdown-out', 'pricing', 'pricing-live'],
   history: ['store', 'json', 'markdown-out'],
@@ -763,7 +767,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'out', 'o', 'stamp', 'pricing', 'pricing-live'],
+  bill: ['label', 'out', 'o', 'stamp', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
@@ -3417,6 +3421,9 @@ function usageSourcesOf(text: string): UsageSource[] {
  */
 async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
   if (args.positional.length === 0) throw new Error(t.bill.noPath());
+  /* Refused before any file is read: a bad shape found after the receipt
+     printed would end a run that looked finished with an error. */
+  const csvShape = csvShapeOf(args, t);
 
   /*
     Every path given, files and directories alike, because a shell glob hands
@@ -3554,6 +3561,7 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   }
   console.error(t.bill.sources(sources, files.length));
   printReceiptSummary(document, t);
+  await writeBillSideFiles(args, report, pricing, csvShape, t);
 
   /*
     A slug with a slash in it is how OpenRouter names a model, and the bundled
@@ -3567,6 +3575,66 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   if (slugged.length > 0 && !boolFlag(args, 'pricing-live')) {
     console.error(t.bill.pricingLiveHint(slugged.length));
   }
+}
+
+/**
+ * The bill as a document for somebody else: PDF, HTML, Markdown, CSV.
+ *
+ * The receipt on stdout is for a machine. The person who signs the bill off
+ * reads a PDF in an email, and until now reaching one meant knowing the log
+ * was a usage log and rerunning `profile` on it, which a converted Claude Code
+ * transcript is not. These are `profile`'s own renderers fed the report `bill`
+ * just priced, so the files and the receipt cannot disagree: one report, five
+ * envelopes. The stale-price caveat travels with them, computed the way
+ * `profile` computes it, for the providers this bill actually used.
+ */
+async function writeBillSideFiles(
+  args: Args,
+  report: UsageProfileReport,
+  pricing: PricingCatalogue,
+  csvShape: ProfileCsvShape,
+  t: CliMessages,
+): Promise<void> {
+  const markdownOut = stringFlag(args, 'markdown-out');
+  const htmlOut = stringFlag(args, 'html-out');
+  const pdfOut = stringFlag(args, 'pdf-out');
+  const csvOut = stringFlag(args, 'csv-out');
+  if (markdownOut === undefined && htmlOut === undefined && pdfOut === undefined && csvOut === undefined) return;
+
+  const reviewed = reviewedForModels(report.byModel.map((row) => row.model), pricing);
+  const ageDays = reviewAgeDays(reviewed, new Date());
+  const renderInput: ProfileMarkdownInput = {
+    report,
+    levers: billLevers(report, { catalogue: pricing }),
+    cache: cacheEconomics(report.total),
+    t,
+    ...(ageDays !== null && ageDays > STALE_PRICING_DAYS ? { stalePricing: { date: reviewed, days: ageDays } } : {}),
+  };
+  if (markdownOut !== undefined) {
+    await writeFile(markdownOut, renderProfileMarkdown(renderInput), 'utf8');
+    console.error(t.report.reportWritten(markdownOut));
+  }
+  if (htmlOut !== undefined) {
+    await writeFile(htmlOut, renderProfileHtml(renderInput), 'utf8');
+    console.error(t.html.written(htmlOut));
+  }
+  if (pdfOut !== undefined) {
+    await writeFile(pdfOut, renderProfilePdf(renderInput));
+    console.error(t.pdf.written(pdfOut));
+  }
+  if (csvOut !== undefined) {
+    await writeFile(csvOut, profileToCsv(report, { unlabelled: t.profile.unlabelled(), shape: csvShape }), 'utf8');
+    console.error(t.report.reportWritten(csvOut));
+  }
+}
+
+/** `--csv-shape`, checked: one list of shapes for `profile` and `bill`. */
+function csvShapeOf(args: Args, t: CliMessages): ProfileCsvShape {
+  const shape = stringFlag(args, 'csv-shape') ?? 'slice';
+  if (shape !== 'slice' && shape !== 'day' && shape !== 'hour' && shape !== 'model-day') {
+    throw new Error(t.profile.badCsvShape(shape));
+  }
+  return shape;
 }
 
 /**
@@ -9042,7 +9110,8 @@ async function writeProfileSideFiles(context: {
    */
   const markdownOut = stringFlag(args, 'markdown-out');
   const htmlOut = stringFlag(args, 'html-out');
-  if (markdownOut !== undefined || htmlOut !== undefined) {
+  const pdfOut = stringFlag(args, 'pdf-out');
+  if (markdownOut !== undefined || htmlOut !== undefined || pdfOut !== undefined) {
     /**
      * Derived here, not borrowed from the terminal path. Under `--json`
      * that path never runs, and the outer `levers` this block used to
@@ -9104,11 +9173,15 @@ async function writeProfileSideFiles(context: {
     });
     if (markdownOut !== undefined) {
       await writeFile(markdownOut, renderProfileMarkdown(renderInput), 'utf8');
-      notice(c.dim(t.report.wroteTo(markdownOut)));
+      notice(c.dim(t.report.reportWritten(markdownOut)));
     }
     if (htmlOut !== undefined) {
       await writeFile(htmlOut, renderProfileHtml(renderInput), 'utf8');
       notice(c.dim(t.html.written(htmlOut)));
+    }
+    if (pdfOut !== undefined) {
+      await writeFile(pdfOut, renderProfilePdf(renderInput));
+      notice(c.dim(t.pdf.written(pdfOut)));
     }
   }
 
@@ -9125,16 +9198,13 @@ async function writeProfileSideFiles(context: {
      * spreadsheet that has to filter before it can sum is a spreadsheet
      * somebody sums wrong.
      */
-    const shape = stringFlag(args, 'csv-shape') ?? 'slice';
-    if (shape !== 'slice' && shape !== 'day' && shape !== 'hour' && shape !== 'model-day') {
-      throw new Error(t.profile.badCsvShape(shape));
-    }
+    const shape = csvShapeOf(args, t);
     await writeFile(
       csvOut,
       profileToCsv(report, { unlabelled: t.profile.unlabelled(), shape }),
       'utf8',
     );
-    notice(c.dim(t.report.wroteTo(csvOut)));
+    notice(c.dim(t.report.reportWritten(csvOut)));
   }
 }
 

@@ -2933,6 +2933,26 @@ A slug the bundled catalogue does not price is the receipt's usual unpriced
 gap, kept out of the total rather than costed at zero; `--pricing-live` is
 where OpenRouter's hundreds of slugs get their rates.
 
+**The bill for somebody else.** The receipt on stdout is for a machine. The
+person who signs the bill off reads an attachment, so `bill` writes the same
+four files `trazum profile` does, from the report it just priced:
+
+```bash
+npx @trazum/cli bill ~/.claude/projects --pdf-out bill.pdf
+npx @trazum/cli bill exports/ --html-out bill.html --csv-out bill.csv
+```
+
+`--pdf-out` writes a PDF with no font embedded and no dependency behind it,
+a few kilobytes for most bills: the HTML report's figures and sentences, the
+caveat block ahead of every table, and a footer on every page saying where
+the figures came from, because printed pages get separated. `--html-out`,
+`--markdown-out` and `--csv-out` (with `--csv-shape`) are `profile`'s own,
+unchanged. The files and the receipt cannot disagree: there is one report and
+these are its envelopes. An unpriced model shows a dash where its dollars
+would be, never `$0`, in the PDF and the HTML alike. The standard PDF fonts
+cover Latin script, every locale this tool ships; a label in another script
+arrives as question marks, visibly wrong rather than silently blank.
+
 ### What the router says: `trazum from-openrouter`
 
 OpenRouter is the one provider Trazum already prices from a live catalogue:

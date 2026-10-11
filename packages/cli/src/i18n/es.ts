@@ -48,6 +48,7 @@ ${bold('USO')}
   trazum position <uso.jsonl>
   trazum receipt <uso.jsonl|dir> [--stamp] [-o <fichero>]
   trazum bill <fichero|dir>... [--label <nombre>] [--stamp] [-o <fichero>]
+              [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
@@ -772,6 +773,12 @@ ${bold('OPCIONES DE profile')}
                               quien paga la factura. Las mismas cifras que
                               --json, con las salvedades tan visibles como
                               los totales a los que acompañan.
+  --pdf-out <fichero>         Escribe además el informe como PDF, para quien
+                              aprueba la factura y lee adjuntos, no
+                              terminales. Las cifras y salvedades del informe
+                              HTML, un pie en cada página, sin fuentes
+                              incrustadas, unos pocos kilobytes. bill también
+                              lo acepta.
   --csv-shape <forma>         Qué tabla escribe --csv-out: slice (por defecto),
                               day, hour o model-day (una fila por día y
                               modelo: dibuja la mezcla moviéndose). Una sola
@@ -1401,6 +1408,7 @@ ${bold('EJEMPLOS')}
     diffTooLarge: (lines, max) =>
       `  Diff omitido: ${lines} líneas supera el límite de ${max}, y alinearlas costaría más memoria de lo que vale la respuesta.`,
     wroteTo: (path) => `Prompt optimizado escrito en ${path}`,
+    reportWritten: (path) => `Informe escrito en ${path}.`,
   },
 
   init: {
@@ -2237,6 +2245,11 @@ ${bold('EJEMPLOS')}
     footer: () =>
       'Generado por trazum a partir de un log de uso, sin conexión. Cada cifra deriva de ese log y de la tabla de precios que la ejecución nombró; nada de esto se envió a ninguna parte para calcularse.',
     written: (path) => `Informe HTML escrito en ${path}.`,
+  },
+
+  pdf: {
+    page: (current, total) => `página ${current} de ${total}`,
+    written: (path) => `Informe PDF escrito en ${path}.`,
   },
 
   schema: {

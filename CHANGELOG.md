@@ -11,7 +11,44 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **The bill as a PDF: `--pdf-out` on `bill` and `profile`.** The person who
+  signs a bill off reads an attachment, not a terminal, and until now the
+  nearest thing was an HTML file they had to open in a browser. The PDF is
+  the HTML report in another envelope: the same input object, the same
+  sentences from the same message catalogue, the caveat block ahead of every
+  table, and a footer on every page naming where the figures came from and
+  which page of how many it is. It is written by `PdfDocument`, a new export
+  of `@trazum/core` over the 14 standard PDF fonts: no dependency, no
+  embedded font, a few kilobytes, the same bytes for the same report, plain
+  ASCII so a reader can find their figures in a text editor. The standard
+  fonts cover Latin script, which is every locale this tool ships; a
+  character outside it is written as its obvious ASCII form (`→` as `->`)
+  or as `?`, never dropped. `pdf.test.js` checks every cross-reference
+  offset against the file, and `pdf-report.test.js` holds the figures to
+  the `--json` document, a 90-row table across pages with its header
+  repeated, a hostile label with parentheses and backslashes, and Spanish.
+
+- **`bill` writes the envelopes `profile` writes.** `--pdf-out`,
+  `--html-out`, `--markdown-out` and `--csv-out` (with `--csv-shape`), from
+  the report `bill` just priced, so the files and the receipt cannot
+  disagree. Until now a converted Claude Code transcript could reach a
+  forwarded report only through `from-claude-code` and then `profile`. A
+  bad `--csv-shape` is refused before any file is read, rather than after
+  the receipt has printed.
+
 ### Fixed
+
+- **An unpriced model showed `$0` in the HTML report's model table.** Zero
+  is a claim that the calls were free, the claim the CSV door has refused
+  with an empty cell since it shipped. It is a dash now, in the dollars and
+  the share, in the HTML and the PDF alike; the caveat block above already
+  names the model and how to price it.
+
+- **`profile --markdown-out` and `--csv-out` announced "Optimised prompt
+  written to".** The notice was the `optimize` command's, borrowed. They say
+  "Report written to" now, in both locales.
 
 - **`trazum bill logs/*.jsonl` priced the first file and called it the
   bill.** The shell expands a glob into every file, and `bill`, like every

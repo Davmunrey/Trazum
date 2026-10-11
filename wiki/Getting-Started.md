@@ -166,6 +166,7 @@ trazum watch --once                  # did anything cross, this afternoon
 trazum serve                         # answer before the call is sent
 trazum rollup a.json b.json          # several people's bills, one roll-up
 trazum profile usage.jsonl --html-out report.html   # the report somebody forwards
+trazum bill ~/.claude/projects --pdf-out bill.pdf   # the bill as a PDF attachment
 trazum pulse --max-stale-hours 36    # did anything stop running?
 trazum bench                         # how fast is Trazum on this machine
 trazum rank prompts/                 # which one to fix first

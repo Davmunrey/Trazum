@@ -301,6 +301,8 @@ export interface CliMessages {
     suggestHowToApply(): string;
     pricingOverlaid(models: string, lastReviewed: string): string;
     wroteTo(path: string): string;
+    /** A report file written by `profile` or `bill`, which is not an optimised prompt. */
+    reportWritten(path: string): string;
   };
 
   /**
@@ -896,6 +898,13 @@ export interface CliMessages {
     colOutput(): string;
     sharesLine(input: string, cacheRead: string, cacheWrite: string, output: string): string;
     footer(): string;
+    written(path: string): string;
+  };
+
+  /** The PDF door: the HTML report's sentences, plus what only paper needs. */
+  pdf: {
+    /** The footer's page counter, on every page, because printed pages get separated. */
+    page(current: number, total: number): string;
     written(path: string): string;
   };
 
