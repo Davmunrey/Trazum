@@ -3655,6 +3655,32 @@ A tier and a promotion may not appear on the same model. No provider here does
 both, and a rate composed from two real ones is the first thing
 [the doctrine](doctrine.md) rules out.
 
+**A price that changed is a period, not an edit.** The sentence above, that a
+report prices each call at the rate that applied when it happened, was not true
+until 2.4.3: `profileUsage` handed every record the report's own date, so a
+clock-priced log read at peak was all peak. Each call is now priced at its own
+timestamp. And a row can carry what it cost before, earliest first, each period
+ending at the instant the provider published:
+
+```ts
+history: [
+  {
+    until: '2026-09-10T04:00:00Z', // "New pricing takes effect at 04:00 UTC on Sept 10, 2026."
+    inputPerMTok: 0.22,
+    outputPerMTok: 0.66,
+    tiers: [/* the peak tier as it was then */],
+    multipliers: { cacheRead: 0.0318, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+  },
+],
+```
+
+`until` is exclusive and to the millisecond, because a cut at 04:00 UTC on a
+weekday is between two hours a day-granular boundary would misprice. A period
+carries its own tiers and cache ratio, because a provider that reprices usually
+reprices both. Only a published price with a published instant goes in; a period
+nobody can source is not guessed at, and the row's note says what the first
+period stands in for. `pricing-tiers.test.js` holds every history to that shape.
+
 ### Which few-shot examples earn their tokens: `trazum prune`
 
 The `redundant-examples` advisory asks a *textual* question: does this example look

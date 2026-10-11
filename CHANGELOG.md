@@ -13,6 +13,22 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **DeepSeek, re-read on 2026-10-10: V4 Flash was retired and its price
+  cut, so one id billed two ways in one month.** DeepSeek released V4.1
+  Flash on 2026-09-10 and announced "New pricing takes effect at 04:00 UTC
+  on Sept 10, 2026": $0.15/$0.60 off-peak and double at peak, a cache hit
+  at 2% of input. The old `deepseek-v4-flash` id is still accepted and now
+  bills at that price. The catalogue had one price for all time, $0.22 and
+  $0.66, so every call since the cut was priced about 47% too high on
+  input. **A row can now carry its earlier prices** (`history`, each period
+  with the instant it ended, its own tiers and its own cache ratio), and
+  `deepseek-v4-flash` carries the old price until 04:00 UTC on 2026-09-10
+  and the new one after it, to the millisecond. **`deepseek-flash` is
+  added** at the new price. V4 Pro matched the page unchanged. The flat
+  price before clock pricing began (16:00 UTC on 2026-08-16) is on no page
+  this table can read, so calls before then are priced at the first period
+  and the row says so.
+
 - **The Google catalogue was re-read on 2026-10-10, and three things about
   its caching were wrong.** Every price matched. What did not: implicit
   caching is on by default for every Gemini 2.5 and newer model, so caching
@@ -67,6 +83,16 @@ merged commit with no entry is a change only `git log` remembers.
   `npx skills add Davmunrey/Trazum`, which lists it today.
 
 ### Fixed
+
+- **A bill priced every call at the date the report ran, not the date of
+  the call.** A DeepSeek log read during peak hours came out entirely at
+  peak, and the same log read on a Saturday entirely off-peak; a call made
+  inside a promotion lost it once the promotion had ended. `profileUsage`
+  passed one date to every record. Each call is now priced at its own
+  timestamp, and the report's date applies only to a record with no clock
+  and to the forward-looking findings. Tests read one peak and one off-peak
+  call at a peak hour and on a weekend and get $1.98 both times; before
+  this it was $2.64 and $1.32.
 
 - **The packaged Action pin in `README.md` and `docs/running.md` advanced to
   2.4.2's release commit**, the one `v2.4.2` points at, in the pull request

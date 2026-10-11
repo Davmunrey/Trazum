@@ -944,8 +944,20 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
   if (!model) return false;
 
   countInto(into, record);
-  const { inputPerMTok, outputPerMTok } = effectivePricing(model, on);
-  const rates = multipliersFor(model);
+  /**
+   * **Each call at the price of its own moment.** A bill is history: a call
+   * made inside a promotion was billed at the promotional rate, a DeepSeek
+   * call at 03:00 UTC on a weekday was billed at peak, and a call before a
+   * published price change was billed at the old price. Priced at the report's
+   * date instead, every one of those came out at whatever applied the day the
+   * report ran: a clock-priced log read during peak hours was all peak, and an
+   * August log read in October lost its August promotion. `on` is the date for
+   * a record that carries no clock, which is the only thing it can mean here.
+   */
+  const at = record.ts !== null ? new Date(record.ts) : on;
+  const { inputPerMTok, outputPerMTok } = effectivePricing(model, at);
+  // Dated, like the rate above: a repriced cache read is part of the reprice.
+  const rates = multipliersFor(model, at);
   const per = (tokens: number, rate: number): number => (tokens / 1_000_000) * rate;
 
   into.inputUsd += per(record.inputTokens, inputPerMTok);
@@ -991,7 +1003,11 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
 
 export interface UsageProfileOptions {
   catalogue: PricingCatalogue;
-  /** Date the prices are read at, so a promotional rate resolves the same way. */
+  /**
+   * The date a record with no timestamp is priced at, and the date the
+   * forward-looking findings (levers, what-ifs) are priced at. A record that
+   * carries its own `ts` is billed at its own moment: see `add`.
+   */
   on?: Date;
   /**
    * Profile only the records carrying this label — the drill-down, once the

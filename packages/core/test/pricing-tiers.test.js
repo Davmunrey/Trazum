@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
-import { MODELS, effectivePricing, multipliersFor } from '../dist/index.js';
+import { MODELS, effectivePricing, multipliersFor, profileUsage, BUNDLED_CATALOGUE } from '../dist/index.js';
 
 /**
  * A price is not always one number, and the catalogue only just learned it.
@@ -106,16 +106,28 @@ describe('a conditional rate is decided, or is said not to be', () => {
      * told its presence from its absence, which is the argument for removing
      * it rather than for keeping it just in case.
      */
+    /*
+      Dated since 2026-09-10, when DeepSeek cut Flash's price and its cache
+      ratio with it: the first two rows are V4 Flash before the cut, the next
+      four are V4.1 Flash and the retired V4 Flash id after it, both billed at
+      the new price ($0.003 off-peak, $0.006 at peak).
+    */
+    const AFTER_PEAK = new Date('2026-10-07T07:30:00Z'); // a Wednesday, peak
+    const AFTER_WEEKEND = new Date('2026-10-10T12:00:00Z'); // a Saturday
     const published = [
       ['deepseek-v4-flash', PEAK, 0.014],
       ['deepseek-v4-flash', WEEKEND, 0.007],
+      ['deepseek-v4-flash', AFTER_PEAK, 0.006],
+      ['deepseek-v4-flash', AFTER_WEEKEND, 0.003],
+      ['deepseek-flash', AFTER_PEAK, 0.006],
+      ['deepseek-flash', AFTER_WEEKEND, 0.003],
       ['deepseek-v4-pro', PEAK, 0.044],
       ['deepseek-v4-pro', WEEKEND, 0.022],
     ];
     for (const [id, when, expected] of published) {
       const model = MODELS.find((entry) => entry.id === id);
       const rates = effectivePricing(model, when);
-      const cacheRead = rates.inputPerMTok * multipliersFor(model).cacheRead;
+      const cacheRead = rates.inputPerMTok * multipliersFor(model, when).cacheRead;
       assert.ok(
         Math.abs(cacheRead - expected) < 0.0005,
         `${id} at ${when.toISOString()} reads cache at ${cacheRead}, published ${expected}`,
@@ -286,5 +298,70 @@ describe('the catalogue declares tiers that can be reviewed', () => {
       /peak/i.test(doc) || /peak/i.test(readme),
       'no page mentions that a priced model can charge by the clock',
     );
+  });
+});
+
+describe('a price that changed is priced as it was billed then', () => {
+  /**
+   * DeepSeek cut Flash's price "at 04:00 UTC on Sept 10, 2026" and retired
+   * V4 Flash the same day, so one id billed two ways in one month. These pin
+   * the instant, not the day: 2026-09-10 is a Thursday, 03:00 UTC is peak
+   * and 04:00 UTC is not, so a day-granular boundary would misprice the one
+   * hour on either side that a careless cut-over gets wrong.
+   */
+  const flash = () => MODELS.find((entry) => entry.id === 'deepseek-v4-flash');
+
+  it('changes at the published instant, to the millisecond', () => {
+    const before = effectivePricing(flash(), new Date('2026-09-10T03:59:59.999Z'));
+    assert.equal(before.inputPerMTok, 0.44, 'the last peak minute of the old price');
+    const after = effectivePricing(flash(), new Date('2026-09-10T04:00:00.000Z'));
+    assert.equal(after.inputPerMTok, 0.15, 'the first off-peak minute of the new price');
+  });
+
+  it('carries the cache ratio of its own period', () => {
+    assert.equal(multipliersFor(flash(), new Date('2026-09-01T12:00:00Z')).cacheRead, 0.0318);
+    assert.equal(multipliersFor(flash(), new Date('2026-09-20T12:00:00Z')).cacheRead, 0.02);
+    // Undated, the question is about today, and today is the current price.
+    assert.equal(multipliersFor(flash()).cacheRead, 0.02);
+  });
+
+  it('prices a log that straddles the change, each call at its own rate', () => {
+    const line = (ts) =>
+      JSON.stringify({ model: 'deepseek-v4-flash', ts, usage: { input_tokens: 1_000_000, output_tokens: 0 } });
+    // Two Saturdays, both off-peak: $0.22 before the cut, $0.15 after.
+    const report = profileUsage([line('2026-09-05T12:00:00Z'), line('2026-09-12T12:00:00Z')].join('\n'), {
+      catalogue: BUNDLED_CATALOGUE,
+    });
+    assert.equal(Math.round(report.total.totalUsd * 100) / 100, 0.37);
+  });
+
+  it('bills a call at its own hour, whatever hour the report runs', () => {
+    /*
+      The bill priced every call at the report's date, so a DeepSeek log read
+      during peak hours came out all peak and read on a Saturday all
+      off-peak. One peak call and one off-peak call, read at both: the same
+      $1.98 either way, $1.32 + $0.66.
+    */
+    const line = (ts) =>
+      JSON.stringify({ model: 'deepseek-v4-pro', ts, usage: { input_tokens: 1_000_000, output_tokens: 0 } });
+    const log = [line('2026-10-07T07:30:00Z'), line('2026-10-10T12:00:00Z')].join('\n');
+    for (const on of [new Date('2026-10-14T07:30:00Z'), new Date('2026-10-17T12:00:00Z')]) {
+      const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE, on });
+      assert.equal(Math.round(report.total.totalUsd * 100) / 100, 1.98, `read at ${on.toISOString()}`);
+    }
+  });
+
+  it('holds every history in the catalogue to the shape this reads', () => {
+    for (const model of MODELS) {
+      if (model.history === undefined) continue;
+      let last = -Infinity;
+      for (const period of model.history) {
+        const at = new Date(period.until).getTime();
+        assert.ok(Number.isFinite(at), `${model.id}: ${period.until} is not an instant`);
+        assert.ok(at > last, `${model.id}: history is not earliest first`);
+        assert.ok(period.inputPerMTok > 0 && period.outputPerMTok > 0, `${model.id}: a period with no price`);
+        last = at;
+      }
+    }
   });
 });

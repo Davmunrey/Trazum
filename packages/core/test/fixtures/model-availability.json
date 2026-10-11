@@ -83,6 +83,10 @@
     {
       "id": "gemini-3.8-flash",
       "because": "added to the catalogue on 2026-10-10 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "deepseek-flash",
+      "because": "added to the catalogue on 2026-10-10 from the provider page, after this record was written; no key was available to ask"
     }
   ]
 }
