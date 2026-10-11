@@ -104,7 +104,12 @@ export interface OpenaiUsageRecord {
   usage: {
     prompt_tokens: number;
     completion_tokens: number;
-    prompt_tokens_details?: { cached_tokens: number };
+    /**
+     * Both inside `prompt_tokens`, as OpenAI counts them, and both taken out of
+     * it by `parseUsageLine`. `cache_write_tokens` is the 30-minute write
+     * GPT-5.6 and later bill at 1.25x input.
+     */
+    prompt_tokens_details?: { cached_tokens: number; cache_write_tokens?: number };
   };
 }
 
@@ -134,6 +139,12 @@ export interface OpenaiUsageConversion {
   nonTextTokens: number;
   /** Cache-write tokens on mixed rows, left out because the schema gives them no modality. */
   cacheWriteUnplaced: number;
+  /**
+   * Tokens written to the 12-hour cache. No price for that write is published
+   * anywhere this table can read, so they stay in the prompt total and are
+   * priced as plain input, a floor, and named rather than guessed at.
+   */
+  cacheWrite12hTokens: number;
   /** Mixed rows the report gave no text split for, refused whole. */
   unsplitRows: number;
   /** `has_more`: this is one page and the bill from it is understated. */
@@ -188,6 +199,7 @@ export function openaiUsageRecords(
     mixedRows: 0,
     nonTextTokens: 0,
     cacheWriteUnplaced: 0,
+    cacheWrite12hTokens: 0,
     unsplitRows: 0,
     truncated: false,
     labelledByProject: 0,
@@ -219,6 +231,7 @@ export function openaiUsageRecords(
   let mixedRows = 0;
   let nonTextTokens = 0;
   let cacheWriteUnplaced = 0;
+  let cacheWrite12hTokens = 0;
   let unsplitRows = 0;
   let labelledByProject = 0;
   let unruledProject = 0;
@@ -285,10 +298,18 @@ export function openaiUsageRecords(
       const nonText = NON_TEXT.reduce((sum, field) => sum + count(result[field]), 0);
       let prompt: number;
       let cached: number;
+      let written = 0;
       let completion: number;
       if (nonText === 0) {
         prompt = count(result.input_tokens);
         cached = count(result.input_cached_tokens);
+        /*
+          `input_tokens` is uncached + cached + both writes, by the schema's own
+          example. The 30-minute write has a price and goes where the parser
+          prices it; the 12-hour write has none here and stays in the total.
+        */
+        written = count(result.input_cache_write_tokens);
+        cacheWrite12hTokens += count(result.input_cache_write_12h_tokens);
         completion = count(result.output_tokens);
       } else {
         const split =
@@ -316,7 +337,14 @@ export function openaiUsageRecords(
         usage: {
           prompt_tokens: prompt,
           completion_tokens: completion,
-          ...(cached > 0 ? { prompt_tokens_details: { cached_tokens: cached } } : {}),
+          ...(cached > 0 || written > 0
+            ? {
+                prompt_tokens_details: {
+                  cached_tokens: cached,
+                  ...(written > 0 ? { cache_write_tokens: written } : {}),
+                },
+              }
+            : {}),
         },
       });
       rows += 1;
@@ -337,6 +365,7 @@ export function openaiUsageRecords(
     mixedRows,
     nonTextTokens,
     cacheWriteUnplaced,
+    cacheWrite12hTokens,
     unsplitRows,
     truncated: report.has_more === true,
     labelledByProject,

@@ -93,7 +93,8 @@ describe('the usage report becomes records in the shape the parser reads OpenAI'
       usage: {
         prompt_tokens: 1000,
         completion_tokens: 500,
-        prompt_tokens_details: { cached_tokens: 400 },
+        // Both inside the 1,000, as the schema counts them.
+        prompt_tokens_details: { cached_tokens: 400, cache_write_tokens: 100 },
       },
     });
   });
@@ -103,11 +104,15 @@ describe('the usage report becomes records in the shape the parser reads OpenAI'
     const parsed = parseUsageLine(JSON.stringify(records[0]));
     assert.ok(parsed !== null, 'the converted record is not a usage line');
     assert.equal(parsed.model, 'gpt-4o-mini-2024-07-18');
-    /* 1000 on the record, 400 of them cached: the parser subtracts once,
-       which is the whole reason the record is written in this shape. */
-    assert.equal(parsed.inputTokens, 600);
+    /* 1000 on the record, 400 of them cached and 100 written: the parser
+       takes both out once, which is the whole reason the record is written in
+       this shape. The write lands where a write is priced. */
+    assert.equal(parsed.inputTokens, 500);
     assert.equal(parsed.outputTokens, 500);
     assert.equal(parsed.cacheReadTokens, 400);
+    assert.equal(parsed.cacheWrite5mTokens, 100);
+    // No TTL on the line: a model's own catalogue row settles it in a profile.
+    assert.equal(parsed.writeTtlKnown, false);
   });
 
   it('reads the bucket clock as Unix seconds, not milliseconds', () => {

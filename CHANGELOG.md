@@ -13,6 +13,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **OpenAI's current generation is priced: GPT-6 Astra, GPT-6.1 Sol, GPT-6
+  Sol, GPT-6 Luna, GPT-5.6 Sol, GPT-5.6 Terra and GPT-5.6 Luna.** Off the
+  pricing page, each model's own page and the prompt-caching guide (2026-10-10
+  and 2026-10-11): input, cached input, cache write and output, a long-context
+  band over 272,000 input tokens (2x input and cache, 1.5x output, for the
+  whole request, priced per request like Haiku 5.5), batch at half, 1,050,000
+  context, a 1,024-token cache minimum. Cache writes cost 1.25x input on all
+  seven and reads 10%, 5% on GPT-6.1 Sol.
+
 - **The README starts with the bill, drawn from the CLI.** The start section
   leads with `npx @trazum/cli bill`, no path, and under it the statement that
   command prints: a total, a table by project and one by model, each share
@@ -45,6 +54,18 @@ merged commit with no entry is a change only `git log` remembers.
   and is read as absent.
 
 ### Changed
+
+- **A model says how long its cache entries live: `cacheTtl`.** The TTL
+  verdict judged every write against Anthropic's five minutes and offered the
+  1-hour entry as the cure. An OpenAI GPT-5.6 entry lives at least 30 minutes
+  with no longer one to buy, so a ten-minute pause would have been reported as
+  a cache that expires before it is read. Each verdict now reads the model's
+  own entry, carries it (`entryTtlMs`, `longerTtlMs`), and on a model with
+  one kind of entry says so instead of suggesting the hour, in the CLI, the
+  documents, the MCP report and the web app. A write reported as
+  `cache_write_tokens` names no TTL, so it is an assumption only on a model
+  that sells two entries at two prices (Kimi K3); on one that sells one, or
+  two at one price, nothing is assumed and nothing is said.
 
 - **A model priced by prompt length is billed one request at a time.** A call
   is billed in its own band. A row that sums requests gives only a bound, its
@@ -104,6 +125,32 @@ merged commit with no entry is a change only `git log` remembers.
   `es.ts`, now "aquí", "página", "sesión", "Añade", "está ... de él", "cobró
   más". Words that read two ways ("esta", "tu", "el", "que", "como", "en
   cuanto") were settled one sentence at a time rather than by rule.
+
+- **A Responses API log billed every cached token at the full input rate.**
+  OpenAI's Responses API, its default, reports `input_tokens` with the cached
+  tokens inside it and the split in `input_tokens_details`; only the Chat
+  Completions spelling, `prompt_tokens_details`, was read. A call that read
+  90,000 of its 100,000 tokens from the cache came out at $0.135 on GPT-5
+  instead of $0.034, and the cache verdict said caching was never used. Both
+  spellings are read now, and `cache_write_tokens` with them.
+
+- **OpenAI cache writes were billed as plain input.** The usage report's
+  `input_cache_write_tokens` sat inside the input total and was priced at the
+  input rate, through `from-openai` and `connect` alike; it is now taken out
+  and priced as a write. The 12-hour write, `input_cache_write_12h_tokens`,
+  has no published price Trazum can read, so it stays in the total at the
+  input rate and `from-openai` names it as a floor.
+
+- **The VS Code extension's tests could read a half-written build.** One
+  packaging test rebuilt `dist/` in place while the shim's tests, running in
+  parallel, imported it; CI caught fourteen of them failing with "activate is
+  not a function". It builds into a directory of its own now.
+
+- **`--exact-tokens` told somebody to install a package they had.** On a
+  model `@trazum/tokenizer-openai` holds no rank table for, GPT-6 among them,
+  the refusal said the package "is not installed". It now says the package is
+  installed, names the tables it does hold, and declines to count with the
+  nearest one, which would put the word exact on a guess.
 
 ## 2.4.3 — Each call at its own price
 

@@ -77,7 +77,8 @@ describe('it optimises the prompt, not the file around it', () => {
     const root = await project({ 'a.ts': MARKED });
     const { out } = run(['a.ts', '--cost', '-o', '/dev/null'], root);
 
-    assert.match(out, /Cost with GPT-5/);
+    // An OpenAI model, whichever is the provider's stand-in this release.
+    assert.match(out, /Cost with GPT-/);
     assert.doesNotMatch(out, /Cost with Claude/, 'an OpenAI file was priced against Claude');
   });
 

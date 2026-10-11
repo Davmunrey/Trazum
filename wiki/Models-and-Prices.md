@@ -28,12 +28,12 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 | | |
 |---|---|
-| Cache read | 10% of input on OpenAI, Moonshot, Google, Mistral and Anthropic up to Opus 5 and Sonnet 5; **25%** on xAI. Two providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.1 and Mythos 5.1 at **2.5%**, and DeepSeek V4.1 Flash reads at **2%** and V4 Pro at about **3%** where V3 read at 10% |
-| Cache write | 125% of input on Anthropic; 100% on OpenAI, Google, Moonshot, DeepSeek and xAI; Mistral publishes no write price and reports no write tokens |
+| Cache read | 10% of input on OpenAI (5% on GPT-6.1 Sol), Moonshot, Google, Mistral and Anthropic up to Opus 5 and Sonnet 5; **25%** on xAI. Two providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.1 and Mythos 5.1 at **2.5%**, and DeepSeek V4.1 Flash reads at **2%** and V4 Pro at about **3%** where V3 read at 10% |
+| Cache write | 125% of input on Anthropic and on OpenAI's GPT-5.6 and later, whose entry lives at least 30 minutes; 100% on earlier OpenAI models, Google, Moonshot, DeepSeek and xAI; Mistral publishes no write price and reports no write tokens |
 | Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek and xAI; 4,096 on Gemini 3.6 Flash, 3.8 Flash and 3.1 Pro and 2,048 on the retired Gemini 2.5 models; Mistral publishes none |
 | How caching starts | You mark the prefix on Anthropic; it is **automatic** on OpenAI, Google, Moonshot, DeepSeek and xAI; Mistral does not say, so Trazum gives no caching advice for it |
 | Batch API | 50% on Anthropic, OpenAI, Google and Mistral; **none at all** on Moonshot, DeepSeek and xAI |
-| Not one price | Claude Haiku 5.5 and Gemini 3.1 Pro Preview charge **each request by its prompt length**, dearer over 100,000 and 200,000 tokens; DeepSeek V4 charges **by the clock**, half price off-peak. A call is billed in its own band; a usage report's summed row is billed at the dearer rate with the cheaper figure printed beside it |
+| Not one price | Claude Haiku 5.5, Gemini 3.1 Pro Preview and OpenAI's GPT-5.6 and later charge **each request by its prompt length**, dearer over 100,000, 200,000 and 272,000 tokens; DeepSeek V4 charges **by the clock**, half price off-peak. A call is billed in its own band; a usage report's summed row is billed at the dearer rate with the cheaper figure printed beside it |
 
 **The cache minimum is the row to read twice, and it used to be wrong here.** This
 table said *"512 on Anthropic"* flatly. Anthropic's floor is a property of the

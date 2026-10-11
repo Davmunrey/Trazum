@@ -170,7 +170,6 @@ import {
   suggestRewrites,
   toOtlpMetrics,
   toPromptfoo,
-  TTL_1H_MS,
   UNLABELLED,
   withExactTokenCounts,
 } from '@trazum/core';
@@ -4285,6 +4284,7 @@ async function commandFromOpenai(args: Args, t: CliMessages): Promise<void> {
   if (conversion.mixedRows > 0) {
     console.error(t.fromOpenai.mixed(conversion.mixedRows, conversion.nonTextTokens, conversion.cacheWriteUnplaced));
   }
+  if (conversion.cacheWrite12hTokens > 0) console.error(t.fromOpenai.cacheWrite12h(conversion.cacheWrite12hTokens));
   if (conversion.unsplitRows > 0) console.error(t.fromOpenai.unsplit(conversion.unsplitRows));
   if (conversion.labelledByProject > 0) console.error(t.fromOpenai.labelledByProject(conversion.labelledByProject));
   if (conversion.unruledProject > 0) console.error(t.fromOpenai.unruledProject(conversion.unruledProject));
@@ -6501,7 +6501,13 @@ interface LocalCounter {
  * did not opt in, and turning it into a crash would make an optional dependency
  * a required one by accident.
  */
-async function localCounterFor(model: string): Promise<LocalCounter | null> {
+/**
+ * A counter, or why there is none: `null` when the package is not installed,
+ * `{ refused }` when it is and holds no table for this model. Two refusals,
+ * because they send a reader to different places: one to `npm install`, the
+ * other nowhere, since installing what is already installed fixes nothing.
+ */
+async function localCounterFor(model: string): Promise<LocalCounter | { refused: readonly string[] } | null> {
   let loaded: OptionalCounterModule;
   try {
     /*
@@ -6522,7 +6528,7 @@ async function localCounterFor(model: string): Promise<LocalCounter | null> {
   }
 
   const result = await loaded.openaiCounter(model);
-  if (!result.ok) return null;
+  if (!result.ok) return { refused: result.refusal.known };
   return {
     count: result.count,
     counter: 'openai-tiktoken',
@@ -6839,7 +6845,9 @@ async function commandOptimize(
      * the network at all. A prompt counted here is read in this process and
      * goes nowhere, which is the distinction `TokenProvenance.where` carries.
      */
-    const local = await localCounterFor(result.usage.model);
+    const found = await localCounterFor(result.usage.model);
+    const local = found !== null && !('refused' in found) ? found : null;
+    const refusedEncodings = found !== null && 'refused' in found ? found.refused : null;
     if (local !== null) {
       result = await withExactTokenCounts(
         result,
@@ -6878,7 +6886,9 @@ async function commandOptimize(
       throw new Error(
         offered === undefined
           ? t.errors.exactTokensWrongFamily(result.usage.model, priced?.provider ?? null)
-          : t.errors.exactTokensNeedsPackage(result.usage.model, offered),
+          : refusedEncodings !== null
+            ? t.errors.exactTokensNoEncoding(result.usage.model, offered, refusedEncodings.join(', '))
+            : t.errors.exactTokensNeedsPackage(result.usage.model, offered),
       );
     }
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -10451,10 +10461,13 @@ async function reportLabelsBudgetsAndCache(
     const name = fit.label === UNLABELLED ? t.profile.unlabelled() : fit.label;
     const gap = formatGap(fit.medianGapMs);
     if (fit.verdict === 'expires-before-reuse') {
+      // The model's own entries: one kind on OpenAI, two on Anthropic.
       const line =
-        fit.medianGapMs > TTL_1H_MS
-          ? t.profile.ttlFitExpiresBoth(name, fit.modelName, gap)
-          : t.profile.ttlFitExpires(name, fit.modelName, gap);
+        fit.longerTtlMs === null
+          ? t.profile.ttlFitExpiresOnly(name, fit.modelName, gap, formatGap(fit.entryTtlMs))
+          : fit.medianGapMs > fit.longerTtlMs
+            ? t.profile.ttlFitExpiresBoth(name, fit.modelName, gap)
+            : t.profile.ttlFitExpires(name, fit.modelName, gap);
       console.log(`  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
     } else if (fit.verdict === 'overlong-ttl') {
       console.log(

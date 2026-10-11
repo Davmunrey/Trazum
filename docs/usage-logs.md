@@ -92,6 +92,20 @@ The response's `usage` object, same idea:
 would report a bill higher than the invoice, and in the direction that
 flatters the tool.
 
+The Responses API spells the same thing `input_tokens` and
+`input_tokens_details`, with the cached tokens likewise inside the total, and
+Trazum reads either spelling:
+
+```jsonl
+{"timestamp":"2026-10-05T09:14:22Z","model":"gpt-6-sol","label":"agent","usage":{"input_tokens":120000,"output_tokens":900,"input_tokens_details":{"cached_tokens":100000,"cache_write_tokens":15000}}}
+```
+
+On GPT-5.6 and later, `cache_write_tokens` is also inside the total: the
+tokens this request wrote to the cache, billed at 1.25x input. Trazum takes
+them out with the cached ones and prices them as writes, against an entry
+that lives at least 30 minutes, which is what the cache TTL verdict judges
+your gaps against on those models.
+
 **Without a log:** `trazum connect openai` reads the usage endpoint, which does
 serve request counts.
 

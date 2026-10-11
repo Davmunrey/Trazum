@@ -9,6 +9,7 @@ import { SPAWN_ENV } from './env.mjs';
 import { BUNDLED_CATALOGUE, BAND_CALIBRATED_PROVIDER, bandGoverns } from '@trazum/core';
 
 import { OPTIONAL_COUNTERS, countableLocally } from '../dist/optional-counters.js';
+import { canCount } from '@trazum/tokenizer-openai';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -161,7 +162,15 @@ describe('a family with an optional counter is counted, not refused', () => {
    * and this one is also the whole argument for the optional package: an OpenAI
    * prompt counted exactly, on this machine, with no key and no request.
    */
-  const countable = [...oneModelPer.entries()].filter(([provider]) => countableLocally(provider));
+  /*
+   * A model the counter holds a table for: the provider's first priced model
+   * may be newer than any table the package ships, and that case is its own
+   * test below.
+   */
+  const countable = [...oneModelPer.keys()]
+    .filter((provider) => countableLocally(provider))
+    .map((provider) => [provider, BUNDLED_CATALOGUE.models.find((m) => m.provider === provider && canCount(m.id))?.id])
+    .filter(([, model]) => model !== undefined);
 
   it('there is a countable foreign family to talk about', () => {
     // Without this the block below passes by iterating over nothing, which is
@@ -227,7 +236,7 @@ describe('a machine that did not install the optional package', () => {
   it('loads the optional package inside a try, and answers null when it is absent', () => {
     const loader = source.slice(
       source.indexOf('async function localCounterFor'),
-      source.indexOf('if (!result.ok) return null;'),
+      source.indexOf('if (!result.ok) return { refused: result.refusal.known };'),
     );
     assert.ok(loader.length > 0, 'the optional-counter loader has moved — rewrite this check');
 
@@ -258,5 +267,21 @@ describe('a machine that did not install the optional package', () => {
     // read. What is asserted is the pair that produces one when it is absent.
     assert.ok(OPTIONAL_COUNTERS[[...oneModelPer.keys()].find((p) => countableLocally(p))]);
     assert.doesNotMatch(said, /ANTHROPIC_API_KEY/, 'a countable family was sent to find a key');
+  });
+});
+
+describe('a model the counter holds no table for', () => {
+  it('is refused as a missing table, not as a missing package', () => {
+    /*
+      GPT-6 is newer than the rank tables the package ships. The refusal used to
+      say the package was not installed, sending somebody to install what they
+      had; it now says what the package holds.
+    */
+    const unknown = BUNDLED_CATALOGUE.models.find((m) => m.provider === 'openai' && !canCount(m.id));
+    assert.ok(unknown, 'every OpenAI model is countable: this case has nothing to cover');
+    const done = run(['optimize', prompt, '--model', unknown.id, '--exact-tokens', '--json']);
+    assert.notEqual(done.status, 0, 'a model with no table was counted anyway');
+    assert.match(done.stderr, /is installed and holds no rank table/);
+    assert.doesNotMatch(done.stderr, /not installed/);
   });
 });

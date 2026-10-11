@@ -51,7 +51,8 @@ describe('the answer is coherent with itself', () => {
 
     assert.match(out, /go to\s*\n\s*openai/);
     assert.doesNotMatch(out, /Priced as[\s\S]*Claude/, 'an OpenAI file was priced as Claude');
-    assert.match(out, /GPT-5/);
+    // The provider's stand-in at the default's capability: an OpenAI model, never a Claude one.
+    assert.match(out, /Priced as\s*\n\s*GPT-/);
   });
 
   it('uses the exact model when the code names one', async () => {

@@ -7,7 +7,6 @@ import {
   applyPricingOverlay,
   openrouterOverlay,
   parsePricingOverlay,
-  TTL_1H_MS,
   UNLABELLED,
   billLevers,
   cacheEconomics,
@@ -1404,9 +1403,11 @@ function Report({
                 const gap = gapOf(fit.medianGapMs);
                 const text =
                   fit.verdict === 'expires-before-reuse'
-                    ? fit.medianGapMs > TTL_1H_MS
-                      ? t.bill.ttlExpiresBoth(who, fit.modelName, gap)
-                      : t.bill.ttlExpires(who, fit.modelName, gap)
+                    ? fit.longerTtlMs === null
+                      ? t.bill.ttlExpiresOnly(who, fit.modelName, gap, gapOf(fit.entryTtlMs))
+                      : fit.medianGapMs > fit.longerTtlMs
+                        ? t.bill.ttlExpiresBoth(who, fit.modelName, gap)
+                        : t.bill.ttlExpires(who, fit.modelName, gap)
                     : fit.verdict === 'overlong-ttl'
                       ? t.bill.ttlOverlong(who, fit.modelName, gap, formatUsd(fit.overpayUsd))
                       : fit.verdict === 'unsettled'

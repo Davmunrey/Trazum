@@ -1,4 +1,4 @@
-import { effectivePricing, multipliersFor } from './pricing.js';
+import { cacheTtlOf, effectivePricing, multipliersFor } from './pricing.js';
 import { billedAt, promptSizeOf } from './billing.js';
 import { UNLABELLED } from './usage.js';
 import type { PricingCatalogue } from './pricing.js';
@@ -80,6 +80,14 @@ export interface CacheTtlFit {
   /** Write tokens whose TTL the log did not record. */
   assumedTtlTokens: number;
   verdict: TtlFitVerdict;
+  /**
+   * How long this model's entries live: the one a write buys, and the longer
+   * one the provider also sells, or `null` when it sells none. Five minutes
+   * and an hour on Anthropic; thirty minutes and nothing longer on OpenAI's
+   * GPT-5.6 and later. A verdict reads them, and so does the sentence about it.
+   */
+  entryTtlMs: number;
+  longerTtlMs: number | null;
   /**
    * What the 1-hour writes would save at the 5-minute rate, when the gaps show
    * the hour is never needed. Exact — the same tokens at 1.25x instead of 2x,
@@ -207,12 +215,18 @@ export function createTtlFitTracker(options: TtlFitOptions): TtlFitTracker {
        * uncertain one and money comes last: writes that expire are broken at
        * any price, and only writes that demonstrably work can be overpaying.
        */
+      /*
+       * Each model's own entry lives, not Anthropic's: an OpenAI entry outlives
+       * a ten-minute pause that a five-minute one would not.
+       */
+      const ttl = cacheTtlOf(model);
+      const longer = ttl.longerMs ?? ttl.writeMs;
       let verdict: TtlFitVerdict;
-      if (slice.write5mTokens > 0 && gap > TTL_5M_MS) verdict = 'expires-before-reuse';
-      else if (slice.write1hTokens > 0 && gap > TTL_1H_MS) verdict = 'expires-before-reuse';
-      else if (slice.assumedTtlTokens > 0 && gap > TTL_1H_MS) verdict = 'expires-before-reuse';
-      else if (slice.write1hTokens > 0 && gap <= TTL_5M_MS) verdict = 'overlong-ttl';
-      else if (slice.assumedTtlTokens > 0 && gap > TTL_5M_MS) verdict = 'unsettled';
+      if (slice.write5mTokens > 0 && gap > ttl.writeMs) verdict = 'expires-before-reuse';
+      else if (slice.write1hTokens > 0 && gap > longer) verdict = 'expires-before-reuse';
+      else if (slice.assumedTtlTokens > 0 && gap > longer) verdict = 'expires-before-reuse';
+      else if (slice.write1hTokens > 0 && gap <= ttl.writeMs) verdict = 'overlong-ttl';
+      else if (slice.assumedTtlTokens > 0 && gap > ttl.writeMs) verdict = 'unsettled';
       else verdict = 'fits';
 
       const overpayUsd = verdict === 'overlong-ttl' ? slice.overlongUsd : 0;
@@ -228,6 +242,8 @@ export function createTtlFitTracker(options: TtlFitOptions): TtlFitTracker {
         write1hTokens: slice.write1hTokens,
         assumedTtlTokens: slice.assumedTtlTokens,
         verdict,
+        entryTtlMs: ttl.writeMs,
+        longerTtlMs: ttl.longerMs,
         overpayUsd,
       });
     }

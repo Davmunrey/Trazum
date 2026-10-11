@@ -3606,7 +3606,7 @@ context windows).
 
 ### When a price is not one number
 
-3 of the 7 providers do not charge every model a flat rate, and the catalogue
+4 of the 7 providers do not charge every model a flat rate, and the catalogue
 says so in data rather than in a footnote, because a footnote is arithmetic a
 reader has to do by hand and this product exists to stop that.
 
@@ -3618,9 +3618,11 @@ already correct for the moment it prices, because every caller passes the date i
 is pricing for and the condition is decided from it. A report of a usage log
 prices each call at the rate that applied when the call happened.
 
-**Claude Haiku 5.5 and Gemini 3.1 Pro Preview bill by prompt length, per
-request.** Haiku 5.5 is $0.10/$0.50 for a prompt up to 100,000 tokens and
-$0.50/$2.50 over it; Gemini 3.1 Pro is $2/$12 up to 200,000 and $4/$18 over.
+**Claude Haiku 5.5, Gemini 3.1 Pro Preview and OpenAI's GPT-5.6 and later bill
+by prompt length, per request.** Haiku 5.5 is $0.10/$0.50 for a prompt up to
+100,000 tokens and $0.50/$2.50 over it; Gemini 3.1 Pro is $2/$12 up to 200,000
+and $4/$18 over; every OpenAI model from GPT-5.6 on doubles its input and cache
+rates and raises its output rate by half for a prompt over 272,000 tokens.
 "Prompt" is every input token the request carried, cache reads and writes
 included, and each request is priced on its own: a request over the line pays
 the higher rate on all of it, and the next one pays its own.

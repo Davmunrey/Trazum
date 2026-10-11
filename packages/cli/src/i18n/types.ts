@@ -137,6 +137,8 @@ export interface CliMessages {
      * tool when the answer ships under the same scope is a worse refusal than
      * the one it replaced.
      */
+    /** The optional counter is installed and has no rank table for this model. */
+    exactTokensNoEncoding(model: string, packageName: string, known: string): string;
     exactTokensNeedsPackage(model: string, packageName: string): string;
     checkNeedsMaxTokens(): string;
     evalNeedsCases(): string;
@@ -710,6 +712,8 @@ export interface CliMessages {
     tierUnknown(): string;
     /** Rows reduced to their text part; audio and image tokens set aside. */
     mixed(rows: number, tokens: number, cacheWrites: number): string;
+    /** 12-hour cache writes: in the prompt total at the plain input rate, a floor. */
+    cacheWrite12h(tokens: number): string;
     /** Mixed rows the report gave no text split for, refused whole. */
     unsplit(count: number): string;
     truncated(): string;
@@ -1522,6 +1526,8 @@ export interface CliMessages {
      */
     ttlFitExpires(label: string, model: string, gap: string): string;
     ttlFitExpiresBoth(label: string, model: string, gap: string): string;
+    /** A provider that sells one kind of entry: there is no longer TTL to suggest. */
+    ttlFitExpiresOnly(label: string, model: string, gap: string, ttl: string): string;
     ttlFitOverlong(label: string, model: string, gap: string, usd: string): string;
     ttlFitUnsettledGap(label: string, model: string, gap: string): string;
     ttlFitFits(label: string, model: string, gap: string): string;

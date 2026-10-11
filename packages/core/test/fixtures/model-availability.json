@@ -95,6 +95,34 @@
     {
       "id": "gemini-3.1-pro-preview",
       "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-6-astra",
+      "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-6.1-sol",
+      "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-6-sol",
+      "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-6-luna",
+      "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.6-luna",
+      "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
     }
   ]
 }

@@ -194,6 +194,14 @@ export function multipliersFor(model: ModelPricing, on?: Date): {
   return result;
 }
 
+/** Five minutes and an hour: Anthropic's two cache entries, and the default. */
+const ANTHROPIC_TTL = Object.freeze({ writeMs: 5 * 60_000, longerMs: 60 * 60_000 });
+
+/** How long a model's cache entries live. See `ModelPricing.cacheTtl`. */
+export function cacheTtlOf(model: ModelPricing): { writeMs: number; longerMs: number | null } {
+  return model.cacheTtl ?? ANTHROPIC_TTL;
+}
+
 /**
  * Mistral discounts cached input by 90% and publishes nothing else about it
  * that can be read from here: not how caching starts, not a minimum, not a
@@ -202,6 +210,13 @@ export function multipliersFor(model: ModelPricing, on?: Date): {
  * cannot be.
  */
 /** What the GPT-5 family's three rows share, from OpenAI's guide and deprecations page, read 2026-10-11. */
+/** OpenAI's GPT-5.6 and later: one cache entry, living at least 30 minutes. */
+const OPENAI_CACHE_TTL = Object.freeze({ writeMs: 30 * 60_000, longerMs: null });
+
+const OPENAI_CURRENT_NOTE =
+  'Priced per request by prompt length: over 272,000 input tokens, 2x input and cache and 1.5x output for'
+  + ' the whole request. Cache writes cost 1.25x input and an entry lives at least 30 minutes.';
+
 const OPENAI_GPT5_NOTE =
   'Caching is automatic, with no cache_control to set. OpenAI says the minimum for models before GPT-5.6 varies by'
   + ' request settings, so 1,024 here is the nearest published floor. The 2025-08-07 snapshot shuts down on'
@@ -474,6 +489,189 @@ export const MODELS: ModelPricing[] = [
   // one OpenAI publishes for GPT-5.6 and later; for these older models its
   // guide says the minimum "varies by request settings", so it is the nearest
   // published floor, not a promise, and each row's note says so.
+  // ------------------------------------------------------------------------
+  // GPT-5.6 and later: OpenAI's current generation.
+  //
+  // The pricing page and each model's page, read 2026-10-10 and 2026-10-11,
+  // and the prompt-caching guide. Three things set them apart from GPT-5:
+  //
+  // - **A long-context band, per request.** "Prompts with more than 272K input
+  //   tokens are priced at 2x input and cache rates and 1.5x output for the
+  //   full request." 272,000, the GPT-5 era's own input limit; a tier.
+  // - **Cache writes are billed**, at 1.25x the uncached input rate, and the
+  //   usage object reports them (`cache_write_tokens`). Reads are 10% of input,
+  //   5% on GPT-6.1 Sol.
+  // - **An entry lives at least 30 minutes** after its last write or read, and
+  //   there is no longer one to buy: `cacheTtl`.
+  //
+  // Caching is implicit by default (a breakpoint at the end of the latest
+  // eligible message) from a 1,024-token minimum. Batch and Flex are half
+  // price; Fast, Ultrafast and regional processing are other service tiers
+  // and are not priced here. Every model: 1,050,000 context, 922,000 input at
+  // most, 128,000 output.
+  // ------------------------------------------------------------------------
+  {
+    id: 'gpt-6-astra',
+    provider: 'openai',
+    displayName: 'GPT-6 Astra',
+    inputPerMTok: 10,
+    outputPerMTok: 50,
+    contextWindow: 1_050_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1.25, cacheWrite1h: 1.25, batch: 0.5 },
+    cacheTtl: OPENAI_CACHE_TTL,
+    tiers: [
+      {
+        id: 'over-272k',
+        when: { kind: 'input-tokens-above', tokens: 272_000 },
+        inputPerMTok: 20,
+        outputPerMTok: 75,
+      },
+    ],
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CURRENT_NOTE,
+  },
+  {
+    id: 'gpt-6.1-sol',
+    provider: 'openai',
+    displayName: 'GPT-6.1 Sol',
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    contextWindow: 1_050_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.05, cacheWrite5m: 1.25, cacheWrite1h: 1.25, batch: 0.5 },
+    cacheTtl: OPENAI_CACHE_TTL,
+    tiers: [
+      {
+        id: 'over-272k',
+        when: { kind: 'input-tokens-above', tokens: 272_000 },
+        inputPerMTok: 4,
+        outputPerMTok: 15,
+      },
+    ],
+    capability: 'large',
+    tier: 'opus',
+    notes: OPENAI_CURRENT_NOTE,
+  },
+  {
+    id: 'gpt-6-sol',
+    provider: 'openai',
+    displayName: 'GPT-6 Sol',
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    contextWindow: 1_050_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1.25, cacheWrite1h: 1.25, batch: 0.5 },
+    cacheTtl: OPENAI_CACHE_TTL,
+    tiers: [
+      {
+        id: 'over-272k',
+        when: { kind: 'input-tokens-above', tokens: 272_000 },
+        inputPerMTok: 4,
+        outputPerMTok: 15,
+      },
+    ],
+    capability: 'large',
+    tier: 'opus',
+    notes: OPENAI_CURRENT_NOTE,
+  },
+  {
+    id: 'gpt-6-luna',
+    provider: 'openai',
+    displayName: 'GPT-6 Luna',
+    inputPerMTok: 0.1,
+    outputPerMTok: 0.5,
+    contextWindow: 1_050_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1.25, cacheWrite1h: 1.25, batch: 0.5 },
+    cacheTtl: OPENAI_CACHE_TTL,
+    tiers: [
+      {
+        id: 'over-272k',
+        when: { kind: 'input-tokens-above', tokens: 272_000 },
+        inputPerMTok: 0.2,
+        outputPerMTok: 0.75,
+      },
+    ],
+    capability: 'small',
+    tier: 'haiku',
+    notes: OPENAI_CURRENT_NOTE,
+  },
+  {
+    id: 'gpt-5.6-sol',
+    provider: 'openai',
+    displayName: 'GPT-5.6 Sol',
+    inputPerMTok: 4,
+    outputPerMTok: 20,
+    contextWindow: 1_050_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1.25, cacheWrite1h: 1.25, batch: 0.5 },
+    cacheTtl: OPENAI_CACHE_TTL,
+    tiers: [
+      {
+        id: 'over-272k',
+        when: { kind: 'input-tokens-above', tokens: 272_000 },
+        inputPerMTok: 8,
+        outputPerMTok: 30,
+      },
+    ],
+    capability: 'large',
+    tier: 'opus',
+    notes: OPENAI_CURRENT_NOTE,
+  },
+  {
+    id: 'gpt-5.6-terra',
+    provider: 'openai',
+    displayName: 'GPT-5.6 Terra',
+    inputPerMTok: 2,
+    outputPerMTok: 12,
+    contextWindow: 1_050_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1.25, cacheWrite1h: 1.25, batch: 0.5 },
+    cacheTtl: OPENAI_CACHE_TTL,
+    tiers: [
+      {
+        id: 'over-272k',
+        when: { kind: 'input-tokens-above', tokens: 272_000 },
+        inputPerMTok: 4,
+        outputPerMTok: 18,
+      },
+    ],
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: OPENAI_CURRENT_NOTE,
+  },
+  {
+    id: 'gpt-5.6-luna',
+    provider: 'openai',
+    displayName: 'GPT-5.6 Luna',
+    inputPerMTok: 0.2,
+    outputPerMTok: 1.2,
+    contextWindow: 1_050_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1.25, cacheWrite1h: 1.25, batch: 0.5 },
+    cacheTtl: OPENAI_CACHE_TTL,
+    tiers: [
+      {
+        id: 'over-272k',
+        when: { kind: 'input-tokens-above', tokens: 272_000 },
+        inputPerMTok: 0.4,
+        outputPerMTok: 1.8,
+      },
+    ],
+    capability: 'small',
+    tier: 'haiku',
+    notes: OPENAI_CURRENT_NOTE,
+  },
+
   // ------------------------------------------------------------------------
   {
     id: 'gpt-5',

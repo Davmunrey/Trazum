@@ -688,9 +688,13 @@ const PROFILE: ToolDefinition = {
       const gap = gapOf(fit.medianGapMs);
       if (fit.verdict === 'expires-before-reuse') {
         lines.push(
-          `${who}: turns arrive a median of ${gap} apart and the cache entry is gone by then —`
-            + ' writes expire before the next turn reads them. Use the 1-hour TTL if it survives'
-            + ' these gaps, or turn caching off here.',
+          fit.longerTtlMs === null
+            ? `${who}: turns arrive a median of ${gap} apart and this model's cache entry lives`
+              + ` ${gapOf(fit.entryTtlMs)}, with no longer one to buy — writes expire before the next turn`
+              + ' reads them. Turn caching off here.'
+            : `${who}: turns arrive a median of ${gap} apart and the cache entry is gone by then —`
+              + ' writes expire before the next turn reads them. Use the 1-hour TTL if it survives'
+              + ' these gaps, or turn caching off here.',
         );
       } else if (fit.verdict === 'overlong-ttl') {
         lines.push(

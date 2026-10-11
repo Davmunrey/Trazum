@@ -1226,6 +1226,9 @@ ${bold('EJEMPLOS')}
       }. Contarlo ahí sería rechazado arriba o devolvería un número de otro tokenizador, y esta herramienta no va a llamar exacto a eso. Quita --exact-tokens y quédate con la estimación (que es honesta sobre serlo) o cuenta con las herramientas de ${
         provider === null ? 'ese modelo' : provider
       }.`,
+    exactTokensNoEncoding: (model, packageName, known) =>
+      `--exact-tokens no puede contar ${model} con exactitud: ${packageName} está instalado y no tiene tabla de rangos para él (tiene ${known}). ` +
+      'Contarlo con la tabla más parecida pondría la palabra exacto sobre una suposición. Quita --exact-tokens para la estimación, que dice cuánto se desvía.',
     exactTokensNeedsPackage: (model, packageName) =>
       `--exact-tokens puede contar ${model} de forma exacta, sin conexión y sin clave, pero ` +
       `necesita ${packageName}, que no está instalado. Es un paquete aparte porque sus tablas ` +
@@ -2005,6 +2008,8 @@ ${bold('EJEMPLOS')}
       'El informe no nombró ningún tramo de servicio. Todo se leyó como el tramo por defecto. Añade group_by[]=service_tier si parte de este uso corre en otro.',
     mixed: (rows, tokens, cacheWrites) =>
       `${rows} fila(s) traían tokens de audio o imagen, para los que una tarifa de texto no es la tarifa. Cada una se redujo a su parte de texto; ${tokens} token(s) de audio e imagen no están en ninguna línea de la salida${cacheWrites > 0 ? `, y ${cacheWrites} token(s) de escritura de caché de esas filas se quedaron fuera también, porque el informe no les da modalidad` : ''}.`,
+    cacheWrite12h: (tokens) =>
+      `${tokens} token(s) se escribieron en la caché de 12 horas. Esa escritura no tiene un precio publicado donde Trazum pueda leerlo, así que se quedan en el total del prompt a la tarifa de entrada normal: la cifra de esos tokens es un suelo.`,
     unsplit: (count) =>
       `${count} fila(s) traían tokens de audio o imagen y ningún desglose de texto por el que reducirlas, y no están en la salida. Cobrarlas a tarifa de texto sería adivinar.`,
     truncated: () =>
@@ -2810,6 +2815,8 @@ ${bold('EJEMPLOS')}
       `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí y la entrada de 5 minutos ya no existe para entonces: las escrituras caducan antes de que el siguiente turno las lea, que visto desde la factura es una caché que solo escribe. El TTL de 1 hora cuesta 2x la entrada al escribir y sobreviviría a estos huecos; la otra opción honesta es apagar la caché aquí.`,
     ttlFitExpiresBoth: (label, model, gap) =>
       `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí, y ninguna entrada de caché vive tanto: hasta el TTL de 1 hora ha caducado para el siguiente turno. La caché no puede funcionar a este ritmo; apágala aquí y deja de pagar la prima de escritura.`,
+    ttlFitExpiresOnly: (label, model, gap, ttl) =>
+      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí, y la entrada de caché de este modelo vive ${ttl}, sin otra más larga que comprar. Las escrituras caducan antes de que el siguiente turno las lea, así que la caché no puede funcionar a este ritmo; apágala aquí y deja de pagar la prima de escritura.`,
     ttlFitOverlong: (label, model, gap, usd) =>
       `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí (de sobra dentro de la ventana de 5 minutos) y estas escrituras pagan la tarifa de 1 hora, 2x la entrada frente a 1.25x, por una resistencia que los huecos nunca usan. Las mismas escrituras con el TTL de 5 minutos salen ${usd} más baratas en este registro, y esa cifra es exacta: los mismos tokens a la otra tarifa publicada.`,
     ttlFitUnsettledGap: (label, model, gap) =>

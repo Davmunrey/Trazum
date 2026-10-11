@@ -746,6 +746,11 @@ export const es: WebMessages = {
       + 'siguiente turno las lea, que visto desde la factura es una caché que solo escribe. El '
       + 'TTL de 1 hora cuesta 2x la entrada al escribir y sobreviviría a estos huecos; la otra '
       + 'opción honesta es apagar la caché aquí.',
+    ttlExpiresOnly: (label, model, gap, ttl) =>
+      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí, y la entrada de `
+      + `caché de este modelo vive ${ttl}, sin otra más larga que comprar. Las escrituras caducan antes `
+      + 'de que el siguiente turno las lea, así que la caché no puede funcionar a este ritmo; apágala '
+      + 'aquí y deja de pagar la prima de escritura.',
     ttlExpiresBoth: (label, model, gap) =>
       `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí, y ninguna `
       + 'entrada de caché vive tanto. Hasta el TTL de 1 hora ha caducado para el siguiente '
