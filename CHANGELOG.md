@@ -11,6 +11,34 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **The README starts with the bill, drawn from the CLI.** The start section
+  leads with `npx @trazum/cli bill`, no path, and under it the statement that
+  command prints: a total, a table by project and one by model, and a model
+  named as not in the total. It is `docs/assets/bill.svg`, drawn by
+  `scripts/draw-bill.mjs` from what the built CLI prints on two illustrative
+  Claude Code projects in `examples/claude-projects` (usage only, no prompt or
+  answer text). `packages/cli/test/bill-image.test.js` fails when the picture
+  and the output disagree, or when the README's description of it quotes
+  other figures, so a price change or a reworded line means a redraw, never a
+  hand edit. A stray sentence about pasting into a browser, left in the start
+  section by an earlier edit, is gone; it belongs to the Playground paragraph
+  further down, where it still is.
+
+### Changed
+
+- **The span line says what it means.** Under a bill or a profile, "the
+  monthly arithmetic is yours to do, and now it is valid" read as a riddle; it
+  is now "stated, never extrapolated. Scale it to a month yourself, now that
+  you know what it covers", in English and Spanish.
+
+### Fixed
+
+- **The packaged Action pin in `README.md` and `docs/running.md` advanced to
+  2.4.3's release commit**, the one `v2.4.3` points at, in the pull request
+  after the release as `docs/releasing.md` says it must.
+
 ## 2.4.3 — Each call at its own price
 
 A patch with no new command. **The one line works on a first run**:

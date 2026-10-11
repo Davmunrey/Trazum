@@ -21,21 +21,32 @@ rarely the biggest.
 ## Start here: one line, nothing installed
 
 ```bash
-npx @trazum/cli bill ~/.claude/projects
+npx @trazum/cli bill
 ```
 
-Point it at a file or a folder of whatever usage you have — Claude Code
-transcripts, OpenTelemetry spans, a LiteLLM, Helicone or LangSmith export, an
-Anthropic, OpenAI or OpenRouter usage report, or a plain usage log — and it
-tells each file's shape from its own text, prices it, and prints the receipt.
-A file it cannot read is named, never guessed at; a model it cannot price is a
-named gap, never a zero. Nothing you point it at leaves your machine. With no
-path at all it reads Claude Code's own folder, labels each session by its
-project, and prints a table by project and by model; piped, it prints the
-JSON receipt instead.
+<div align="center">
+
+<img src="docs/assets/bill.svg" alt="trazum bill on two illustrative Claude Code projects: $12.66 across 112 priced calls, a table by project and one by model with each share as a bar, and 14 calls to claude-haiku-5-5 named as not in the total rather than counted as zero" width="690">
+
+*What the command prints on the two illustrative projects in
+[`examples/claude-projects`](examples/claude-projects). The picture is drawn
+from the CLI's own output by `scripts/draw-bill.mjs`, and the suite fails the
+day the two disagree.*
+
+</div>
+
+With no path it reads Claude Code's own folder, labels each session by its
+project, and prints the statement above on a terminal; piped, it prints the
+JSON receipt instead. Point it at a file or a folder of whatever usage you
+have — Claude Code transcripts, OpenTelemetry spans, a LiteLLM, Helicone or
+LangSmith export, an Anthropic, OpenAI or OpenRouter usage report, or a plain
+usage log — and it tells each file's shape from its own text, prices it, and
+prints the receipt. A file it cannot read is named, never guessed at; a model
+it cannot price is a named gap, never a zero. Nothing you point it at leaves
+your machine.
 
 ```bash
-npx @trazum/cli bill ~/.claude/projects --pdf-out bill.pdf
+npx @trazum/cli bill --pdf-out bill.pdf
 ```
 
 The same bill as a PDF for whoever pays it: every figure, every caveat, no
@@ -542,7 +553,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@3bac8bc75b887e34771be8f65b8a87daef4a5e01  # 2.4.2
+- uses: Davmunrey/Trazum@3a39114607c2d69bab6523ac5797939e965632dd  # 2.4.3
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -588,7 +599,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@3bac8bc75b887e34771be8f65b8a87daef4a5e01  # 2.4.2
+  - uses: Davmunrey/Trazum@3a39114607c2d69bab6523ac5797939e965632dd  # 2.4.3
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -617,7 +628,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@3bac8bc75b887e34771be8f65b8a87daef4a5e01  # 2.4.2
+- uses: Davmunrey/Trazum@3a39114607c2d69bab6523ac5797939e965632dd  # 2.4.3
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
