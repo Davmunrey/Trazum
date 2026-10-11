@@ -2920,6 +2920,12 @@ in the total; a script piping the output gets the JSON receipt it always got.
 `--receipt` forces the receipt on a terminal and `--table` forces the
 statement in a pipe. `-o receipt.json` writes the receipt and still shows the statement.
 
+**A Claude Code bill is what the work costs at API rates.** Transcripts are
+priced at Anthropic's list rates, and somebody on a Pro or Max plan paid the
+plan instead. The statement says so whenever transcripts were read, and so do
+the PDF, HTML and Markdown documents and the web app's Bill tab; a metered API
+log gets no such sentence, because there the figure is money billed.
+
 **Claude Code sessions are labelled by project.** A transcript reached through
 a directory takes its project folder's name as its label, as `from-claude-code`
 has done since 1.77 and with the same caveat: the folder name is shown as it

@@ -772,6 +772,13 @@ export interface ProfileMarkdownInput {
    */
   stalePricing?: { date: string; days: number };
   /**
+   * Set when any of the calls came from Claude Code transcripts. Those are
+   * priced at the API's list rates, and somebody on a Pro or Max plan paid
+   * the plan instead: a document headed "bill" that does not say so would
+   * hand them a figure they never owed. Said among the caveats, every time.
+   */
+  apiEquivalent?: boolean;
+  /**
    * The comparison, when `--against` was given — the section the terminal
    * has had since 1.11 and the markdown did not, so a CI summary reporting
    * on two logs showed only one of them. The drivers arrive computed (core's
@@ -817,7 +824,7 @@ export interface ProfileMarkdownInput {
  * reading CI instead of machines.
  */
 export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
-  const { report, levers, cache, t, window, stalePricing, against, whatIf, pressure = [], gates, summary = false } = input;
+  const { report, levers, cache, t, window, stalePricing, apiEquivalent, against, whatIf, pressure = [], gates, summary = false } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const shares = sharesOf(report.total);
@@ -1330,6 +1337,10 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
   // dollar above, and it does not name its own size the way a skipped line does.
   if (stalePricing !== undefined) {
     lines.push(`> ⚠️ ${mdText(t.profile.pricesStale(stalePricing.date, stalePricing.days))}`);
+    lines.push('');
+  }
+  if (apiEquivalent === true) {
+    lines.push(`> ⚠️ ${mdText(t.bill.apiEquivalent())}`);
     lines.push('');
   }
   if (report.unpricedModels.length > 0) {

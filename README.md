@@ -37,7 +37,9 @@ day the two disagree.*
 
 With no path it reads Claude Code's own folder, labels each session by its
 project, and prints the statement above on a terminal; piped, it prints the
-JSON receipt instead. Point it at a file or a folder of whatever usage you
+JSON receipt instead. Transcripts are priced at Anthropic's API rates, and the
+statement says so: on a Pro or Max plan you paid the plan, so read the figure
+as what the same work would cost through the API. Point it at a file or a folder of whatever usage you
 have — Claude Code transcripts, OpenTelemetry spans, a LiteLLM, Helicone or
 LangSmith export, an Anthropic, OpenAI or OpenRouter usage report, or a plain
 usage log — and it tells each file's shape from its own text, prices it, and

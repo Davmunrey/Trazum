@@ -416,6 +416,8 @@ export interface WebMessages {
     otelSkipped(spans: number): string;
     otelNoCache(spans: number): string;
     transcriptPrivacy: string;
+    /** Transcripts are priced at API list rates; a Pro or Max plan paid the plan. */
+    transcriptApiEquivalent: string;
     orPaste: string;
     pasteAriaLabel: string;
     analyze: string;

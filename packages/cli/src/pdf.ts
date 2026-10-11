@@ -49,7 +49,7 @@ export interface ProfilePdfOptions {
 
 /** The profile as one PDF. Same input as the HTML and Markdown doors. */
 export function renderProfilePdf(input: ProfileMarkdownInput, options: ProfilePdfOptions = {}): Uint8Array {
-  const { report, levers, cache, t, gates, window, stalePricing } = input;
+  const { report, levers, cache, t, gates, window, stalePricing, apiEquivalent } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const showLabel = (label: string): string => (label === UNLABELLED ? t.profile.unlabelled() : label);
@@ -238,6 +238,7 @@ export function renderProfilePdf(input: ProfileMarkdownInput, options: ProfilePd
   }
   if (report.total.tierCeilingCalls > 0) caveats.push(tierCeilingCaveat(report, t));
   if (stalePricing !== undefined) caveats.push(t.profile.pricesStale(stalePricing.date, stalePricing.days));
+  if (apiEquivalent === true) caveats.push(t.bill.apiEquivalent());
   if (caveats.length > 0) {
     box(t.html.caveatsHeading(), caveats, { edge: CAVEAT_EDGE, fill: CAVEAT_FILL, ink: CAVEAT_INK }, true);
   }

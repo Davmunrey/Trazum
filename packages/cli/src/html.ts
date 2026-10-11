@@ -96,7 +96,7 @@ function breakdownTable(rows: Row[], totalUsd: number, t: ProfileMarkdownInput['
 
 /** The profile as one self-contained page. Same input as the Markdown door. */
 export function renderProfileHtml(input: ProfileMarkdownInput): string {
-  const { report, levers, cache, t, gates, window, stalePricing } = input;
+  const { report, levers, cache, t, gates, window, stalePricing, apiEquivalent } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const showLabel = (label: string): string => (label === UNLABELLED ? t.profile.unlabelled() : label);
@@ -154,6 +154,7 @@ export function renderProfileHtml(input: ProfileMarkdownInput): string {
   if (stalePricing !== undefined) {
     caveats.push(esc(t.profile.pricesStale(stalePricing.date, stalePricing.days)));
   }
+  if (apiEquivalent === true) caveats.push(esc(t.bill.apiEquivalent()));
   if (caveats.length > 0) {
     parts.push(
       `<div class="caveats"><h2>${esc(t.html.caveatsHeading())}</h2><ul>${caveats

@@ -2084,6 +2084,8 @@ ${bold('EJEMPLOS')}
     sources: (read, seen) => `${read} de ${seen} archivo(s) leído(s) como uso.`,
     pricingLiveHint: (count) =>
       `${count} id(s) de modelo sin precio llevan prefijo de proveedor, como nombran los modelos OpenRouter y LiteLLM, y el catálogo incluido no los trae. Vuelve a ejecutar con --pricing-live para cobrar los slugs de OpenRouter desde su propia lista.`,
+    apiEquivalent: () =>
+      'Las transcripciones de Claude Code se cobran a las tarifas de la API de Anthropic. Con un plan Pro o Max pagaste el plan, no esto: léelo como lo que costaría el mismo trabajo a través de la API.',
     prefixedKnown: (ids) =>
       `${ids}: el modelo tras la barra tiene precio aquí con su propio nombre. El prefijo no se quita por ti, porque el mismo modelo a través de un router puede facturarse distinto. Si esas llamadas fueron directas al proveedor, registra el modelo sin el prefijo.`,
     windowMatchesNothing: (from, to) =>

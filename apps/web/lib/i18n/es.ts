@@ -475,6 +475,8 @@ export const es: WebMessages = {
     otelSkipped: (spans) => `${spans} span(s) no-LLM omitidos: contados, nunca tasados.`,
     otelNoCache: (spans) =>
       `${spans} span(s) sin datos de caché: OTel no ha estandarizado el reparto de TTL de caché, así que sus veredictos de caché dicen "no se puede saber" en vez de uno inventado.`,
+    transcriptApiEquivalent:
+      'Las transcripciones de Claude Code se cobran a las tarifas de la API de Anthropic. Con un plan Pro o Max pagaste el plan, no esto: léelo como lo que costaría el mismo trabajo a través de la API.',
     transcriptPrivacy:
       'Los transcripts se leyeron en esta pestaña. Se quedaron los números y no las palabras: ni texto de mensajes, ni rutas, ni ramas cruzaron la conversión.',
     orPaste: 'o pega el registro debajo',

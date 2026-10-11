@@ -109,6 +109,28 @@ describe('trazum bill reads a directory of whatever it finds', () => {
     assert.equal(receipt.total.calls, 0, 'a prefixed id was priced by stripping the prefix');
   });
 
+  it('says a Claude Code bill is an API-rate equivalent, on every surface, and only there', () => {
+    /* A Pro or Max plan pays the plan. "Your bill" over transcripts is what
+       the same work costs on the API, and a person who is not told so is
+       handed a figure they never owed. A metered usage log is money billed,
+       so it gets no such sentence. */
+    const projects = new URL('../../../examples/claude-projects', import.meta.url).pathname;
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-bill-plan-'));
+    const html = join(dir, 'bill.html');
+    const markdown = join(dir, 'bill.md');
+    const result = run(['bill', projects, '--table', '--html-out', html, '--markdown-out', markdown]);
+    assert.equal(result.status, 0, result.stderr);
+    const sentence = /Claude Code transcripts are priced at Anthropic's API rates\. On a Pro or Max plan you paid the plan, not this/;
+    const flat = (text) => text.replace(/\s+/g, ' ');
+    assert.match(flat(result.stdout), sentence, 'the statement does not say what a plan pays');
+    assert.match(flat(readFileSync(html, 'utf8').replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'")), sentence, 'the HTML');
+    assert.match(flat(readFileSync(markdown, 'utf8')), sentence, 'the Markdown');
+
+    const metered = run(['bill', join(mixed(), 'usage.jsonl'), '--table']);
+    assert.equal(metered.status, 0, metered.stderr);
+    assert.doesNotMatch(flat(metered.stdout), /Pro or Max plan/, 'a metered API log was called an equivalent');
+  });
+
   it('does not hint at --pricing-live when nothing unpriced is a slug', () => {
     const dir = mixed();
     const result = run(['bill', join(dir, 'usage.jsonl')]);
