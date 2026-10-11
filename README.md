@@ -29,7 +29,10 @@ transcripts, OpenTelemetry spans, a LiteLLM, Helicone or LangSmith export, an
 Anthropic, OpenAI or OpenRouter usage report, or a plain usage log — and it
 tells each file's shape from its own text, prices it, and prints the receipt.
 A file it cannot read is named, never guessed at; a model it cannot price is a
-named gap, never a zero. Nothing you point it at leaves your machine.
+named gap, never a zero. Nothing you point it at leaves your machine. With no
+path at all it reads Claude Code's own folder, labels each session by its
+project, and prints a table by project and by model; piped, it prints the
+JSON receipt instead.
 
 ```bash
 npx @trazum/cli bill ~/.claude/projects --pdf-out bill.pdf
@@ -539,7 +542,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@b6dd9349b7c1502688b609a7c1adbe20aac82c79  # 2.4.1
+- uses: Davmunrey/Trazum@3bac8bc75b887e34771be8f65b8a87daef4a5e01  # 2.4.2
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -585,7 +588,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@b6dd9349b7c1502688b609a7c1adbe20aac82c79  # 2.4.1
+  - uses: Davmunrey/Trazum@3bac8bc75b887e34771be8f65b8a87daef4a5e01  # 2.4.2
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -614,7 +617,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@b6dd9349b7c1502688b609a7c1adbe20aac82c79  # 2.4.1
+- uses: Davmunrey/Trazum@3bac8bc75b887e34771be8f65b8a87daef4a5e01  # 2.4.2
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed

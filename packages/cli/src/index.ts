@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
-import { cpus, tmpdir } from 'node:os';
+import { cpus, homedir, tmpdir } from 'node:os';
 import { createInterface } from 'node:readline/promises';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -300,6 +300,7 @@ import type { CliMessages } from './i18n/index.js';
 // style.test.js holds the contract: stripped colour output is byte-identical
 // to plain output, and a pipe stays plain.
 import { bar, c, sectionHeading, table } from './style.js';
+import type { TableColumn } from './style.js';
 
 // --------------------------------------------------------------------------
 // Argument parsing
@@ -767,7 +768,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'out', 'o', 'stamp', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape'],
+  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
@@ -3420,10 +3421,23 @@ function usageSourcesOf(text: string): UsageSource[] {
  * a bill rather than usage, and pointed at `reconcile`.
  */
 async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
-  if (args.positional.length === 0) throw new Error(t.bill.noPath());
   /* Refused before any file is read: a bad shape found after the receipt
      printed would end a run that looked finished with an error. */
   const csvShape = csvShapeOf(args, t);
+
+  /*
+    No path is the most common first run, and it used to be a refusal: the
+    person had to know where Claude Code keeps its sessions before the one
+    line on the README worked. Claude Code's own folders are searched
+    instead, and the ones found are named, so nothing is read silently.
+  */
+  let targets = args.positional;
+  if (targets.length === 0) {
+    const { found, tried } = await claudeProjectFolders(process.env);
+    if (found.length === 0) throw new Error(t.bill.noPath(tried.join(', ')));
+    console.error(t.bill.defaultPath(found.join(', ')));
+    targets = found;
+  }
 
   /*
     Every path given, files and directories alike, because a shell glob hands
@@ -3433,13 +3447,16 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   */
   const files: string[] = [];
   const seen = new Set<string>();
-  const add = (file: string): void => {
+  /* Reached through a directory: where a project folder can name the work. */
+  const walked = new Set<string>();
+  const add = (file: string, fromDirectory: boolean): void => {
     const key = resolvePath(file);
+    if (fromDirectory) walked.add(file);
     if (seen.has(key)) return;
     seen.add(key);
     files.push(file);
   };
-  for (const target of args.positional) {
+  for (const target of targets) {
     let info;
     try {
       info = await stat(target);
@@ -3453,16 +3470,33 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
         .map((entry) => join(entry.parentPath, entry.name))
         .sort();
       if (found.length === 0) throw new Error(t.bill.noFiles(target));
-      for (const file of found) add(file);
+      for (const file of found) add(file, true);
     } else {
-      add(target);
+      add(target, false);
     }
   }
 
   const label = stringFlag(args, 'label');
   const withLabel = label === undefined ? {} : { label };
+  /*
+    Claude Code keeps one folder per project, and "per project" is the
+    question this door is for. `from-claude-code` has labelled a directory by
+    its project folders since 1.77; `bill` read the same transcripts with no
+    label at all, so the bill it printed could not say which project spent
+    the money. Same default, same function, same way to decline.
+  */
+  const labelFromProject = boolFlag(args, 'label-from-project', true);
+  let labelledByProject = 0;
   const lines: string[] = [];
   let sources = 0;
+  /*
+    One line per file is right for a handful and noise for a Claude Code
+    folder of hundreds. Past a handful, the lines are per shape, and the
+    files no shape claims are named for the first few and counted after.
+  */
+  const perFile = files.length <= 8;
+  const unclaimed: string[] = [];
+  const byShape = new Map<string, { files: number; records: number | null; leftOut: number }>();
 
   for (const file of files) {
     const text = await readUsageLog(file, t);
@@ -3472,7 +3506,7 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
       if (looksLikeAnthropicCost(text) || looksLikeOpenaiCost(text)) {
         console.error(t.bill.costReport(file));
       } else {
-        console.error(t.bill.unknown(file));
+        unclaimed.push(file);
       }
       continue;
     }
@@ -3487,7 +3521,10 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
     let leftOut = 0;
     switch (shape) {
       case 'claude-code': {
-        const c = claudeCodeRecords(text, withLabel);
+        const project =
+          label === undefined && labelFromProject && walked.has(file) ? projectLabelFor(file) : undefined;
+        if (project !== undefined && project !== '') labelledByProject += 1;
+        const c = claudeCodeRecords(text, project !== undefined && project !== '' ? { label: project } : withLabel);
         records = c.records;
         leftOut = c.assistantWithoutUsage + c.unparseable;
         break;
@@ -3543,8 +3580,22 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
     }
     for (const record of records) lines.push(JSON.stringify(record));
     sources += 1;
-    console.error(t.bill.file(file, shape, shape === 'usage-log' ? null : records.length, leftOut));
+    const count = shape === 'usage-log' ? null : records.length;
+    if (perFile) {
+      console.error(t.bill.file(file, shape, count, leftOut));
+    } else {
+      const sum = byShape.get(shape) ?? { files: 0, records: count === null ? null : 0, leftOut: 0 };
+      sum.files += 1;
+      if (sum.records !== null && count !== null) sum.records += count;
+      sum.leftOut += leftOut;
+      byShape.set(shape, sum);
+    }
   }
+  for (const [shape, sum] of byShape) console.error(t.bill.shapeSummary(shape, sum.files, sum.records, sum.leftOut));
+  const named = perFile ? unclaimed : unclaimed.slice(0, 3);
+  for (const file of named) console.error(t.bill.unknown(file));
+  if (unclaimed.length > named.length) console.error(t.bill.unknownMore(unclaimed.length - named.length));
+  if (labelledByProject > 0) console.error(t.bill.labelledByProject(labelledByProject));
 
   if (sources === 0) throw new Error(t.bill.nothingRead());
 
@@ -3552,15 +3603,26 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   const document = receiptFrom(report, pricing, boolFlag(args, 'stamp') ? { emittedAt: new Date() } : {});
   const json = JSON.stringify(document, null, 2);
 
+  /*
+    A terminal gets a statement a person can read; a pipe gets the receipt.
+    The receipt on a terminal was 60 lines of JSON before the first figure a
+    reader wanted, which is the screen a first run ends on. Scripts are
+    untouched: they pipe, and a pipe is not a TTY. `--receipt` forces the
+    receipt and `--table` forces the statement, either way round. Not
+    `--json`: that flag means a documented contract in docs/format.md, and
+    the receipt is `trazum receipt`'s document, emitted here unchanged.
+  */
   const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  const statement = !boolFlag(args, 'receipt') && boolFlag(args, 'table', process.stdout.isTTY === true);
   if (out !== undefined) {
     await writeFile(out, json + '\n', 'utf8');
     console.error(t.bill.written(out));
-  } else {
+  } else if (!statement) {
     console.log(json);
   }
   console.error(t.bill.sources(sources, files.length));
   printReceiptSummary(document, t);
+  if (statement) printBillStatement(report, labelledByProject > 0, t);
   await writeBillSideFiles(args, report, pricing, csvShape, t);
 
   /*
@@ -3575,6 +3637,98 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   if (slugged.length > 0 && !boolFlag(args, 'pricing-live')) {
     console.error(t.bill.pricingLiveHint(slugged.length));
   }
+}
+
+/**
+ * Where Claude Code keeps its sessions, in the order it looks itself.
+ *
+ * `CLAUDE_CONFIG_DIR` first, because a person who set it moved the folder on
+ * purpose; then the two defaults Claude Code has used. Every folder that
+ * exists is returned, deduplicated, so a machine with both is billed for
+ * both, once each. `tried` is every candidate, for the refusal to name.
+ */
+async function claudeProjectFolders(env: NodeJS.ProcessEnv): Promise<{ found: string[]; tried: string[] }> {
+  const home = homedir();
+  const tried = [
+    ...(env.CLAUDE_CONFIG_DIR ? [join(env.CLAUDE_CONFIG_DIR, 'projects')] : []),
+    join(home, '.claude', 'projects'),
+    join(home, '.config', 'claude', 'projects'),
+  ];
+  const found: string[] = [];
+  const seen = new Set<string>();
+  for (const candidate of tried) {
+    const key = resolvePath(candidate);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    try {
+      if ((await stat(candidate)).isDirectory()) found.push(candidate);
+    } catch {
+      // Not there, which is the ordinary case for two of the three.
+    }
+  }
+  return { found, tried };
+}
+
+/**
+ * The bill as a person reads it: the total, by project, by model, and what
+ * is not in the total, on stdout. The receipt's figures, rendered: nothing
+ * here is computed that the receipt does not carry.
+ */
+function printBillStatement(report: UsageProfileReport, byProject: boolean, t: CliMessages): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  const total = report.total.totalUsd;
+  const LIMIT = 12;
+  const rowsOf = (entries: { name: string; calls: number; usd: number }[]): string[][] => {
+    const shown = entries.slice(0, LIMIT).map(({ name, calls, usd }) => {
+      const share = total > 0 ? usd / total : 0;
+      return [name, n(calls), formatUsd(usd), `${bar(share)} ${pct(share)}`];
+    });
+    if (entries.length > LIMIT) shown.push([c.dim(t.bill.moreRows(entries.length - LIMIT)), '', '', '']);
+    return shown;
+  };
+  const columns = (first: string): TableColumn[] => [
+    { header: first, align: 'left' },
+    { header: t.bill.colCalls(), align: 'right' },
+    { header: 'USD', align: 'right' },
+    { header: t.bill.colShare(), align: 'left' },
+  ];
+
+  console.log();
+  console.log(sectionHeading(t.bill.statementHeading()));
+  console.log(`  ${c.bold(t.bill.statementTotal(formatUsd(total), report.total.calls))}`);
+  if (report.span !== null) {
+    const span = t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs));
+    console.log(c.dim(`  ${wrap(span, 74, '  ')}`));
+  }
+
+  const labelled = report.byLabel.filter((row) => row.label !== UNLABELLED);
+  if (labelled.length > 0) {
+    console.log();
+    const entries = report.byLabel.map((row) => ({
+      name: row.label === UNLABELLED ? t.profile.unlabelled() : row.label,
+      calls: row.breakdown.calls,
+      usd: row.breakdown.totalUsd,
+    }));
+    for (const line of table(columns(byProject ? t.bill.colProject() : t.bill.colWorkload()), rowsOf(entries))) {
+      console.log(line);
+    }
+  }
+
+  const priced = report.byModel.filter((row) => !report.unpricedModels.includes(row.model));
+  if (priced.length > 0) {
+    console.log();
+    const entries = priced.map((row) => ({ name: row.model, calls: row.breakdown.calls, usd: row.breakdown.totalUsd }));
+    for (const line of table(columns(t.bill.colModel()), rowsOf(entries))) console.log(line);
+  }
+
+  console.log();
+  if (report.unpricedModels.length > 0) {
+    console.log(`  ${wrap(t.bill.statementUnpriced(report.unpricedModels.join(', '), report.unpriced.calls), 74, '  ')}`);
+  }
+  if (report.skippedLines.length > 0) console.log(`  ${t.bill.statementUnread(report.skippedLines.length)}`);
+  console.log(c.dim(`  ${wrap(t.bill.statementNext(), 74, '  ')}`));
+  console.log();
 }
 
 /**

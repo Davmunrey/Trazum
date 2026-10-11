@@ -47,7 +47,7 @@ ${bold('USO')}
   trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
   trazum position <uso.jsonl>
   trazum receipt <uso.jsonl|dir> [--stamp] [-o <fichero>]
-  trazum bill <fichero|dir>... [--label <nombre>] [--stamp] [-o <fichero>]
+  trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
               [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
@@ -2026,7 +2026,27 @@ ${bold('EJEMPLOS')}
   },
 
   bill: {
-    noPath: () => 'bill necesita un archivo o un directorio que leer: trazum bill ~/.claude/projects',
+    noPath: (tried) =>
+      `bill necesita un archivo o un directorio que leer, y no encontró ninguna carpeta de Claude Code en ${tried}. Indica una: trazum bill ~/.claude/projects, o trazum bill uso.jsonl.`,
+    defaultPath: (dirs) => `Sin ruta, así que leo la carpeta propia de Claude Code: ${dirs}`,
+    labelledByProject: (files) =>
+      `${files} transcripción(es) de Claude Code etiquetada(s) por su carpeta de proyecto. --label pone una sola etiqueta, --no-label-from-project las deja sin etiqueta.`,
+    unknownMore: (count) => `${count} archivo(s) más que ninguna forma reclama, sin adivinar y fuera de la factura.`,
+    shapeSummary: (shape, files, records, leftOut) =>
+      `${files} archivo(s): ${shape}${records === null ? ', leídos tal cual' : `, ${records} registro(s)`}${leftOut > 0 ? `, ${leftOut} fila(s) fuera. trazum from-${shape} sobre un archivo dice por qué.` : '.'}`,
+    statementHeading: () => 'Tu factura',
+    statementTotal: (usd, calls) => `${usd} en ${calls.toLocaleString('es-ES')} llamada(s) con precio`,
+    colProject: () => 'proyecto',
+    colWorkload: () => 'carga',
+    colModel: () => 'modelo',
+    colCalls: () => 'llamadas',
+    colShare: () => 'parte',
+    moreRows: (count) => `… y ${count} más`,
+    statementUnpriced: (models, calls) =>
+      `Fuera del total: ${calls} llamada(s) a ${models}, que el catálogo no tiene con precio. Se nombran, nunca se cuentan como $0.`,
+    statementUnread: (lines) => `${lines} línea(s) no se pudieron leer como uso y no están en el total.`,
+    statementNext: () =>
+      'El recibo como datos: --receipt, o -o recibo.json. El documento para quien paga: --pdf-out factura.pdf.',
     notFound: (path) => `${path}: no encontrado`,
     noFiles: (path) => `${path}: no hay archivos .json, .jsonl, .ndjson ni .log dentro, ni sin comprimir ni en .gz.`,
     file: (path, shape, records, leftOut) =>

@@ -2900,11 +2900,32 @@ what their log was called before Trazum would read it. This is the door that
 does not ask.
 
 ```bash
+npx @trazum/cli bill
 npx @trazum/cli bill ~/.claude/projects
 npx @trazum/cli bill usage.json
 npx @trazum/cli bill exports/ --pricing-live -o receipt.json
 npx @trazum/cli bill logs/*.jsonl
 ```
+
+**With no path it reads Claude Code's own folder**: `$CLAUDE_CONFIG_DIR/projects`,
+then `~/.claude/projects`, then `~/.config/claude/projects`, every one that
+exists, each named on stderr before it is read. With none of them there it
+refuses and names every place it looked.
+
+**On a terminal it prints a statement, in a pipe the receipt.** A person at a
+terminal gets the total, a table by project, a table by model and what is not
+in the total; a script piping the output gets the JSON receipt it always got.
+`--receipt` forces the receipt on a terminal and `--table` forces the
+statement in a pipe. `-o receipt.json` writes the receipt and still shows the statement.
+
+**Claude Code sessions are labelled by project.** A transcript reached through
+a directory takes its project folder's name as its label, as `from-claude-code`
+has done since 1.77 and with the same caveat: the folder name is shown as it
+is, minus the leading dash, because Claude Code's encoding of the path cannot
+be undone. `--label` sets one label for everything instead, and
+`--no-label-from-project` leaves sessions unlabelled. A folder of hundreds of
+transcripts is summarised in one line per shape rather than one per file, and
+the files no shape claims are named for the first three and counted after.
 
 It reads every file and directory it is given (`.json`, `.jsonl`, `.ndjson`
 and `.log`, gzipped or not, the same names `trazum profile` reads), so a

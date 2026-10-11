@@ -60,7 +60,7 @@ ${bold('USAGE')}
   trazum rollup <document...|dir> [--json] [--html-out <file>]
   trazum position <usage.jsonl>
   trazum receipt <usage.jsonl|dir> [--stamp] [-o <file>]
-  trazum bill <file|dir>... [--label <name>] [--stamp] [-o <file>]
+  trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
               [--pdf-out|--html-out|--markdown-out|--csv-out <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
@@ -1998,7 +1998,27 @@ ${bold('EXAMPLES')}
   },
 
   bill: {
-    noPath: () => 'bill needs a file or a directory to read: trazum bill ~/.claude/projects',
+    noPath: (tried) =>
+      `bill needs a file or a directory to read, and found no Claude Code folder at ${tried}. Name one: trazum bill ~/.claude/projects, or trazum bill usage.jsonl.`,
+    defaultPath: (dirs) => `No path given, so reading Claude Code's own folder: ${dirs}`,
+    labelledByProject: (files) =>
+      `${files} Claude Code transcript(s) labelled by their project folder. --label sets one label instead, --no-label-from-project leaves them unlabelled.`,
+    unknownMore: (count) => `${count} more file(s) no shape claims, not guessed at and not in the bill.`,
+    shapeSummary: (shape, files, records, leftOut) =>
+      `${files} file(s): ${shape}${records === null ? ', read as they are' : `, ${records} record(s)`}${leftOut > 0 ? `, ${leftOut} row(s) left out. trazum from-${shape} on a file says why.` : '.'}`,
+    statementHeading: () => 'Your bill',
+    statementTotal: (usd, calls) => `${usd} across ${calls.toLocaleString('en-US')} priced call(s)`,
+    colProject: () => 'project',
+    colWorkload: () => 'workload',
+    colModel: () => 'model',
+    colCalls: () => 'calls',
+    colShare: () => 'share',
+    moreRows: (count) => `… and ${count} more`,
+    statementUnpriced: (models, calls) =>
+      `Not in the total: ${calls} call(s) to ${models}, which the catalogue does not price. Named, never counted as $0.`,
+    statementUnread: (lines) => `${lines} line(s) could not be read as usage and are not in the total.`,
+    statementNext: () =>
+      'The receipt as data: --receipt, or -o receipt.json. The document for whoever pays: --pdf-out bill.pdf.',
     notFound: (path) => `${path}: not found`,
     noFiles: (path) => `${path}: no .json, .jsonl, .ndjson or .log files under it, plain or gzipped.`,
     file: (path, shape, records, leftOut) =>
