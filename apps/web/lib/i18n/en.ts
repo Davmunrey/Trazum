@@ -103,7 +103,7 @@ export const en: WebMessages = {
     apiKey: 'API key',
     apiKeyPlaceholder: 'your key',
     keyNote:
-      'The key travels to this server to make the call and is discarded afterwards: it is never stored or logged. If you would rather not type it here, set the environment variables on the server and leave the fields empty.',
+      'The key travels to this server to make the call and is discarded afterwards: it is never stored or logged. This server never lends a key of its own, so the model-assisted pass needs yours on every request; run the CLI if you would rather the key never left your machine.',
     safetyNote:
       'The LLM result is only accepted when it is shorter and leaves code, URLs and template placeholders intact. Otherwise it is discarded and you keep the deterministic version.',
   },
@@ -115,7 +115,7 @@ export const en: WebMessages = {
     perMonth: (amount) => `${amount}/month`,
     restoreTitle: 'Restore this prompt and its scenario',
     tooLongTitle: 'Prompt too long to store; only the summary is kept.',
-    privacyNote: 'History is stored in this browser only; nothing leaves your machine.',
+    privacyNote: 'History is stored in this browser only, and stays after you sign out until you clear it. The prompt itself is sent to this server to be optimised and is not stored there.',
   },
 
   account: {
@@ -1070,6 +1070,19 @@ export const en: WebMessages = {
     promptTooLong: (limit) => `The prompt exceeds the limit of ${limit} characters.`,
     unknownRule: (id) => `Unknown rule: "${id}".`,
     unknownModel: (id) => `Unknown model: "${id}".`,
+    usageNotAnObject: '"usage" must be an object, such as {"model": "claude-opus-5", "callsPerMonth": 10000}.',
+    usageUnknownField: (field, known) =>
+      `"usage.${field}" is not a field, and its default would have been used without a word. Known: ${known}.`,
+    usageBadField: (field, expected) => {
+      const wanted = {
+        text: 'a model id',
+        count: 'a number of calls, 0 or more',
+        tokens: 'a number of tokens, 0 or more',
+        rate: 'a fraction from 0 to 1, such as 0.6 for 60%',
+        boolean: 'true or false',
+      }[expected];
+      return `"usage.${field}" must be ${wanted}. A value outside that would be priced as if it were real.`;
+    },
     answersNotAnObject: 'Answers must be an object of slot ids and answers.',
     unknownSlot: (id) => `"${id}" is not one of the questions this interview asks.`,
     answerNotText: (id) => `The answer to "${id}" must be text, or null to decline it.`,

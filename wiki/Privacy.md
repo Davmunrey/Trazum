@@ -24,6 +24,10 @@ prompt library shipped and made that conditional.
   only aggregate metrics (reduction percentage, level, model, locale). It
   switches on only when the operator sets `NEXT_PUBLIC_POSTHOG_KEY`, which also
   adds the analytics origin to the Content-Security-Policy; with no key the
-  policy stays `connect-src 'self'`.
+  policy stays `connect-src 'self'`. When it is on, the only events sent are
+  the ones the app names: autocapture, automatic pageviews, session
+  recordings, heatmaps and surveys are switched off by name, nothing is kept
+  in a cookie, and every URL an event carries has its share token replaced
+  (`/c/:token`) and its query dropped before it leaves the browser.
 - LLM keys entered in the UI are used for that request and discarded; they are
   neither logged nor persisted.

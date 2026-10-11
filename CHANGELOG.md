@@ -40,6 +40,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The web app told readers two things the server does not do.** The key
+  note said to put an LLM key in the server's environment and leave the field
+  empty; the server deliberately never spends a key it was not handed. The
+  history note said nothing leaves the machine; the prompt is sent to the
+  server to be optimised. Both are corrected in English and Spanish, and a
+  test holds the catalogues to it.
+
+- **`/api/optimize` with `reorder` and no model answered `502 Unknown
+  model`.** It asked the catalogue for a model named `""`. No model named is
+  now no cache minimum known, as in the CLI.
+
+- **An IPv6 loopback database (`[::1]`) was never treated as local**, so the
+  default SSL mode demanded a certificate from the operator's own machine.
+  The URL parser keeps the brackets and the check compared without them.
+
 - **An unpriced model showed `$0` in the HTML report's model table.** Zero
   is a claim that the calls were free, the claim the CSV door has refused
   with an empty cell since it shipped. It is a dash now, in the dollars and
@@ -97,6 +112,39 @@ merged commit with no entry is a change only `git log` remembers.
   the new ratios and minimums.
 
 ### Security
+
+- **Sign-in is closed until the operator says who may use it.** A
+  deployment with accounts on let any GitHub account sign in, which made a
+  team's prompt library a free prompt store for anyone who found the URL, up
+  to the per-account caps and on the operator's database. Now
+  `TRAZUM_ALLOWED_USERS` (logins or numeric ids) and `TRAZUM_ADMINS` say who
+  may, `TRAZUM_OPEN_SIGNUP=1` lets anyone in out loud, and with none of them
+  set the sign-in button answers `503` naming the variables before GitHub is
+  asked anything. A refused account gets `403` and no row. Checked on every
+  sign-in, so removing somebody takes effect at their next one. **An
+  operator who relied on open sign-in sets `TRAZUM_OPEN_SIGNUP=1`.**
+
+- **Analytics, when an operator turns it on, sends only the events the app
+  names.** `posthog.init` was called with a host and nothing else, so it
+  autocaptured clicks with the text and attributes of the element, recorded
+  pageviews with the full URL (on `/c/<token>`, the share link itself), could
+  start session recordings and heatmaps from PostHog's dashboard, and kept a
+  cookie. The README said aggregate metrics only. Every collector is now off
+  by name, persistence is in memory, and `scrubAnalyticsEvent` rewrites every
+  URL an event carries (`/c/:token`, no query) and drops element text before
+  it leaves the browser. Off by default, as before.
+
+- **`/api/optimize` and `/api/compare` refuse impossible usage.** Negative
+  calls, a cache hit rate of 7, a string where a count goes, and a misspelt
+  field such as `calls_per_month` all came back `200` with figures shaped
+  like an answer. One parser now checks `usage` at both doors and names the
+  field and the range in the refusal, English and Spanish.
+
+- **Expired share links no longer count toward the hundred-link limit, and
+  their text is deleted.** They opened nothing and still filled the quota, so
+  an owner whose links had all lapsed could never make another, and the
+  prompt text stayed in the table indefinitely. They are purged when their
+  owner next creates a link.
 
 - **`next` 16.3.5 to 16.3.8 (#540), closing a critical remote code
   execution in `next/og`'s `ImageResponse` (GHSA-vcvr-r3jv-pc5j).** `apps/web`

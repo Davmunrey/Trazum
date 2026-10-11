@@ -5,6 +5,7 @@ import type { AdvisoryId, Locale, PromptComparison, RuleId, RuleLevel, UsageProf
 
 import { getWebMessages } from '../../../lib/i18n';
 import { createRateLimiter } from '../../../lib/rate-limit';
+import { USAGE_FIELDS, parseUsage } from '../../../lib/usage-input';
 
 export const runtime = 'nodejs';
 
@@ -112,7 +113,15 @@ export async function POST(request: Request) {
   const unknownRule = disableRules.find((id) => !RULES.some((r) => r.id === id));
   if (unknownRule) return badRequest(t.api.unknownRule(unknownRule));
 
-  const usage = body.usage ?? {};
+  const parsedUsage = parseUsage(body.usage);
+  if (!parsedUsage.ok) {
+    if (parsedUsage.kind === 'notAnObject') return badRequest(t.api.usageNotAnObject);
+    if (parsedUsage.kind === 'unknownField') {
+      return badRequest(t.api.usageUnknownField(parsedUsage.field, USAGE_FIELDS.join(', ')));
+    }
+    return badRequest(t.api.usageBadField(parsedUsage.field, parsedUsage.expected));
+  }
+  const usage = parsedUsage.usage;
   if (usage.model && !listModels().some((m) => m.id === usage.model)) {
     return badRequest(t.api.unknownModel(usage.model));
   }

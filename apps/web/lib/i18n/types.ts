@@ -894,6 +894,10 @@ export interface WebMessages {
     promptTooLong(limit: string): string;
     unknownRule(id: string): string;
     unknownModel(id: string): string;
+    /** `usage` checked at the door: not an object, a field it does not have, a value out of range. */
+    usageNotAnObject: string;
+    usageUnknownField(field: string, known: string): string;
+    usageBadField(field: string, expected: 'text' | 'count' | 'tokens' | 'rate' | 'boolean'): string;
     /** The interview: an answers object that is not one, or an id nobody asks. */
     answersNotAnObject: string;
     unknownSlot(id: string): string;

@@ -25,6 +25,7 @@ const ENV = {
   TRAZUM_GITHUB_CLIENT_ID: 'Iv1.abc',
   TRAZUM_GITHUB_CLIENT_SECRET: 'shhh',
   TRAZUM_PUBLIC_URL: ORIGIN,
+  TRAZUM_OPEN_SIGNUP: '1',
 };
 
 let deleteAccount;

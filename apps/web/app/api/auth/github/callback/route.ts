@@ -1,3 +1,4 @@
+import { maySignIn, signInPolicy } from '../../../../../lib/auth/allowlist';
 import { authConfig } from '../../../../../lib/auth/config';
 import { parseCookies, serializeCookie } from '../../../../../lib/auth/cookies';
 import { exchangeCode, fetchIdentity, stateMatches, unpackState } from '../../../../../lib/auth/github';
@@ -95,6 +96,19 @@ export async function GET(request: Request): Promise<Response> {
     return jsonError(`GitHub declined the sign-in: ${identity.error}`, 502, {
       'set-cookie': cleared,
     });
+  }
+
+  /*
+    The gate, before anything is written: a refused account leaves no row, so
+    the users table holds only people the operator let in.
+  */
+  if (!maySignIn(identity, signInPolicy())) {
+    return jsonError(
+      `${identity.login} cannot sign in to this deployment: its operator decides who can. `
+        + 'Ask them to add your GitHub login or id to TRAZUM_ALLOWED_USERS.',
+      403,
+      { 'set-cookie': cleared },
+    );
   }
 
   const now = new Date();

@@ -30,6 +30,11 @@ export function sharesInMemory(): { shares: ShareStore; purgeOwner(ownerId: stri
 
   const store: ShareStore = {
     async createShare(input): Promise<ShareRecord | null> {
+      // Expired links go first, as in Postgres: they open nothing, so they
+      // neither count toward the limit nor keep their text.
+      for (const [token, share] of shares) {
+        if (share.ownerId === input.ownerId && !live(share, input.now)) shares.delete(token);
+      }
       const mine = [...shares.values()].filter((s) => s.ownerId === input.ownerId);
       if (mine.length >= MAX_SHARES_PER_OWNER) return null;
 

@@ -46,3 +46,86 @@ export function analyticsConnectSrc(
     return null;
   }
 }
+
+/**
+ * Paths that carry a capability or an identifier. A share link's token *is*
+ * the permission to read two prompts: whoever holds the URL can open it.
+ */
+const CAPABILITY_PATH = /\/(c|badge|api\/shares|api\/prompts)\/[^/?#]+/g;
+
+/** The URL-shaped properties posthog-js attaches to every event on its own. */
+const URL_PROPERTIES = [
+  '$current_url',
+  '$pathname',
+  '$referrer',
+  '$initial_current_url',
+  '$initial_pathname',
+  '$initial_referrer',
+  '$session_entry_url',
+  '$session_entry_pathname',
+  '$session_entry_referrer',
+  '$prev_pageview_pathname',
+  '$prev_pageview_url',
+];
+
+/** What autocapture would have recorded about the element clicked: on-screen text and attributes. */
+const ELEMENT_PROPERTIES = ['$el_text', '$elements', '$elements_chain', '$element_selectors'];
+
+/**
+ * A URL with its capability tokens replaced by the route's own name, and its
+ * query and fragment dropped.
+ *
+ * `/c/Xy9…` becomes `/c/:token`: the event still says somebody opened a
+ * shared comparison, and no longer hands the analytics provider the link
+ * that opens it. The query goes because `?tab=bill&label=…` carries a
+ * workload name from somebody's log. A referrer from another site keeps its
+ * origin only, which is all "where did they come from" needs.
+ */
+export function redactUrl(value: string): string {
+  const redactPath = (path: string): string => path.replace(CAPABILITY_PATH, '/$1/:token');
+  try {
+    const url = new URL(value);
+    return `${url.origin}${redactPath(url.pathname)}`;
+  } catch {
+    // A bare path, as `$pathname` is.
+    return redactPath(value.split(/[?#]/)[0] ?? '');
+  }
+}
+
+interface AnalyticsEvent {
+  properties?: Record<string, unknown>;
+  $set?: Record<string, unknown>;
+  $set_once?: Record<string, unknown>;
+}
+
+/**
+ * The last thing every event passes through before it leaves the browser.
+ *
+ * The configuration in `Analytics.tsx` already turns autocapture, pageviews,
+ * recordings and heatmaps off. This is the second lock, for what posthog-js
+ * attaches to *every* event, the ones this app sends by name included: the
+ * page's URL, the first URL of the session, the referrer. On a share page
+ * each of those is the share link. So they are rewritten here, and anything
+ * describing a clicked element is dropped, whichever option let it in.
+ */
+export function scrubAnalyticsEvent<T extends AnalyticsEvent>(event: T | null): T | null {
+  if (event === null) return null;
+  const scrub = (bag: Record<string, unknown> | undefined): Record<string, unknown> | undefined => {
+    if (bag === undefined) return undefined;
+    const out: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(bag)) {
+      if (ELEMENT_PROPERTIES.includes(key)) continue;
+      out[key] = URL_PROPERTIES.includes(key) && typeof value === 'string' ? redactUrl(value) : value;
+    }
+    return out;
+  };
+  const properties = scrub(event.properties);
+  const $set = scrub(event.$set);
+  const $set_once = scrub(event.$set_once);
+  return {
+    ...event,
+    ...(properties !== undefined ? { properties } : {}),
+    ...($set !== undefined ? { $set } : {}),
+    ...($set_once !== undefined ? { $set_once } : {}),
+  };
+}
