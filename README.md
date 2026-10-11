@@ -31,6 +31,14 @@ tells each file's shape from its own text, prices it, and prints the receipt.
 A file it cannot read is named, never guessed at; a model it cannot price is a
 named gap, never a zero. Nothing you point it at leaves your machine.
 
+```bash
+npx @trazum/cli bill ~/.claude/projects --pdf-out bill.pdf
+```
+
+The same bill as a PDF for whoever pays it: every figure, every caveat, no
+font embedded and nothing installed. `--html-out`, `--markdown-out` and
+`--csv-out` write the other envelopes.
+
 ## Your agents spend money in a loop. This prices the call before it happens.
 
 One agent costs what it costs. A fleet of them spends in a loop nobody is
@@ -54,7 +62,9 @@ claude plugin marketplace add Davmunrey/Trazum
 claude plugin install trazum@trazum
 ```
 
-That one line brings the skill and the MCP server. Every other MCP client
+That one line brings the skill and the MCP server. An agent that reads Agent
+Skills from the repository instead gets the same skill with
+`npx skills add Davmunrey/Trazum`. Every other MCP client
 reads the same `mcpServers` JSON, so Cursor (`.cursor/mcp.json`), Windsurf,
 Claude Desktop and the rest are one paste:
 

@@ -38,12 +38,17 @@ export interface TourStep {
   demo?: DemoAction;
 }
 
+/*
+  The bill first, as the page opens on it since 2.4.2: a tour that began on a
+  different panel from the one the visitor was already looking at started by
+  moving them away from it.
+*/
 export const TOUR_STEPS: readonly TourStep[] = [
-  { id: 'welcome', tab: 'optimise', target: null },
+  { id: 'welcome', tab: 'bill', target: null },
+  { id: 'bill', tab: 'bill', target: 'panel-bill', demo: { kind: 'bill-sample' } },
   { id: 'optimise', tab: 'optimise', target: 'panel-optimise', demo: { kind: 'optimise-sample' } },
   { id: 'write', tab: 'write', target: 'panel-write' },
   { id: 'compare', tab: 'compare', target: 'panel-compare', demo: { kind: 'compare-sample' } },
-  { id: 'bill', tab: 'bill', target: 'panel-bill', demo: { kind: 'bill-sample' } },
   { id: 'playground', tab: 'playground', target: 'panel-playground' },
   {
     id: 'playground-profile',
