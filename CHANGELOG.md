@@ -13,6 +13,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The Google catalogue was re-read on 2026-10-10, and three things about
+  its caching were wrong.** Every price matched. What did not: implicit
+  caching is on by default for every Gemini 2.5 and newer model, so caching
+  is `automatic` across the board rather than a prefix to mark; the minimum
+  is 4,096 tokens on 3.6 Flash (not 1,024) and 2,048 on 2.5 Flash (not
+  1,024); and **the 2.5 models read the cache at 10% of input, not the 25%
+  this table carried**, so a 2.5 log's cache reads were priced at two and a
+  half times what the page charges today. **Gemini 3.8 Flash is added**
+  (Google's newest Flash, the same $0.75/$3.75 introductory rate as 3.6
+  through 2026-12-31). Gemini 3.1 Pro Preview stays out, and 2.5 Pro's
+  prompts over 200k stay at the lower rate with a note saying so: both are
+  priced by prompt length per request, which no log Trazum prices carries
+  yet. The README's cache rows say the new ratios and minimums.
+
+- **The npm listing of `@trazum/cli` says what it is for.** Its description
+  was about a prompt bill and its keywords were `prompt, llm, tokens, cost,
+  cli, ci`: nothing a person searching npm for what Claude Code cost them
+  would type. It now names Claude Code, the sources it prices and the PDF,
+  and its keywords include `claude-code`, `anthropic`, `openai`, `usage`,
+  `billing` and `finops`.
+
 - **`trazum bill` meets a first run where it is.** Three places the README's
   one line stopped short, each measured on a real `~/.claude/projects`:
   - **No path was a refusal.** It now reads Claude Code's own folder,

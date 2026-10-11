@@ -105,8 +105,10 @@ describe('a provider with no prompt caching is not offered caching', () => {
 
 describe('the caching saving follows the provider, not one constant', () => {
   it('is smaller where a cache read costs more', () => {
-    // Gemini reads at 25% of input, Anthropic at 10%. The same prompt cannot be
+    // xAI reads at 25% of input, Anthropic at 10%. The same prompt cannot be
     // worth the same fraction on both, and using one constant was how it was.
+    // (Gemini 2.5 Pro was the dearer reader here until Google's page said 10%
+    // on 2026-10-10.)
     const cacheSaving = (model) => {
       const found = optimize(LONG_PROMPT, { level: 'safe', usage: usageFor(model) }).advisories.find(
         (a) => a.id === 'prompt-caching',
@@ -120,7 +122,7 @@ describe('the caching saving follows the provider, not one constant', () => {
     };
 
     assert.ok(
-      perDollar('gemini-2.5-pro') < perDollar('claude-opus-5'),
+      perDollar('grok-4') < perDollar('claude-opus-5'),
       'a dearer cache read did not produce a smaller saving per dollar of input',
     );
   });
