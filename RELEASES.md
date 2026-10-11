@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.4.3**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.5.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,68 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.5.0 — Each request at its own size
+
+**Adoption, read 2026-10-11:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), GitHub stars: unavailable (HTTP 403), MCP registry latest 2.4.3.
+
+A minor, and no new command. Two published formats grew a field each: a usage
+row may say how many requests it sums, and a receipt can name a range it could
+not close.
+
+### Priced by the size of each request
+
+```bash
+npx @trazum/cli bill
+```
+
+Four providers now charge some models by prompt length, per request: Claude
+Haiku 5.5 is dearer over 100,000 input tokens, Gemini 3.1 Pro Preview over
+200,000, OpenAI's GPT-5.6 and later over 272,000, and every current Grok from
+200,000 exactly. A request over the line pays the higher rate on all of it,
+cache included. Until this release those models were left out rather than
+priced at a figure up to five times wrong.
+
+- **A call in a log** is billed in its own band: a Claude Code transcript, an
+  OpenTelemetry span, a LiteLLM or Helicone row.
+- **A row that sums requests** (a usage report's hourly bucket, an OpenRouter
+  day) cannot say how large any one prompt was. It is billed at the dearer rate,
+  and every surface prints what the same tokens cost at the cheaper one: "$X of
+  this total, $Y at the cheaper rate", in `bill`, `profile`, the receipt (a
+  `tier-ceiling` gap), `connect`, the exported documents, the MCP report and the
+  web app. A row whose whole prompt total is under the line is decided.
+- **A usage row can say how many requests it sums**, as `requests`. The
+  converters for usage reports write it for you.
+
+### Current models priced
+
+- **OpenAI**: GPT-6 Astra, GPT-6.1 Sol, GPT-6 Sol, GPT-6 Luna, GPT-5.6 Sol,
+  Terra and Luna. Cache writes cost 1.25x input and an entry lives at least 30
+  minutes, so the cache TTL verdict now judges a pause against the model's own
+  entry rather than Anthropic's five minutes.
+- **Anthropic**: Claude Haiku 5.5, $0.10/$0.50 up to 100,000 tokens.
+- **Google**: Gemini 3.1 Pro Preview, $2/$12 up to 200,000.
+- **Moonshot**: Kimi K3 ($3/$15, writes billed by TTL like Anthropic), K2.7
+  Code and its high-speed variant, K2.6. `kimi-k2` was discontinued on
+  2026-05-25: still priced, no longer recommended.
+- **xAI**: Grok 4.7, 4.6, 4.5, 4.3, the 4.20 family and Build 0.1.
+
+### Fixed, and what it was
+
+- **A Responses API log billed every cached token at the full input rate.**
+  OpenAI's default API reports usage as `input_tokens` with the cached part in
+  `input_tokens_details`, and only the Chat Completions spelling was read. A
+  GPT-5 call reading 90% of its prompt from cache came out at $0.135 instead of
+  $0.034, and the cache verdict said caching was never used.
+- **`grok-4` after 2026-05-15 was billed at $3/$15.** xAI retired it that day
+  and has billed it at Grok 4.3's $1.25/$2.50 since. Both periods are priced
+  now, so a log spanning the date is billed both ways.
+- **OpenAI's usage report billed cache writes as plain input**, through
+  `from-openai` and `connect`.
+- **The findings under a bill priced their calls at the report's date**, not
+  the call's; `connect` billed every bucket the same way; a budget priced every
+  model with one set of cache ratios.
+- **A block of Spanish messages had no accents.**
 
 ## 2.4.3 — Each call at its own price
 
