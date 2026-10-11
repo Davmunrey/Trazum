@@ -82,8 +82,19 @@ describe('a provider with no prompt caching is not offered caching', () => {
   });
 
   it('still offers it where it exists', () => {
-    for (const model of ['claude-opus-5', 'gpt-5', 'kimi-k2', 'gemini-2.5-pro']) {
+    for (const model of ['claude-opus-5', 'gpt-5', 'gpt-6.1-sol', 'gemini-2.5-pro']) {
       assert.ok(advisoryIds(model).includes('prompt-caching'), `${model}: no caching advisory`);
+    }
+  });
+
+  it('and promises nothing where the provider publishes no minimum to promise it against', () => {
+    // Moonshot and xAI cache automatically and state no minimum prefix. The
+    // advice needs one to say whether a prefix caches at all, so it declines,
+    // in both directions: no saving offered and no "too short" either.
+    for (const model of ['kimi-k3', 'kimi-k2', 'grok-4.3', 'grok-4']) {
+      const ids = advisoryIds(model);
+      assert.ok(!ids.includes('prompt-caching'), `${model}: a saving offered against a minimum nobody published`);
+      assert.ok(!ids.includes('below-cache-minimum'), `${model}: a minimum quoted that nobody published`);
     }
   });
 
@@ -189,6 +200,10 @@ describe('the catalogue is internally consistent', () => {
       } else if (model.caching === 'unknown') {
         // A provider that discounts cached input and publishes no minimum.
         assert.equal(model.cacheMinTokens, null, `${model.id} quotes a minimum nobody published`);
+      } else if (model.cacheMinTokens === null) {
+        // A cache that is documented but whose minimum is not: said, not guessed.
+        assert.match(model.notes ?? '', /no minimum prefix length is published/,
+          `${model.id} caches, declares no minimum, and does not say why`);
       } else {
         assert.ok(model.cacheMinTokens > 0, `${model.id} caches but declares no minimum`);
       }

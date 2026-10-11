@@ -520,11 +520,12 @@ export function buildAdvisories(
        * exactly the reason stated there: a discount that is not per model is an
        * invented saving rather than an imprecise one.
        *
-       * Three models in the catalogue carry `batch: null` — kimi-k2,
-       * deepseek-v3 and grok-4 — which means no batch API at all. Halving their
-       * cost offered money that cannot be bought at any price, made the
-       * downgrade look twice as good as it is, and could turn a saving that was
-       * negative into one this advisory reports.
+       * A model with `batch: null` has no batch API at all: every DeepSeek
+       * model, Kimi K3 and most of xAI's. Halving its cost offered money that
+       * cannot be bought at any price, made the downgrade look twice as good as
+       * it is, and could turn a saving that was negative into one this advisory
+       * reports. Where a batch API exists its discount is the model's own: half
+       * on most, 40% off on Kimi K2.7 Code and K2.6, 20% off on Grok 4.3.
        */
       const candidateBatch = usage.batchEligible ? (multipliersFor(candidate).batch ?? 1) : 1;
       const candidateMonthly =

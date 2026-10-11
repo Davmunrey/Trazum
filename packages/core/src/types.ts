@@ -170,6 +170,12 @@ export type TierCondition =
    */
   | { kind: 'input-tokens-above'; tokens: number }
   /**
+   * The prompt is `tokens` input tokens or more: xAI's wording, "requests
+   * whose prompt reaches 200k tokens". The same as above at one token less,
+   * kept apart so the sentence a reader sees is the provider's own.
+   */
+  | { kind: 'input-tokens-at-least'; tokens: number }
+  /**
    * The call falls inside one of `hours` in UTC, optionally on weekdays only.
    *
    * Decidable everywhere, because every caller already passes the date it is

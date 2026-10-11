@@ -106,6 +106,14 @@ them out with the cached ones and prices them as writes, against an entry
 that lives at least 30 minutes, which is what the cache TTL verdict judges
 your gaps against on those models.
 
+Moonshot's Kimi API reports usage in the same two shapes, `cache_write_tokens`
+included, and Trazum reads them the same way. On Kimi K3 a write is billed by
+its entry's lifetime, $3 for five minutes and $6 for an hour per million
+tokens; the usage line does not say which, so Trazum prices Kimi's default of
+five minutes and counts the call among those whose write TTL was assumed. Kimi's
+Anthropic-compatible endpoint reports `cache_creation` split by TTL, which
+needs no assumption.
+
 **Without a log:** `trazum connect openai` reads the usage endpoint, which does
 serve request counts.
 

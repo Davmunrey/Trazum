@@ -13,6 +13,24 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Moonshot and xAI's current models are priced: Kimi K3, Kimi K2.7 Code
+  (and its high-speed variant), Kimi K2.6, Grok 4.7, 4.6, 4.5, 4.3, the Grok
+  4.20 family (reasoning, non-reasoning, multi-agent) and Grok Build 0.1.**
+  Off each provider's pages read in their Markdown form on 2026-10-11; the
+  September review read the HTML, which renders its tables in the browser,
+  saw no context windows and added nothing. Kimi K3 is $3/$15 with a 1,048,576
+  window, reads its cache at $0.30 and bills writes as their own line by TTL,
+  $3 for five minutes and $6 for an hour; K2.7 Code and K2.6 are $0.95/$4 with
+  a 262,144 window, hits at $0.19 and $0.16, and a batch API at 60% of the
+  price. Every Grok bills a request whose prompt **reaches** 200,000 tokens at
+  double input, cache and output: $2/$6 to $4/$12 on 4.7, 4.6 and 4.5,
+  $1.25/$2.50 to $2.50/$5 on 4.3 and 4.20, $1/$2 to $2/$4 on Build 0.1, with
+  cached input at each model's own figure and a 20% batch discount on 4.3 and
+  4.20. `grok-code-fast-1` is left unpriced: xAI routes it to Build 0.1 and
+  also says retired ids bill at Grok 4.3's prices, and a guess between the two
+  is not a price. `packages/core/test/moonshot-xai.test.js` (22 tests) holds
+  every figure and the line at exactly 200,000.
+
 - **OpenAI's current generation is priced: GPT-6 Astra, GPT-6.1 Sol, GPT-6
   Sol, GPT-6 Luna, GPT-5.6 Sol, GPT-5.6 Terra and GPT-5.6 Luna.** Off the
   pricing page, each model's own page and the prompt-caching guide (2026-10-10
@@ -55,6 +73,28 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **A size tier can be inclusive: `input-tokens-at-least`.** xAI's words are
+  "requests whose prompt reaches 200k tokens", so a prompt of exactly 200,000
+  pays the higher rate. The condition is its own kind rather than "over
+  199,999" written by hand, so a report prints xAI's sentence ("prompts of
+  200,000 input tokens or more"), and a usage report's row of exactly 200,000
+  is undecided, billed at the ceiling with the floor beside it, rather than
+  called cheap.
+
+- **Moonshot and xAI rows carry no cache minimum, and say so.** Neither
+  provider publishes the shortest prefix it caches, and the 1,024 that
+  `kimi-k2` and `grok-4` carried came from no page. A null minimum on a model
+  that caches was refused by the catalogue tests; it is now allowed only on a
+  row whose note says "no minimum prefix length is published", so a forgotten
+  minimum still cannot pass as a deliberate one. The bill prices these caches
+  as before; the advice that needs a minimum to promise a saving, or to call a
+  prefix too short, stays quiet on them.
+
+- **`kimi-k2` and `grok-4` are no longer recommended.** Moonshot discontinued
+  `kimi-k2` on 2026-05-25 and xAI retired `grok-4` on 2026-05-15, both by
+  their own notices. Both stay priced, because calls in somebody's log really
+  happened at them, and neither is offered as somewhere to move.
+
 - **A model says how long its cache entries live: `cacheTtl`.** The TTL
   verdict judged every write against Anthropic's five minutes and offered the
   1-hour entry as the cure. An OpenAI GPT-5.6 entry lives at least 30 minutes
@@ -91,6 +131,15 @@ merged commit with no entry is a change only `git log` remembers.
   you know what it covers", in English and Spanish.
 
 ### Fixed
+
+- **A `grok-4` call after 2026-05-15 was billed at $3/$15; xAI has billed it
+  at Grok 4.3's $1.25/$2.50 since.** "Requests to the retired model slugs ...
+  will be billed at grok-4.3 pricing ... rather than the rates of the original
+  model", from 12:00 PT that day. Input was overstated 2.4 times, output 6
+  times and cache reads nearly 4 times. The row now bills at Grok 4.3's rates,
+  its long-context line included, and keeps $3/$15 as a period ending at 19:00
+  UTC on 2026-05-15, so a log spanning the retirement is billed both ways;
+  `grok-4-0709`, the dated id the notice names, is an alias.
 
 - **The packaged Action pin in `README.md` and `docs/running.md` advanced to
   2.4.3's release commit**, the one `v2.4.3` points at, in the pull request
