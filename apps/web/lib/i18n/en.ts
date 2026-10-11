@@ -602,6 +602,10 @@ export const en: WebMessages = {
       'Verify before moving anything: the CLI measures one prompt against both models on your '
       + 'own examples with trazum route.',
     whatIfDearer: 'That direction costs more. The arithmetic is here so the number is not a guess.',
+    whatIfTierCeiling: (slices, target, floor) =>
+      `${target} is priced by prompt length, and ${slices.toLocaleString('en-US')} `
+      + `${slices === 1 ? 'slice holds' : 'slices hold'} a call over its line, so the figure above is a `
+      + `ceiling. With every call under the line it would be ${floor}.`,
     whatIfBatchOnTarget: (batched, moved) =>
       `If those calls can also wait, the target's Batch API takes the moved bill from ${moved} `
       + `to ${batched}: the discount applies to the target's rates, not the ones you left. `
@@ -834,6 +838,11 @@ export const en: WebMessages = {
     byModelHeading: 'By model',
     unlabelled: '(no label)',
     moreRows: (count) => `…and ${count} more.`,
+    tierCeiling: (rows, models, ceiling, floor) =>
+      `${rows.toLocaleString('en-US')} ${rows === 1 ? 'row' : 'rows'} on ${models} ${rows === 1 ? 'sums' : 'sum'} `
+      + `requests without giving any one prompt's length, and that model is priced by prompt length, so `
+      + `${rows === 1 ? 'it is' : 'they are'} billed at the dearer rate: ${ceiling} of this total. At the `
+      + `cheaper rate the same tokens come to ${floor}; the true figure is between the two.`,
     unpriced: (models, calls) =>
       `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call is' : 'calls are'} not in these `
       + `totals. The pricing catalogue does not know: ${models}. The CLI can price `

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="690" height="513" viewBox="0 0 690 513" role="img" aria-label="trazum bill on two illustrative Claude Code projects: $12.66 across 112 priced call(s), by project and by model, with the calls it could not price named rather than counted as zero">
+<svg xmlns="http://www.w3.org/2000/svg" width="670" height="492" viewBox="0 0 670 492" role="img" aria-label="trazum bill on two illustrative Claude Code projects: $12.70 across 126 priced call(s), by project and by model, with the calls it could not price named rather than counted as zero">
   <!--
     Drawn by scripts/draw-bill.mjs from what `trazum bill examples/claude-projects` prints, in English,
     forced into its terminal statement because a script runs it in a pipe.
@@ -6,11 +6,11 @@
     this stops being that output. (An XML comment cannot hold two hyphens in a
     row, which is why no flag is spelled out here.)
   -->
-  <defs><clipPath id="window"><rect x="10" y="8" width="670" height="497" rx="12"/></clipPath></defs>
-  <rect x="10" y="8" width="670" height="497" rx="12" fill="#171512" stroke="#363329" stroke-width="1"/>
+  <defs><clipPath id="window"><rect x="10" y="8" width="650" height="476" rx="12"/></clipPath></defs>
+  <rect x="10" y="8" width="650" height="476" rx="12" fill="#171512" stroke="#363329" stroke-width="1"/>
   <g clip-path="url(#window)">
-    <rect x="10" y="8" width="670" height="38" fill="#1e1c18"/>
-    <line x1="10" y1="46" x2="680" y2="46" stroke="#363329" stroke-width="1"/>
+    <rect x="10" y="8" width="650" height="38" fill="#1e1c18"/>
+    <line x1="10" y1="46" x2="660" y2="46" stroke="#363329" stroke-width="1"/>
   </g>
   <g transform="translate(26 15)">
     <rect width="24" height="24" rx="5.5" fill="#b0522f"/>
@@ -22,24 +22,23 @@
       <path d="M5.5 17h3.5" stroke="#fff"/>
     </g>
   </g>
-  <text x="345" y="31" text-anchor="middle" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="12" fill="#a8a495">trazum</text>
+  <text x="335" y="31" text-anchor="middle" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="12" fill="#a8a495">trazum</text>
   <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13">
     <text x="34" y="74" fill="#a8a495">$&#160;<tspan fill="#efece4">trazum&#160;bill&#160;examples/claude-projects</tspan></text>
     <text x="34" y="106"><tspan fill="#efece4" font-weight="bold">Your&#160;bill</tspan><tspan fill="#363329">&#160;────────────────────────────────────────────────────────────────</tspan></text>
-    <text x="34" y="127"><tspan fill="#efece4" font-weight="bold">&#160;&#160;$12.66&#160;across&#160;112&#160;priced&#160;call(s)</tspan></text>
+    <text x="34" y="127"><tspan fill="#efece4" font-weight="bold">&#160;&#160;$12.70&#160;across&#160;126&#160;priced&#160;call(s)</tspan></text>
     <text x="34" y="148"><tspan fill="#a8a495">&#160;&#160;This&#160;log&#160;covers&#160;2026-09-01&#160;→&#160;2026-09-14&#160;(13.3&#160;days):&#160;stated,&#160;never</tspan></text>
     <text x="34" y="169"><tspan fill="#a8a495">&#160;&#160;extrapolated.&#160;Scale&#160;it&#160;to&#160;a&#160;month&#160;yourself,&#160;now&#160;that&#160;you&#160;know&#160;what&#160;it</tspan></text>
     <text x="34" y="190"><tspan fill="#a8a495">&#160;&#160;covers.</tspan></text>
     <text x="34" y="232"><tspan fill="#a8a495">&#160;&#160;project&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;calls&#160;&#160;&#160;&#160;USD&#160;&#160;share</tspan></text>
-    <text x="34" y="253"><tspan fill="#efece4">&#160;&#160;home-me-etl-pipeline&#160;&#160;&#160;&#160;&#160;28&#160;&#160;$9.00&#160;&#160;</tspan><tspan fill="#6fc99a" stroke="#6fc99a" stroke-width="0.6">███████</tspan><tspan fill="#a8a495" fill-opacity="0.45">░░░</tspan><tspan fill="#efece4">&#160;71.1%</tspan></text>
-    <text x="34" y="274"><tspan fill="#efece4">&#160;&#160;home-me-webapp&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;84&#160;&#160;$3.66&#160;&#160;</tspan><tspan fill="#6fc99a" stroke="#6fc99a" stroke-width="0.6">███</tspan><tspan fill="#a8a495" fill-opacity="0.45">░░░░░░░</tspan><tspan fill="#efece4">&#160;28.9%</tspan></text>
+    <text x="34" y="253"><tspan fill="#efece4">&#160;&#160;home-me-etl-pipeline&#160;&#160;&#160;&#160;&#160;42&#160;&#160;$9.05&#160;&#160;</tspan><tspan fill="#6fc99a" stroke="#6fc99a" stroke-width="0.6">███████</tspan><tspan fill="#a8a495" fill-opacity="0.45">░░░</tspan><tspan fill="#efece4">&#160;71.2%</tspan></text>
+    <text x="34" y="274"><tspan fill="#efece4">&#160;&#160;home-me-webapp&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;84&#160;&#160;$3.66&#160;&#160;</tspan><tspan fill="#6fc99a" stroke="#6fc99a" stroke-width="0.6">███</tspan><tspan fill="#a8a495" fill-opacity="0.45">░░░░░░░</tspan><tspan fill="#efece4">&#160;28.8%</tspan></text>
     <text x="34" y="316"><tspan fill="#a8a495">&#160;&#160;model&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;calls&#160;&#160;&#160;&#160;&#160;&#160;USD&#160;&#160;share</tspan></text>
-    <text x="34" y="337"><tspan fill="#efece4">&#160;&#160;claude-fable-5-1&#160;&#160;&#160;&#160;&#160;&#160;28&#160;&#160;&#160;&#160;$9.00&#160;&#160;</tspan><tspan fill="#6fc99a" stroke="#6fc99a" stroke-width="0.6">███████</tspan><tspan fill="#a8a495" fill-opacity="0.45">░░░</tspan><tspan fill="#efece4">&#160;71.1%</tspan></text>
-    <text x="34" y="358"><tspan fill="#efece4">&#160;&#160;claude-opus-5-5&#160;&#160;&#160;&#160;&#160;&#160;&#160;56&#160;&#160;&#160;&#160;$2.95&#160;&#160;</tspan><tspan fill="#6fc99a" stroke="#6fc99a" stroke-width="0.6">██</tspan><tspan fill="#a8a495" fill-opacity="0.45">░░░░░░░░</tspan><tspan fill="#efece4">&#160;23.3%</tspan></text>
+    <text x="34" y="337"><tspan fill="#efece4">&#160;&#160;claude-fable-5-1&#160;&#160;&#160;&#160;&#160;&#160;28&#160;&#160;&#160;&#160;$9.00&#160;&#160;</tspan><tspan fill="#6fc99a" stroke="#6fc99a" stroke-width="0.6">███████</tspan><tspan fill="#a8a495" fill-opacity="0.45">░░░</tspan><tspan fill="#efece4">&#160;70.9%</tspan></text>
+    <text x="34" y="358"><tspan fill="#efece4">&#160;&#160;claude-opus-5-5&#160;&#160;&#160;&#160;&#160;&#160;&#160;56&#160;&#160;&#160;&#160;$2.95&#160;&#160;</tspan><tspan fill="#6fc99a" stroke="#6fc99a" stroke-width="0.6">██</tspan><tspan fill="#a8a495" fill-opacity="0.45">░░░░░░░░</tspan><tspan fill="#efece4">&#160;23.2%</tspan></text>
     <text x="34" y="379"><tspan fill="#efece4">&#160;&#160;claude-sonnet-5-5&#160;&#160;&#160;&#160;&#160;28&#160;&#160;$0.7077&#160;&#160;</tspan><tspan fill="#6fc99a" stroke="#6fc99a" stroke-width="0.6">█</tspan><tspan fill="#a8a495" fill-opacity="0.45">░░░░░░░░░</tspan><tspan fill="#efece4">&#160;5.6%</tspan></text>
-    <text x="34" y="421"><tspan fill="#d6ad63">&#160;&#160;Not&#160;in&#160;the&#160;total:&#160;14&#160;call(s)&#160;to&#160;claude-haiku-5-5,&#160;which&#160;the&#160;catalogue&#160;does</tspan></text>
-    <text x="34" y="442"><tspan fill="#d6ad63">&#160;&#160;not&#160;price.&#160;Named,&#160;never&#160;counted&#160;as&#160;$0.</tspan></text>
-    <text x="34" y="463"><tspan fill="#a8a495">&#160;&#160;The&#160;receipt&#160;as&#160;data:&#160;--receipt,&#160;or&#160;-o&#160;receipt.json.&#160;The&#160;document&#160;for</tspan></text>
-    <text x="34" y="484"><tspan fill="#a8a495">&#160;&#160;whoever&#160;pays:&#160;--pdf-out&#160;bill.pdf.</tspan></text>
+    <text x="34" y="400"><tspan fill="#efece4">&#160;&#160;claude-haiku-5-5&#160;&#160;&#160;&#160;&#160;&#160;14&#160;&#160;$0.0456&#160;&#160;</tspan><tspan fill="#a8a495" fill-opacity="0.45">░░░░░░░░░░</tspan><tspan fill="#efece4">&#160;0.4%</tspan></text>
+    <text x="34" y="442"><tspan fill="#a8a495">&#160;&#160;The&#160;receipt&#160;as&#160;data:&#160;--receipt,&#160;or&#160;-o&#160;receipt.json.&#160;The&#160;document&#160;for</tspan></text>
+    <text x="34" y="463"><tspan fill="#a8a495">&#160;&#160;whoever&#160;pays:&#160;--pdf-out&#160;bill.pdf.</tspan></text>
   </g>
 </svg>

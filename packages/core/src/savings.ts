@@ -53,7 +53,14 @@ export function computeSavings(
   pricing: PricingCatalogue = BUNDLED_CATALOGUE,
 ): SavingsReport {
   const model = modelFrom(pricing, usage.model);
-  const { inputPerMTok, outputPerMTok, promoApplied } = effectivePricing(model, on);
+  /*
+   * Each prompt at its own length. On a model priced by prompt length the two
+   * sides can sit in different bands, and an edit that brings a prompt under
+   * the line saves the whole difference in rate, not only the tokens cut.
+   */
+  const ratesBefore = effectivePricing(model, on, { inputTokens: tokensBefore });
+  const ratesAfter = effectivePricing(model, on, { inputTokens: tokensAfter });
+  const promoApplied = ratesBefore.promoApplied || ratesAfter.promoApplied;
   // A provider with no batch API gets no discount even when the caller ticked
   // the box: `batchEligible` describes the work, not what the provider sells.
   const batchDiscount = multipliersFor(model).batch ?? 1;
@@ -61,16 +68,16 @@ export function computeSavings(
   const before = costOfCall(
     tokensBefore,
     usage.avgOutputTokens,
-    inputPerMTok,
-    outputPerMTok,
+    ratesBefore.inputPerMTok,
+    ratesBefore.outputPerMTok,
     usage.batchEligible,
     batchDiscount,
   );
   const after = costOfCall(
     tokensAfter,
     usage.avgOutputTokens,
-    inputPerMTok,
-    outputPerMTok,
+    ratesAfter.inputPerMTok,
+    ratesAfter.outputPerMTok,
     usage.batchEligible,
     batchDiscount,
   );

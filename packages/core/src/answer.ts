@@ -143,7 +143,12 @@ export function answerCost(
     if (model === undefined) {
       unpriced = true;
     } else {
-      const { inputPerMTok, outputPerMTok } = effectivePricing(model, on);
+      // The call's own prompt decides a model priced by prompt length.
+      const { inputPerMTok, outputPerMTok } = effectivePricing(
+        model,
+        on,
+        request.inputTokens === undefined ? {} : { inputTokens: request.inputTokens },
+      );
       const inputTokens = request.inputTokens ?? 0;
       const outputTokens = request.outputTokens ?? 0;
       call = {

@@ -39,6 +39,8 @@ describe('the activity report becomes records the overlay can price', () => {
     assert.deepEqual(records[0], {
       model: 'openai/gpt-4.1',
       ts: '2025-08-24T00:00:00.000Z',
+      // The day's `requests`: a sum of five, not one call.
+      requests: 5,
       usage: { prompt_tokens: 50, completion_tokens: 125 },
     });
   });

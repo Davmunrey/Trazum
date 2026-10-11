@@ -1,4 +1,5 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
+import { billedAt, promptSizeOf } from './billing.js';
 import { createConversationTracker } from './conversation.js';
 import { createOutputShapeTracker } from './output-shape.js';
 import { createInputShapeTracker } from './input-shape.js';
@@ -159,6 +160,22 @@ export interface UsageRecord {
    * must not congratulate a log that never measured.
    */
   truncated: boolean | null;
+  /**
+   * How many requests this record sums, when it sums more than one.
+   *
+   * Absent on a record that is one call, which is every record a per-call log
+   * holds. A number above one, or `null` for "a sum, count not given", is a
+   * row out of a usage report: an Anthropic or OpenAI bucket, an OpenRouter
+   * day. It matters to a model priced by prompt length, because a request is
+   * priced on its own prompt and a row of many requests does not say any one
+   * of them. Such a row is priced at the dearer rate unless its whole prompt
+   * total is at or under the line, and the report says so.
+   *
+   * Read from `requests` when it is a positive integer or `null`; anything
+   * else is not this field, because a log that already uses the name for
+   * something of its own should not lose its records to it.
+   */
+  requests?: number | null;
 }
 
 /** What a set of calls cost, split by where the money went. */
@@ -239,6 +256,21 @@ export interface UsageBreakdown {
   truncatedOutputUsd: number;
   /** Calls that recorded a stop reason at all, truncated or not. */
   stopReasonCalls: number;
+  /**
+   * Records billed at the dearer of two rates because which one applied could
+   * not be decided, and what they cost each way.
+   *
+   * A model priced by prompt length bills each request on its own prompt, and
+   * a row that sums requests does not say any one prompt's length. Those rows
+   * are billed at the dearer rate, so `totalUsd` is a ceiling on them and never
+   * a figure that flatters; `tierCeilingUsd` is what they contribute to it and
+   * `tierFloorUsd` what the same tokens come to at the cheaper rate. The true
+   * bill for them is between the two, and a report that printed only the
+   * ceiling would be right and useless.
+   */
+  tierCeilingCalls: number;
+  tierCeilingUsd: number;
+  tierFloorUsd: number;
 }
 
 /**
@@ -597,6 +629,9 @@ const EMPTY = (): UsageBreakdown => ({
   truncatedCalls: 0,
   truncatedOutputUsd: 0,
   stopReasonCalls: 0,
+  tierCeilingCalls: 0,
+  tierCeilingUsd: 0,
+  tierFloorUsd: 0,
 });
 
 /**
@@ -846,7 +881,20 @@ export function parseUsageLine(line: string): UsageRecord | null {
       if (typeof reason !== 'string') return null;
       return reason === 'max_tokens' || reason === 'length' || reason === 'MAX_TOKENS';
     })(),
+    ...requestsOf(record.requests),
   };
+}
+
+/**
+ * `requests`, when it is this field: a positive integer or `null`.
+ *
+ * One is the same as absent, so it is left absent and a per-call record stays
+ * the shape it always was.
+ */
+function requestsOf(value: unknown): { requests?: number | null } {
+  if (value === null) return { requests: null };
+  if (typeof value === 'number' && Number.isInteger(value) && value > 1) return { requests: value };
+  return {};
 }
 
 /**
@@ -954,11 +1002,30 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
    * August log read in October lost its August promotion. `on` is the date for
    * a record that carries no clock, which is the only thing it can mean here.
    */
-  const at = record.ts !== null ? new Date(record.ts) : on;
-  const { inputPerMTok, outputPerMTok } = effectivePricing(model, at);
+  const at = billedAt(record, on);
+  /**
+   * **Each request on its own prompt.** A model priced by prompt length counts
+   * every input token a request carried, cache reads and writes included, and
+   * a record that is one call says exactly that. A record that sums requests
+   * gives only a bound: no request in it was larger than the whole row.
+   */
+  const priced = effectivePricing(model, at, promptSizeOf(record));
+  const { inputPerMTok, outputPerMTok } = priced;
   // Dated, like the rate above: a repriced cache read is part of the reprice.
   const rates = multipliersFor(model, at);
   const per = (tokens: number, rate: number): number => (tokens / 1_000_000) * rate;
+  const recordUsd = (input: number, output: number): number =>
+    per(record.inputTokens, input) +
+    per(record.cacheReadTokens, input * rates.cacheRead) +
+    per(record.cacheWrite5mTokens, input * rates.cacheWrite5m) +
+    per(record.cacheWrite1hTokens, input * rates.cacheWrite1h) +
+    per(record.outputTokens, output);
+  const floor = priced.tier?.decided === false ? priced.tier.floor : undefined;
+  if (floor !== undefined) {
+    into.tierCeilingCalls += 1;
+    into.tierCeilingUsd += recordUsd(inputPerMTok, outputPerMTok);
+    into.tierFloorUsd += recordUsd(floor.inputPerMTok, floor.outputPerMTok);
+  }
 
   into.inputUsd += per(record.inputTokens, inputPerMTok);
   into.cacheReadUsd += per(record.cacheReadTokens, inputPerMTok * rates.cacheRead);

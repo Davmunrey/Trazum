@@ -1,5 +1,6 @@
 import { PdfDocument, UNLABELLED, formatUsd, pdfFit, pdfWrap, sharesOf } from '@trazum/core';
 import type { PdfColor, PdfFont, UsageBreakdown } from '@trazum/core';
+import { tierCeilingCaveat } from './markdown.js';
 import type { ProfileMarkdownInput } from './markdown.js';
 import { dayOf, spanDays } from './time.js';
 
@@ -235,6 +236,7 @@ export function renderProfilePdf(input: ProfileMarkdownInput, options: ProfilePd
       ),
     );
   }
+  if (report.total.tierCeilingCalls > 0) caveats.push(tierCeilingCaveat(report, t));
   if (stalePricing !== undefined) caveats.push(t.profile.pricesStale(stalePricing.date, stalePricing.days));
   if (caveats.length > 0) {
     box(t.html.caveatsHeading(), caveats, { edge: CAVEAT_EDGE, fill: CAVEAT_FILL, ink: CAVEAT_INK }, true);

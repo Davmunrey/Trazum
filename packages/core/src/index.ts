@@ -435,7 +435,7 @@ export {
   multipliersFor,
   isOffered,
 } from './pricing.js';
-export type { PricingCatalogue } from './pricing.js';
+export type { PricingCatalogue, PromptSize } from './pricing.js';
 export type { CachingMode, Capability, CostMultipliers } from './types.js';
 
 // Local price corrections, so a price change needs no library upgrade.

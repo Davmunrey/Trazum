@@ -15,8 +15,8 @@ merged commit with no entry is a change only `git log` remembers.
 
 - **The README starts with the bill, drawn from the CLI.** The start section
   leads with `npx @trazum/cli bill`, no path, and under it the statement that
-  command prints: a total, a table by project and one by model, and a model
-  named as not in the total. It is `docs/assets/bill.svg`, drawn by
+  command prints: a total, a table by project and one by model, each share
+  drawn as a bar. It is `docs/assets/bill.svg`, drawn by
   `scripts/draw-bill.mjs` from what the built CLI prints on two illustrative
   Claude Code projects in `examples/claude-projects` (usage only, no prompt or
   answer text). `packages/cli/test/bill-image.test.js` fails when the picture
@@ -26,7 +26,43 @@ merged commit with no entry is a change only `git log` remembers.
   section by an earlier edit, is gone; it belongs to the Playground paragraph
   further down, where it still is.
 
+- **Claude Haiku 5.5 and Gemini 3.1 Pro Preview are priced, per request.**
+  Both charge by prompt length: Haiku 5.5 $0.10/$0.50 up to 100,000 tokens and
+  $0.50/$2.50 over it, Gemini 3.1 Pro $2/$12 up to 200,000 and $4/$18 over,
+  where the prompt is every input token the request carried, cache reads and
+  writes included. Both read off their providers' pages on 2026-10-10 and
+  2026-10-11 (pricing, model and caching pages), with the cache and batch
+  ratios that hold in both bands, 1M context each, and cache minimums of 512
+  and 4,096. Haiku 5.5 was the unpriced model in a Claude Code bill; the README
+  picture now prices it, $0.0456 across 14 calls.
+
+- **A usage row says how many requests it sums: `requests`.** Absent on a
+  call, which is every line a per-call log holds; a number above one, or
+  `null` for "a sum, count not given", on a row out of a usage report. The
+  Anthropic, OpenAI and OpenRouter converters write it (`null`,
+  `num_model_requests`, the day's `requests`), and `docs/usage-logs.md` names
+  it. A value that is not a positive integer or `null` is somebody else's field
+  and is read as absent.
+
 ### Changed
+
+- **A model priced by prompt length is billed one request at a time.** A call
+  is billed in its own band. A row that sums requests gives only a bound, its
+  own total: at or under the line it is under it throughout and billed at the
+  lower rate; over it, it is billed at the **dearer** rate and the report prints
+  what the same tokens cost at the cheaper one. `effectivePricing` takes the
+  bound as `inputTokensAtMost` beside `inputTokens`, and an undecided tier now
+  carries its `floor`. The range is printed by `bill`, `profile`, `connect`,
+  the receipt summary, the HTML, PDF and Markdown documents, the MCP report and
+  the web app, in English and Spanish, and a receipt carries it as a
+  `tier-ceiling` gap with the rows, the models, the ceiling and the floor.
+  Every place that prices a prompt it holds passes its length: `optimize`
+  prices the prompt before and after on their own bands, so an edit that brings
+  a prompt under the line is credited with the rate it saves; `spend_guard`, the
+  gateway and the cost answer price the call at its own prompt; a what-if onto
+  one of these models bounds each slice by its largest call and reports the
+  cheaper figure as `tierCeiling` when a slice holds a call over the line.
+
 
 - **The span line says what it means.** Under a bill or a profile, "the
   monthly arithmetic is yours to do, and now it is valid" read as a riddle; it
@@ -38,6 +74,28 @@ merged commit with no entry is a change only `git log` remembers.
 - **The packaged Action pin in `README.md` and `docs/running.md` advanced to
   2.4.3's release commit**, the one `v2.4.3` points at, in the pull request
   after the release as `docs/releasing.md` says it must.
+
+- **`connect` billed every bucket at the date the report ran.** 2.4.3 taught
+  `profile` to bill each call at its own moment and this path kept the old
+  rule, so a pull across a published price change came out entirely at
+  whichever price applied the day it ran. Each bucket is now billed at its own
+  start, with that moment's cache ratios.
+
+- **The findings under a bill priced its calls at the report's date.**
+  Conversation cost, truncation retries, repeated calls, the cache TTL verdict,
+  the session ledger and the input and output shapes each priced a call at the
+  date the report ran, while the total above them billed it at its own moment:
+  a DeepSeek conversation held at peak was costed off-peak in the row beneath
+  a total that had it at peak. They now ask the total's two questions, when a
+  call was billed and on what prompt, through one module (`billing.ts`).
+
+- **A budget priced every model with one set of cache ratios.** A store
+  record's cache reads were priced at 10% of input and its writes at 1.25x and
+  2x, Anthropic's ratios of 2025, whatever the model: an Opus 5.5 read (5%), a
+  Fable 5.1 read (2.5%) and every provider whose writes cost what input costs
+  were priced at the wrong multiple, so a month's budget disagreed with the
+  `connect` report the same records came from. Each model's own ratios now,
+  at the record's own date.
 
 ## 2.4.3 — Each call at its own price
 

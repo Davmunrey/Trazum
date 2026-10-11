@@ -490,6 +490,15 @@ const PROFILE: ToolDefinition = {
               : 'The overlay in effect does not name them either.'),
         );
       }
+      if (report.total.tierCeilingCalls > 0) {
+        const models = report.byModel.filter((e) => e.breakdown.tierCeilingCalls > 0).map((e) => e.model);
+        lines.push(
+          `${count(report.total.tierCeilingCalls, 'row')} on ${models.join(', ')} sum requests without`
+            + ' giving any one prompt\'s length, on a model priced by prompt length, so they are billed at'
+            + ` the dearer rate: ${formatUsd(report.total.tierCeilingUsd)} of the total. At the cheaper rate`
+            + ` the same tokens come to ${formatUsd(report.total.tierFloorUsd)}; the true figure is between.`,
+        );
+      }
       if (report.skippedLines.length > 0) {
         const shown = report.skippedLines.slice(0, 10).join(', ');
         const more = report.skippedLines.length > 10 ? ', …' : '';
@@ -1124,6 +1133,13 @@ const PROFILE: ToolDefinition = {
           `${formatUsd(whatIf.currentUsd)} of movable spend would have been `
             + `${formatUsd(whatIf.targetUsd)} — ${formatUsd(Math.abs(whatIf.deltaUsd))} ${direction}.`,
         );
+        if (whatIf.tierCeiling !== null) {
+          lines.push(
+            `${whatIf.target.displayName} is priced by prompt length and ${count(whatIf.tierCeiling.slices, 'slice')}`
+              + ' of this log hold a call over its line, so they are priced at the dearer band: that figure is a'
+              + ` ceiling. With every call under the line it would be ${formatUsd(whatIf.tierCeiling.targetFloorUsd)}.`,
+          );
+        }
         // The decision's other half: the same move batched, discounted on
         // the target's rates and never summed with the move. Whether the
         // calls can wait is not in the log, and the sentence says so.

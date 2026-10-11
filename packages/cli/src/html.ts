@@ -1,6 +1,7 @@
 import { UNLABELLED, formatUsd, sharesOf } from '@trazum/core';
 import type { PositionDocument, RollupDocument, UsageBreakdown } from '@trazum/core';
 import type { CliMessages } from './i18n/index.js';
+import { tierCeilingCaveat } from './markdown.js';
 import type { ProfileMarkdownInput } from './markdown.js';
 import { dayOf, spanDays } from './time.js';
 
@@ -146,6 +147,9 @@ export function renderProfileHtml(input: ProfileMarkdownInput): string {
         ),
       ),
     );
+  }
+  if (report.total.tierCeilingCalls > 0) {
+    caveats.push(esc(tierCeilingCaveat(report, t)));
   }
   if (stalePricing !== undefined) {
     caveats.push(esc(t.profile.pricesStale(stalePricing.date, stalePricing.days)));

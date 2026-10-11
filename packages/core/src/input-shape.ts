@@ -1,4 +1,5 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
+import { billedAt, promptSizeOf } from './billing.js';
 import { UNLABELLED } from './usage.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { UsageRecord } from './usage.js';
@@ -190,8 +191,9 @@ export function createInputShapeTracker(options: InputShapeOptions): InputShapeT
       slices.set(key, slice);
     }
 
-    const { inputPerMTok } = effectivePricing(model, on);
-    const rates = multipliersFor(model);
+    const at = billedAt(record, on);
+    const { inputPerMTok } = effectivePricing(model, at, promptSizeOf(record));
+    const rates = multipliersFor(model, at);
     const per = (count: number, rate: number): number => (count / 1_000_000) * rate;
 
     slice.calls += 1;

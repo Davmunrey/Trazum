@@ -91,18 +91,20 @@ function cheaperThan(
   inputTokens: number,
   on: Date,
 ): ModelPricing[] {
-  const here = effectivePricing(model, on);
+  // At this call's prompt, so a model priced by prompt length is ranked at its real band.
+  const size = { inputTokens };
+  const here = effectivePricing(model, on, size);
   return [...catalogue.byId.values()]
     .filter((candidate) => {
       if (candidate.id === model.id) return false;
       if (candidate.provider !== model.provider) return false;
-      const there = effectivePricing(candidate, on);
+      const there = effectivePricing(candidate, on, size);
       if (there.inputPerMTok >= here.inputPerMTok) return false;
       // A model the prompt does not fit in is not a cheaper way to make this
       // call; it is a way not to make it.
       return candidate.contextWindow >= inputTokens;
     })
-    .sort((a, b) => effectivePricing(b, on).inputPerMTok - effectivePricing(a, on).inputPerMTok);
+    .sort((a, b) => effectivePricing(b, on, size).inputPerMTok - effectivePricing(a, on, size).inputPerMTok);
 }
 
 export interface GuardRequest extends AnswerRequest {
@@ -133,9 +135,9 @@ export function guardSpend(
   if (model !== undefined && cost.call !== null) {
     const inputTokens = cost.call.inputTokens;
     const outputTokens = cost.call.outputTokens;
-    const here = effectivePricing(model, on);
+    const here = effectivePricing(model, on, { inputTokens });
     const priceOf = (candidate: ModelPricing): number => {
-      const rates = effectivePricing(candidate, on);
+      const rates = effectivePricing(candidate, on, { inputTokens });
       return (inputTokens / 1_000_000) * rates.inputPerMTok + (outputTokens / 1_000_000) * rates.outputPerMTok;
     };
     const mine = (inputTokens / 1_000_000) * here.inputPerMTok + (outputTokens / 1_000_000) * here.outputPerMTok;

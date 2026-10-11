@@ -88,6 +88,8 @@ describe('the usage report becomes records in the shape the parser reads OpenAI'
     assert.deepEqual(records[0], {
       model: 'gpt-4o-mini-2024-07-18',
       ts: '2024-11-01T00:00:00.000Z',
+      // `num_model_requests`: a bucket of five requests, not one call.
+      requests: 5,
       usage: {
         prompt_tokens: 1000,
         completion_tokens: 500,

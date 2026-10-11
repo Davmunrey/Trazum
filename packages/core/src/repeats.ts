@@ -1,4 +1,5 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
+import { billedAt, promptSizeOf } from './billing.js';
 import { UNLABELLED } from './usage.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { UsageRecord } from './usage.js';
@@ -119,8 +120,9 @@ export function createRepeatsTracker(options: RepeatsOptions): RepeatsTracker {
     if (gap < 0 || gap >= withinMs) return;
     if (before.tokens !== tokens) return;
 
-    const { inputPerMTok, outputPerMTok } = effectivePricing(model, on);
-    const rates = multipliersFor(model);
+    const at = billedAt(record, on);
+    const { inputPerMTok, outputPerMTok } = effectivePricing(model, at, promptSizeOf(record));
+    const rates = multipliersFor(model, at);
     const per = (count: number, rate: number): number => (count / 1_000_000) * rate;
     slice.repeats += 1;
     slice.usd +=

@@ -210,7 +210,18 @@ export type ReceiptGap =
    * and a document that says `counting: 'counted'` while quietly resting on an
    * assumption is claiming a precision it does not have.
    */
-  | { kind: 'assumed-write-ttl'; calls: number };
+  | { kind: 'assumed-write-ttl'; calls: number }
+  /**
+   * Rows billed at the dearer of two rates because which one applied could
+   * not be decided: a model priced by prompt length, and a row that sums
+   * requests without saying any one prompt's length.
+   *
+   * Reported because it changes what kind of figure this is, in the other
+   * direction from `assumed-write-ttl`: the total is a **ceiling** on these
+   * rows. `ceilingUsd` is their share of it, `floorUsd` the same tokens at the
+   * cheaper rate; the true figure for them is between the two.
+   */
+  | { kind: 'tier-ceiling'; calls: number; models: string[]; ceilingUsd: number; floorUsd: number };
 
 export interface ReceiptDocument {
   /** The one thing a consumer must branch on. Set here, by the builder. */
@@ -388,6 +399,17 @@ export function receiptFrom(
     0,
   );
   if (assumed > 0) gaps.push({ kind: 'assumed-write-ttl', calls: assumed });
+
+  const ceilinged = report.byModel.filter((row) => row.breakdown.tierCeilingCalls > 0);
+  if (ceilinged.length > 0) {
+    gaps.push({
+      kind: 'tier-ceiling',
+      calls: report.total.tierCeilingCalls,
+      models: ceilinged.map((row) => row.model),
+      ceilingUsd: report.total.tierCeilingUsd,
+      floorUsd: report.total.tierFloorUsd,
+    });
+  }
 
   return {
     schemaVersion: 1,

@@ -216,7 +216,8 @@ function priceCall(
   on: Date,
 ): number | null {
   if (model === undefined || call.inputTokens === null) return null;
-  const rates = effectivePricing(model, on);
+  // The call's own prompt decides a model priced by prompt length.
+  const rates = effectivePricing(model, on, { inputTokens: call.inputTokens });
   const output = call.maxOutputTokens ?? 0;
   return (call.inputTokens / 1_000_000) * rates.inputPerMTok + (output / 1_000_000) * rates.outputPerMTok;
 }
@@ -236,11 +237,12 @@ function alternativesFor(
   const mine = priceCall(model, call, on);
   if (mine === null) return [];
   const out: GatewayAlternative[] = [];
-  const here = effectivePricing(model, on);
+  const size = call.inputTokens === null ? {} : { inputTokens: call.inputTokens };
+  const here = effectivePricing(model, on, size);
 
   for (const candidate of catalogue.byId.values()) {
     if (candidate.id === model.id || candidate.provider !== model.provider) continue;
-    const there = effectivePricing(candidate, on);
+    const there = effectivePricing(candidate, on, size);
     if (there.inputPerMTok >= here.inputPerMTok) continue;
     if (call.inputTokens !== null && candidate.contextWindow < call.inputTokens) continue;
     const routed = priceCall(candidate, call, on);

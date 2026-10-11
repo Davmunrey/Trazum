@@ -1,5 +1,5 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
-import type { PricingCatalogue } from './pricing.js';
+import type { PricingCatalogue, PromptSize } from './pricing.js';
 import type { ModelPricing } from './types.js';
 import type { ReceiptDocument } from './receipt.js';
 import type { UsageBreakdown, UsageProfileReport } from './usage.js';
@@ -158,6 +158,19 @@ export interface RepriceReport {
    * is the reader's.
    */
   batchOnTarget: { targetUsd: number } | null;
+  /**
+   * Slices priced at the target's dearer band because which band applied
+   * could not be decided, and what `targetUsd` would be with them at the
+   * cheaper one. `null` when every slice was decided.
+   *
+   * A target priced by prompt length bills each request on its own prompt; a
+   * slice is a sum, and its largest call is all it says about any one prompt.
+   * A slice whose largest call is under the line is under it throughout, and
+   * decided. One whose largest call is over is not, and is priced at the
+   * dearer band, so the comparison is a ceiling and never a saving it cannot
+   * stand behind; this is the other end.
+   */
+  tierCeiling: { slices: number; targetFloorUsd: number } | null;
   /** Always true. A field, not a comment, so a rendering can print it. */
   sameTokensAssumed: true;
 }
@@ -177,17 +190,35 @@ export function priceTokensOn(
   >,
   model: ModelPricing,
   on: Date = new Date(),
+  size: PromptSize = {},
 ): number {
-  const { inputPerMTok, outputPerMTok } = effectivePricing(model, on);
-  const rates = multipliersFor(model);
+  return priceTokensRanged(breakdown, model, on, size).usd;
+}
+
+/** The same price, and the cheaper one when a size band could not be decided. */
+function priceTokensRanged(
+  breakdown: Pick<
+    UsageBreakdown,
+    'inputTokens' | 'cacheReadTokens' | 'cacheWrite5mTokens' | 'cacheWrite1hTokens' | 'outputTokens'
+  >,
+  model: ModelPricing,
+  on: Date,
+  size: PromptSize,
+): { usd: number; floorUsd: number | null } {
+  const priced = effectivePricing(model, on, size);
+  const rates = multipliersFor(model, on);
   const per = (tokens: number, rate: number): number => (tokens / 1_000_000) * rate;
-  return (
+  const at = (inputPerMTok: number, outputPerMTok: number): number =>
     per(breakdown.inputTokens, inputPerMTok) +
     per(breakdown.cacheReadTokens, inputPerMTok * rates.cacheRead) +
     per(breakdown.cacheWrite5mTokens, inputPerMTok * rates.cacheWrite5m) +
     per(breakdown.cacheWrite1hTokens, inputPerMTok * rates.cacheWrite1h) +
-    per(breakdown.outputTokens, outputPerMTok)
-  );
+    per(breakdown.outputTokens, outputPerMTok);
+  const floor = priced.tier?.decided === false ? priced.tier.floor : undefined;
+  return {
+    usd: at(priced.inputPerMTok, priced.outputPerMTok),
+    floorUsd: floor === undefined ? null : at(floor.inputPerMTok, floor.outputPerMTok),
+  };
 }
 
 /**
@@ -249,6 +280,8 @@ function repriceSlices(
   const overContext: OverContextSlice[] = [];
   const alreadyOnTarget = { calls: 0, usd: 0 };
   let assumedWriteTtlCalls = 0;
+  let ceilingSlices = 0;
+  let floorSaving = 0;
 
   for (const breakdown of input.slices) {
     if (breakdown.model === target.id) {
@@ -266,7 +299,14 @@ function repriceSlices(
       });
       continue;
     }
-    const targetUsd = priceTokensOn(breakdown, target, on);
+    /* The slice's largest call bounds every prompt in it. */
+    const bound: PromptSize = { inputTokensAtMost: breakdown.maxCallInputTokens };
+    const ranged = priceTokensRanged(breakdown, target, on, bound);
+    const targetUsd = ranged.usd;
+    if (ranged.floorUsd !== null) {
+      ceilingSlices += 1;
+      floorSaving += ranged.usd - ranged.floorUsd;
+    }
     assumedWriteTtlCalls += breakdown.assumedWriteTtlCalls;
     /**
      * Cache traffic the target could not grant. The comparison is against the
@@ -297,6 +337,7 @@ function repriceSlices(
               },
               target,
               on,
+              bound,
             ),
           }
         : null;
@@ -323,20 +364,19 @@ function repriceSlices(
    * aggregates rather than by discounting `targetUsd`, because the discount
    * covers input and output while cache traffic rides through unchanged.
    */
-  const batchRate = multipliersFor(target).batch;
+  const batchRate = multipliersFor(target, on).batch;
   let batchOnTarget: { targetUsd: number } | null = null;
   if (batchRate !== null && batchRate < 1 && slices.length > 0) {
-    const { inputPerMTok, outputPerMTok } = effectivePricing(target, on);
     const movable = input.slices.filter(
       (slice) => slice.model !== target.id && slice.maxCallInputTokens <= target.contextWindow,
     );
-    const inOutUsd = movable.reduce(
-      (sum, slice) =>
-        sum +
-        (slice.inputTokens / 1_000_000) * inputPerMTok +
-        (slice.outputTokens / 1_000_000) * outputPerMTok,
-      0,
-    );
+    // Each slice at the band its own pricing above used, so the two cannot disagree.
+    const inOutUsd = movable.reduce((sum, slice) => {
+      const { inputPerMTok, outputPerMTok } = effectivePricing(target, on, {
+        inputTokensAtMost: slice.maxCallInputTokens,
+      });
+      return sum + (slice.inputTokens / 1_000_000) * inputPerMTok + (slice.outputTokens / 1_000_000) * outputPerMTok;
+    }, 0);
     batchOnTarget = { targetUsd: targetUsd - inOutUsd * (1 - batchRate) };
   }
 
@@ -356,6 +396,7 @@ function repriceSlices(
     unpricedModels: [...input.unpricedModels],
     unpricedCalls: input.unpricedCalls,
     batchOnTarget,
+    tierCeiling: ceilingSlices === 0 ? null : { slices: ceilingSlices, targetFloorUsd: targetUsd - floorSaving },
     sameTokensAssumed: true,
   };
 }

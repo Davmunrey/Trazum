@@ -87,6 +87,14 @@
     {
       "id": "deepseek-flash",
       "because": "added to the catalogue on 2026-10-10 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gemini-3.1-pro-preview",
+      "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
     }
   ]
 }

@@ -607,6 +607,10 @@ export const es: WebMessages = {
       + 'propios ejemplos, con trazum route.',
     whatIfDearer:
       'Esa dirección cuesta más. La aritmética está aquí para que el número no sea una suposición.',
+    whatIfTierCeiling: (slices, target, floor) =>
+      `${target} se cobra por longitud de prompt, y ${slices.toLocaleString('es-ES')} `
+      + `${slices === 1 ? 'tramo tiene' : 'tramos tienen'} una llamada por encima de su umbral, así que la `
+      + `cifra de arriba es un techo. Con todas las llamadas por debajo del umbral sería ${floor}.`,
     whatIfBatchOnTarget: (batched, moved) =>
       `Si esas llamadas además pueden esperar, la Batch API del destino deja la factura `
       + `trasladada de ${moved} en ${batched}: el descuento aplica a las tarifas del destino, `
@@ -850,6 +854,11 @@ export const es: WebMessages = {
     byModelHeading: 'Por modelo',
     unlabelled: '(sin etiqueta)',
     moreRows: (count) => `…y ${count} más.`,
+    tierCeiling: (rows, models, ceiling, floor) =>
+      `${rows.toLocaleString('es-ES')} ${rows === 1 ? 'fila' : 'filas'} de ${models} ${rows === 1 ? 'suma' : 'suman'} `
+      + `peticiones sin dar la longitud de ningún prompt, y ese modelo se cobra por longitud de prompt, así que `
+      + `${rows === 1 ? 'se factura' : 'se facturan'} a la tarifa más cara: ${ceiling} de este total. A la `
+      + `tarifa más barata los mismos tokens suman ${floor}; la cifra real está entre las dos.`,
     unpriced: (models, calls) =>
       `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada no está' : 'llamadas no están'} `
       + `en estos totales. El catálogo de precios no conoce: ${models}. La CLI puede `

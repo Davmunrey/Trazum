@@ -530,6 +530,7 @@ export interface WebMessages {
      */
     /** The moved bill batched on the target's rates — never summed with the move. */
     whatIfBatchOnTarget(batched: string, moved: string): string;
+    whatIfTierCeiling(slices: number, target: string, floor: string): string;
     whatIfCacheBeyond(largest: string, min: string, noCache: string): string;
     whatIfSlice(label: string, model: string, current: string, target: string): string;
     whatIfOverContext(label: string, tokens: string, window: string, usd: string): string;
@@ -696,6 +697,8 @@ export interface WebMessages {
     unlabelled: string;
     moreRows(count: number): string;
     unpriced(models: string, calls: number): string;
+    /** Summed rows on a model priced by prompt length: billed at the dearer rate, floor beside it. */
+    tierCeiling(rows: number, models: string, ceiling: string, floor: string): string;
     skipped(count: number, lines: string): string;
     /**
      * This bill against a previous log, in the browser. The sign convention —
