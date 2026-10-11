@@ -203,6 +203,18 @@ export interface PricingTier {
   outputPerMTok: number;
 }
 
+/** One published price this model carried until an instant. See `ModelPricing.history`. */
+export interface PricePeriod {
+  /** ISO 8601 instant, exclusive: a call at exactly this instant is priced by what came after. */
+  until: string;
+  inputPerMTok: number;
+  outputPerMTok: number;
+  /** The conditional rates in force during the period; none means none applied. */
+  tiers?: PricingTier[];
+  /** The cache and batch ratios during the period; absent means the row's own. */
+  multipliers?: CostMultipliers;
+}
+
 export interface ModelPricing {
   id: string;
   displayName: string;
@@ -298,6 +310,22 @@ export interface ModelPricing {
    * and keeps this field optional in effect as well as in the type.
    */
   tiers?: PricingTier[];
+  /**
+   * What this id cost before its current price, earliest period first.
+   *
+   * A usage log is history, and a provider that cuts a price at 04:00 UTC on
+   * a Thursday has billed the same id two ways in one month. One price for
+   * all time priced the older calls at the newer rate, or the newer at the
+   * older, and nothing on screen said which. A call at `on` is priced by the
+   * first period whose `until` is after it; a call at or after the last
+   * `until` takes the fields above. Each period carries its own tiers and
+   * cache ratio, because a provider that reprices usually reprices both.
+   *
+   * Only periods a provider published, with the instant it published. A
+   * period before the first one this table can source is not guessed at: the
+   * earliest period stands for it, and the row's note says so.
+   */
+  history?: PricePeriod[];
   /**
    * Other ids that bill at exactly this rate.
    *

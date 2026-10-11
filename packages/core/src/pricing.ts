@@ -75,8 +75,15 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * not read is a number it would be inventing.
    */
   moonshot: '2026-09-12',
-  /* api-docs.deepseek.com/quick_start/pricing, read 2026-08-28. */
-  deepseek: '2026-08-28',
+  /*
+   * api-docs.deepseek.com/quick_start/pricing read 2026-10-10, and the
+   * 2026-09-10 announcement (api-docs.deepseek.com/news/news260910) read
+   * 2026-10-11 for the instant: "New pricing takes effect at 04:00 UTC on
+   * Sept 10, 2026." V4 Flash was retired that day and its id now bills at
+   * the new deepseek-flash price, so the old price lives in its `history`.
+   * V4 Pro matched the page unchanged.
+   */
+  deepseek: '2026-10-10',
   /*
    * docs.x.ai/docs/models, read 2026-09-12. The page prices grok-4.6, 4.5,
    * 4.3 and the 4.20 family, each at two rates split at 200k prompt tokens;
@@ -143,12 +150,17 @@ const multipliersMemo = new WeakMap<
   { cacheWrite5m: number; cacheWrite1h: number; cacheRead: number; batch: number | null }
 >();
 
-export function multipliersFor(model: ModelPricing): {
+export function multipliersFor(model: ModelPricing, on?: Date): {
   cacheWrite5m: number;
   cacheWrite1h: number;
   cacheRead: number;
   batch: number | null;
 } {
+  // A dated question about a repriced model asks the period in force then.
+  if (on !== undefined && model.history !== undefined) {
+    const period = pricedAt(model, on);
+    if (period !== model) return multipliersFor(period);
+  }
   const cached = multipliersMemo.get(model);
   if (cached !== undefined) return cached;
   const m = model.multipliers ?? {};
@@ -589,34 +601,97 @@ export const MODELS: ModelPricing[] = [
   },
   {
     /*
-     * DeepSeek V4 Flash, from api-docs.deepseek.com/quick_start/pricing, read
-     * 2026-08-28. It replaced `deepseek-v3`, which the API now refuses.
+     * DeepSeek V4 Flash, retired on 2026-09-10. The pricing page (read
+     * 2026-10-10) says the id "is still accepted ... served by the
+     * DeepSeek-V4.1-Flash model and billed at the Flash price", so from
+     * 04:00 UTC that day it carries deepseek-flash's rates. Before that
+     * instant it billed at its own, read off the same page on 2026-08-28:
+     * $0.22/$0.66 off-peak, double at peak, $0.007 a cache hit.
      *
      * The base rate is off-peak because off-peak is the common case: peak is
      * 01:00-04:00 and 06:00-10:00 UTC on weekdays, which is 35 hours of 168.
-     * The peak tier is exactly double, published as such.
+     * The peak tier is exactly double, published as such. Clock pricing began
+     * at 16:00 UTC on 2026-08-16; the flat price before it is on no page this
+     * table can read, so calls before then are priced as the first period.
+     *
+     * Not recommendable: a legacy id DeepSeek routes "temporarily". Without
+     * this, a tie on price would offer it ahead of deepseek-flash.
      */
     id: 'deepseek-v4-flash',
     provider: 'deepseek',
     displayName: 'DeepSeek V4 Flash',
-    inputPerMTok: 0.22,
-    outputPerMTok: 0.66,
+    recommendable: false,
+    inputPerMTok: 0.15,
+    outputPerMTok: 0.6,
     tiers: [
       {
         id: 'peak',
         when: { kind: 'utc-hours', hours: [1, 2, 3, 6, 7, 8, 9], weekdaysOnly: true },
-        inputPerMTok: 0.44,
-        outputPerMTok: 1.32,
+        inputPerMTok: 0.3,
+        outputPerMTok: 1.2,
+      },
+    ],
+    history: [
+      {
+        until: '2026-09-10T04:00:00Z',
+        inputPerMTok: 0.22,
+        outputPerMTok: 0.66,
+        tiers: [
+          {
+            id: 'peak',
+            when: { kind: 'utc-hours', hours: [1, 2, 3, 6, 7, 8, 9], weekdaysOnly: true },
+            inputPerMTok: 0.44,
+            outputPerMTok: 1.32,
+          },
+        ],
+        /* $0.007 cache hit against $0.22 input off-peak. */
+        multipliers: { cacheRead: 0.0318, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
       },
     ],
     contextWindow: 1_000_000,
     cacheMinTokens: 1024,
     caching: 'automatic',
-    /* $0.007 cache hit against $0.22 input off-peak. */
-    multipliers: { cacheRead: 0.0318, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    /* $0.003 cache hit against $0.15 input off-peak, $0.006 against $0.30 at peak. */
+    multipliers: { cacheRead: 0.02, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'mid',
     tier: 'sonnet',
-    notes: 'Maximum output 384K tokens.',
+    notes:
+      'Retired 2026-09-10: the id is still accepted, served by V4.1 Flash and billed at the deepseek-flash price.'
+      + ' Maximum output 384K tokens. Peak excludes Chinese public holidays, which this table cannot express.',
+  },
+  {
+    /*
+     * DeepSeek V4.1 Flash, from api-docs.deepseek.com/quick_start/pricing,
+     * read 2026-10-10. Released 2026-09-10; its price took effect at 04:00
+     * UTC that day. Off-peak is the base and peak is exactly double, as
+     * published; the cache hit is 2% of input at both ($0.003 and $0.006).
+     *
+     * The cache minimum is carried from deepseek-v4-flash: DeepSeek's pages
+     * publish none for this generation, and 1,024 is the figure the earlier
+     * row was reviewed with.
+     */
+    id: 'deepseek-flash',
+    provider: 'deepseek',
+    displayName: 'DeepSeek V4.1 Flash',
+    inputPerMTok: 0.15,
+    outputPerMTok: 0.6,
+    tiers: [
+      {
+        id: 'peak',
+        when: { kind: 'utc-hours', hours: [1, 2, 3, 6, 7, 8, 9], weekdaysOnly: true },
+        inputPerMTok: 0.3,
+        outputPerMTok: 1.2,
+      },
+    ],
+    contextWindow: 1_000_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.02, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes:
+      'Maximum output 384K tokens. Peak excludes Chinese public holidays, which this table cannot express:'
+      + ' on a weekday holiday it charges peak where DeepSeek charges off-peak.',
   },
   {
     /* Same page, same clock. Pro is three times Flash at both ends. */
@@ -921,6 +996,40 @@ const pricingMemo = new WeakMap<
   { untilMs: number | null; promo: Rates | null; base: Rates }
 >();
 
+/**
+ * The row as it stood at `on`: itself when the current price applies, or a
+ * frozen copy carrying the period's rates, tiers and ratios. Built once per
+ * period, so a log of a million calls does not build a million rows.
+ */
+const periodMemo = new WeakMap<ModelPricing, { untilMs: number; row: ModelPricing }[]>();
+
+function pricedAt(model: ModelPricing, on: Date): ModelPricing {
+  const history = model.history;
+  if (history === undefined || history.length === 0) return model;
+  let periods = periodMemo.get(model);
+  if (periods === undefined) {
+    periods = history.map((period) => {
+      const { history: _history, promo: _promo, tiers: _tiers, multipliers: _multipliers, ...rest } = model;
+      const row: ModelPricing = Object.freeze({
+        ...rest,
+        inputPerMTok: period.inputPerMTok,
+        outputPerMTok: period.outputPerMTok,
+        ...(period.tiers !== undefined ? { tiers: period.tiers } : {}),
+        ...(period.multipliers !== undefined
+          ? { multipliers: period.multipliers }
+          : model.multipliers !== undefined
+            ? { multipliers: model.multipliers }
+            : {}),
+      });
+      return { untilMs: new Date(period.until).getTime(), row };
+    });
+    periodMemo.set(model, periods);
+  }
+  const at = on.getTime();
+  for (const period of periods) if (at < period.untilMs) return period.row;
+  return model;
+}
+
 /** The two unconditional answers for one model, parsed once. */
 function cache(model: ModelPricing): {
   untilMs: number | null;
@@ -990,6 +1099,11 @@ export function effectivePricing(
   on: Date = new Date(),
   context: { inputTokens?: number } = {},
 ): Rates {
+  /* A call before a published price change is priced as it was billed then. */
+  if (model.history !== undefined) {
+    const period = pricedAt(model, on);
+    if (period !== model) return effectivePricing(period, on, context);
+  }
   const memo = pricingMemo.get(model) ?? cache(model);
 
   /**
