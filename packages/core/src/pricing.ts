@@ -48,8 +48,17 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * and priority. The standard one is the catalogue's, identified by the other
    * three being its multiples (0.5x, 0.5x, 2x) rather than by trusting the
    * order they appear in.
+   *
+   * Re-read 2026-10-11 with the prompt-caching guide, the GPT-5 model page and
+   * the deprecations page. GPT-5, mini and nano matched to the cent. Their
+   * dated snapshots (`gpt-5-2025-08-07` and the mini and nano ones), which is
+   * the id a usage log usually carries, shut down on 2026-12-11 and are now
+   * declared as aliases. The current generation (gpt-6-astra, gpt-6.1-sol,
+   * gpt-6-sol, gpt-6-luna and gpt-5.6 sol, terra and luna) is on the same
+   * page and not added: every one of them doubles its rates for prompts over
+   * 272K tokens, a per-request condition no log Trazum prices passes yet.
    */
-  openai: '2026-08-31',
+  openai: '2026-10-11',
   /*
    * ai.google.dev/gemini-api/docs/pricing, docs/caching and the model pages,
    * read 2026-10-10. Every price matched; what changed is how caching starts
@@ -192,6 +201,12 @@ export function multipliersFor(model: ModelPricing, on?: Date): {
  * never multiplied by anything; it is there so the default (Anthropic's 1.25)
  * cannot be.
  */
+/** What the GPT-5 family's three rows share, from OpenAI's guide and deprecations page, read 2026-10-11. */
+const OPENAI_GPT5_NOTE =
+  'Caching is automatic, with no cache_control to set. OpenAI says the minimum for models before GPT-5.6 varies by'
+  + ' request settings, so 1,024 here is the nearest published floor. The 2025-08-07 snapshot shuts down on'
+  + ' 2026-12-11; OpenAI names the gpt-5.6 models as replacements.';
+
 const MISTRAL_CACHE_NOTE =
   'Cached input costs 10% of the input price (mistral.ai/cloud/inference, read 2026-10-11). How caching starts and'
   + ' its minimum are not published anywhere Trazum can read, so no caching advice is given for it.';
@@ -425,13 +440,17 @@ export const MODELS: ModelPricing[] = [
   // ------------------------------------------------------------------------
   // OpenAI
   //
-  // Caching is AUTOMATIC above 1,024 tokens — there is no cache_control to set,
-  // and a cached read costs about half the input price rather than a tenth. The
-  // reordering advice is identical (a prefix is a prefix), the marker advice is
-  // not, which is why `caching` and `multipliers` exist at all.
+  // Caching is AUTOMATIC, with no cache_control to set, and a cached read costs
+  // a tenth of input on these three ($0.125 against $1.25). The reordering
+  // advice is identical (a prefix is a prefix), the marker advice is not, which
+  // is why `caching` and `multipliers` exist at all. The 1,024 minimum is the
+  // one OpenAI publishes for GPT-5.6 and later; for these older models its
+  // guide says the minimum "varies by request settings", so it is the nearest
+  // published floor, not a promise, and each row's note says so.
   // ------------------------------------------------------------------------
   {
     id: 'gpt-5',
+    aliases: ['gpt-5-2025-08-07'],
     provider: 'openai',
     displayName: 'GPT-5',
     inputPerMTok: 1.25,
@@ -442,10 +461,11 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'frontier',
     tier: 'frontier',
-    notes: 'Caching is automatic above 1,024 tokens; there is no cache_control to set.',
+    notes: OPENAI_GPT5_NOTE,
   },
   {
     id: 'gpt-5-mini',
+    aliases: ['gpt-5-mini-2025-08-07'],
     provider: 'openai',
     displayName: 'GPT-5 mini',
     inputPerMTok: 0.25,
@@ -456,9 +476,11 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'mid',
     tier: 'sonnet',
+    notes: OPENAI_GPT5_NOTE,
   },
   {
     id: 'gpt-5-nano',
+    aliases: ['gpt-5-nano-2025-08-07'],
     provider: 'openai',
     displayName: 'GPT-5 nano',
     inputPerMTok: 0.05,
@@ -469,6 +491,7 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'small',
     tier: 'haiku',
+    notes: OPENAI_GPT5_NOTE,
   },
 
   // ------------------------------------------------------------------------
