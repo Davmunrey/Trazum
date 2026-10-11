@@ -107,7 +107,7 @@ describe('profile --pdf-out', () => {
     const out = join(dir, 'informe.pdf');
     assert.equal(run(['profile', path, '--pdf-out', out, '--locale', 'es']).status, 0);
     const text = shown(await readFile(out, 'latin1'));
-    assert.ok(text.includes('Adónde fue el dinero'.replace('ó', '\xf3')), 'the Spanish title is missing');
+    assert.ok(text.includes('Adónde fue el dinero'), 'the Spanish title is missing');
     assert.ok(text.some((line) => /p\xe1gina 1 de 1/.test(line)));
   });
 
