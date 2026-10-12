@@ -5287,12 +5287,13 @@ async function commandGateway(
   const position = budget.positions[0] ?? null;
 
   /**
-   * Read once at start, like `serve`'s.
+   * Read the baseline once at start. The gateway adds its own completed
+   * usage and reserves in-flight estimates in memory via `liveBudget`.
    *
    * A file read in the request path would put Trazum's own latency between a
    * caller and their provider on every call, which is a cost this product
-   * would otherwise be reporting on somebody else. The staleness is real, so a
-   * refusal carries `asOfMs` and says what it rested on.
+   * would otherwise be reporting on somebody else. External spend is still
+   * stale, so a refusal carries the baseline's `asOfMs`.
    */
   const standing: GatewayStanding | null =
     position === null || position.coverage === 'none'
@@ -5317,6 +5318,7 @@ async function commandGateway(
    */
   let unmeasured = 0;
   const server = buildGateway({
+    liveBudget: true,
     provider,
     catalogue: pricing,
     policy: {

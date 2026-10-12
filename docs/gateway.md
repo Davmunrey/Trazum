@@ -147,8 +147,9 @@ it would arrive as garbage inside somebody's response. So it does not arrive at
 all: a stream that started, finishes.
 
 That is a real limit and it is stated rather than discovered. **A call that
-begins inside the budget can end outside it**, by exactly the cost of one
-answer. The alternative — cutting a reply off partway to save the difference —
+begins inside the budget can end outside it**. Admission reserves an estimated
+cost, not a provider billing guarantee; concurrent answers can each exceed
+their estimate. The alternative — cutting a reply off partway to save the difference —
 corrupts the thing the caller is reading to protect a figure that is already
 spent. `trazum gateway` will not do that.
 
@@ -158,6 +159,32 @@ flight* and proves the answer still arrives whole. Inverting the order fails the
 first by name; consulting the budget per chunk fails the second.
 
 ## Failure is a decision you make in advance
+
+### Live spend and concurrent calls
+
+The CLI starts with the imported spending snapshot, then adds priced usage
+from calls completed through this gateway process. Monthly, daily, label and
+session decisions include those additions. In-flight estimates are reserved
+before forwarding; they remain separate from measured spend. When concurrent
+calls would consume the same remainder, the next call receives HTTP 402 with
+`reason: "budget-reserved"` and `reservedUsd`.
+
+A call without a valid output-token bound is refused before forwarding under
+`fail-closed` (`cause: "output-unbounded"`). Under `fail-open` it may proceed,
+but its reservation remains unknown until complete usage arrives. A later
+fail-closed reservation cannot pass an unknown in-flight cost.
+Successful responses without usage, interrupted streams, transport failures,
+and server errors without usage make the live balance unknown; the configured
+failure policy then applies. Only explicit pre-generation request, authentication
+or rate-limit rejections release an unmeasured reservation as non-billable.
+
+**This accounting is process-local and held in memory.** It does not refresh
+the imported snapshot, persist a ledger, or coordinate other gateway processes
+or calls made directly to providers. Before restarting, import an up-to-date
+baseline. At a UTC month boundary, restart with the new month's baseline;
+the previous month's balance becomes unknown. Configured model substitution
+still explicitly permits spending beyond the monthly cap. This gateway is
+not an account-wide hard spending limit.
 
 `--on-cannot-tell` is **required and has no default**.
 
@@ -187,7 +214,8 @@ What the gateway needs to judge:
 
 - **The policy**: the `limits` block. Without one, every decision carries a
   judgement that says `no-policy` — absent is an answer, not a missing field.
-- **The measurement**: `--log <usage.jsonl>`, read once at start. Per-label
+- **The measurement**: `--log <usage.jsonl>`, read once at start as a baseline,
+  with measured usage from this process added after each call. Per-label
   and per-session spend live in a usage log, not in the store's provider
   buckets, so without `--log` every ceiling answers `cannot-tell` — and what
   happens then is your `--on-cannot-tell` decision, like every other
