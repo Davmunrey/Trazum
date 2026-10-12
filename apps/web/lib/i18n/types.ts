@@ -723,6 +723,7 @@ export interface WebMessages {
     sessionSpendOnly(sessions: number, max: string): string;
     byLabelHeading: string;
     byModelHeading: string;
+    priceUnknown: string;
     unlabelled: string;
     moreRows(count: number): string;
     unpriced(models: string, calls: number): string;

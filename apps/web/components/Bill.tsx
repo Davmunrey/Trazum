@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { billBreakdownRows } from '../lib/bill-breakdown';
 
 import {
   BUNDLED_CATALOGUE,
@@ -12,6 +13,8 @@ import {
   cacheEconomics,
   cacheHitRate,
   claudeCodeRecords,
+  codexRecords,
+  looksLikeCodexTranscript,
   contextPressure,
   coverageDrift,
   driversBetween,
@@ -238,7 +241,7 @@ export function Bill({ t }: { t: WebMessages }) {
    * the page.
    */
   const analyzeRef = useRef<(text: string, previous: string | null) => void>(() => {});
-  analyzeRef.current = (text, previous) => analyze(text, previous);
+  analyzeRef.current = (text, previous) => replaceDataset(text, previous);
   useEffect(() => {
     return onDemo((action) => {
       if (action.kind !== 'bill-sample') return;
@@ -246,6 +249,13 @@ export function Bill({ t }: { t: WebMessages }) {
       if (sample !== '') analyzeRef.current(sample, null);
     });
   }, []);
+
+  /** A new dataset must not inherit a workload selection from the old log. */
+  function replaceDataset(text: string, previous: string | null) {
+    setDrillLabel(null);
+    // State updates are asynchronous, so pass the cleared selection explicitly.
+    analyze(text, previous, since, until, null);
+  }
 
   function analyze(
     text: string,
@@ -453,6 +463,13 @@ export function Bill({ t }: { t: WebMessages }) {
         /* A provider's bill is not usage: named rather than read as a log
            that would then report every line as unreadable. */
         costReports += 1;
+      } else if (looksLikeCodexTranscript(text)) {
+        const c = codexRecords(text);
+        for (const record of c.records) parts.push(JSON.stringify(record));
+        transcripts += 1;
+        convertedCalls += c.records.length;
+        collapsed += c.duplicates;
+        tally('codex', c.records.length, c.missingModel + c.unsupported + c.unparseable);
       } else if (looksLikeClaudeCodeTranscript(text)) {
         transcripts += 1;
         // The project directory name is the label — a per-project bill by
@@ -527,7 +544,7 @@ export function Bill({ t }: { t: WebMessages }) {
     );
     // A drop that was only a price card feeds nothing new to price; the
     // effect above re-prices whatever is already on screen with it.
-    if (parts.length > 0) analyze(parts.join('\n'), previousText);
+    if (parts.length > 0) replaceDataset(parts.join('\n'), previousText);
   }
 
   /**
@@ -623,7 +640,7 @@ export function Bill({ t }: { t: WebMessages }) {
         time. It is a `<details>`, open until there is a report and reachable
         by keyboard forever after: nothing is hidden, it is folded.
       */}
-      <Card className="gap-4 py-[18px]">
+      <Card className="trazum-import gap-4 py-6">
         <details open={analysis === null} className="group">
           <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-[18px] text-[13px] font-semibold tracking-[0.08em] text-muted-foreground uppercase [&::-webkit-details-marker]:hidden">
             {t.bill.inputHeading}
@@ -664,7 +681,7 @@ export function Bill({ t }: { t: WebMessages }) {
                 else void readFile(event.dataTransfer.files[0]);
               });
             }}
-            className="flex flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground"
+            className="trazum-dropzone flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed px-4 py-7 text-sm text-muted-foreground"
           >
             <span>{t.bill.dropLabel}</span>
             <div className="flex flex-wrap items-center justify-center gap-2">
@@ -800,7 +817,7 @@ export function Bill({ t }: { t: WebMessages }) {
             placeholder='{"model":"claude-sonnet-5","label":"support","session":"a1","usage":{"input_tokens":1200,"output_tokens":300}}'
             className="min-h-28 resize-y bg-muted font-mono text-[13px] leading-relaxed"
           />
-          <Button onClick={() => analyze(pasted, previousText)} disabled={pasted.trim() === ''}>
+          <Button onClick={() => replaceDataset(pasted, previousText)} disabled={pasted.trim() === ''}>
             {t.bill.analyze}
           </Button>
 
@@ -1013,25 +1030,46 @@ function Report({
     .filter((entry) => entry.economics.verdict === 'lost-money');
   const hiddenLossUsd = lostLabels.reduce((sum, entry) => sum + entry.economics.deltaUsd, 0);
 
-  const eyebrow = (text: string) => (
-    <CardTitle className="text-[13px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+  const sectionTitle = (text: string) => (
+    <h3 className="font-display text-xl font-bold leading-tight tracking-[-0.03em]">
       {text}
-    </CardTitle>
+    </h3>
   );
 
   const outputShare = total.outputUsd > 0 ? total.truncatedOutputUsd / total.outputUsd : 0;
 
   return (
     <AnimatedContent>
-      {/*
-        Two columns of unequal content had equal width.
-
-        The left column carries the whole money breakdown — three tables and
-        every caveat under them — and the right carries the caching reading
-        and the levers. At 50/50 the left ran hundreds of pixels past the
-        right and the page ended in a void beside nothing. The ratio belongs
-        to the content, not to the framework's default.
-      */}
+      <section id="bill-summary" aria-labelledby="bill-summary-title" tabIndex={-1} className="scroll-mt-20 lg:scroll-mt-6">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+          <h2 id="bill-summary-title" className="font-display text-3xl font-bold tracking-[-0.04em]">{t.bill.reportSummary}</h2>
+          <nav aria-label={t.bill.reportNavigation} className="flex flex-wrap gap-1.5">
+            {[
+              ['bill-summary', t.bill.reportSummary],
+              ['bill-opportunities', t.bill.reportOpportunities],
+              ['bill-context', t.bill.reportContext],
+              ['bill-plan', t.bill.reportPlan],
+            ].map(([id, label]) => (
+              <a key={id} href={`#${id}`} className="border-2 border-foreground px-3 py-2 text-xs font-semibold transition-colors hover:bg-primary hover:text-primary-foreground">{label}</a>
+            ))}
+          </nav>
+        </div>
+        <dl className="grid border-2 border-foreground sm:grid-cols-[1.4fr_1fr_1fr]">
+          <div className="bg-primary p-5 text-primary-foreground sm:p-6">
+            <dt className="text-sm font-semibold">{t.bill.reportSpend}</dt>
+            <dd className="mt-2 break-words font-display text-[clamp(32px,4vw,52px)] leading-none font-bold tracking-[-0.04em] tabular-nums">{formatUsd(total.totalUsd)}</dd>
+          </div>
+          <div className="border-t-2 border-foreground p-5 sm:border-t-0 sm:border-l-2 sm:p-6">
+            <dt className="text-sm font-semibold">{t.bill.reportCalls}</dt>
+            <dd className="mt-2 font-display text-3xl leading-none font-bold tracking-[-0.04em] tabular-nums">{n(total.calls + report.unpriced.calls)}</dd>
+          </div>
+          <div className="border-t-2 border-foreground p-5 sm:border-t-0 sm:border-l-2 sm:p-6">
+            <dt className="text-sm font-semibold">{t.bill.reportCoverage}</dt>
+            <dd className="mt-2 font-display text-3xl leading-none font-bold tracking-[-0.04em] tabular-nums">{n(total.calls)} <span className="text-lg">/ {n(total.calls + report.unpriced.calls)}</span></dd>
+          </div>
+        </dl>
+        <p className="mt-3 mb-7 max-w-[85ch] text-xs leading-relaxed text-muted-foreground">{t.bill.reportScope}</p>
+      </section>
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <Card className="gap-4 py-[18px]">
           {/*
@@ -1043,9 +1081,9 @@ function Report({
             to learn where it went. Tabular numerals because it is a figure.
           */}
           <CardHeader className="px-[18px]">
-            <CardTitle className="font-display text-[30px] leading-[1.1] font-semibold tracking-[-0.02em] tabular-nums sm:text-[36px]">
+            <h3 className="font-display text-xl leading-tight font-bold tracking-[-0.03em] tabular-nums">
               {t.bill.headline(total.calls, formatUsd(total.totalUsd))}
-            </CardTitle>
+            </h3>
           </CardHeader>
           <CardContent className="flex flex-col gap-3.5 px-[18px]">
             {/*
@@ -1315,11 +1353,7 @@ function Report({
             </table>
             <BreakdownTable
               heading={t.bill.byLabelHeading}
-              rows={report.byLabel.map((e) => ({
-                name: labelName(e.label),
-                breakdown: e.breakdown,
-                key: e.label,
-              }))}
+              rows={billBreakdownRows(report, 'label').map((row) => ({ ...row, name: labelName(row.key) }))}
               totalUsd={total.totalUsd}
               t={t}
               n={n}
@@ -1328,7 +1362,7 @@ function Report({
             />
             <BreakdownTable
               heading={t.bill.byModelHeading}
-              rows={report.byModel.map((e) => ({ name: e.model, breakdown: e.breakdown }))}
+              rows={billBreakdownRows(report, 'model').map((row) => ({ ...row, name: row.key }))}
               totalUsd={total.totalUsd}
               t={t}
               n={n}
@@ -1338,10 +1372,11 @@ function Report({
           </CardContent>
         </Card>
 
-        <div className="flex flex-col gap-5">
+        <section id="bill-opportunities" aria-labelledby="bill-opportunities-title" tabIndex={-1} className="flex scroll-mt-20 lg:scroll-mt-6 flex-col gap-5">
+          <h2 id="bill-opportunities-title" className="font-display text-2xl font-bold tracking-[-0.035em]">{t.bill.reportOpportunities}</h2>
           {analysis.previous !== null && (
             <Card className="gap-4 py-[18px]">
-              <CardHeader className="px-[18px]">{eyebrow(t.bill.againstHeading)}</CardHeader>
+              <CardHeader className="px-[18px]">{sectionTitle(t.bill.againstHeading)}</CardHeader>
               <CardContent className="flex flex-col gap-3 px-[18px] text-sm">
                 {analysis.previous.total.calls === 0 ? (
                   <span className="text-muted-foreground">{t.bill.againstNothingPriced}</span>
@@ -1464,7 +1499,7 @@ function Report({
             </Card>
           )}
           <Card className="gap-4 py-[18px]">
-            <CardHeader className="px-[18px]">{eyebrow(t.bill.cacheHeading)}</CardHeader>
+            <CardHeader className="px-[18px]">{sectionTitle(t.bill.cacheHeading)}</CardHeader>
             <CardContent className="flex flex-col gap-2 px-[18px] text-sm">
               {unsettled ? (
                 <div className={NOTE}>
@@ -1586,7 +1621,7 @@ function Report({
           </Card>
 
           <Card className="gap-4 py-[18px]">
-            <CardHeader className="px-[18px]">{eyebrow(t.bill.leversHeading)}</CardHeader>
+            <CardHeader className="px-[18px]">{sectionTitle(t.bill.leversHeading)}</CardHeader>
             <CardContent className="flex flex-col gap-3 px-[18px] text-sm">
               {report.byLabel.length === 1 && report.byLabel[0]!.label === UNLABELLED && (
                 <div className={NOTE}>
@@ -1597,7 +1632,7 @@ function Report({
                 <span className="text-muted-foreground">{t.bill.leversNone}</span>
               )}
               {levers.slices.slice(0, MAX_SLICES).map((slice) => (
-                <div key={`${slice.label}\n${slice.model}`} className="rounded-lg border px-3.5 py-3">
+                <div key={`${slice.label}\n${slice.model}`} className="border-t py-4 first:border-t-0 first:pt-0">
                   <div className="font-semibold">
                     {/*
                       combinedUsd, never spentUsd: the share beside it is the
@@ -1697,7 +1732,7 @@ function Report({
               */}
               {verdict !== null &&
                 !levers.slices.some((slice) => verdictMatchesSlice(verdict, slice)) && (
-                  <div className="rounded-lg border px-3.5 py-3 text-[13px] leading-snug text-muted-foreground">
+                  <div className="border-t py-4 text-[13px] leading-snug text-muted-foreground">
                     {t.bill.verdictUnmatched(
                       verdict.label === null ? labelName(UNLABELLED) : verdict.label,
                       verdict.model,
@@ -1728,7 +1763,7 @@ function Report({
             log does not leave the tab to be compared.
           */}
           <Card className="gap-4 py-[18px]">
-            <CardHeader className="px-[18px]">{eyebrow(t.bill.whatIfHeading)}</CardHeader>
+            <CardHeader className="px-[18px]">{sectionTitle(t.bill.whatIfHeading)}</CardHeader>
             <CardContent className="flex flex-col gap-3 px-[18px] text-sm">
               <label className="flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
                 {t.bill.whatIfPick}
@@ -1850,14 +1885,19 @@ function Report({
             </CardContent>
           </Card>
 
+        </section>
+      </div>
+      <section id="bill-context" aria-labelledby="bill-context-title" tabIndex={-1} className="mt-10 scroll-mt-20 lg:scroll-mt-6 border-t-2 border-foreground pt-6">
+        <h2 id="bill-context-title" className="mb-5 font-display text-2xl font-bold tracking-[-0.035em]">{t.bill.reportContext}</h2>
+        <div className="grid items-start gap-5 lg:grid-cols-2">
           <Card className="gap-4 py-[18px]">
-            <CardHeader className="px-[18px]">{eyebrow(t.bill.historyHeading)}</CardHeader>
+            <CardHeader className="px-[18px]">{sectionTitle(t.bill.historyHeading)}</CardHeader>
             <CardContent className="flex flex-col gap-3 px-[18px] text-sm">
               {!report.hasSessions && (
                 <span className="text-muted-foreground">{t.bill.historyNoSessions}</span>
               )}
               {report.conversations.slice(0, MAX_SECTIONS).map((growth) => (
-                <div key={`${growth.label}\n${growth.model}`} className="rounded-lg border px-3.5 py-3">
+                <div key={`${growth.label}\n${growth.model}`} className="border-t py-4 first:border-t-0 first:pt-0">
                   <div className="text-[13px]">
                     {t.bill.historyGrowth(
                       labelName(growth.label),
@@ -1884,7 +1924,7 @@ function Report({
                 case, which is the figure a per-seat price is set from.
               */}
               {report.sessionCosts.slice(0, MAX_SECTIONS).map((shape) => (
-                <div key={`cost:${shape.label}\n${shape.model}`} className="rounded-lg border px-3.5 py-3">
+                <div key={`cost:${shape.label}\n${shape.model}`} className="border-t py-4 first:border-t-0 first:pt-0">
                   <div className="text-[13px]">
                     {t.bill.sessionCost(
                       labelName(shape.label),
@@ -1909,7 +1949,7 @@ function Report({
                 and it is the number a per-conversation budget judges.
               */}
               {report.sessionCosts.length === 0 && report.sessionSpend !== null && (
-                <div className="rounded-lg border px-3.5 py-3">
+                <div className="border-t py-4 first:border-t-0 first:pt-0">
                   <div className="text-[13px]">
                     {t.bill.sessionSpendOnly(
                       report.sessionSpend.sessions,
@@ -1930,7 +1970,7 @@ function Report({
           */}
           {report.inputShapes.length > 0 && (
             <Card className="gap-4 py-[18px]">
-              <CardHeader className="px-[18px]">{eyebrow(t.bill.inputShapeHeading)}</CardHeader>
+              <CardHeader className="px-[18px]">{sectionTitle(t.bill.inputShapeHeading)}</CardHeader>
               <CardContent className="flex flex-col gap-3 px-[18px] text-[13px]">
                 {report.inputShapes.slice(0, MAX_SECTIONS).map((shape) => {
                   const measured =
@@ -1996,7 +2036,7 @@ function Report({
           */}
           {report.repeatedTurns.length > 0 && (
             <Card className="gap-4 py-[18px]">
-              <CardHeader className="px-[18px]">{eyebrow(t.bill.repeatsHeading)}</CardHeader>
+              <CardHeader className="px-[18px]">{sectionTitle(t.bill.repeatsHeading)}</CardHeader>
               <CardContent className="flex flex-col gap-2 px-[18px] text-[13px]">
                 {report.repeatedTurns.slice(0, MAX_SECTIONS).map((row) => (
                   <div
@@ -2023,7 +2063,7 @@ function Report({
             if (pressures.length === 0) return null;
             return (
               <Card className="gap-4 py-[18px]">
-                <CardHeader className="px-[18px]">{eyebrow(t.bill.pressureHeading)}</CardHeader>
+                <CardHeader className="px-[18px]">{sectionTitle(t.bill.pressureHeading)}</CardHeader>
                 <CardContent className="flex flex-col gap-2 px-[18px] text-[13px]">
                   {pressures.slice(0, MAX_SECTIONS).map((row) => (
                     <span
@@ -2053,7 +2093,7 @@ function Report({
             if (moved.length === 0) return null;
             return (
               <Card className="gap-4 py-[18px]">
-                <CardHeader className="px-[18px]">{eyebrow(t.bill.mixDriftHeading)}</CardHeader>
+                <CardHeader className="px-[18px]">{sectionTitle(t.bill.mixDriftHeading)}</CardHeader>
                 <CardContent className="flex flex-col gap-2 px-[18px] text-[13px]">
                   {moved.slice(0, MAX_SECTIONS).map((m) => (
                     <span key={m.model} className="font-semibold text-warn">
@@ -2068,7 +2108,7 @@ function Report({
 
           {report.outputShapes.length > 0 && (
             <Card className="gap-4 py-[18px]">
-              <CardHeader className="px-[18px]">{eyebrow(t.bill.outputHeading)}</CardHeader>
+              <CardHeader className="px-[18px]">{sectionTitle(t.bill.outputHeading)}</CardHeader>
               <CardContent className="flex flex-col gap-2 px-[18px] text-[13px]">
                 {report.outputShapes.slice(0, MAX_SECTIONS).map((shape) => (
                   <span key={`${shape.label}\n${shape.model}`}>
@@ -2104,7 +2144,7 @@ function Report({
           )}
 
           <Card className="gap-4 py-[18px]">
-            <CardHeader className="px-[18px]">{eyebrow(t.bill.truncatedHeading)}</CardHeader>
+            <CardHeader className="px-[18px]">{sectionTitle(t.bill.truncatedHeading)}</CardHeader>
             <CardContent className="flex flex-col gap-2 px-[18px] text-sm">
               {total.stopReasonCalls === 0 ? (
                 <span className="text-muted-foreground">{t.bill.truncatedNotRecorded}</span>
@@ -2146,15 +2186,12 @@ function Report({
             </CardContent>
           </Card>
 
-          {/*
-            The rest of the loop, in the tab. The bill has been readable here
-            since 1.36 and everything done *with* a bill — rank the actions,
-            save the decision, come back and ask whether it worked — lived
-            only in a terminal, which made this a demo of the smallest half.
-          */}
-          <Plan report={report} levers={levers} t={t} />
         </div>
-      </div>
+      </section>
+      <section id="bill-plan" aria-labelledby="bill-plan-title" tabIndex={-1} className="mt-10 scroll-mt-20 lg:scroll-mt-6 border-t-2 border-foreground pt-6">
+        <h2 id="bill-plan-title" className="mb-5 font-display text-2xl font-bold tracking-[-0.035em]">{t.bill.reportPlan}</h2>
+        <Plan report={report} levers={levers} t={t} />
+      </section>
     </AnimatedContent>
   );
 }
@@ -2169,7 +2206,7 @@ function BreakdownTable({
   onSelect,
 }: {
   heading: string;
-  rows: Array<{ name: string; breakdown: { totalUsd: number; calls: number }; key?: string }>;
+  rows: Array<{ name: string; breakdown: { totalUsd: number; calls: number }; priced: boolean; key?: string }>;
   totalUsd: number;
   t: WebMessages;
   n: (value: number) => string;
@@ -2211,9 +2248,9 @@ function BreakdownTable({
                   row.name
                 )}
               </td>
-              <td className="py-1 pr-2 text-right font-mono tabular-nums">{formatUsd(row.breakdown.totalUsd)}</td>
+              <td className="py-1 pr-2 text-right font-mono tabular-nums">{row.priced ? formatUsd(row.breakdown.totalUsd) : t.bill.priceUnknown}</td>
               <td className="py-1 pr-2 text-right tabular-nums">
-                {pct(totalUsd > 0 ? row.breakdown.totalUsd / totalUsd : 0)}
+                {row.priced ? pct(totalUsd > 0 ? row.breakdown.totalUsd / totalUsd : 0) : t.bill.priceUnknown}
               </td>
               <td className="py-1 text-right font-mono tabular-nums">{n(row.breakdown.calls)}</td>
             </tr>
@@ -2331,7 +2368,7 @@ function Gaps({
         </div>
       )}
       {missingFields.length > 0 && (
-        <div className="rounded-lg border px-3.5 py-3 text-[13px] leading-snug text-muted-foreground">
+        <div className="border-t py-4 text-[13px] leading-snug text-muted-foreground">
           <span className="font-semibold text-foreground">{t.bill.coverageHeading}</span>
           <ul className="m-0 mt-1.5 flex list-disc flex-col gap-1 pl-5">
             {missingFields.map((line) => (
