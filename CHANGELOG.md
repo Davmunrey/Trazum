@@ -11,7 +11,33 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 2.5.2 — 2026-10-12
+
+### Documentation
+
+- Align GitHub and npm around a no-global-install first report, keep advanced
+  material expandable, and document the normalized-log plan/verify workflow.
+- Distinguish API savings from subscription efficiency, with a context-growth,
+  prompt-review and token-budget walkthrough that makes no quota promises,
+  plus an optional compact agent-instruction template and evaluation method.
+- Outline proposed task-level FinOps experiments that measure useful outcomes,
+  quality and controller overhead across API and subscription workflows.
+- Add a 30-day adoption playbook with interview prompts, explicit measurement
+  denominators, a reproducible demo and an evidence-based case-study template.
+
 ### Added
+
+- **Opt-in tool-log filter.** `trazum filter compact --recovery-dir <directory>` reduces
+  consecutive identical display-log lines before agent context, preserving
+  diagnostics and unique lines. The private local original is written before
+  the recoverable view; failed storage and unsupported or oversized inputs
+  pass unchanged. `restore` checks the content hash; `instructions` prints
+  optional concise-output guidance. The Claude Code skill documents selective
+  Bash integration with pipefail. No gateway rewrite, new process execution,
+  network access, automatic interception or subscription-quota promise is added.
+  Estimates include recovery overhead; the core transformation is browser-safe.
+  The pipefail regression uses a literal shell command without environment-derived
+  command arguments, and checks that stdout and stderr retain their channels.
 
 - **Local HTTP savings lifecycle.** `POST /savings/plan` and `POST /savings/verify`
   accept normalized usage text and portable plan JSON, price with the server

@@ -4,6 +4,8 @@
 
 ## What it actually does
 
+The analyser reports sixteen findings, with assumptions attached to each estimate.
+
 **1. Tells you where the money actually is.** This is the part worth reading
 first, because it is where the numbers are. Every advisory is priced per month
 against your own call volume, and none of them is about making the text shorter:
@@ -77,8 +79,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 52 commands — [the table
-above](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-52-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 53 commands — [the table
+above](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-53-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -93,3 +95,4 @@ from the exit codes it is supposed to relay.
 ---
 
 <a id="the-51-commands"></a>
+<a id="the-52-commands"></a>

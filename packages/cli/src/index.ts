@@ -324,6 +324,7 @@ interface Args {
 }
 
 const VALUE_FLAGS = new Set([
+  'recovery-dir',
   'answers',
   'label-by-cwd',
   'label-by-workspace',
@@ -736,6 +737,7 @@ function disabledRules(args: Args, config: TrazumConfig): RuleId[] | undefined {
  */
 const GLOBAL_FLAGS = ['help', 'h', 'version', 'v', 'locale', 'json', 'config', 'pricing', 'pricing-live', 'max-input'];
 const COMMAND_FLAGS: Record<string, string[]> = {
+  filter: ['recovery-dir'],
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
     'disable', 'llm', 'exact-tokens', 'diff', 'reorder', 'out', 'o',
@@ -13505,6 +13507,12 @@ function printRank(
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
+  // The stdin display filter has its own small grammar and no project config.
+  if (argv[0] === 'filter') {
+    const { runFilter } = await import('./filter.js');
+    await runFilter(argv.slice(1));
+    return;
+  }
   let locale = localeFromArgv(argv);
   let t = getCliMessages(locale);
   const args = parseArgs(argv, t);

@@ -6,11 +6,11 @@
 
 ### Understand your AI spend. Decide what to change.
 
-**An open-source cost analyser across agent harnesses and LLM providers.** Local analysis,
-reproducible calculations, explicit assumptions. It reports sixteen findings priced in dollars per
-month: caching you are not getting, a model tier you may not need, a schema you
-pay to describe on every call. Shortening the prompt is one of them, and it is
-rarely the biggest.
+Find where your AI usage costs money, choose a change, and check the result.
+Trazum analyses local usage logs and prompts, ranks opportunities such as caching
+and model changes, and keeps estimates separate from measured outcomes.
+
+**Open source · Local analysis · No provider key needed to get started**
 
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)

@@ -462,6 +462,7 @@ const INVOCATION = {
   owners: ['usage.jsonl'],
   ladder: ['usage.jsonl'],
   feedback: [],
+  filter: ['instructions'],
 };
 
 /** The dispatch table, so the list cannot be a list somebody maintains. */

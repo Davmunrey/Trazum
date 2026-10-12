@@ -353,7 +353,7 @@ in **[the command reference](../docs/commands.md)**: the
 measured multiplication (`--from-log`), the cache reorder, the CI baseline,
 the fleet, the plan and its verification, the provider pull, the gateway,
 the evaluations that spend money and say so first, and everything else the
-[table above](../README.md#the-52-commands) links to.
+[table above](../README.md#the-53-commands) links to.
 
 `trazum --version` prints the version on its own, and works when your config is
 broken — which is exactly when somebody is asking.

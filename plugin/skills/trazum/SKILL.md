@@ -42,6 +42,13 @@ For the complete diagnose → plan → verify workflow, read
 [agent workflows](references/agent-workflows.md). Prefer JSON when passing
 results between tools; retain caveats and pricing provenance alongside totals.
 
+## Opt-in context efficiency
+
+When the user enables tool-log filtering, read
+[tool efficiency](references/tool-efficiency.md). Filter suitable repetitive logs
+locally before loading them into model context; retain originals and preserve
+producer exit status. This is a shell workflow, not an automatic MCP or host hook.
+
 ## Through MCP
 
 For an agent with no shell, this is the whole product that matters. Any MCP

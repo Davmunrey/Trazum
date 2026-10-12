@@ -2737,6 +2737,13 @@ any server for several releases after the prompt library made that conditional,
 and the CSP shipped blocking the analytics the operator could switch on. Both
 carry tests now that derive the claim from the code rather than trusting prose.
 
+## 2.5.2 — Recoverable tool-log filtering — released
+
+Opt-in repetitive-log compaction with private original recovery, hash-checked
+restore and concise-output guidance. Native usage import and local savings
+planning/verification connect measured costs to a selective efficiency workflow.
+Subscription quotas and task quality remain outside the filter's claims.
+
 ## Next
 
 **Nothing is planned that this repository can deliver alone.** [The 2.4

@@ -2,11 +2,12 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 52 commands
+## The 53 commands
 
 | Command | What it answers |
 |---|---|
-| [`trazum init`](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-first-five-minutes-trazum-init) | What is in this repository, and what is the one thing worth fixing? *The first command to run.* |
+| [`trazum filter`](https://github.com/Davmunrey/Trazum/blob/main/docs/tool-output-filter.md) | Compact repeated tool-log lines before agent context, retaining the original locally. *Opt-in.* |
+| [`trazum init`](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-first-five-minutes-trazum-init) | Inspect repository prompts and available usage, then write a configuration. *Optional setup after your first report.* |
 | [`trazum optimize`](https://github.com/Davmunrey/Trazum/blob/main/README.md#cli) | What can come out of this prompt, and what is that worth a month? |
 | [`trazum check`](https://github.com/Davmunrey/Trazum/blob/main/README.md#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? *Exits 1 when either fails — this is the CI gate.* |
 | [`trazum baseline`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) | What does this repository's prompts cost right now? *Records it, to commit.* |

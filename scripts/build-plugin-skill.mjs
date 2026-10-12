@@ -26,7 +26,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const PROJECT_SKILL = '.claude/skills/trazum/SKILL.md';
 export const PLUGIN_SKILL = 'plugin/skills/trazum/SKILL.md';
-export const SKILL_REFERENCES = ['references/agent-workflows.md'];
+export const SKILL_REFERENCES = ['references/agent-workflows.md', 'references/tool-efficiency.md'];
 
 /** The in-repo row of the door table, replaced because npx needs no checkout. */
 export const BUILD_SECTION = `| Run a shell, in a checkout of this repository | the CLI, built from source | \`node packages/cli/dist/index.js\` — after \`npm install && npm run build\` once per session |
