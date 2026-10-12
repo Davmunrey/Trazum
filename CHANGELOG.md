@@ -11,6 +11,16 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **Tool-filter FinOps measurements.** `trazum filter compact --stats` emits
+  opt-in JSON on stderr with exact byte counts and net heuristic token savings
+  for the view actually emitted, including recovery overhead. Failed recovery
+  storage reports zero savings; unsupported token counts remain unknown.
+  No log content, recovery path or hash enters the report. Stdout and producer
+  exit status remain unchanged. These are per-invocation estimates, not billed
+  savings, subscription capacity or task-quality measurements.
+
 ## 2.5.2 — 2026-10-12
 
 ### Documentation

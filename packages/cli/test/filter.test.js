@@ -89,9 +89,67 @@ describe('trazum-filter display pipeline', () => {
     assert.equal(result.status, 0);
     assert.match(result.stdout.toString(), /repeated 299 additional times/);
   });
+  it('reports net estimated savings without changing stdout or exposing content and paths', () => {
+    const dir = store('stats');
+    const plain = run(['compact', '--recovery-dir', dir], noise);
+    const result = run(['compact', '--recovery-dir', dir, '--stats'], noise);
+    assert.equal(result.status, 0);
+    assert.deepEqual(result.stdout, plain.stdout);
+    const stats = JSON.parse(result.stderr);
+    assert.equal(stats.schemaVersion, 1);
+    assert.equal(stats.estimateOnly, true);
+    assert.equal(stats.applied, true);
+    assert.equal(stats.inputBytes, noise.length);
+    assert.equal(stats.outputBytes, result.stdout.length);
+    assert.equal(stats.estimatedTokensSaved, stats.estimatedTokensBefore - stats.estimatedTokensAfter);
+    assert.ok(stats.estimatedTokensSaved >= 128);
+    assert.ok(stats.estimatedReductionPercent >= 20);
+    assert.equal(stats.repeatedLines, 299);
+    assert.ok(!result.stderr.includes(dir));
+    assert.ok(!result.stderr.includes('Polling'));
+    assert.ok(!result.stderr.includes(key));
+    assert.deepEqual(run(['compact', '--stats', '--recovery-dir', dir], noise).stdout, plain.stdout);
+  });
+  it('reports zero savings when persistence fails, even if compaction was worthwhile', () => {
+    const path = store('stats-blocked');
+    writeFileSync(path, 'block');
+    const result = run(['compact', '--recovery-dir', path, '--stats'], noise);
+    assert.equal(result.status, 0);
+    assert.deepEqual(result.stdout, noise);
+    const stats = JSON.parse(result.stderr);
+    assert.equal(stats.reason, 'storage-failed');
+    assert.equal(stats.applied, false);
+    assert.equal(stats.estimatedTokensSaved, 0);
+    assert.equal(stats.estimatedReductionPercent, 0);
+    assert.equal(stats.repeatedLines, 0);
+    assert.equal(stats.outputBytes, noise.length);
+  });
+  it('distinguishes unchanged text from unknown token counts for binary and oversized streams', () => {
+    for (const input of [Buffer.from('hello\n'), Buffer.from([0xff, 0xfe]), Buffer.alloc(1200000, 65)]) {
+      const result = run(['compact', '--recovery-dir', store('stats-unused'), '--stats'], input);
+      assert.equal(result.status, 0);
+      assert.deepEqual(result.stdout, input);
+      const stats = JSON.parse(result.stderr);
+      assert.equal(stats.applied, false);
+      assert.equal(stats.inputBytes, input.length);
+      assert.equal(stats.outputBytes, input.length);
+      if (input.toString() === 'hello\n') {
+        assert.equal(stats.reason, 'unchanged');
+        assert.equal(stats.estimatedTokensSaved, 0);
+      } else {
+        assert.equal(stats.reason, input.length > 1000000 ? 'stream-limit' : 'invalid-utf8');
+        assert.equal(stats.estimatedTokensBefore, null);
+        assert.equal(stats.estimatedTokensAfter, null);
+        assert.equal(stats.estimatedTokensSaved, null);
+        assert.equal(stats.estimatedReductionPercent, null);
+      }
+    }
+  });
   it('rejects invalid arguments and emits opt-in instructions without a store', () => {
     assert.equal(run(['compact'], noise).status, 1);
     assert.equal(run(['compact', '--recovery-dir', 'x', '--unknown'], noise).status, 1);
+    assert.equal(run(['compact', '--recovery-dir', 'x', '--stats', '--stats'], noise).status, 1);
+    assert.equal(run(['restore', key, '--recovery-dir', 'x', '--stats']).status, 1);
     const output = run(['instructions']);
     assert.equal(output.status, 0);
     assert.match(output.stdout.toString(), /correctness/);

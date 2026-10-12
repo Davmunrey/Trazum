@@ -4,11 +4,11 @@ import { mkdir, lstat, open } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import { once } from 'node:events';
-import { compactToolOutput, EFFICIENT_OUTPUT_INSTRUCTIONS } from '@trazum/core';
+import { compactToolOutput, EFFICIENT_OUTPUT_INSTRUCTIONS, type ToolOutputView } from '@trazum/core';
 
 const MAX_BYTES = 1024 * 1024;
 const HELP = `Usage:
-  trazum filter compact --recovery-dir <private-directory>    read a tool log from stdin
+  trazum filter compact --recovery-dir <private-directory> [--stats]
   trazum filter restore <sha256> --recovery-dir <private-directory>
   trazum filter instructions                          print optional output guidance
 
@@ -18,7 +18,24 @@ Use Bash pipefail to preserve the producing command's failure status.
 Original logs may contain sensitive data: --recovery-dir explicitly opts into local
 retention. Delete that directory when the originals are no longer needed.
 Token counts are estimates, not billing or subscription-quota measurements.
+--stats writes one JSON record to stderr, without log content or recovery paths.
 `;
+
+/** Report only the view actually emitted, including recovery-instruction overhead. */
+function reportStats(inputBytes: number, outputBytes: number, view: ToolOutputView | null,
+  reason: string, applied = false): void {
+  const before = view?.estimatedTokensBefore ?? null;
+  const after = applied ? view?.estimatedTokensAfter ?? null : before;
+  const saved = before === null || after === null ? null : before - after;
+  process.stderr.write(`${JSON.stringify({
+    schemaVersion: 1, kind: 'trazum-tool-filter', estimateOnly: true, applied, reason,
+    inputBytes, outputBytes, estimatedTokensBefore: before, estimatedTokensAfter: after,
+    estimatedTokensSaved: saved,
+    estimatedReductionPercent: saved === null || before === null ? null
+      : before === 0 ? 0 : Math.round(saved / before * 10000) / 100,
+    repeatedLines: applied ? view?.repeatedLines ?? 0 : 0,
+  })}\n`);
+}
 
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 const quote = (text: string) => `'${text.replaceAll("'", "'\\''")}'`;
@@ -56,14 +73,14 @@ async function saveOriginal(store: string, key: string, bytes: Buffer): Promise<
   try { await file.writeFile(bytes); await file.sync(); }
   finally { await file.close(); }
 }
-async function compact(store: string): Promise<void> {
+async function compact(store: string, stats: boolean): Promise<void> {
   const chunks: Buffer[] = [];
   let size = 0;
   let passthrough = false;
   for await (const value of process.stdin) {
     const chunk = Buffer.isBuffer(value) ? value : Buffer.from(value);
-    if (passthrough) { await emit(chunk); continue; }
     size += chunk.length;
+    if (passthrough) { await emit(chunk); continue; }
     if (size > MAX_BYTES) {
       passthrough = true;
       for (const buffered of chunks) await emit(buffered);
@@ -71,24 +88,42 @@ async function compact(store: string): Promise<void> {
       await emit(chunk);
     } else { chunks.push(chunk); }
   }
-  if (passthrough) return;
+  if (passthrough) {
+    if (stats) reportStats(size, size, null, 'stream-limit');
+    return;
+  }
   const bytes = Buffer.concat(chunks);
   const input = bytes.toString('utf8');
   // Invalid UTF-8 must pass byte-for-byte rather than acquire replacement chars.
-  if (!Buffer.from(input).equals(bytes)) { await emit(bytes); return; }
+  if (!Buffer.from(input).equals(bytes)) {
+    await emit(bytes);
+    if (stats) reportStats(size, size, null, 'invalid-utf8');
+    return;
+  }
   const key = digest(bytes);
   const view = compactToolOutput(input, `trazum filter restore ${key} --recovery-dir ${quote(store)}`);
-  if (!view.applied) { await emit(bytes); return; }
+  if (!view.applied) {
+    await emit(bytes);
+    if (stats) reportStats(size, size, view, view.reason);
+    return;
+  }
   try { await saveOriginal(store, key, bytes); }
   catch {
     // A filter must not swallow a tool's output because local persistence failed.
-    process.stderr.write('Trazum: original could not be retained; passing log through unchanged.\n');
+    if (!stats) process.stderr.write('Trazum: original could not be retained; passing log through unchanged.\n');
     await emit(bytes);
+    if (stats) reportStats(size, size, view, 'storage-failed');
     return;
   }
   await emit(view.text);
+  if (stats) reportStats(size, Buffer.byteLength(view.text), view, view.reason, true);
 }
 export async function runFilter(args: string[]): Promise<void> {
+  let stats = false;
+  if (args[0] === 'compact' && args.length === 4) {
+    const index = args[1] === '--stats' ? 1 : args[3] === '--stats' ? 3 : -1;
+    if (index !== -1) { stats = true; args = args.filter((_, i) => i !== index); }
+  }
   if (args.length === 0 || (args.length === 1 && ['--help', '-h'].includes(args[0]!))) {
     await emit(HELP); return;
   }
@@ -109,6 +144,6 @@ export async function runFilter(args: string[]): Promise<void> {
     await emit(await readOriginal(store, key));
   } else {
     if (process.stdin.isTTY) throw new Error('Pipe a tool log into stdin; interactive tools are not supported.');
-    await compact(store);
+    await compact(store, stats);
   }
 }
