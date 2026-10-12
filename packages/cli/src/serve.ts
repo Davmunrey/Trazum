@@ -24,8 +24,9 @@
  */
 
 import { createServer } from 'node:http';
+import { SERVE_OPENAPI, validateCostPayload } from './serve-schema.js';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
-import { answerCost, judgeLimits } from '@trazum/core';
+import { answerCost, judgeLimits, HARNESS_CAPABILITIES } from '@trazum/core';
 import type { CostAnswer, LimitsConfig, MeasuredPosition, PricingCatalogue, WaiveEntry } from '@trazum/core';
 
 /** Compiled in. See the module note: this is the inbound SSRF posture. */
@@ -93,6 +94,16 @@ export function buildServer(context: ServeContext): Server {
     void (async () => {
       const url = new URL(request.url ?? '/', `http://${BIND_HOST}`);
 
+      if (request.method === 'GET' && url.pathname === '/capabilities') {
+        send(response, 200, HARNESS_CAPABILITIES);
+        return;
+      }
+
+      if (request.method === 'GET' && url.pathname === '/openapi.json') {
+        send(response, 200, SERVE_OPENAPI);
+        return;
+      }
+
       if (request.method === 'GET' && url.pathname === '/health') {
         send(response, 200, { ok: true, schemaVersion: 1 });
         return;
@@ -101,7 +112,7 @@ export function buildServer(context: ServeContext): Server {
       if (request.method !== 'POST' || url.pathname !== '/cost') {
         send(response, 404, {
           error: 'not-found',
-          detail: 'POST /cost, or GET /health.',
+          detail: 'POST /cost, GET /health, GET /capabilities, or GET /openapi.json.',
         });
         return;
       }
@@ -109,13 +120,16 @@ export function buildServer(context: ServeContext): Server {
       let payload: Record<string, unknown>;
       try {
         const raw = await readBody(request);
-        payload = raw.trim() === '' ? {} : (JSON.parse(raw) as Record<string, unknown>);
+        const parsed: unknown = raw.trim() === '' ? {} : JSON.parse(raw);
+        validateCostPayload(parsed);
+        payload = parsed;
       } catch (error) {
         send(response, 400, {
           error: 'bad-request',
           detail: error instanceof Error && error.message === 'body too large'
             ? `A request body may be at most ${MAX_BODY_BYTES} bytes.`
-            : 'The body must be JSON.',
+            : error instanceof SyntaxError ? 'The body must be JSON.'
+              : error instanceof Error ? error.message : 'The body must be JSON.',
         });
         return;
       }

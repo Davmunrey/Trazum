@@ -63,6 +63,7 @@ ${bold('USAGE')}
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
               [--since <when>] [--until <when>] [--pdf-out|--html-out|--markdown-out|--csv-out <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
+  trazum from-codex <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
   trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
@@ -1892,6 +1893,17 @@ ${bold('EXAMPLES')}
     nothingToBill: () => 'Nothing in this log could be priced, so the receipt has no lines.',
   },
 
+  fromCodex: {
+    noPath: () => 'from-codex needs an explicit rollout file or directory: trazum from-codex ./sessions',
+    notFound: (path) => `Cannot read ${path}`,
+    noFiles: (path) => `No JSONL rollout files in ${path}`,
+    noUsage: () => 'No attributable Codex usage. Inspect the named gaps; no zero-cost log was written.',
+    summary: (files, records, duplicates) => `${files} Codex file(s), ${records} corroborated usage record(s), ${duplicates} repeated snapshot(s) collapsed.`,
+    gaps: (missingModel, unsupported, unparseable) => `Codex gaps: ${missingModel} without model context, ${unsupported} unsupported or uncorroborated snapshots, ${unparseable} unreadable lines. These are not zero-cost calls.`,
+    caveat: () => 'Codex telemetry is priced at catalogue API rates, not your subscription invoice. Restored totals, counter resets and ambiguous deltas are excluded, not guessed.',
+    written: (file) => `Wrote normalized usage to ${file}`,
+  },
+
   fromOtel: {
     noPath: () => 'from-otel needs an OTLP file or directory: trazum from-otel spans.json',
     notFound: (path) => `${path}: not found`,
@@ -2056,7 +2068,7 @@ ${bold('EXAMPLES')}
     pricingLiveHint: (count) =>
       `${count} unpriced model id(s) carry a provider prefix, the way OpenRouter and LiteLLM name models, and the bundled catalogue does not carry those. Run again with --pricing-live to price OpenRouter's slugs from its own list.`,
     apiEquivalent: () =>
-      'Claude Code transcripts are priced at Anthropic\'s API rates. On a Pro or Max plan you paid the plan, not this: read it as what the same work would cost through the API.',
+      'Claude Code and Codex transcripts are priced at catalogue API rates. On a subscription you paid the plan, not this API-equivalent estimate; missing telemetry and custom rates can change the result.',
     prefixedKnown: (ids) =>
       `${ids}: the model after the slash is priced here under its own name. The prefix is not stripped for you, because the same model through a router can bill differently. If those calls went straight to the provider, log the model without the prefix.`,
     windowMatchesNothing: (from, to) =>

@@ -120,7 +120,7 @@ describe('trazum bill reads a directory of whatever it finds', () => {
     const markdown = join(dir, 'bill.md');
     const result = run(['bill', projects, '--table', '--html-out', html, '--markdown-out', markdown]);
     assert.equal(result.status, 0, result.stderr);
-    const sentence = /Claude Code transcripts are priced at Anthropic's API rates\. On a Pro or Max plan you paid the plan, not this/;
+    const sentence = /Claude Code and Codex transcripts are priced at catalogue API rates\. On a subscription you paid the plan, not this API-equivalent estimate/;
     const flat = (text) => text.replace(/\s+/g, ' ');
     assert.match(flat(result.stdout), sentence, 'the statement does not say what a plan pays');
     assert.match(flat(readFileSync(html, 'utf8').replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'")), sentence, 'the HTML');
@@ -128,7 +128,7 @@ describe('trazum bill reads a directory of whatever it finds', () => {
 
     const metered = run(['bill', join(mixed(), 'usage.jsonl'), '--table']);
     assert.equal(metered.status, 0, metered.stderr);
-    assert.doesNotMatch(flat(metered.stdout), /Pro or Max plan/, 'a metered API log was called an equivalent');
+    assert.doesNotMatch(flat(metered.stdout), /On a subscription you paid/, 'a metered API log was called an equivalent');
   });
 
   it('does not hint at --pricing-live when nothing unpriced is a slug', () => {

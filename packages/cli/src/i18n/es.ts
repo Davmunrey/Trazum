@@ -50,6 +50,7 @@ ${bold('USO')}
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
               [--since <cuándo>] [--until <cuándo>] [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
+  trazum from-codex <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
   trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
@@ -1921,6 +1922,17 @@ ${bold('EJEMPLOS')}
     nothingToBill: () => 'Nada de este log se pudo precificar, así que el recibo no tiene líneas.',
   },
 
+  fromCodex: {
+    noPath: () => 'from-codex necesita una ruta explícita: trazum from-codex ./sesiones',
+    notFound: (path) => `No se puede leer ${path}`,
+    noFiles: (path) => `No hay archivos JSONL en ${path}`,
+    noUsage: () => 'No hay uso de Codex atribuible. Revisa los huecos indicados; no se escribió un registro de coste cero.',
+    summary: (files, records, duplicates) => `${files} archivo(s) Codex, ${records} registro(s) corroborados, ${duplicates} instantáneas repetidas descartadas.`,
+    gaps: (missingModel, unsupported, unparseable) => `Huecos Codex: ${missingModel} sin contexto de modelo, ${unsupported} instantáneas no admitidas o sin corroborar, ${unparseable} líneas ilegibles. No son llamadas de coste cero.`,
+    caveat: () => 'La telemetría Codex se valora a tarifas API del catálogo, no como factura de suscripción. Totales restaurados, reinicios y deltas ambiguos quedan excluidos.',
+    written: (file) => `Registro normalizado escrito en ${file}`,
+  },
+
   fromOtel: {
     noPath: () => 'from-otel necesita un archivo o directorio OTLP: trazum from-otel spans.json',
     notFound: (path) => `${path}: no existe`,
@@ -2085,7 +2097,7 @@ ${bold('EJEMPLOS')}
     pricingLiveHint: (count) =>
       `${count} id(s) de modelo sin precio llevan prefijo de proveedor, como nombran los modelos OpenRouter y LiteLLM, y el catálogo incluido no los trae. Vuelve a ejecutar con --pricing-live para cobrar los slugs de OpenRouter desde su propia lista.`,
     apiEquivalent: () =>
-      'Las transcripciones de Claude Code se cobran a las tarifas de la API de Anthropic. Con un plan Pro o Max pagaste el plan, no esto: léelo como lo que costaría el mismo trabajo a través de la API.',
+      'Las sesiones de Claude Code y Codex se valoran a tarifas API del catálogo. Si pagas una suscripción, pagaste el plan, no esta estimación equivalente; los datos ausentes y las tarifas propias pueden cambiar el resultado.',
     prefixedKnown: (ids) =>
       `${ids}: el modelo tras la barra tiene precio aquí con su propio nombre. El prefijo no se quita por ti, porque el mismo modelo a través de un router puede facturarse distinto. Si esas llamadas fueron directas al proveedor, registra el modelo sin el prefijo.`,
     windowMatchesNothing: (from, to) =>
