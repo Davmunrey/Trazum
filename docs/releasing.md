@@ -1,5 +1,7 @@
 # Releasing
 
+[Documentation](README.md) / [Contributing](../CONTRIBUTING.md) · [Versioning](../VERSIONING.md)
+
 Publishing is the one action in this repository that cannot be undone. npm allows
 unpublishing for 72 hours and then the version number is spent for good — it can
 never be reused, even for identical content. Everything here is arranged so a
@@ -279,6 +281,10 @@ including what it costs a reader pinning with a tilde, is in
    `CHANGELOG.md` its heading, `ROADMAP.md` a mention), so `verify` fails a
    release prep that skipped them. The rest is a two-minute grep for what the
    tests cannot know is stale:
+   Update the handshake version in `packages/mcp/src/index.ts` too.
+   `packages/mcp/test/server.test.js` starts the real stdio server and checks
+   its announced version against the package manifest; no runtime manifest
+   access is added to the server.
 
    ```bash
    git grep -nE "<previous version>" -- '*.md' ':!CHANGELOG.md' ':!RELEASES.md'

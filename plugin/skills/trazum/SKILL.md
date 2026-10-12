@@ -1,6 +1,6 @@
 ---
 name: trazum
-description: Analyse AI usage costs, check a configured budget before a model call, improve prompts, and create or verify savings plans using Trazum CLI, MCP or local HTTP API. Use for usage-log analysis, prompt cost reviews, budget checks and evidence-based savings verification. Deterministic analysis needs no provider key; paid evaluations require explicit authorization.
+description: Analyse AI usage costs, check the budget in trazum.config.json before making a model call, improve prompts, and create or verify savings plans using Trazum CLI, MCP or local HTTP API. Use for usage-log analysis, prompt cost reviews, budget checks and evidence-based savings verification. Deterministic analysis needs no provider key; paid evaluations require explicit authorization.
 ---
 
 # Trazum — price a model call before you make it
@@ -266,6 +266,7 @@ and all eight are built:
 | Helicone exports | `trazum from-helicone <file\|dir> -o usage.jsonl` |
 | LangSmith exports | `trazum from-langsmith <file\|dir> -o usage.jsonl` |
 | Claude Code transcripts | `trazum from-claude-code ~/.claude/projects -o usage.jsonl` |
+| Codex rollout JSONL, explicitly supplied | `trazum from-codex ./rollout.jsonl --label coding -o usage.jsonl` |
 | Nothing local at all, but an Anthropic admin key | `trazum from-anthropic usage.json --label <project> -o usage.jsonl` |
 | Nothing local at all, but an OpenAI admin key | `trazum from-openai usage.json --label <project> -o usage.jsonl` |
 | Nothing local at all, but an OpenRouter management key | `trazum from-openrouter activity.json --label <project> -o usage.jsonl`, then price with `--pricing-live` |

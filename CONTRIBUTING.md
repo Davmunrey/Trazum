@@ -90,6 +90,7 @@ npm test           # core, the CLI, MCP, the tokenizer, the editor extension, th
 npm run typecheck  # all six workspaces
 npm run build:web  # the Next.js app
 npm run test:action  # the packaged Action on its own, without the rest
+npm run test:agents  # real CLI/MCP workflows on synthetic logs; run build first
 ```
 
 Two that write files rather than check them:

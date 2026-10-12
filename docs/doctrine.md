@@ -1,5 +1,7 @@
 # The doctrine
 
+[Documentation](README.md) / [Limitations](../README.md#limitations-stated-plainly) · [Evidence and history](our-own-medicine.md)
+
 Every rule below was discovered by getting it wrong first. They are written
 down together here because they are the actual argument for why anybody should
 trust a cost figure — from this tool or any other — and because each one was

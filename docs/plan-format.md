@@ -1,5 +1,7 @@
 # The plan document
 
+[Documentation](README.md) / [Usage inputs](usage-logs.md) · [Commands](commands.md#find-a-command) · [JSON output](json-output.md)
+
 `plan.json` is the one thing Trazum writes that is meant to be **kept**. Every
 other output answers a question the moment you ask it; a plan is a decision
 written down on Monday and checked on Friday, by a different person on a

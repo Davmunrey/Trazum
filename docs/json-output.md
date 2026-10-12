@@ -1,5 +1,7 @@
 # `trazum profile --json`
 
+[Documentation](README.md) / [Command reference](commands.md#find-a-command) · [Format contracts](format.md) · [Plan format](plan-format.md)
+
 The machine-readable report, and what it promises.
 
 Everything the terminal prints is derived from these fields, so a dashboard, a
@@ -464,7 +466,7 @@ every time.
 | `schemaVersion` | `1`. |
 | `error` | `{type: "trazum_budget_refusal", message}` — shaped like a provider error so an SDK's own error path handles it, and typed so it cannot be mistaken for one. |
 | `reason` | `budget-exhausted` (already past, measured), `call-would-cross` (this call takes it past), `limit-over` (a ceiling in the `limits` policy is over — `policy` names which), or `cannot-tell-and-closed` (nothing could be judged and the operator chose fail-closed). |
-| `cause` | Why it could not be judged, when that is the reason: `no-budget`, `nothing-measured`, `model-unpriced`, `limit-unjudged` (a `limits` ceiling could not be judged — `policy` says why). Null otherwise. |
+| `cause` | Why it could not be judged, when that is the reason: `no-budget`, `nothing-measured`, `model-unpriced`, `output-unbounded` (missing or invalid output-token limit), `limit-unjudged` (a `limits` ceiling could not be judged — `policy` says why). Null otherwise. |
 | `restsOn` | `measured` when the budget was already spent and nothing was estimated to reach the verdict; `measured+estimated` when it takes an estimate of *this* call to cross. Null on `cannot-tell-and-closed`. The two halves never merge. |
 | `standing` | The budget position the refusal rested on — `limitUsd`, `consumedUsd`, `provenance` (always `measured`) and `asOfMs`, so a caller can see how stale the figure is rather than assume it is current to the second. |
 | `estimatedUsd` | What this call was priced at, or null when the model could not be priced. |

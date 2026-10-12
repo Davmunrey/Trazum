@@ -1,5 +1,7 @@
 # The prompt writer — the questions
 
+[Documentation](README.md) / [Commands](commands.md#find-a-command) · [Library](../packages/core/README.md)
+
 The first chapter of [the 1.61 arc](plan-1.61.md). `trazum write` starts from
 nothing and asks; **what it asks is the product.**
 
