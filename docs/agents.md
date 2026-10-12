@@ -42,7 +42,7 @@ discounted invoice or provider credit requires separate evidence.
 ## Diagnose, propose, verify
 
 ```sh
-trazum bill usage.jsonl --json
+trazum bill usage.jsonl --receipt
 trazum plan usage.jsonl --json -o plan.json
 trazum verify plan.json --against later.jsonl --json
 ```

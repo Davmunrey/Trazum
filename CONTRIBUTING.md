@@ -76,7 +76,7 @@ npm run verify     # everything CI runs, in the order CI runs it
 Node 22. No global installs needed.
 
 `verify` is the one command worth remembering — it is build, tests, typecheck
-across all four workspaces, and the web build. **Run it before pushing, and
+across all six workspaces, and the web build. **Run it before pushing, and
 read its exit code rather than its output.** The web build in particular fails on
 things nothing else notices: `@trazum/core` is bundled for the browser, so one
 `node:fs` import anywhere in its import graph breaks it, and neither the tests
@@ -86,7 +86,7 @@ The pieces individually, if you want a faster loop:
 
 ```bash
 npm run build      # core, the CLI, the MCP server, the OpenAI tokenizer and the editor extension
-npm test           # core, the CLI, MCP, the tokenizer, the editor extension, the web app and the Action
+npm test           # core, the CLI, MCP, the tokenizer, the editor extension, the web app, the Action and agent workflows
 npm run typecheck  # all six workspaces
 npm run build:web  # the Next.js app
 npm run test:action  # the packaged Action on its own, without the rest
