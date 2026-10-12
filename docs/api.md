@@ -119,13 +119,18 @@ receive the same answer; this API has no reservation ledger. See the
 `POST /savings/verify` takes `{ "log": "later normalized JSONL text", "plan": "serialized plan JSON" }`.
 These endpoints receive text, never file paths. They do not read files, persist
 plans, invoke models, reserve funds or access provider services. Import native
-sessions first with `from-claude-code` or `from-codex` and retain their conversion
-diagnostics separately. The HTTP endpoints cannot recover excluded source records.
+sessions first with CLI `from-claude-code` / `from-codex` or MCP `import_usage`,
+and retain their conversion diagnostics separately. The HTTP endpoints cannot recover excluded source records.
 
 Use the same server configuration for both requests. Its selected catalogue,
 including any configured price overlay, prices all supplied logs. Request-level
 pricing overrides are refused. `GET /openapi.json` is the runtime contract;
 check it before using endpoints from a local development build with an older release.
+
+The published npm package may not include these new routes yet. To use this
+checkout, [build from source](setup.md#getting-started), then start
+`node packages/cli/dist/index.js serve --port 7317` from the repository root.
+Do not assume `npx @trazum/cli@latest` exposes them.
 
 This complete example uses synthetic normalized records and Node.js 20+:
 
