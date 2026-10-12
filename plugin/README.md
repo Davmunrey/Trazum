@@ -9,10 +9,12 @@ Installing this plugin gives Claude Code two things:
   every caveat the reports themselves carry. The skill is the same document
   this repository's own agents work from, with the invocation swapped to the
   published CLI (`npx -y @trazum/cli`).
-- **The Trazum MCP server** (`npx -y @trazum/mcp`) — seven tools, including
+- **The Trazum MCP server** (`npx -y @trazum/mcp`) — nine tools, including
   `spend_guard`, which judges a call against the USD ceilings in your
   `trazum.config.json` *before* the call is made, and `position`, which
   states where the month stands against those ceilings from a usage log.
+  `plan_savings` creates an explicit proposal and `verify_savings` checks it
+  against later usage. See the [agent workflow](skills/trazum/references/agent-workflows.md).
 
 Nothing here needs an API key or makes a network call: the optimiser is
 deterministic, and the profiler reads a log you already have. The one

@@ -113,11 +113,13 @@ describe('the handshake', () => {
     const fresh = new Client();
     const result = await fresh.handshake();
     assert.equal(result.result.serverInfo.name, 'trazum');
+    const manifest = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
+    assert.equal(result.result.serverInfo.version, manifest.version, 'MCP handshake must announce the installed package version');
     assert.ok(result.result.capabilities.tools, 'no tool capability announced');
     fresh.close();
   });
 
-  it('lists exactly the seven tools, and no more', async () => {
+  it('lists exactly the nine tools, and no more', async () => {
     /**
      * Asserted as an exact set. This package's whole security argument is what it
      * *cannot* do — no paths, no network, no writes — and the way that argument
@@ -146,10 +148,12 @@ describe('the handshake', () => {
       'check_prompt',
       'list_models',
       'optimize_prompt',
+      'plan_savings',
       'position',
       'profile_usage',
       'prompt_writer',
       'spend_guard',
+      'verify_savings',
     ]);
   });
 });

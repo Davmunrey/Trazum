@@ -18,7 +18,7 @@
  * files instead of fifteen, and the reader is told once instead of never.
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,6 +26,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const PROJECT_SKILL = '.claude/skills/trazum/SKILL.md';
 export const PLUGIN_SKILL = 'plugin/skills/trazum/SKILL.md';
+export const SKILL_REFERENCES = ['references/agent-workflows.md'];
 
 /** The in-repo row of the door table, replaced because npx needs no checkout. */
 export const BUILD_SECTION = `| Run a shell, in a checkout of this repository | the CLI, built from source | \`node packages/cli/dist/index.js\` — after \`npm install && npm run build\` once per session |
@@ -53,5 +54,10 @@ export function derivePluginSkill(projectSkill) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const derived = derivePluginSkill(readFileSync(join(root, PROJECT_SKILL), 'utf8'));
   writeFileSync(join(root, PLUGIN_SKILL), derived);
+  for (const reference of SKILL_REFERENCES) {
+    const target = join(root, dirname(PLUGIN_SKILL), reference);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, readFileSync(join(root, dirname(PROJECT_SKILL), reference)));
+  }
   console.log(`wrote ${PLUGIN_SKILL} from ${PROJECT_SKILL}`);
 }

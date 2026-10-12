@@ -9,6 +9,9 @@ import {
   assemble,
   bandFor,
   billLevers,
+  buildPlan,
+  parsePlanDocument,
+  verifyPlan,
   cacheEconomics,
   cacheHitRate,
   catalogueFromOverlay,
@@ -1645,4 +1648,166 @@ const POSITION: ToolDefinition = {
  * than a sentence somebody typed: every other tool answers "do this", and that
  * one answers "I am about to spend". It sat sixth of seven.
  */
-export const TOOLS: readonly ToolDefinition[] = [SPEND_GUARD, CHECK, OPTIMIZE, PROFILE, POSITION, MODELS, WRITER];
+/** Savings documents are text, never paths; the two tools add no I/O capability. */
+const SAVINGS_LOG_PROPERTY = {
+  type: 'string', minLength: 1, maxLength: MAX_LOG_CHARS,
+  description: 'Normalized usage-log text, one JSON object per line. Never a path.',
+};
+const SAVINGS_PRICING_PROPERTY = {
+  type: 'string', minLength: 1, maxLength: MAX_PRICING_BYTES,
+  description: 'Optional pricing-overlay JSON text. Use the same rates for planning and verification.',
+};
+
+function savingsText(args: Record<string, unknown>, key: string, max: number): string {
+  const value = args[key];
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new InvalidArguments(`${key} must be non-empty text, not a file path`);
+  }
+  if (value.length > max) throw new InvalidArguments(`${key} exceeds the ${max} character limit`);
+  return value;
+}
+
+function savingsCatalogue(args: Record<string, unknown>) {
+  if (args.pricing_overlay === undefined) return BUNDLED_CATALOGUE;
+  const raw = savingsText(args, 'pricing_overlay', MAX_PRICING_BYTES);
+  try {
+    return catalogueFromOverlay(raw, 'pricing_overlay');
+  } catch (error) {
+    if (error instanceof PricingOverlayError) throw new InvalidArguments(error.message);
+    throw error;
+  }
+}
+
+function savingsReport(log: string, catalogue: typeof BUNDLED_CATALOGUE) {
+  const report = profileUsage(log, { catalogue });
+  if (report.total.calls + report.unpriced.calls === 0) {
+    throw new InvalidArguments('log contains no readable usage records; pass normalized JSONL text with model and token counts');
+  }
+  return report;
+}
+
+function savingsEvidence(report: ReturnType<typeof profileUsage>, catalogue: typeof BUNDLED_CATALOGUE) {
+  return {
+    basis: 'Recorded token counts priced with the selected catalogue; not a reconciled provider invoice.',
+    pricedCalls: report.total.calls,
+    pricedUsd: report.total.totalUsd,
+    unpricedCalls: report.unpriced.calls,
+    unpricedModels: report.unpricedModels,
+    skippedLines: report.skippedLines,
+    span: report.span,
+    pricingLastReviewed: catalogue.lastReviewed,
+    pricingOverlay: catalogue !== BUNDLED_CATALOGUE,
+    complete: report.unpriced.calls === 0 && report.skippedLines.length === 0,
+  };
+}
+
+/** The shared parser accepts older plans. Check the nested fields verification dereferences too. */
+function savingsPlan(text: string) {
+  const parsed = parsePlanDocument(text);
+  if (!parsed.ok) {
+    const detail = parsed.why.kind === 'action-malformed'
+      ? ` at action ${parsed.why.index}: ${parsed.why.because}` : '';
+    throw new InvalidArguments(`plan is not a valid Trazum plan: ${parsed.why.kind}${detail}`);
+  }
+  const plan = parsed.plan;
+  const finite = (value: unknown): value is number =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  const object = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+  if (typeof plan.pricingLastReviewed !== 'string' || plan.pricingLastReviewed.trim() === '' ||
+      !finite(plan.projectedSavingUsd) || !finite(plan.measuredStakeUsd) || !finite(plan.totalUsd)) {
+    throw new InvalidArguments('plan needs pricingLastReviewed and finite non-negative projectedSavingUsd, measuredStakeUsd and totalUsd');
+  }
+  if (plan.span !== null && (!object(plan.span) || !finite(plan.span.fromMs) || !finite(plan.span.toMs) || plan.span.fromMs > plan.span.toMs)) {
+    throw new InvalidArguments('plan.span must be null or an ordered fromMs/toMs window');
+  }
+  if (plan.createdAt !== undefined && (typeof plan.createdAt !== 'string' || !Number.isFinite(Date.parse(plan.createdAt)))) {
+    throw new InvalidArguments('plan.createdAt must be an ISO date when supplied');
+  }
+  for (const [index, action] of plan.actions.entries()) {
+    const fail = (why: string): never => { throw new InvalidArguments(`plan action ${index}: ${why}`); };
+    if (!object(action.detail)) fail('detail must be an object');
+    if (!Array.isArray(action.assumes)) fail('assumes must be a list');
+    for (const assumption of action.assumes) {
+      if (!object(assumption) || !['model-capability', 'batch-window', 'retry-pattern-real', 'max-tokens-fits', 'traffic-pattern-holds'].includes(assumption.kind as string)) fail('unknown assumption');
+      if (assumption.kind === 'model-capability' && typeof assumption.model !== 'string') fail('model-capability needs a model');
+    }
+    if (action.check !== null && typeof action.check !== 'string') fail('check must be text or null');
+    if (action.savingUsd !== null && !finite(action.savingUsd)) fail('savingUsd must be a non-negative number or null');
+    if (action.stakeUsd !== null && !finite(action.stakeUsd)) fail('stakeUsd must be a non-negative number or null');
+    const projected = ['route', 'batch', 'route+batch'].includes(action.kind);
+    if (projected ? action.savingUsd === null || action.stakeUsd !== null : action.stakeUsd === null || action.savingUsd !== null) {
+      fail('projected savings and measured stakes must remain separate');
+    }
+    if (action.kind === 'route' || action.kind === 'route+batch') {
+      const target = action.detail.routeTo;
+      if (!object(target) || typeof target.id !== 'string' || target.id.length === 0 || typeof target.displayName !== 'string') fail('routeTo needs an id and displayName');
+    }
+    const baseline = action.detail.baseline;
+    if (baseline !== undefined && (!object(baseline) ||
+        !(['calls', 'usd', 'inputPerCallTokens', 'outputPerCallTokens'] as const).every((key) => finite(baseline[key])))) fail('baseline needs finite non-negative counts and costs');
+    const measured = action.detail.measured;
+    if (measured !== undefined && (!object(measured) || !Object.values(measured).every(finite))) fail('measured values must be finite non-negative numbers');
+  }
+  return plan;
+}
+
+const PLAN_SAVINGS: ToolDefinition = {
+  name: 'plan_savings',
+  title: 'Rank savings actions from recorded usage',
+  description: 'Builds the same plan as trazum plan from normalized log text. Returns JSON with a plan and evidence: projected savings and measured stakes stay separate, assumptions and pricing gaps remain explicit. No model, network or file access.',
+  inputSchema: {
+    type: 'object',
+    properties: { log: SAVINGS_LOG_PROPERTY, pricing_overlay: SAVINGS_PRICING_PROPERTY },
+    required: ['log'], additionalProperties: false,
+  },
+  run: (args) => {
+    const log = savingsText(args, 'log', MAX_LOG_CHARS);
+    const catalogue = savingsCatalogue(args);
+    const report = savingsReport(log, catalogue);
+    return JSON.stringify({
+      schemaVersion: 1,
+      plan: buildPlan(report, billLevers(report, { catalogue }), catalogue.lastReviewed),
+      evidence: savingsEvidence(report, catalogue),
+      limitations: [
+        'Projected savings are not measured savings. Do not add projectedSavingUsd to measuredStakeUsd.',
+        'Model capability, batch latency and other action assumptions require independent validation.',
+        'Missing or unpriced records are excluded from priced totals, not free usage.',
+      ],
+    });
+  },
+};
+
+const VERIFY_SAVINGS: ToolDefinition = {
+  name: 'verify_savings',
+  title: 'Check a saved plan against later usage',
+  description: 'Verifies the plan JSON text against newer normalized log text using trazum verify logic. Returns arrived, not-arrived or cannot-tell per action, attribution and gate failures. A vanished workload does not count as savings; a route+batch result cannot prove batch billing.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      plan: { type: 'string', minLength: 1, maxLength: MAX_LOG_CHARS,
+        description: 'The JSON text of the plan field returned by plan_savings, or a saved trazum plan document. Never a path.' },
+      log: SAVINGS_LOG_PROPERTY,
+      pricing_overlay: SAVINGS_PRICING_PROPERTY,
+    },
+    required: ['plan', 'log'], additionalProperties: false,
+  },
+  run: (args) => {
+    const plan = savingsPlan(savingsText(args, 'plan', MAX_LOG_CHARS));
+    const catalogue = savingsCatalogue(args);
+    const report = savingsReport(savingsText(args, 'log', MAX_LOG_CHARS), catalogue);
+    return JSON.stringify({
+      schemaVersion: 1,
+      verification: verifyPlan(plan, report, { currentPricingLastReviewed: catalogue.lastReviewed }),
+      evidence: savingsEvidence(report, catalogue),
+      limitations: [
+        'Arrived describes the observable action, not proof of equal answer quality or realized net savings.',
+        'A route+batch action only verifies routing; batch billing is not observable from token counts.',
+        'Use matching workloads and comparable periods. Missing, skipped and unpriced data limit verification.',
+        'Use the same pricing overlay for both runs; matching review dates do not prove identical custom rates.',
+      ],
+    });
+  },
+};
+
+export const TOOLS: readonly ToolDefinition[] = [SPEND_GUARD, CHECK, OPTIMIZE, PROFILE, PLAN_SAVINGS, VERIFY_SAVINGS, POSITION, MODELS, WRITER];

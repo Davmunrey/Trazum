@@ -1,12 +1,12 @@
 ---
 name: trazum
-description: Price and budget a model call before making it, and cut what a prompt costs. Works from a shell, from MCP tools, or as a library, so any agent can reach it. Use before spending on a call when trazum.config.json sets a ceiling and you do not know whether the call fits; when asked to shorten, optimise or cut the cost of a prompt or system prompt; when asked what a prompt costs per month; when asked whether a prompt fits a token budget; when reviewing a change to a prompt file; or when asked where an LLM bill actually went. Also use when asked to find contradictory instructions or redundant few-shot examples in a prompt, or to convert an OpenTelemetry, LiteLLM, Helicone, LangSmith or Claude Code usage export into a priced bill.
+description: Analyse AI usage costs, check a configured budget before a model call, improve prompts, and create or verify savings plans using Trazum CLI, MCP or local HTTP API. Use for usage-log analysis, prompt cost reviews, budget checks and evidence-based savings verification. Deterministic analysis needs no provider key; paid evaluations require explicit authorization.
 ---
 
 # Trazum — price a model call before you make it
 
-Shortens a prompt without changing what it asks for, prices the saving, and
-reports what would save more than shortening ever will.
+Explains recorded AI spend, evaluates a call against configured budgets, and
+separates proposed savings from changes supported by later usage evidence.
 
 The engine is deterministic: same input, same output, no API key, no network
 call, nothing to pay. Do not reach for a model to do what the rules already do.
@@ -23,7 +23,8 @@ spell it for you.
 |---|---|---|
 | Run a shell, in a checkout of this repository | the CLI, built from source | `node packages/cli/dist/index.js` — after `npm install && npm run build` once per session |
 | Run a shell, anywhere else | the CLI, straight from npm | `npx -y @trazum/cli` — no install, fetched on first use |
-| Call MCP tools but not a shell | the MCP server | **[Through MCP](#through-mcp)** below — seven tools, no shell needed |
+| Call MCP tools but not a shell | the MCP server | **[Through MCP](#through-mcp)** below — nine tools, no shell needed |
+| Call a local HTTP service | `trazum serve` | `GET /openapi.json` describes `POST /cost`; loopback only |
 | Import a module | the library | **[From code](#from-code)** below — `@trazum/core`, zero dependencies, browser-safe |
 | None of these | the web app | <https://trazum.vercel.app> — the pure subset runs in the page |
 
@@ -31,12 +32,16 @@ If more than one row fits, prefer the shell: it is the whole surface, and the
 other doors are subsets of it. Prefer MCP over asking a human to run something
 for you.
 
-**No door needs a credential, a network call or a payment** for the
-deterministic work, which is nearly all of it. The handful that do call a model
-— `eval`, `route`, `prune`, `semantic` and `optimize --llm` — say so in their
-own sections, need `TRAZUM_LLM_*` configured, and print the number of calls
-they would make instead of making them until `--yes` is passed. Say what a
-command will spend before you run it.
+Deterministic analysis does not contact a model provider. First-time package
+installation may use the network. Model-assisted flags such as `--llm` and
+`--suggest`, and evaluation commands such as `eval`, `route` and `prune`,
+can make paid calls. Inspect each command's help and obtain authorization for
+the proposed calls; do not assume every paid path has a `--yes` safeguard.
+Credentials being configured does not by itself authorize spending.
+
+For the complete diagnose → plan → verify workflow, read
+[agent workflows](references/agent-workflows.md). Prefer JSON when passing
+results between tools; retain caveats and pricing provenance alongside totals.
 
 ## Through MCP
 
@@ -51,8 +56,8 @@ client can run the server over stdio; nothing here is specific to one vendor:
 }
 ```
 
-Seven tools. The three at the top are the ones an agent calls inside its own
-loop, without being asked:
+Nine tools. Budget checks can be used within an authorized task; a successful
+check never grants permission to make a paid call:
 
 | Tool | The question it answers |
 |---|---|
@@ -63,6 +68,8 @@ loop, without being asked:
 | `profile_usage` | Where the money went, from a usage log: the split per label and per model, whether caching paid for itself, and the levers that would actually move the bill. |
 | `list_models` | Every model in the bundled catalogue with its rates, context window and cacheable minimum. |
 | `prompt_writer` | Interviews you and assembles a prompt from your answers. Nothing is generated — the words are yours, so the same answers always produce the same text. |
+| `plan_savings` | Builds a savings plan from log text, with explicit assumptions and separate coverage evidence. Returns a plan; it applies no changes. |
+| `verify_savings` | Compares a saved plan with later log text, preserving arrived, not-arrived and cannot-tell outcomes. |
 
 **The one rule that decides whether this works: the server never opens a
 file.** Every tool takes the *text* — the prompt itself, the log itself — and

@@ -29,7 +29,9 @@ because "MCP server" reads like infrastructure and this is not.
 | --- | --- |
 | `check_prompt` | Does this prompt fit `maxTokens`? And if not, would optimising it fit? |
 | `optimize_prompt` | The shorter text, the token counts either side, what the difference is worth per month, and any advisories. |
-| `profile_usage` | Where the money went, from a usage log passed as text: the spend split, per label and per model, whether caching paid for itself, and the levers that would actually move the bill. `label`, `since`/`until` and `previous_log` drill down and compare; `what_if` prices the same calls on another model — arithmetic, not advice, and it says so. `pricing_overlay` takes the same JSON a `--pricing` overlay file holds, as text — models it adds or overrides price the whole report, and the report says the overlay is in effect. The one tool whose figures are exact — they are the provider's own billed counts. |
+| `profile_usage` | Where the money went, from a usage log passed as text: the spend split, per label and per model, whether caching paid for itself, and the levers that would actually move the bill. `label`, `since`/`until` and `previous_log` drill down and compare; `what_if` prices the same calls on another model — arithmetic, not advice, and it says so. `pricing_overlay` takes the same JSON a `--pricing` overlay file holds, as text — models it adds or overrides price the whole report, and the report says the overlay is in effect. Uses recorded token counts priced with the selected catalogue; this is not a reconciled invoice. |
+| `plan_savings` | Rank actions from normalized usage-log text, keeping projected savings, measured stakes, assumptions and evidence gaps separate. Returns a JSON plan compatible with the CLI. |
+| `verify_savings` | Check saved plan JSON against newer log text. Returns arrived, not-arrived or cannot-tell per action, attribution and gate failures. |
 | `list_models` | Prices, context windows and cacheable minimums, with the date the table was reviewed. |
 | `spend_guard` | Whether the call you are about to make fits the budget — `yes`, `no`, or `cannot-tell`, with the cheaper ways to make the same call attached to a refusal. See below. |
 | `position` | Where the month stands against every ceiling you pass, measured from the log text alone — the denominator on every figure, and no forecast anywhere. |
@@ -45,6 +47,47 @@ which fits. Optimise rather than cut.
 
 "Over budget" and "over budget but the rules would fix it" are different
 instructions. A boolean throws away the actionable half.
+
+## Plan, change, verify
+
+1. Call `plan_savings` with `{ "log": "<normalized JSONL text>" }`.
+2. Parse the tool's text content as JSON. Keep its `plan` field; review each
+   action's `assumes` before changing a model or enabling batching.
+3. After the change, call `verify_savings` with
+   `{ "plan": "<JSON.stringify(saved plan)>", "log": "<newer normalized JSONL text>" }`.
+4. Read `verification.actions`, `cannotTell` and `gateFailures`. An action
+   marked `arrived` does not prove equivalent answer quality or net savings.
+
+Both accept optional `pricing_overlay`, the same pricing-overlay JSON text as
+`profile_usage`. Use the same rates for both runs. `pricesChanged` compares
+review dates; matching dates do not prove two custom rate cards are identical.
+Logs and plans are limited to 2,000,000 characters each. These tools take
+**text**, not paths, and refuse empty or wholly unreadable logs. Import provider
+exports to normalized JSONL with the CLI before handing them to these tools.
+Unknown arguments are rejected rather than ignored.
+
+The JSON returned in MCP text content has this structure:
+
+| Tool | Fields |
+|---|---|
+| `plan_savings` | `schemaVersion`, `plan`, `evidence`, `limitations` |
+| `verify_savings` | `schemaVersion`, `verification`, `evidence`, `limitations` |
+
+`plan` is a standard Trazum plan document: the CLI can verify it, and this tool
+can verify a plan saved by the CLI. Save **the plan field**, not the surrounding
+evidence envelope. [Plan contract](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-format.md).
+
+`evidence` names priced calls and USD, unpriced calls/models, skipped line
+numbers, time coverage and the pricing review date. Its `complete` flag means
+no rows were skipped or left unpriced; it does not certify that a log includes
+all of your traffic. Logs with only unknown models produce no priced actions
+and explicitly report that gap.
+
+**Do not add projected savings to measured stakes.** The former is a scenario;
+the latter is money already attributed to a problem. A vanished workload is
+`cannot-tell`, not success. A combined routing/batching action can verify the
+routing change, but token counts alone do not prove batch billing. Compare
+matching workloads and periods, and keep quality evaluations separate.
 
 ## What it cannot do, which is the design
 
@@ -82,7 +125,8 @@ been driven by every MCP client in existence.
 
 Token counts are estimates (±4% on CJK, ±6% on Latin prose, ±26% on code,
 ±33% on tabular numbers, measured against Claude's tokenizer over 47 samples in
-ten languages), and every tool says so in its own output. A prompt
+ten languages). Prompt tools report this uncertainty; usage tools instead
+price recorded token counts and identify missing evidence. A prompt
 within a few percent of its budget should be treated as uncertain rather than as
 passing. `--exact-tokens` settles it against the counting endpoint, which is free.
 
