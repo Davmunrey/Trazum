@@ -306,6 +306,15 @@ ${bold('OPTIONS FOR from-otel')}
   verdicts read "cannot tell" rather than a guessed one. Non-LLM spans are
   counted and skipped, said on stderr.
 
+${bold('OPTIONS FOR from-codex')}
+  --label <name>              Stamp every record with one label.
+  -o, --out <file>            Write normalized usage instead of stdout.
+
+  Read an explicit Codex rollout file or directory, locally. Corroborated
+  counters only: replayed snapshots collapse, ambiguous usage is excluded.
+  Conversion gaps are reported on stderr. Prices are API equivalents,
+  never your subscription invoice. Prompt content is discarded.
+
 ${bold('OPTIONS FOR from-claude-code')}
   --label <name>              Stamp every record with one label.
   --label-from-project        Label each record with its transcript's project
