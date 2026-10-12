@@ -11,6 +11,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Documentation
+
+- Align GitHub and npm around a no-global-install first report, keep advanced
+  material expandable, and document the normalized-log plan/verify workflow.
+- Distinguish API savings from subscription efficiency, with a context-growth,
+  prompt-review and token-budget walkthrough that makes no quota promises,
+  plus an optional compact agent-instruction template and evaluation method.
+- Outline proposed task-level FinOps experiments that measure useful outcomes,
+  quality and controller overhead across API and subscription workflows.
+- Add a 30-day adoption playbook with interview prompts, explicit measurement
+  denominators, a reproducible demo and an evidence-based case-study template.
+
 ### Added
 
 - **Native usage import over MCP.** `import_usage` accepts bounded Claude Code

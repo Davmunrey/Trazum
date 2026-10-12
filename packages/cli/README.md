@@ -1,33 +1,73 @@
 # @trazum/cli
 
-Understand recorded AI spend, estimate prompt changes and apply budget policies
-from your terminal.
+Find where your AI usage costs money, choose a change, and check the result.
+Local usage analysis, ranked savings opportunities and verification from your terminal.
 
-**Zero runtime dependencies**, asserted in CI. This tool reads your prompts;
-every dependency would be someone else's code reading them too.
-
-Part of [Trazum](https://github.com/Davmunrey/Trazum). For the library, see
-[`@trazum/core`](https://www.npmjs.com/package/@trazum/core).
-
-```bash
-npm install -g @trazum/cli
-```
+Part of [Trazum](https://github.com/Davmunrey/Trazum). Open source, with zero
+third-party runtime dependencies.
 
 ## Start with your bill
 
+Requires Node.js 20 or newer. No global install or provider key needed;
+`npx` may download the package from npm.
+
 ```bash
-trazum bill
-trazum bill ./usage-export.jsonl
+npx @trazum/cli bill
 ```
 
-With no path, reads local Claude Code transcripts. Subscription sessions are
-priced at API-equivalent rates, not presented as your subscription invoice.
-Unknown models remain gaps. Local analysis does not upload these files.
+With no path, reads local Claude Code transcripts and groups costs by project
+and model. **Subscription sessions are priced at API-equivalent rates, not
+presented as your subscription invoice.** Unknown models remain pricing gaps.
+Local analysis does not upload your files.
 
-[Quick start](https://github.com/Davmunrey/Trazum/blob/main/docs/quick-start.md) ·
-[Find a command](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#find-a-command) ·
-[Setup](https://github.com/Davmunrey/Trazum/blob/main/docs/setup.md) ·
-[Documentation](https://github.com/Davmunrey/Trazum/blob/main/docs/README.md)
+Have a supported provider or observability export? Use your own file path:
+
+```bash
+npx @trazum/cli bill ./usage-export.jsonl
+```
+
+[Supported inputs](https://github.com/Davmunrey/Trazum/blob/main/docs/usage-logs.md) ·
+[Try sample data in your browser](https://trazum.vercel.app/?tab=playground)
+
+## Choose one change, then check it
+
+For teams paying for API usage, use a **normalized usage log** to rank
+opportunities and save a plan:
+
+```bash
+npx @trazum/cli plan ./usage.jsonl -o plan.json
+```
+
+Review the plan's assumptions and evaluate quality before applying a model or
+prompt change. After collecting later usage for the same workload:
+
+```bash
+npx @trazum/cli verify plan.json --against ./usage-after.jsonl
+```
+
+Verification can report that savings arrived, did not arrive, or cannot be
+determined. Estimates are not guaranteed invoice savings; verification is not
+a quality evaluation.
+
+[Walkthrough and import instructions](https://github.com/Davmunrey/Trazum/blob/main/docs/quick-start.md) ·
+[Full documentation](https://github.com/Davmunrey/Trazum/blob/main/docs/README.md)
+
+## Using a subscription?
+
+Inspect conversation growth and review prompt changes to improve token use
+without treating API-equivalent estimates as money saved. Trazum does not
+automatically manage the host agent's context or guarantee additional messages.
+[Subscription efficiency workflow](https://github.com/Davmunrey/Trazum/blob/main/docs/quick-start.md#subscription-efficiency).
+
+## Keep using it
+
+```bash
+npm install -g @trazum/cli
+trazum bill
+```
+
+<details>
+<summary>Explore commands, prompt optimisation, configuration and CI</summary>
 
 ## Commands
 
@@ -360,4 +400,6 @@ MIT.
 
 Read a Codex rollout with `trazum from-codex ./rollout.jsonl -o usage.jsonl` or
 `trazum bill ./rollout.jsonl --table`. Paths are explicit; API-equivalent costs
-are not subscription charges. See [format and limits](../../docs/codex.md).
+are not subscription charges. See [format and limits](https://github.com/Davmunrey/Trazum/blob/main/docs/codex.md).
+
+</details>

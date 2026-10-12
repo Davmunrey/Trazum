@@ -6,8 +6,8 @@ from the steps needed to use the tool.
 | Task | First page | Then |
 |---|---|---|
 | See a result in minutes | [Quick start](quick-start.md) | [Setup and integrations](setup.md) |
-| Understand recorded spend | [Codex sessions](codex.md) | Import local rollout telemetry and understand its limits |
-| [Usage logs](usage-logs.md) | [Commands](commands.md#find-a-command), [plans](plan-format.md) |
+| Understand recorded spend | [Usage logs](usage-logs.md) | [Commands](commands.md#find-a-command), [plans](plan-format.md) |
+| Import Codex sessions | [Codex sessions](codex.md) | Local rollout telemetry and its limits |
 | Set a budget | [CI gates](ci.md) | [Gateway](gateway.md), [scheduled checks](running.md) |
 | Build an integration | [Agents and harnesses](agents.md) or [Setup](setup.md) | [Local HTTP API](api.md), [JSON output](json-output.md) |
 | Change Trazum | [Contributing](../CONTRIBUTING.md) | [Rules](authoring-rules.md), [releases](releasing.md) |
@@ -44,6 +44,7 @@ In the order somebody actually meets them:
 | [Usage logs](usage-logs.md) | What Trazum can read, and what each optional field unlocks |
 | [Accounts](accounts.md) | Signing in to the web app: the prompt library, share links, and what the database holds |
 | [Local HTTP API](api.md) | Loopback cost oracle and discoverable OpenAPI contract |
+| [Efficient context instructions](context-efficiency.md) | Optional compact agent instructions and a task-level evaluation method |
 | [Agent integrations](agents.md) | Harnesses, providers, CLI/MCP workflows and deterministic evaluations |
 | [The gateway](gateway.md) | Standing in the path of the call, and refusing |
 | [CI](ci.md) | Gating a build on tokens, dollars and quality |
@@ -70,6 +71,10 @@ In the order somebody actually meets them:
 - **[Contributing](../CONTRIBUTING.md)** — how to propose a change here.
 
 ## I am maintaining it
+
+- **[FinOps product direction](finops-direction.md)** — proposed task-level budgets, quality measures and local efficiency experiments; distinguishes proposals from shipped features.
+
+- **[Adoption playbook](adoption-playbook.md)** — a 30-day experiment for first-use feedback, repeat use and evidence-based case studies.
 
 - **[Releasing](releasing.md)** — the recipe, and what the workflow does.
 - **[Versioning](../VERSIONING.md)** — what the three numbers mean here, which is

@@ -4,11 +4,11 @@
 
 ### Understand your AI spend. Decide what to change.
 
-**An open-source cost analyser across agent harnesses and LLM providers.** Local analysis,
-reproducible calculations, explicit assumptions. It reports sixteen findings priced in dollars per
-month: caching you are not getting, a model tier you may not need, a schema you
-pay to describe on every call. Shortening the prompt is one of them, and it is
-rarely the biggest.
+Find where your AI usage costs money, choose a change, and check the result.
+Trazum analyses local usage logs and prompts, ranks opportunities such as caching
+and model changes, and keeps estimates separate from measured outcomes.
+
+**Open source · Local analysis · No provider key needed to get started**
 
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
@@ -17,6 +17,70 @@ rarely the biggest.
 [![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-2f855a.svg)](#layout)
 
 </div>
+
+## Start here: one command, no global install
+
+Requires Node.js 20 or newer. `npx` may download Trazum from npm.
+
+```bash
+npx @trazum/cli bill
+```
+
+<div align="center">
+
+<img src="docs/assets/bill.svg" alt="trazum bill on two illustrative Claude Code projects: $12.70 across 126 priced calls, a table by project and one by model with each share as a bar, Claude Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 each priced at its own rate" width="690">
+
+*Illustrative data from [`examples/claude-projects`](examples/claude-projects),
+not a customer result. Generated from the CLI output.*
+
+</div>
+
+With no path, `bill` reads local Claude Code transcripts and groups the result
+by project and model. **On a subscription, this is API-equivalent cost, not
+what you paid.** Unpriced models are reported as gaps. Local analysis does
+not upload your files.
+
+Have a supported usage export instead? Pass its path:
+
+```bash
+npx @trazum/cli bill ./usage-export.jsonl
+```
+
+[Supported inputs](docs/usage-logs.md) ·
+[Try sample data in your browser](https://trazum.vercel.app/?tab=playground)
+
+## Turn a report into a decision
+
+For teams paying for API usage, the useful question is what to change next.
+Start with your largest workload, review the assumptions behind one finding,
+and evaluate quality before changing models or prompts.
+
+1. **Understand usage:** `bill` shows the recorded cost and coverage gaps.
+2. **Choose one change:** `plan` ranks opportunities from a normalized usage log.
+3. **Check the outcome:** `verify` compares the saved plan with later usage,
+   including cases where the evidence cannot settle the result.
+
+[Follow the first-report-to-verification walkthrough](docs/quick-start.md).
+A projected saving is not a guaranteed reduction in your invoice.
+
+## Using a subscription?
+
+A smaller API-equivalent estimate does not reduce a fixed subscription fee.
+Use Trazum to inspect conversation growth, review redundant prompt text and
+set token budgets for instructions you control. Check task quality before
+keeping a shorter prompt. This does not automatically manage your agent's
+context or guarantee more messages under your provider's limits.
+
+[Subscription efficiency workflow](docs/quick-start.md#subscription-efficiency).
+
+## Keep or share a report
+
+```bash
+npx @trazum/cli bill ./usage-export.jsonl --html-out bill.html
+```
+
+PDF, CSV and Markdown exports are also available. Review the report before
+sharing it: it contains usage and cost information.
 
 ## Pick your integration
 
@@ -35,52 +99,8 @@ MCP clients can query Trazum without having a native transcript adapter.
 Harness, model and payment mode are separate facts. An API-equivalent estimate
 is not a subscription invoice; a model without a price remains a gap.
 
-## Start here: one line, nothing installed
-
-Requires Node.js 20 or newer. `npx` may download Trazum from npm.
-
-```bash
-npx @trazum/cli bill
-```
-
-<div align="center">
-
-<img src="docs/assets/bill.svg" alt="trazum bill on two illustrative Claude Code projects: $12.70 across 126 priced calls, a table by project and one by model with each share as a bar, Claude Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 each priced at its own rate" width="690">
-
-*What the command prints on the two illustrative projects in
-[`examples/claude-projects`](examples/claude-projects). The picture is drawn
-from the CLI's own output by `scripts/draw-bill.mjs`, and the suite fails the
-day the two disagree.*
-
-</div>
-
-With no path it reads Claude Code's own folder, labels each session by its
-project, and prints the statement above on a terminal; piped, it prints the
-JSON receipt instead. Transcripts are priced at Anthropic's API rates, and the
-statement says so: on a Pro or Max plan you paid the plan, so read the figure
-as what the same work would cost through the API. Point it at a file or a folder of whatever usage you
-have — Claude Code transcripts, OpenTelemetry spans, a LiteLLM, Helicone or
-LangSmith export, an Anthropic, OpenAI or OpenRouter usage report, or a plain
-usage log — and it tells each file's shape from its own text, prices it, and
-prints the receipt. A file it cannot read is named, never guessed at; a model
-it cannot price is a named gap, never a zero. Nothing you point it at leaves
-your machine.
-
-```bash
-npx @trazum/cli bill --pdf-out bill.pdf
-```
-
-The same bill as a PDF for whoever pays it: every figure, every caveat, no
-font embedded and nothing installed. `--html-out`, `--markdown-out` and
-`--csv-out` write the other envelopes.
-
-```bash
-npx @trazum/cli bill --since 2026-10-01
-```
-
-This month so far, or any period: `--since` and `--until` take a day, a
-timestamp or a relative window like `30d`, and a bare day means the whole of
-it. A period the log does not reach is refused rather than billed at $0.
+<details>
+<summary>Explore advanced workflows, commands, architecture and limitations</summary>
 
 ## Your agents spend money in a loop. This prices the call before it happens.
 
@@ -189,6 +209,8 @@ never runs unless you ask.
 
 ## What it actually does
 
+The analyser reports sixteen findings, with assumptions attached to each estimate.
+
 **1. Tells you where the money actually is.** This is the part worth reading
 first, because it is where the numbers are. Every advisory is priced per month
 against your own call volume, and none of them is about making the text shorter:
@@ -283,7 +305,7 @@ from the exit codes it is supposed to relay.
 
 | Command | What it answers |
 |---|---|
-| [`trazum init`](#the-first-five-minutes-trazum-init) | What is in this repository, and what is the one thing worth fixing? *The first command to run.* |
+| [`trazum init`](#the-first-five-minutes-trazum-init) | Inspect repository prompts and available usage, then write a configuration. *Optional setup after your first report.* |
 | [`trazum optimize`](#cli) | What can come out of this prompt, and what is that worth a month? |
 | [`trazum check`](#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? *Exits 1 when either fails — this is the CI gate.* |
 | [`trazum baseline`](docs/commands.md#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) | What does this repository's prompts cost right now? *Records it, to commit.* |
@@ -352,8 +374,8 @@ its projected savings are not a provider invoice. See the
 
 ### The first five minutes: `trazum init`
 
-Run `npx @trazum/cli init` in your project to inspect prompts and available
-usage, write a config and identify a finding. Read
+After your first report, optionally run `npx @trazum/cli init` in your project
+to inspect prompts and available usage, write a config and identify a finding. Read
 [what init writes and refuses to overwrite](docs/setup.md#the-first-five-minutes-trazum-init).
 
 ### CLI
@@ -733,3 +755,5 @@ rule.
 taking part, and is honest about what a single-maintainer project can promise.
 [SUPPORT.md](SUPPORT.md) covers what gets answered and how fast;
 [SECURITY.md](SECURITY.md) covers reporting a vulnerability privately.
+
+</details>

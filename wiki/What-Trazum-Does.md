@@ -4,6 +4,8 @@
 
 ## What it actually does
 
+The analyser reports sixteen findings, with assumptions attached to each estimate.
+
 **1. Tells you where the money actually is.** This is the part worth reading
 first, because it is where the numbers are. Every advisory is priced per month
 against your own call volume, and none of them is about making the text shorter:
