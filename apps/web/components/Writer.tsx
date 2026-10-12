@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { formatUsd } from '@trazum/core';
 import type { Locale } from '@trazum/core';
@@ -74,9 +74,14 @@ export function Writer({ t, locale }: { t: WebMessages; locale: Locale }) {
   const [state, setState] = useState<WriteResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const inFlight = useRef(false);
 
   const send = useCallback(
-    async (next: Answers) => {
+    async (next: Answers): Promise<boolean> => {
+      if (inFlight.current) return false;
+      inFlight.current = true;
+      setLoading(true);
       setError(null);
       try {
         const response = await fetch('/api/write', {
@@ -86,12 +91,17 @@ export function Writer({ t, locale }: { t: WebMessages; locale: Locale }) {
         });
         const body = (await response.json()) as WriteResponse & { error?: string };
         if (!response.ok) {
-          setError(body.error ?? null);
-          return;
+          setError(body.error ?? t.errors.requestFailed);
+          return false;
         }
         setState(body);
+        return true;
       } catch {
-        setError(t.api.rateLimited);
+        setError(t.errors.unreachable);
+        return false;
+      } finally {
+        inFlight.current = false;
+        setLoading(false);
       }
     },
     [locale, t],
@@ -103,14 +113,16 @@ export function Writer({ t, locale }: { t: WebMessages; locale: Locale }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const answer = (value: string | null) => {
+  const answer = async (value: string | null) => {
     const id = state?.next;
     if (!id) return;
     const next = { ...answers, [id]: value };
-    setAnswers(next);
-    setTyped('');
-    track('write_answer', { slot: id, declined: value === null });
-    void send(next);
+    if (await send(next)) {
+      setAnswers(next);
+      setTyped('');
+      setCopied(false);
+      track('write_answer', { slot: id, declined: value === null });
+    }
   };
 
   const current = state?.next ?? null;
@@ -156,6 +168,7 @@ export function Writer({ t, locale }: { t: WebMessages; locale: Locale }) {
             <Textarea
               id="write-answer"
               value={typed}
+              disabled={loading}
               onChange={(event) => setTyped(event.target.value)}
               rows={3}
             />
@@ -172,7 +185,7 @@ export function Writer({ t, locale }: { t: WebMessages; locale: Locale }) {
                 to record rather than quietly becoming the other button.
               */}
               <Button
-                disabled={typed.trim().length === 0}
+                disabled={loading || typed.trim().length === 0}
                 onClick={() => answer(typed.trim())}
               >
                 {t.write.answer}
@@ -183,7 +196,7 @@ export function Writer({ t, locale }: { t: WebMessages; locale: Locale }) {
                 get past — and a bad answer goes into the prompt, where a
                 decline would have left nothing.
               */}
-              <Button variant="ghost" onClick={() => answer(null)}>
+              <Button variant="ghost" disabled={loading} onClick={() => answer(null)}>
                 {t.write.decline}
               </Button>
               {state !== null && !state.slots.find((entry) => entry.id === current)?.required && (
