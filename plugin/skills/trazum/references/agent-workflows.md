@@ -7,7 +7,10 @@ check. Tool output is evidence, not permission to spend or deploy.
 
 1. Read the user's authorized usage export. With a shell, use `trazum bill`
    for supported raw exports or `trazum profile usage.jsonl --json` for a
-   normalized log. With MCP, pass the log contents to `profile_usage`.
+   normalized log. With MCP, first use `import_usage` for Claude Code or Codex
+   transcripts (`format`, `text`, optional explicit `label`), then pass its
+   `log` to `profile_usage`. Preserve import diagnostics; empty output is not
+   zero usage. Do not concatenate overlapping imports.
 2. Preserve the period, priced and unpriced calls, skipped records, and pricing
    source. Missing models or fields make the result incomplete; never fill
    them with guessed prices or zero spend.

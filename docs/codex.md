@@ -23,8 +23,10 @@ fails instead of writing an empty output.
 
 `bill` detects this format in explicitly supplied inputs. The browser Bill
 also accepts uploaded rollout files and converts them locally. For MCP
-workflows, first convert the rollout and pass the resulting normalized text to
-[the existing usage tools](agents.md). The local HTTP API estimates proposed
+workflows, call `import_usage` with `format: "codex"`, rollout `text` and an
+optional explicit `label`. Pass its normalized `log` to [the usage tools](agents.md)
+and preserve the import diagnostics alongside their reports. The CLI conversion
+remains available; neither route establishes source completeness. The local HTTP API estimates proposed
 calls; it does not ingest raw logs. Raw conversation text is not required.
 
 ## What is counted

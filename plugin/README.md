@@ -9,7 +9,7 @@ Installing this plugin gives Claude Code two things:
   every caveat the reports themselves carry. The skill is the same document
   this repository's own agents work from, with the invocation swapped to the
   published CLI (`npx -y @trazum/cli`).
-- **The Trazum MCP server** (`npx -y @trazum/mcp`) — nine tools, including
+- **The Trazum MCP server** (`npx -y @trazum/mcp`) — ten tools, including
   `spend_guard`, which judges a call against the USD ceilings in your
   `trazum.config.json` *before* the call is made, and `position`, which
   states where the month stands against those ceilings from a usage log.

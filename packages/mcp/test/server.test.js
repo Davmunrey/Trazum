@@ -119,7 +119,7 @@ describe('the handshake', () => {
     fresh.close();
   });
 
-  it('lists exactly the nine tools, and no more', async () => {
+  it('lists exactly the ten tools, and no more', async () => {
     /**
      * Asserted as an exact set. This package's whole security argument is what it
      * *cannot* do — no paths, no network, no writes — and the way that argument
@@ -146,6 +146,7 @@ describe('the handshake', () => {
     const names = answer.result.tools.map((tool) => tool.name).sort();
     assert.deepEqual(names, [
       'check_prompt',
+      'import_usage',
       'list_models',
       'optimize_prompt',
       'plan_savings',
@@ -736,5 +737,27 @@ describe('what this package cannot do, which is the point', () => {
     }
     const undeclared = [...imported].filter((name) => !declared.has(name));
     assert.deepEqual(undeclared, [], `imported but not declared: ${undeclared.join(', ')}`);
+  });
+});
+
+
+describe('native import through real stdio', () => {
+  it('imports, plans and verifies without leaking transcript content', async () => {
+    const transcript = JSON.stringify({ type: 'assistant', requestId: 'synthetic-call',
+      sessionId: 'synthetic-session', timestamp: '2026-10-01T00:00:00Z', cwd: '/PRIVATE-PATH',
+      message: { model: 'claude-opus-5', content: [{ text: 'PRIVATE-PROMPT' }],
+        usage: { input_tokens: 400000, output_tokens: 1000 } } });
+    const importedResponse = await client.call('import_usage', { format: 'claude-code', text: transcript, label: 'synthetic-work' });
+    assert.notEqual(importedResponse.result.isError, true);
+    const imported = JSON.parse(bodyOf(importedResponse));
+    assert.equal(imported.records, 1);
+    assert.doesNotMatch(bodyOf(importedResponse), /PRIVATE-/);
+    const planned = JSON.parse(bodyOf(await client.call('plan_savings', { log: imported.log })));
+    assert.ok(planned.plan.actions.length > 0);
+    const verified = JSON.parse(bodyOf(await client.call('verify_savings', {
+      plan: JSON.stringify(planned.plan), log: imported.log,
+    })));
+    assert.equal(verified.verification.actions.length, planned.plan.actions.length);
+    assert.equal(verified.verification.arrived, 0);
   });
 });
