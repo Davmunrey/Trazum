@@ -153,21 +153,24 @@ describe('where Trazum itself is running', () => {
     assert.match(run([], root, { GITHUB_ACTIONS: 'true' }).out, /GitHub Actions/);
   });
 
-  it('warns that a monthly saving is not money on a subscription', async () => {
+  it('does not infer payment mode from a harness marker', async () => {
     // The reason this half of the command exists. Quoting "$184/month" to
     // somebody inside a flat plan is wrong in the direction that matters most.
     const root = await project({});
     const { out } = run([], root, { CLAUDECODE: '1' });
-    assert.match(out, /bills by subscription/);
-    assert.match(out, /not money you get back/);
+    assert.match(out, /Payment mode is unknown/);
+    assert.match(out, /do not establish invoice savings/);
+    assert.doesNotMatch(out, /bills by subscription/);
   });
 
-  it('does not warn where the billing really is per token', async () => {
+  it('does not infer metered billing from CI', async () => {
     const root = await project({});
-    assert.doesNotMatch(run([], root, { GITHUB_ACTIONS: 'true' }).out, /subscription/);
+    const { out } = run([], root, { GITHUB_ACTIONS: 'true' });
+    assert.match(out, /Payment mode is unknown/);
+    assert.doesNotMatch(out, /bills by subscription|bills per token/);
   });
 
-  it('says nothing either way in a plain terminal', async () => {
+  it('reports payment mode unknown in a plain terminal', async () => {
     // `unknown` is honest rather than lazy: a bare terminal says nothing about
     // whether the prompts written in it go to a metered API or a flat plan.
     const root = await project({});
@@ -180,7 +183,8 @@ describe('where Trazum itself is running', () => {
     const root = await project({ 'a.ts': "import OpenAI from 'openai';" });
     const { out } = run(['a.ts', '--locale', 'es'], root, { CLAUDECODE: '1' });
     assert.match(out, /Ejecutándose dentro de/);
-    assert.match(out, /cobra por suscripción/);
+    assert.match(out, /forma de pago es desconocida/);
+    assert.doesNotMatch(out, /cobra por suscripción/);
     assert.match(out, /Se cobra como/);
   });
 });

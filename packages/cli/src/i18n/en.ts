@@ -1311,7 +1311,7 @@ ${bold('EXAMPLES')}
     diff: () => 'Diff',
     tokensOnlyHeading: (host) => `What this buys on ${host}`,
     tokensOnlyWhy: (host) =>
-      `${host} bills by subscription, so there is no bill to reduce and no monthly figure to print.`,
+      `${host} identifies the tool, not your payment mode. Tokens are shown by default; invoice savings are unknown.`,
     tokensOnlyAsked: () => 'Costs hidden because you asked for tokens only.',
     // `tokens` arrives already formatted for the locale, so the singular is
     // decided on the string rather than on a number that is no longer here.
@@ -2309,8 +2309,8 @@ ${bold('EXAMPLES')}
 
   where: {
     hostHeading: () => 'Running inside',
-    subscription: (host) =>
-      `${host} bills by subscription, not by the token. A monthly saving below is arithmetic about tokens, not money you get back, what you gain is context window and rate-limit headroom.`,
+    billingUnknown: (host) =>
+      `${host} identifies the execution host only. Payment mode is unknown; token prices do not establish invoice savings.`,
     noTarget: () => 'Pass a source file to see which provider its prompts are sent to.',
     sourceHeading: (path) => `Prompts in ${path} go to`,
     conflict: () => 'Cannot tell: the file names more than one provider.',

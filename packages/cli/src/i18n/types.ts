@@ -979,7 +979,7 @@ export interface CliMessages {
 
   where: {
     hostHeading(): string;
-    subscription(host: string): string;
+    billingUnknown(host: string): string;
     noTarget(): string;
     sourceHeading(path: string): string;
     conflict(): string;

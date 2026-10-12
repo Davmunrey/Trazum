@@ -54,7 +54,7 @@ async function project() {
   return root;
 }
 
-describe('inside a subscription', () => {
+describe('the conservative agent-harness display default', () => {
   it('prints no money at all', async () => {
     const root = await project();
     const { out } = run(['p.txt', '--calls', '50000', '-o', '/dev/null'], root, {
@@ -70,6 +70,8 @@ describe('inside a subscription', () => {
     const { out } = run(['p.txt', '-o', '/dev/null'], root, { CLAUDECODE: '1' });
 
     assert.match(out, /What this buys on Claude Code/);
+    assert.match(out, /not your payment mode/);
+    assert.doesNotMatch(out, /bills by subscription/);
     assert.match(out, /tokens back, every call/);
     /**
      * Either shape, because both say what the tokens bought. The share moves on a
@@ -112,8 +114,27 @@ describe('inside a subscription', () => {
   });
 });
 
+describe('host identity and API-price requests stay separate', () => {
+  for (const [name, env] of [
+    ['Codex', { CODEX_HOME: '/tmp/trazum-test-codex' }],
+    ['Cursor', { CURSOR_TRACE_ID: 'synthetic-trace' }],
+  ]) {
+    it(`${name} defaults to tokens without inventing a payment mode`, async () => {
+      const root = await project();
+      const { out, code } = run(['p.txt', '-o', '/dev/null'], root, env);
+      assert.equal(code, 0);
+      assert.match(out, /not your payment mode/);
+      assert.doesNotMatch(out, /bills by subscription|\$/);
+      const priced = run(['p.txt', '--cost', '-o', '/dev/null'], root, env);
+      assert.equal(priced.code, 0);
+      assert.match(priced.out, /\$/);
+      assert.doesNotMatch(priced.out, /bills by subscription/);
+    });
+  }
+});
+
 describe('the escape hatches', () => {
-  it('--cost brings the money back inside a subscription', async () => {
+  it('--cost requests API-price arithmetic inside a harness', async () => {
     // The host says where *Trazum* runs, not where the prompt goes. Somebody
     // editing a production prompt inside Cursor wants the dollars, and should
     // not have to leave the editor to see them.
@@ -125,7 +146,7 @@ describe('the escape hatches', () => {
     assert.match(out, /\$/);
   });
 
-  it('--tokens-only hides it where billing really is per token', async () => {
+  it('--tokens-only hides API-price arithmetic in CI', async () => {
     const root = await project();
     const { out } = run(['p.txt', '--tokens-only', '-o', '/dev/null'], root, {
       GITHUB_ACTIONS: 'true',
@@ -133,7 +154,7 @@ describe('the escape hatches', () => {
     assert.doesNotMatch(out, /\$/);
   });
 
-  it('does not claim a metered host bills by subscription', async () => {
+  it('does not claim CI bills by subscription', async () => {
     // The first version said "GitHub Actions bills by subscription" when the
     // mode was forced with the flag, which is simply false.
     const root = await project();
