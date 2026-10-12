@@ -1,5 +1,7 @@
 # Gating on cost, in whatever CI you already run
 
+[Documentation](README.md) / [CLI setup](setup.md#cli) · [Gateway](gateway.md) · [Schedules](running.md)
+
 Trazum is one binary with meaningful exit codes. That is the whole integration
 story, and it is deliberate: a tool that only gates on one vendor's CI is a tool
 half its readers cannot use, and every vendor-shaped convenience is a second

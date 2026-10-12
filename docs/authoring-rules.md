@@ -1,5 +1,7 @@
 # Writing a rule
 
+[Documentation](README.md) / [Contributing](../CONTRIBUTING.md) · [Language maintenance](language-maintainer.md)
+
 A rule removes or rewrites something in a prompt that costs tokens without
 earning them. This is everything you need to add one **without reading the
 engine** — which is the point: the engine's job is to make a rule a small,

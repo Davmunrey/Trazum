@@ -1,10 +1,102 @@
 # The command reference
 
-The [README](../README.md) is the front door: what Trazum is, the
-forty-two-command map, and the first five minutes. This page is the book
-behind it — every command's full chapter, verbatim, with the same worked
-examples and the same refusals. Nothing here is a summary of the README;
-the README is a summary of this.
+[Documentation](README.md) / Command reference
+
+Start with the [quick start](quick-start.md) for a first result, or
+[setup](setup.md) for installation and integrations. This page contains the
+detailed recipes and their limitations. `trazum <command> --help` lists flags.
+
+## Find a command
+
+| Task | Recipes |
+|---|---|
+| Read and reconcile spend | [bill](#one-door-trazum-bill) · [profile](#where-the-money-actually-went-trazum-profile) · [connect](#your-bill-without-the-export-trazum-connect) · [reconcile](#what-you-were-actually-billed-trazum-reconcile) · [import OpenTelemetry](#the-universal-cost-lens-trazum-from-otel) |
+| Plan and measure changes | [plan](#the-plan-trazum-plan) · [verify](#did-it-work-trazum-verify) · [switch](#when-does-the-switch-pay-trazum-switch) · [route](#is-the-cheaper-model-good-enough-trazum-route) · [history](#the-long-run-trazum-history) |
+| Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
+| Improve prompts | [use measured traffic](#the-multiplication-stops-guessing---from-log) · [reorder](#reordering-for-the-cache---reorder) · [rank](#which-prompt-to-fix-first-trazum-rank) · [prune](#which-few-shot-examples-earn-their-tokens-trazum-prune) · [evaluate](#does-the-shorter-prompt-still-work) |
+| Integrate and report | [MCP](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) · [conform](#building-on-the-format-trazum-conform) · [rollup](#more-than-one-machine-trazum-rollup) · [receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt) · [report](#the-year-from-what-was-already-written-down-trazum-report) |
+
+[All commands](../README.md#the-52-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
+
+<details>
+<summary>All chapters on this page</summary>
+
+- [The multiplication stops guessing: `--from-log`](#the-multiplication-stops-guessing---from-log)
+- [Reordering for the cache: `--reorder`](#reordering-for-the-cache---reorder)
+- [Prompts where they actually live](#prompts-where-they-actually-live)
+- [Does the shorter prompt still work?](#does-the-shorter-prompt-still-work)
+- [The CI gate: a budget is a ceiling, a baseline is a gate](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate)
+- [A whole repository of prompts](#a-whole-repository-of-prompts)
+- [The fleet: `profile --by-source`](#the-fleet-profile---by-source)
+- [The plan: `trazum plan`](#the-plan-trazum-plan)
+- [Did it work? `trazum verify`](#did-it-work-trazum-verify)
+- [The long run: `trazum history`](#the-long-run-trazum-history)
+- [Your bill, without the export: `trazum connect`](#your-bill-without-the-export-trazum-connect)
+- [Keeping it: `trazum store`](#keeping-it-trazum-store)
+- [The afternoon it happened: `trazum watch`](#the-afternoon-it-happened-trazum-watch)
+- [Before the call is sent: `trazum serve`](#before-the-call-is-sent-trazum-serve)
+- [The counterpart: recording an outcome](#the-counterpart-recording-an-outcome)
+- [What an outcome costs](#what-an-outcome-costs)
+- [Is the ladder saving money, or is it a bill? `trazum ladder`](#is-the-ladder-saving-money-or-is-it-a-bill-trazum-ladder)
+- [Two arms on real traffic: `trazum experiment`](#two-arms-on-real-traffic-trazum-experiment)
+- [The gate that fails a build for quality: `trazum quality`](#the-gate-that-fails-a-build-for-quality-trazum-quality)
+- [The findings a dictionary cannot see: `trazum semantic`](#the-findings-a-dictionary-cannot-see-trazum-semantic)
+- [Whose money: `trazum owners`](#whose-money-trazum-owners)
+- [Should you sign that commitment? `trazum commitment`](#should-you-sign-that-commitment-trazum-commitment)
+- [The year, from what was already written down: `trazum report`](#the-year-from-what-was-already-written-down-trazum-report)
+- [In the path of the call: `trazum gateway`](#in-the-path-of-the-call-trazum-gateway)
+- [Charting it: `doctor --otlp-out`](#charting-it-doctor---otlp-out)
+- [A whole library, before and after: `diff --all`](#a-whole-library-before-and-after-diff---all)
+- [The whole workspace at once: `trazum doctor`](#the-whole-workspace-at-once-trazum-doctor)
+- [Project defaults: `trazum.config.json`](#project-defaults-trazumconfigjson)
+- [Rewrites the rules cannot do: `--suggest`](#rewrites-the-rules-cannot-do---suggest)
+- [Which prompt to fix first: `trazum rank`](#which-prompt-to-fix-first-trazum-rank)
+- [Who made this prompt expensive: `trazum blame`](#who-made-this-prompt-expensive-trazum-blame)
+- [Did this edit make it worse?](#did-this-edit-make-it-worse)
+- [Building on the format: `trazum conform`](#building-on-the-format-trazum-conform)
+- [More than one machine: `trazum rollup`](#more-than-one-machine-trazum-rollup)
+- [You describe it, it asks: `trazum write`](#you-describe-it-it-asks-trazum-write)
+- [Where the month stands: `trazum position`](#where-the-month-stands-trazum-position)
+- [A figure that still answers elsewhere: `trazum receipt`](#a-figure-that-still-answers-elsewhere-trazum-receipt)
+- [Did anything stop running: `trazum pulse`](#did-anything-stop-running-trazum-pulse)
+- [This machine, measured: `trazum bench`](#this-machine-measured-trazum-bench)
+- [Telling us something: `trazum feedback`](#telling-us-something-trazum-feedback)
+- [Languages](#languages)
+- [The report](#the-report)
+- [The prompt](#the-prompt)
+- [Connecting your own LLM](#connecting-your-own-llm)
+- [Prices that are not a table somebody typed: `--pricing-live`](#prices-that-are-not-a-table-somebody-typed---pricing-live)
+- [Where the money actually went: `trazum profile`](#where-the-money-actually-went-trazum-profile)
+- [Codex sessions: `trazum from-codex`](#codex-sessions-trazum-from-codex)
+- [The agent's own bill: `trazum from-claude-code`](#the-agents-own-bill-trazum-from-claude-code)
+- [The universal cost lens: `trazum from-otel`](#the-universal-cost-lens-trazum-from-otel)
+- [The gateway everybody already runs: `trazum from-litellm`](#the-gateway-everybody-already-runs-trazum-from-litellm)
+- [The proxy that kept every request: `trazum from-helicone`](#the-proxy-that-kept-every-request-trazum-from-helicone)
+- [The tree that is not a list: `trazum from-langsmith`](#the-tree-that-is-not-a-list-trazum-from-langsmith)
+- [What you were actually billed: `trazum reconcile`](#what-you-were-actually-billed-trazum-reconcile)
+- [What the provider itself says: `trazum from-anthropic`](#what-the-provider-itself-says-trazum-from-anthropic)
+- [What OpenAI says: `trazum from-openai`](#what-openai-says-trazum-from-openai)
+- [One door: `trazum bill`](#one-door-trazum-bill)
+- [What the router says: `trazum from-openrouter`](#what-the-router-says-trazum-from-openrouter)
+- [When does the switch pay: `trazum switch`](#when-does-the-switch-pay-trazum-switch)
+- [The model you run yourself: `trazum ownrate`](#the-model-you-run-yourself-trazum-ownrate)
+- [What would actually move this bill](#what-would-actually-move-this-bill)
+- [What re-sending the conversation costs](#what-re-sending-the-conversation-costs)
+- [Is the cheaper model good enough: `trazum route`](#is-the-cheaper-model-good-enough-trazum-route)
+- [Did the caching actually pay for itself?](#did-the-caching-actually-pay-for-itself)
+- [Does the TTL fit how fast the turns come?](#does-the-ttl-fit-how-fast-the-turns-come)
+- [What one conversation costs](#what-one-conversation-costs)
+- [Conversations that never came back](#conversations-that-never-came-back)
+- [What this log cannot answer yet](#what-this-log-cannot-answer-yet)
+- [The bill as a CI gate](#the-bill-as-a-ci-gate)
+- [Token counting](#token-counting)
+- [Updating prices](#updating-prices)
+- [When a price is not one number](#when-a-price-is-not-one-number)
+- [Which few-shot examples earn their tokens: `trazum prune`](#which-few-shot-examples-earn-their-tokens-trazum-prune)
+- [An MCP server, so an agent can budget its own prompts](#an-mcp-server-so-an-agent-can-budget-its-own-prompts)
+- [The pre-commit framework](#the-pre-commit-framework)
+
+</details>
 
 ### The multiplication stops guessing: `--from-log`
 
@@ -2433,6 +2525,20 @@ A model the pricing catalogue does not know is **named and kept out of the
 totals** rather than costed at zero — a total that silently omits calls is wrong in
 the flattering direction.
 
+### Codex sessions: `trazum from-codex`
+
+```bash
+trazum from-codex ./rollout.jsonl --label coding -o usage.jsonl
+trazum bill ./rollout.jsonl --table
+trazum profile usage.jsonl
+trazum plan usage.jsonl -o plan.json
+```
+
+Only explicitly named files or directories are read. The converter retains
+corroborated token counts and model context, excludes ambiguous snapshots and
+reports gaps to stderr. Prices are catalogue API equivalents, never a Codex
+subscription invoice. See [Codex input and limitations](codex.md).
+
 ### The agent's own bill: `trazum from-claude-code`
 
 The largest new LLM bill many people have is one they never instrumented: the
@@ -3819,12 +3925,16 @@ cover what matters.
 
 ### An MCP server, so an agent can budget its own prompts
 
-`@trazum/mcp` exposes seven tools over stdio — `optimize_prompt`,
+`@trazum/mcp` exposes text-only tools over stdio — `optimize_prompt`,
 `check_prompt`, `profile_usage`, `position`, `list_models`, `spend_guard` and
 `prompt_writer`. Every other surface here answers "what does this prompt cost"
 for a human after the fact; this answers it for the thing composing the
 prompts — before it sends one, over the bill its calls already ran up, and —
 with `position` — against where the month stands before it spends more.
+
+`plan_savings` and `verify_savings` extend that workflow from a cost report to
+a saved plan and later evidence. Both take log text; verification also takes
+plan JSON text. [MCP savings workflow](../packages/mcp/README.md#plan-change-verify).
 
 **`prompt_writer` hands over the questions rather than the answers.** An agent
 asked to write a prompt for something has the same problem a person has: it does

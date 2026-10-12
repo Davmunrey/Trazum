@@ -139,8 +139,8 @@ const realBlock = (() => {
 
   it('leaves the sentence-trailing form alone, which is a different thing', () => {
     /**
-     * `~$327.40/month` trails a sentence and has no space by design. Both
-     * READMEs show it and both are right. Asserted here so a future tidy-up
+     * `~$327.40/month` trails a sentence and has no space by design. The setup guide and CLI
+     * README show it and both are right. Asserted here so a future tidy-up
      * that "makes the tildes consistent" fails instead of quietly making one
      * of the two surfaces wrong.
      */
@@ -150,7 +150,7 @@ const realBlock = (() => {
     );
     assert.match(source, /perMonthSuffix: \(amount\) => ` ~\$\{amount\}\/month`/);
 
-    for (const page of ['README.md', 'packages/cli/README.md']) {
+    for (const page of ['docs/setup.md', 'packages/cli/README.md']) {
       const text = readFileSync(new URL(`../../../${page}`, import.meta.url).pathname, 'utf8');
       assert.match(
         text,

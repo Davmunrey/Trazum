@@ -4,10 +4,10 @@
 
 # Trazum
 
-### Most of your LLM bill is not the prompt. Trazum finds where it is.
+### Understand your AI spend. Decide what to change.
 
-**A deterministic cost analyser for prompts and usage logs.** Offline, free,
-same answer every time. It reports sixteen findings priced in dollars per
+**An open-source cost analyser across agent harnesses and LLM providers.** Local analysis,
+reproducible calculations, explicit assumptions. It reports sixteen findings priced in dollars per
 month: caching you are not getting, a model tier you may not need, a schema you
 pay to describe on every call. Shortening the prompt is one of them, and it is
 rarely the biggest.

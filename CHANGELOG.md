@@ -13,6 +13,38 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Local integration discovery.** `GET /openapi.json` publishes the HTTP
+  contract and `GET /capabilities` separates native session import from generic
+  CLI/MCP/HTTP access. An immutable browser-safe harness registry names supported
+  formats without inferring billing, automatic interception or task quality.
+- **Agent workflow evaluation.** `npm run test:agents` exchanges real CLI/MCP
+  plans using synthetic usage, checks verification parity and preserves unknown
+  results. The skill includes explicit paid-call boundaries and shared references.
+- **Acid neobrutalist interface.** A typographic identity, local Space Grotesk,
+  accessible color tokens and Light/Dark/System controls unify the dashboard,
+  landing, playground and metadata. The bill adds summary metrics and section
+  navigation while retaining its local analysis workflow.
+
+- Import explicit Codex rollout paths with `from-codex`, CLI/web Bill detection, corroborated token deltas, separate conversion evidence and API-equivalent pricing caveats. Conversation content never enters normalized output.
+
+- **MCP savings planning and verification.** `plan_savings` builds a CLI-compatible
+  plan from normalized usage-log text; `verify_savings` checks saved plan JSON
+  against later usage. Both return JSON evidence, pricing gaps and assumptions,
+  retain the three verification outcomes and accept optional pricing-overlay
+  text. Inputs are bounded, unknown arguments rejected, and neither tool adds
+  filesystem, network or model-call capabilities.
+
+
+- **Task-based documentation navigation.** A quick start separates recorded
+  usage from prompt projections; setup and integration recipes move out of the
+  README while its existing section anchors remain available. The command
+  reference gains a task map and chapter index, operational guides link their
+  next steps, and historical plans are clearly separated from current usage.
+  Account, licensing and scheduling descriptions now distinguish local CLI
+  analysis from optional web storage; structured-output advice no longer
+  promises that moving a schema to a parameter eliminates billed tokens.
+
+
 - **The bill by month, in the documents and the browser.** 2.5.1 gave the
   statement a table by month; the PDF, HTML and Markdown documents written by
   `bill` and `profile` now carry it too, every month rather than the newest
@@ -27,6 +59,38 @@ merged commit with no entry is a change only `git log` remembers.
   months.
 
 ### Fixed
+
+- **Harness identity is not a payment mode.** Claude Code, Codex, Cursor and CI
+  environment markers now report billing as unknown. Interactive harnesses keep
+  a conservative token-only display default; explicit API cost estimates remain
+  available with `--cost`.
+- **Unknown model costs stay unknown in the dashboard.** Unpriced model and
+  workload rows no longer display zero dollars or zero percent as measured facts.
+
+- **MCP reports its installed version during initialization.** The handshake
+  no longer announces 1.8.0 for a 2.5.1 package; a real stdio handshake test
+  compares it with the package manifest, and the release checklist includes it.
+
+
+- **Automatic Optimise demos cannot invoke paid passes.** Automatic requests
+  explicitly disable LLM rewriting and suggestions, even when those options
+  were previously enabled. Manual requests keep the selected configuration.
+- **Writer retains answers after failed requests.** Answers commit only after
+  a successful response, duplicate submissions are blocked while pending, and
+  network failures are identified as connection errors rather than rate limits.
+
+
+- **Bill clears an old workload filter when loading a new dataset.** Uploads,
+  pasted logs and tour samples no longer appear to cost zero because a project
+  selected in the previous log is absent. Repricing and filtering the same
+  dataset preserve its workload selection.
+
+
+- **Gateway budgets now include usage from completed calls.** The CLI adds
+  process-local measured spend to its startup baseline and reserves concurrent
+  estimates separately. Missing usage follows the selected failure policy;
+  cache write TTLs are preserved for pricing. This is not a persistent or
+  account-wide ledger. See [gateway accounting](docs/gateway.md#live-spend-and-concurrent-calls).
 
 - **A year of days drew the Bill tab's daily chart out of its card.** Each bar
   kept a 2px floor and a 1px gap, so past about 160 days the bars ran across

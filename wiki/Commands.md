@@ -2,7 +2,7 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 51 commands
+## The 52 commands
 
 | Command | What it answers |
 |---|---|
@@ -42,6 +42,7 @@
 | [`trazum position`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
 | [`trazum receipt`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#a-figure-that-still-answers-elsewhere-trazum-receipt) | What did this cost, in a form that still answers when read somewhere else? *Counts, and the money split so it can be added up rather than believed. No prompt text, no answers, no paths: there is no field for them.* |
 | [`trazum from-claude-code`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
+| [`trazum from-codex`](https://github.com/Davmunrey/Trazum/blob/main/docs/codex.md) | What API-equivalent usage can a local Codex rollout support? *Explicit paths, corroborated counters, no prompt content.* |
 | [`trazum from-otel`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
 | [`trazum from-litellm`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-gateway-everybody-already-runs-trazum-from-litellm) | What did the calls my LiteLLM proxy logged cost? *Reads the spend log the gateway already writes — the counts only, never the prompts, keys or addresses on the same row.* |
 | [`trazum reconcile`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#what-you-were-actually-billed-trazum-reconcile) | Does what Trazum computed match what the provider charged? *Sets the two figures beside each other, never merges them, and leaves the unexplained remainder standing on its own.* |

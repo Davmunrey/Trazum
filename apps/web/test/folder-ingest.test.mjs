@@ -126,14 +126,13 @@ describe('the Bill tab ingests a folder in the browser', () => {
   });
 
   it('says a transcript bill is an API-rate equivalent, as the CLI statement does', async () => {
-    // A Pro or Max plan pays the plan. The banner that announces converted
-    // transcripts carries the sentence, in both locales, and only when
-    // transcripts were read: a metered log is money billed.
+    // Harness identity does not establish payment mode. Both transcript
+    // adapters carry the estimate-versus-invoice caveat in both locales.
     assert.match(bill, /ingest\.transcripts > 0 && <div>\{t\.bill\.transcriptApiEquivalent\}<\/div>/);
     const { en } = await import('../lib/i18n/en.ts');
     const { es } = await import('../lib/i18n/es.ts');
-    assert.match(en.bill.transcriptApiEquivalent, /On a Pro or Max plan you paid the plan, not this/);
-    assert.match(es.bill.transcriptApiEquivalent, /Con un plan Pro o Max pagaste el plan, no esto/);
+    assert.match(en.bill.transcriptApiEquivalent, /Claude Code and Codex transcripts.*catalogue API rates, not your subscription invoice/);
+    assert.match(es.bill.transcriptApiEquivalent, /Claude Code y Codex.*API.*suscripción/);
   });
 
   it('a folder of transcripts and a stray usage log price as one bill', () => {

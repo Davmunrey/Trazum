@@ -1,5 +1,7 @@
 # What is open, what is not, and what cannot move
 
+[Documentation](README.md) / [License](../LICENSE) · [Accounts](accounts.md) · [Contributing](../CONTRIBUTING.md)
+
 If you are deciding whether to build on this, the licence file answers one
 question and leaves three unanswered. This page answers the other three: what
 the licence covers today, what could plausibly stop being covered, and what was
@@ -16,7 +18,7 @@ Everything in this repository is MIT, and the file is
 
 - **`@trazum/core`**, the analysis. Every figure this product prints is
   computed here.
-- **`@trazum/cli`**, the 51 commands.
+- **`@trazum/cli`**, the 52 commands.
 - **`@trazum/mcp`**, the MCP server.
 - **`@trazum/tokenizer-openai`**, the optional exact counter for OpenAI models.
   The one package here with a runtime dependency, taken on purpose so the core
@@ -59,16 +61,16 @@ of the product.
 
 Anything that requires infrastructure somebody else operates.
 
-**None of it exists.** There is no hosted service, no account, no server
-holding anybody's data. Every figure this product prints today is computed on
-the machine that ran the command, from a file that machine already had.
+The repository includes a web app, optional GitHub sign-in, a prompt library
+and share links. Their source remains MIT. With accounts configured, saving a
+prompt writes its text to the deployment operator's database; see
+[accounts and data handling](accounts.md). Local CLI analysis needs none of
+that infrastructure.
 
-If such a thing is ever built, it ships proprietary from its first commit. That
-is a different statement from the one people usually make, and the difference
-is the point: nothing is moved out of the open set to create it. A hosted
-service would be new code, doing a new job that needs a machine somebody pays
-for, and the open set would be exactly as large the day after it launched as
-the day before.
+Operating a deployment is a separate service from licensing its source. This
+repository does not promise a managed service, availability or support SLA.
+A possible future, separately developed managed service **ships proprietary from its first commit** under the stated policy; that does not relicense any
+existing repository code or remove an existing analysis from the open set.
 
 ## What is reserved
 
@@ -90,9 +92,8 @@ yours to use, the name is not.
   add an explicit patent grant, which is what a corporate legal review usually
   asks for and MIT does not answer. It is a later decision and a conditional
   one, and nothing on this page assumes it.
-- **The licences of vendored dependencies have not been audited.** Runtime
-  dependencies outside this repository are zero by design, and a guard holds
-  that. Development dependencies and vendored material are a separate question
+- **The licences of vendored dependencies have not been audited.** The core, CLI and MCP server have no runtime dependencies. The optional
+  OpenAI tokenizer and web app have their own dependencies. Development dependencies and vendored material are a separate question
   that this page does not answer.
 
 ## Why provenance sits next to this

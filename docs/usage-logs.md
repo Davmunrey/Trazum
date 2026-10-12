@@ -1,6 +1,8 @@
 # Getting a usage log
 
-Every figure Trazum prints as **money** comes from a usage log. The prompt
+[Documentation](README.md) / [Quick start](quick-start.md) · [Commands](commands.md#find-a-command) · [JSON contracts](json-output.md)
+
+Recorded spend comes from usage data. Prompt-only cost figures are projections. The prompt
 rules work without one — they count tokens — but "this label costs $340 a month
 and two thirds of it is the cache" is a sentence only a log can produce.
 
@@ -9,11 +11,15 @@ found*. Four shapes, with real records rather than a schema dump, because the
 moment you need one of these is the moment you have a file open and want to
 know whether it will work.
 
-Trazum reads **one JSON object per line** — `.jsonl`, `.ndjson`, a `.log` file
+**The normalized usage-log format** is one JSON object per line — `.jsonl`, `.ndjson`, a `.log` file
 of the same, and any of those gzipped. A `.json` file holding a single JSON
 *array* is not read: convert it to one object per line first. Pass a file or a
 directory; a directory is read as one log, which is what a month of rotated
 files already is.
+
+For provider and observability exports, `trazum bill <path>` detects supported
+shapes automatically. The rules below describe normalized logs used by
+`profile`, not every export accepted by `bill`.
 
 ## What every record needs
 

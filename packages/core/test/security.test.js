@@ -1727,7 +1727,9 @@ describe('the packaged Action', () => {
     const unchecked = [];
     let pins = 0;
 
-    for (const name of ['README.md', 'SECURITY.md', 'CONTRIBUTING.md', 'docs/authoring-rules.md']) {
+    // Installation recipes live in setup; keep checking the original entry
+    // points as well so a new front-page example cannot bypass this guard.
+    for (const name of ['README.md', 'docs/setup.md', 'SECURITY.md', 'CONTRIBUTING.md', 'docs/authoring-rules.md']) {
       let source;
       try {
         source = readFileSync(join(repoRoot, name), 'utf8');

@@ -2,10 +2,10 @@
 
 # Trazum
 
-### Most of your LLM bill is not the prompt. Trazum finds where it is.
+### Understand your AI spend. Decide what to change.
 
-**A deterministic cost analyser for prompts and usage logs.** Offline, free,
-same answer every time. It reports sixteen findings priced in dollars per
+**An open-source cost analyser across agent harnesses and LLM providers.** Local analysis,
+reproducible calculations, explicit assumptions. It reports sixteen findings priced in dollars per
 month: caching you are not getting, a model tier you may not need, a schema you
 pay to describe on every call. Shortening the prompt is one of them, and it is
 rarely the biggest.
@@ -18,7 +18,26 @@ rarely the biggest.
 
 </div>
 
+## Pick your integration
+
+Claude Code is the first native integration, not a provider lock-in. Codex
+session imports, normalized usage logs and provider exports feed the same core.
+MCP clients can query Trazum without having a native transcript adapter.
+
+| You need | Start here |
+|---|---|
+| A terminal report | [Quick start](docs/quick-start.md) |
+| Native agent session import | [Claude Code](docs/commands.md#the-agents-own-bill-trazum-from-claude-code) or [Codex](docs/codex.md) |
+| An agent integration | [CLI, MCP and skill workflows](docs/agents.md) |
+| An API contract or enforced call path | [Local HTTP API](docs/api.md) or [gateway](docs/gateway.md) |
+| The full documentation | [Task-based index](docs/README.md) |
+
+Harness, model and payment mode are separate facts. An API-equivalent estimate
+is not a subscription invoice; a model without a price remains a gap.
+
 ## Start here: one line, nothing installed
+
+Requires Node.js 20 or newer. `npx` may download Trazum from npm.
 
 ```bash
 npx @trazum/cli bill
@@ -148,7 +167,7 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
     ┌────────────┬─────────────┼─────────────┬─────────────┐
  @trazum/cli  @trazum/mcp  trazum-vscode  @trazum/web    action/
- 51 commands   MCP server    the editor      Next.js    comments on
+ 52 commands   MCP server    the editor      Next.js    comments on
               for your agents  status bar               pull requests
 
               @trazum/tokenizer-openai   optional: exact counts for OpenAI
@@ -157,26 +176,16 @@ never runs unless you ask.
 
 ## Contents
 
-- [What it actually does](#what-it-actually-does) — the five things, and what it refuses to touch
-- [The 51 commands](#the-51-commands): the whole surface, one line each
-- [Getting started](#getting-started) — CLI, web, the GitHub Action, pre-commit
-- [The first five minutes](#the-first-five-minutes-trazum-init) — `init`, and the four things it refuses to write
-- [Building on the format](docs/commands.md#building-on-the-format-trazum-conform) — the contracts, the guarantees, and the doctrine
-- [More than one machine](docs/commands.md#more-than-one-machine-trazum-rollup) — several people's documents, one bill, every gap preserved
-- [Did anything stop running](docs/commands.md#did-anything-stop-running-trazum-pulse) — the outside view of a scheduled job
-- [Which few-shot examples earn their tokens](docs/commands.md#which-few-shot-examples-earn-their-tokens-trazum-prune) — measured, and it asks before spending
-- [An MCP server for your agents](docs/commands.md#an-mcp-server-so-an-agent-can-budget-its-own-prompts) — budget a prompt before sending it
-- [Languages](#languages) — what the dictionaries cover, and what they deliberately do not
-- [Connecting your own LLM](#connecting-your-own-llm) — one wire format, four native providers, and the SSRF rules
-- [Every model you pay for by the token](#every-model-you-pay-for-by-the-token) — pricing across 7 providers, live via OpenRouter
-- [Token counting](#token-counting) — the estimator, and the error band it prints
-- [Limitations, stated plainly](#limitations-stated-plainly) — read this one
-- [Running it on a schedule](docs/running.md) — cron, systemd, Actions, and where the answer runs out
-- [Everything else](docs/README.md) — the documentation index, arranged by whether you are
-  choosing this, using it, extending it or maintaining it
-- [Layout](#layout) · [Updating prices](#updating-prices) · [Privacy](#analytics-and-privacy) · [Roadmap](#roadmap-and-contributing)
+| I want to… | Go to |
+|---|---|
+| Get a first result | [Quick start](docs/quick-start.md) |
+| Understand recorded spend | [Usage inputs](docs/usage-logs.md) and [bill/profile](docs/commands.md#find-a-command) |
+| Set budgets | [CI gates](docs/ci.md) or [gateway decisions](docs/gateway.md) |
+| Integrate Trazum | [CLI, web, library and agents](docs/setup.md) |
+| Find a command or a data contract | [Command reference](docs/commands.md) and [documentation index](docs/README.md) |
 
----
+[Limitations](#limitations-stated-plainly) · [Privacy](#analytics-and-privacy) ·
+[Pricing](#every-model-you-pay-for-by-the-token) · [Contributing](CONTRIBUTING.md)
 
 ## What it actually does
 
@@ -196,40 +205,26 @@ against your own call volume, and none of them is about making the text shorter:
 | Contradictory instructions | "Answer in English" three paragraphs above "reply in the customer's own language". The model has to pick one, and which one can change between calls — a correctness problem that also costs tokens twice. |
 | Redundant examples | Few-shot examples that are near-copies of an earlier one, and what they cost per month. |
 | Output format stated twice | A schema shown in a code block and then walked again in prose. The block is the version worth keeping. |
-| Schema the request could carry | A schema block introduced by "Output format:" is paid for in input tokens on every call. Every major API now takes a response schema as a *parameter* — and moving it there is both cheaper and stricter. See below. |
+| Schema the request could carry | A schema block introduced by "Output format:" is paid for in input tokens on every call. Every major API now takes a response schema as a *parameter* — supported structured-output APIs can enforce the shape, but schema tokens may still be billed. See below. |
 
 The last four are **advisory only**. A contradiction has a right answer that only
 the author knows, and an example that looks redundant may be demonstrating a
 boundary case on purpose. Trazum points; it does not cut.
 
-#### The one finding that is not a trade-off
+#### Structured output is a code change
 
-Most of what Trazum reports is a choice: shorter against clearer, cheaper against
-more capable. Moving an output schema out of the prompt is neither.
+Trazum can identify an output schema described inside a prompt and suggest
+using the provider's structured-output API instead. It never removes that
+schema automatically: the calling application must preserve the contract.
 
-```
-→ The output schema could travel in the request instead of the prompt
-  A schema block introduced by "output format" defines `category`, `reply`,
-  `escalate_to_human`, `confidence`, costing about 62 tokens on every call.
-```
+A constrained decoder can improve format reliability where supported.
+**Moving a schema to a request parameter does not prove a billing saving:**
+providers may still count schema tokens. Compare actual usage before claiming
+savings. The finding estimates the prompt text involved, not a guaranteed
+reduction in the provider's bill.
 
-Those tokens are paid on **every call** to have the model read a shape and be
-asked, politely, to match it. `output_config.format`, `response_format`,
-`responseSchema` — whatever your provider calls it — takes the same shape as a
-request parameter, where the decoder is constrained rather than persuaded. Cheaper
-*and* stricter.
-
-**Trazum reports it and never does it**, because it is not a change to the prompt:
-it is a change to the code that sends the prompt. A rule that deleted the schema
-would leave a prompt asking for a shape it no longer describes, sent by a client
-nobody updated — strictly worse than what it started from.
-
-**The one way this could do harm, and what stops it.** `Output format: {...}` is
-a contract and moving it is free; `Input: {...}` inside a few-shot example is
-*data the prompt needs*, and moving it breaks the prompt. So nothing is guessed:
-a block counts only when a phrase from the output-cue dictionary appears
-immediately before it, in one of the seven languages the rules cover. No phrase,
-no finding — a false negative, which is the right direction to be wrong in.
+Only blocks preceded by an explicit output cue are considered. Example input
+is data the model may need and must not be removed as though it were a schema.
 
 The example detector finds near-copies — the way few-shot blocks actually grow.
 It deliberately does not flag *paraphrases*: that case needs a model, and is on
@@ -267,8 +262,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 51 commands — [the table
-above](#the-51-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 52 commands — [the table
+above](#the-52-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -282,7 +277,9 @@ from the exit codes it is supposed to relay.
 
 ---
 
-## The 51 commands
+<a id="the-51-commands"></a>
+
+## The 52 commands
 
 | Command | What it answers |
 |---|---|
@@ -322,6 +319,7 @@ from the exit codes it is supposed to relay.
 | [`trazum position`](docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
 | [`trazum receipt`](docs/commands.md#a-figure-that-still-answers-elsewhere-trazum-receipt) | What did this cost, in a form that still answers when read somewhere else? *Counts, and the money split so it can be added up rather than believed. No prompt text, no answers, no paths: there is no field for them.* |
 | [`trazum from-claude-code`](docs/commands.md#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
+| [`trazum from-codex`](docs/codex.md) | What API-equivalent usage can a local Codex rollout support? *Explicit paths, corroborated counters, no prompt content.* |
 | [`trazum from-otel`](docs/commands.md#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
 | [`trazum from-litellm`](docs/commands.md#the-gateway-everybody-already-runs-trazum-from-litellm) | What did the calls my LiteLLM proxy logged cost? *Reads the spend log the gateway already writes — the counts only, never the prompts, keys or addresses on the same row.* |
 | [`trazum reconcile`](docs/commands.md#what-you-were-actually-billed-trazum-reconcile) | Does what Trazum computed match what the provider charged? *Sets the two figures beside each other, never merges them, and leaves the unexplained remainder standing on its own.* |
@@ -340,606 +338,56 @@ from the exit codes it is supposed to relay.
 
 ## Getting started
 
-```bash
-npx @trazum/cli init
-```
-
-No install, no key, no network. It reads what is already here — your prompts,
-which provider your code calls, a usage log if one is lying around — writes a
-config out of what it can actually justify, and prints the single most valuable
-thing it found. See [the first five minutes](#the-first-five-minutes-trazum-init).
-
-Or start from one file:
+**Node.js 20 or newer.** `npx` can download the package; local analysis requires
+no API key. Choose the task that matches the data you already have:
 
 ```bash
-npx @trazum/cli optimize your-prompt.txt --cost
+npx @trazum/cli bill ./usage-export.jsonl
+npx @trazum/cli optimize ./prompt.txt --cost
 ```
 
-Either way, keep it around:
-
-```bash
-npm install -g @trazum/cli     # the terminal
-npm install @trazum/core       # the library
-npm install @trazum/mcp        # the MCP server, for an agent
-npm install @trazum/tokenizer-openai  # optional: exact counts for OpenAI models
-```
-
-Or hand the whole thing to Claude Code as a plugin — the `trazum` skill plus
-the MCP server, installed together, nothing else to configure:
-
-```bash
-claude plugin marketplace add Davmunrey/Trazum
-claude plugin install trazum@trazum
-```
-
-The plugin's skill is [the same document](plugin/skills/trazum/SKILL.md) this
-repository's own agents work from, derived by
-`scripts/build-plugin-skill.mjs` with only the invocation changed — a test
-fails the build if the two drift apart in any other way.
-
-<details>
-<summary>From source, if you are working on Trazum itself</summary>
-
-```bash
-npm install
-npm run build      # core + cli
-npm test           # every suite: core, CLI, web, Action
-npm run verify     # the above plus typecheck and the web build
-```
-
-</details>
-
-<sub>The test count used to be written here as a number. It said 580 while the real
-figure had reached 798, because nothing checked it — so it now says what the command
-covers instead. A number nobody maintains is worse than no number.</sub>
+The first reads recorded usage. The second estimates changes to a prompt;
+its projected savings are not a provider invoice. See the
+[quick start](docs/quick-start.md) for a reproducible example and next steps.
 
 ### The first five minutes: `trazum init`
 
-```bash
-npx @trazum/cli init
-```
-
-```
-What is here
-
-  Running inside a terminal.
-  1 prompt file found.
-  Usage log found: usage.jsonl.
-
-What the config would say
-  + usage.model  100% of the measured bill went to claude-opus-5
-  + usage.callsPerMonth  240 calls over 30 days, stated as 240 a month
-  + usage.avgOutputTokens  96000 output tokens over 240 calls averages 400
-  · usage.cacheHitRate  this log has no cache columns at all, which is not the same as a hit rate of zero
-  · usage.batchEligible  whether the work can wait for a batch window is a product decision, and no log records it
-  · labels  1 label in the log, and nothing here proves which prompt file sends which
-  · spend.maxUsd  a budget is a policy, so it is yours to set — the measured figure is $38.40 over 30 days
-
-The most valuable thing found
-  240 calls labelled "classify" went to Claude Opus 5 over 30 days.
-  They cost $38.40.
-  The same work fits Claude Sonnet 5, which is cheaper per token.
-  The Batch API halves both halves of the bill, for work that can wait.
-  Together: $30.72 over the same 30 days.
-```
-
-It is a **detection, not a wizard**. Nothing is asked. Each line above is
-something that was found — a prompt, a provider named in your code, a log —
-or a key it declined **with what would settle it**. `--dry-run` prints the
-config and writes nothing; `--yes` replaces one that is already there;
-without it an existing config is left alone.
-
-**Every key it writes carries the arithmetic that justified it.** A generated
-config full of guessed thresholds is one nobody trusts and everybody deletes,
-and it is worse than an empty one, because six weeks later it reads as a
-decision somebody made.
-
-Four things it refuses to write, and they are the interesting four:
-
-- **A budget.** A log says what your traffic *was*; a budget says what it *may
-  cost*, which no log can answer. "The measured month plus twenty per cent"
-  would be this tool inventing a threshold and then grading you against it. So
-  the measured figure is handed over and the limit stays yours.
-- **A monthly rate from a short window.** Twenty-eight days minimum, so every
-  weekday appears the same number of times. Four days multiplied by seven is a
-  forecast wearing a measurement's clothes.
-- **A cache hit rate from a log with no cache columns.** Not recorded is not
-  not-happened. Writing `0` there would tell every later caching advisory that
-  caching is doing nothing — a finding invented out of a missing field.
-- **`batchEligible`, in either direction.** Whether the work tolerates a batch
-  window is a product decision, and no log records it. `false` would quietly
-  delete the batch lever from every report; `true` would sell a saving on
-  latency nobody agreed to give up.
-
-It also declines a model when your code names a *provider* and no model. `where`
-prints a provider's default because a reader can see it is a guess; a config
-file cannot.
-
-No usage anywhere? It says so, and points at
-[docs/usage-logs.md](docs/usage-logs.md) — Anthropic, OpenAI, the Vercel AI SDK
-and an OTel collector, with records you can copy.
-
-`trazum init --json` is the same proposal as data, including every declined key
-and its reason — [contracted in docs/json-output.md](docs/json-output.md#the-first-run-document).
-It writes nothing.
+Run `npx @trazum/cli init` in your project to inspect prompts and available
+usage, write a config and identify a finding. Read
+[what init writes and refuses to overwrite](docs/setup.md#the-first-five-minutes-trazum-init).
 
 ### CLI
 
-```bash
-node packages/cli/dist/index.js optimize prompt.txt --calls 50000 --diff
-```
-
-```
-Input tokens
-  190 → 137   -27.9% (estimated, ±6%)
-
-Rules applied
-  [safe] Repeated paragraphs (1×, ~19 tokens)
-  [safe] Wordy phrasing (1×, ~3 tokens)
-  [safe] Politeness formulas (4×, ~19 tokens)
-  [safe] Filler and throat-clearing (2×, ~11 tokens)
-
-Cost with Claude Opus 5
-  50,000 calls/month · 300 output tokens per call
-  $422.50 → $409.25   saving $13.25/month (3.1%)
-
-Beyond shortening the prompt
-  → This task may not need Claude Opus 5 ~$327.40/month
-  → If the work tolerates latency, use the Batch API ~$204.62/month
-```
-
-Every other command, each with its own chapter in [the command
-reference](docs/commands.md):
-
-```bash
-trazum doctor                        # survey the whole workspace
-trazum plan usage.jsonl              # the findings as a ranked plan
-trazum verify plan.json --against new.jsonl   # did it work?
-trazum history reports/              # the long run, from stored reports
-trazum connect anthropic             # your bill, read from the provider
-trazum store                         # what is kept, and what a prune takes
-trazum watch --once                  # did anything cross, this afternoon
-trazum serve                         # answer before the call is sent
-trazum rollup a.json b.json          # several people's bills, one roll-up
-trazum profile usage.jsonl --html-out report.html   # the report somebody forwards
-trazum bill ~/.claude/projects --pdf-out bill.pdf   # the bill as a PDF attachment
-trazum pulse --max-stale-hours 36    # did anything stop running?
-trazum bench                         # how fast is Trazum on this machine
-trazum rank prompts/                 # which one to fix first
-trazum blame prompts/system.txt      # who made it expensive, and when
-trazum diff old.txt new.txt          # what this edit cost
-trazum check prompts/ --max-tokens 2000
-trazum eval prompts/system.txt --cases cases.json
-trazum where src/agent.ts            # which provider this actually calls
-trazum models                        # pricing table and cache minimums
-trazum rules                         # what each rule does, and its id
-trazum --help
-```
-
-When redirected it writes only the optimised prompt, so it pipes cleanly:
-
-```bash
-cat prompt.md | node packages/cli/dist/index.js optimize - > prompt.optimised.md
-```
-
-To install it as a `trazum` command:
-
-```bash
-npm link -w @trazum/cli
-```
-
-**Token budgets in CI.** `trazum check` exits 1 when the prompt busts its
-budget, so a template that grows unchecked breaks the build instead of the bill:
-
-```bash
-trazum check prompts/system.txt --max-tokens 2000
-# FAILED 2,481 tokens busts the budget of 2,000.
-#   Optimised with "trazum optimize --level safe" it would land at ~1,913 tokens and fit.
-```
-
-**Before it reaches CI: a pre-commit hook.**
-
-```bash
-ln -s ../../scripts/pre-commit .git/hooks/pre-commit
-```
-
-```
-trazum: these prompts are over their token budget:
-  prompts/system.txt
-
-  trazum doctor .          shows how far over, and what it costs
-  Shorten them, raise the budget in trazum.config.json, or commit with --no-verify.
-```
-
-**It blocks only on prompts your commit actually touches.** A hook that refuses a
-commit over a *different* prompt somebody else committed last month is one people
-learn to pass `--no-verify` to — and then it is worse than no hook at all.
-`TRAZUM_HOOK=0` disables it; nothing staged, no Trazum installed, no prompts or an
-unreadable config each say so once and exit 0. One real limitation: it reads the
-working tree, not the staged blobs, so it judges a prompt's newest edit even when
-an older version is what is staged.
-
-In GitHub Actions, use the packaged action — nothing to install:
-
-```yaml
-- uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@e0420aef9fbe0a07bc5ecbaa64556e06d22541ca  # 2.5.1
-  with:
-    target: prompts/system.txt
-    max-tokens: 2000
-```
-
-**One-click fixes, as suggestions.** `suggest-fixes: true` posts the optimised
-prompt as a GitHub *suggested change*, which a reviewer applies with one button:
-
-```yaml
-permissions:
-  contents: read
-  pull-requests: write
-with:
-  target: prompts/
-  suggest-fixes: true
-  github-token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-**A suggestion, not a commit, and that is deliberate.** Committing the fix would
-need `contents: write`; a suggestion lands in the same place with the same one
-click on the `pull-requests: write` the comment mode already uses, and you stay
-the one who commits. Two limits, both real: it uses the **safe** level only — a
-one-click apply is not the moment for a diff that wants reading — and a
-suggestion can only anchor to lines in the pull request's diff, so a PR that
-edits three lines of a forty-line prompt gets a notice explaining why there is
-no suggestion rather than a partial rewrite.
-
-**Pinned to a commit SHA, not a tag** — the same rule
-[SECURITY.md](SECURITY.md) states and `security.test.js` enforces on every
-third-party action in this repository. A tag is a mutable pointer: whoever can
-move `v1` can change what runs in your workflow with your token. The `# 1.0.0`
-comment names the version at that commit, and is what Dependabot reads to offer
-you the bump.
-
-**The report lands in the run summary automatically** — every run, pass or fail,
-with no token and no permissions. To also post it as a pull request comment that
-replaces its own previous one:
-
-```yaml
-permissions:
-  contents: read
-  pull-requests: write     # the action cannot grant itself this
-
-steps:
-  - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@e0420aef9fbe0a07bc5ecbaa64556e06d22541ca  # 2.5.1
-    with:
-      target: prompts/            # a directory uses trazum.config.json budgets
-      comment: true
-      github-token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-**Commenting can never fail your build.** No pull request, comments disabled, or
-a read-only token — each prints a notice and carries on, because the report has
-already reached the run summary. That matters on **pull requests from forks**,
-where `GITHUB_TOKEN` is read-only by design and the comment simply will not post.
-
-If you go looking for a way around that, the answer you will find is
-`pull_request_target`. **Don't.** It runs with a writable token against the base
-repository while checking out code the contributor controls, which turns "we
-wanted to comment on a PR" into arbitrary code execution with your secrets. The
-run summary is there precisely so you do not need it. Trazum asserts in CI that
-it uses `pull_request_target` nowhere.
-
-A passing report is collapsed; a failing one is not. A green table that stays
-green on every push is the thing you learn to skip — and then you skip the red
-one too.
-
-**The spend gate, packaged.** The same action gates the bill itself when handed
-a usage log instead of prompts — mutually exclusive with `target`, because one
-run gates tokens before the money is spent or the spend itself, and saying
-which is the caller's job:
-
-```yaml
-- uses: Davmunrey/Trazum@e0420aef9fbe0a07bc5ecbaa64556e06d22541ca  # 2.5.1
-  with:
-    usage-log: logs/yesterday.jsonl
-    max-usd: '50'            # exit 1 over budget — no period assumed
-    # against: logs/day-before.jsonl
-    # max-growth-usd: '10'
-    # label: chat            # one workload's budget
-    # since: '2026-08-11'    # one period's — until includes its whole day
-    # until: '2026-08-17'
-```
-
-The profile report lands in the run summary either way, and a failing gate
-still writes it — a red build with no report is a mystery, and mysteries get
-deleted from pipelines.
-
-**The report leaves the terminal in five shapes.** `--markdown-out` for a CI
-summary or a PR comment, `--csv-out` for whoever signs off the bill (one row
-per workload and model, no total row, empty cells where dollars are unknown),
-`--html-out` and `--pdf-out` for the person who reads attachments rather than
-terminals (the PDF has no dependency and no embedded font, and `bill` writes
-all four too), and `--json` for anything built on top — documented field by field in
-[docs/json-output.md](docs/json-output.md), with a `schemaVersion` and a test
-that fails if the two ever disagree. Point `profile` at a **directory** and a
-month of rotated logs is read in name order as one bill.
-
-Or by hand, if you already have the repo checked out:
-
-```yaml
-- run: npm ci && npm run build
-- run: node packages/cli/dist/index.js check prompts/system.txt --max-tokens 2000
-```
+Install with `npm install -g @trazum/cli`, or keep using `npx`.
+[CLI examples and configuration](docs/setup.md#cli) cover token budgets,
+reports, CI and pricing overrides. [Command reference](docs/commands.md).
 
 ### The rest of the commands, in their own book
 
-`optimize`, `check` and `init` above are the front door. Every other
-command has its own chapter — same prose, same worked examples, one page —
-in **[the command reference](docs/commands.md)**: the
-measured multiplication (`--from-log`), the cache reorder, the CI baseline,
-the fleet, the plan and its verification, the provider pull, the gateway,
-the evaluations that spend money and say so first, and everything else the
-[table above](#the-51-commands) links to.
-
-`trazum --version` prints the version on its own, and works when your config is
-broken — which is exactly when somebody is asking.
+[Find a command by task](docs/commands.md#find-a-command).
+`trazum --help` lists commands; `trazum <command> --help` explains its flags.
 
 ### Web
 
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/web-dark.png">
-    <img src="docs/assets/web-light.png" alt="The Trazum web app: the grouped rail on the left with direct GitHub, npm and documentation links; a wordy support prompt in the middle; and on the right a result panel reading minus 29.8 percent, 258 to 181 input tokens, and $3.85 a month saved." width="820">
-  </picture>
-</div>
-
-```bash
-npm run build:web
-npm run dev:web        # http://localhost:3000
-```
-
-An interface for pasting a prompt, tuning the usage scenario, and reading the
-word-by-word diff, the saving and the advisories. Includes optimisation history
-stored only in the browser — nothing leaves your machine.
-
-**Reordering for the cache is available here too**, behind a checkbox rather than
-a level, with the same warning the CLI prints and the same refusals reported. It
-is the largest saving Trazum can make, and it should not need a terminal to find.
-
-**And there is a Compare tab.** Two versions of a prompt, and what the edit did:
-the token delta, what it costs per month, and which advisories and rules it
-introduced or resolved. Every figure is `after - before`, so **positive means
-worse** — the opposite of the rest of Trazum — and the page says so above the
-numbers rather than beside them, because a reader arriving from Optimise has the
-opposite convention already loaded.
-
-`Compare what the rules would leave` is off by default and the default is the
-interesting half: your edit changed the text as written, so the text as written is
-what you are being asked about. Trimming both sides first hides a prompt that
-doubled in length and happened to double in courtesy.
-
-The usage scenario is shared between the two tabs. Setting 50,000 calls on one and
-reading 10,000 on the other would make their answers incomparable while looking
-like they were about the same workload.
-
-**So are phrase-level rewrites.** Two switches: one asks the model for
-suggestions, the second takes them. They are listed above the saving, one line
-each — `You should always make sure to → Always  ~4 ×2` — with a count of how
-many the checks threw out, because "four did not survive" is the useful fact and
-which four is noise unless you are debugging the model. Nothing is applied unless
-the second switch is on, and turning the first one off clears it.
-
-**And a "Your bill" tab**, which is [`trazum profile`](#where-the-money-actually-went-trazum-profile)
-in the browser: drop or paste a usage log and read where the money went — the
-spend split, whether caching paid for itself, the levers that would actually
-move the bill, conversation growth, and the answers that were cut off
-mid-generation. The log is parsed entirely in the page against the bundled
-pricing catalogue. **Nothing is uploaded**: there is no fetch in that
-component, a test fails if one appears, and the only analytics event carries
-two booleans. A usage log names your workloads, spend and conversation counts —
-exactly the file nobody should have to hand to a server to see a report on it.
-
-The drop zone reads more than logs. A **Claude Code project folder** —
-`~/.claude/projects` as it sits on disk — prices every transcript in the page,
-labelled by project, with the counts crossing and never the words. An
-**OpenTelemetry export** prices its GenAI spans the same way. And a **price
-card** — an OpenRouter `/models` response, or the same overlay JSON a
-`--pricing` file holds — widens the catalogue every figure in the tab prices
-with, so a model the bundled snapshot has never met (your Qwen, your
-self-hosted rate from [`trazum ownrate`](docs/commands.md#the-model-you-run-yourself-trazum-ownrate))
-gets the same exact arithmetic, still without a single request leaving the page.
-
-**Under the report, the rest of the loop.** The ranked plan — each action with
-its money as a projection *or* a measured stake and never both, the typed
-assumption it rests on, and the command that would check that assumption — and
-below it, *Did it work?*. **Save plan.json** writes byte-for-byte what
-`trazum plan -o` writes, so a plan made in a tab can be committed, gated on in
-CI, and opened back here later. Opening a saved plan turns the log in the tab
-into the check on it: three outcomes, never two, with the three cannot-tell
-reasons kept distinct. Saved as a file rather than offered as a link, because a
-link would mean this page storing somebody's bill somewhere — an access-control
-question nobody has designed. [The plan format is documented](docs/plan-format.md).
-
-**A guided tour walks the public tabs** — Optimise, Write, Compare, Bill and
-the Playground — ringing each panel in place with a sentence on what it
-answers. It never auto-plays: a first visit is offered it once, and the compass
-in the rail starts it any time after. The **Playground** tab is the CLI itself
-in the page — 13 commands that spend nothing and touch no network, over
-sample files already loaded, through the same `@trazum/core` functions the
-terminal runs, so `trazum profile usage.jsonl` can be tried before anything is
-installed, against data that never existed outside the browser.
-
-The HTTP API behind it is public and small:
-
-```bash
-# Metadata: models, and whether an LLM is configured on the server
-curl https://your-deployment/api/optimize
-
-# Optimise
-curl -X POST https://your-deployment/api/optimize \
-  -H 'content-type: application/json' \
-  -d '{
-    "prompt": "Please, in order to help me, analyse {{x}}. Thanks!",
-    "level": "safe",
-    "locale": "en",
-    "reorder": false,
-    "suggest": false,
-    "applySuggestions": false,
-    "usage": { "model": "claude-opus-5", "callsPerMonth": 20000, "avgOutputTokens": 300 }
-  }'
-```
-
-`reorder`, `suggest` and `applySuggestions` are honoured only on a literal `true`
-— the body is untrusted, and a truthy check would let `"false"` rearrange
-somebody's prompt. With `reorder`, the response carries what moved and what was
-declined, and `original` stays the text you sent so a diff shows the move. With
-`suggest`, it carries every proposal that survived the checks and everything
-rejected and why — present even when the model proposed nothing, so "nothing was
-found" is distinguishable from "you did not ask". `applySuggestions` without
-`suggest` is a **`400`**, not a no-op, refused before any call to the model.
-
-```bash
-# Compare two versions: what did this edit cost?
-curl -X POST https://your-deployment/api/compare \
-  -H 'content-type: application/json' \
-  -d '{
-    "before": "Classify {{x}}. Answer with the category only.",
-    "after": "Please kindly classify {{x}}. Thank you!",
-    "optimizeBoth": false,
-    "usage": { "model": "claude-opus-5", "callsPerMonth": 50000 }
-  }'
-```
-
-`POST /api/compare` returns every figure as `after - before`, so **positive
-means worse**. Both endpoints are rate limited (30/min per IP), with a bucket
-each. And `/api/optimize` will not fetch an LLM endpoint a caller names: a
-request may only **select** one from `TRAZUM_ALLOWED_LLM_ENDPOINTS`, empty by
-default — stricter than filtering the URL, because a hostname an attacker
-registered can resolve wherever they like. See [SECURITY.md](SECURITY.md).
+[Open the Playground](https://trazum.vercel.app/?tab=playground) to try sample
+files. For local development, run `npm install`, `npm run build`, then
+`npm run dev:web`. [Web setup and API recipes](docs/setup.md#web).
 
 ### Signing in (optional)
 
-Off by default, and a deployment that leaves it off is the tool this README has
-been describing all along: paste a prompt, get an answer, nothing remembered.
-
-Set three variables and the sidebar grows a **Sign in** button at its foot:
-
-```sh
-TRAZUM_GITHUB_CLIENT_ID=Iv1.xxxx
-TRAZUM_GITHUB_CLIENT_SECRET=xxxx
-TRAZUM_PUBLIC_URL=https://trazum.example
-```
-
-A fourth, `TRAZUM_DATABASE_URL`, points it at any Postgres so sign-in survives a
-restart; without it sessions live in memory and the account menu says
-"temporary session". Trazum asks GitHub for `read:user` and nothing else, **never stores
-the access token**, and stores session cookies only as their SHA-256.
-Misconfigure any of it and sign-in simply stays off, with `/api/auth/*`
-answering 503 naming the variable to set.
-
-Signed in, a **Library** tab appears: prompts you saved and every version of
-each, append-only, token counts recomputed on read rather than stored. On the
-Compare tab, **Create share link** publishes a comparison at `/c/<token>` for
-anyone holding the URL — expiring after thirty days by default, revocable, kept
-out of search engines, and saying what it publishes *before* the button. Every
-share link doubles as a **README badge** at `/badge/<token>.svg`, recomputed on
-every load, with no script and no prompt text. Set `TRAZUM_ADMINS` and `/admin`
-totals what every prompt on the deployment adds up to — names and token counts,
-never anybody's prompt text, and deliberately not a spend report.
-
-[docs/accounts.md](docs/accounts.md) has the setup, the schema, every security
-decision and why, the limits, and an explicit list of what is **not** covered.
+Accounts are disabled by default. Enabling them adds a saved prompt library
+and share links backed by the deployment operator's database.
+[Account setup and data handling](docs/accounts.md).
 
 ### Deploying to Vercel
 
-The repo is an npm workspaces monorepo; Vercel handles it with no special
-configuration:
-
-1. Import the repository in Vercel.
-2. **Root Directory**: `apps/web`. The rest — installing from the workspace
-   root, building `@trazum/core` via `prebuild` — is automatic.
-3. Optional variables: `TRAZUM_LLM_*` to offer the LLM pass without users
-   supplying keys, `NEXT_PUBLIC_POSTHOG_KEY` for analytics, `TRAZUM_GITHUB_*`
-   and `TRAZUM_PUBLIC_URL` for sign-in.
-
-Vercel runs more than one instance, so if you enable sign-in there, set
-`TRAZUM_DATABASE_URL` as well. Without it each instance keeps its own sessions
-in memory and a browser is signed in against one and signed out against the
-next.
+[Deployment instructions](docs/setup.md#deploying-to-vercel),
+[environment variables](.env.example), and [N0 deployment](docs/deploy-n0.md).
 
 ### Library
 
-```ts
-import { optimize, refineWithLlm, openAiCompatible } from '@trazum/core';
-
-const result = optimize(prompt, {
-  level: 'safe',
-  locale: 'en',
-  usage: {
-    model: 'claude-opus-5',
-    callsPerMonth: 50_000,
-    avgOutputTokens: 500,
-    cacheHitRate: 0.9,
-    batchEligible: false,
-  },
-});
-
-console.log(result.optimized);
-console.log(result.savings.monthlySavingsUsd);
-```
-
-`reorderForCache` is the API behind `--reorder`. It returns the original text
-unchanged when nothing can safely move, and always reports what it declined and
-why — a saving Trazum chose not to take is one the caller cannot evaluate:
-
-```ts
-import { reorderForCache } from '@trazum/core';
-
-const r = reorderForCache(prompt, { minPrefixTokens: 1024 });  // the model's minimum
-
-r.text;                 // the rearrangement, or `prompt` byte-for-byte
-r.tokensMoved;          // moved out of paid-every-call into the prefix
-r.prefixTokensBefore;   // 14
-r.prefixTokensAfter;    // 1174
-r.declined;             // [{ reason: 'backward-reference', phrase: 'above', text }]
-```
-
-`minPrefixTokens` is a bar on the **resulting prefix**, not on the amount moved.
-A prefix below the model's minimum caches nothing at all, so a rearrangement that
-does not clear it buys nothing — but a head that already clears it gains from any
-block that joins it, however small.
-
-`comparePrompts` is the API behind `trazum diff`. Note the sign: everything it
-returns is `after - before`, so **positive means worse** — the opposite of
-`result.savings`, and the reason it lives in its own module.
-
-```ts
-import { comparePrompts, formatSignedUsd } from '@trazum/core';
-
-const change = comparePrompts(oldPrompt, newPrompt, { usage });
-
-change.tokenDelta;                      //  +37   (grew)
-formatSignedUsd(change.monthlyDeltaUsd) //  "+$9.25"
-change.advisories.appeared;             //  ['contradictory-instructions']
-change.rules.noLongerFiring;            //  what the edit cleaned up
-```
-
-**Two entry points.** `@trazum/core` is browser-safe and imports no Node
-builtins — that is enforced by a test that walks the import graph, not by
-convention, because the web app bundles it and one `node:fs` import anywhere in
-that graph fails the build. Anything that reads the filesystem lives on
-`@trazum/core/node`:
-
-```ts
-import { loadConfig, walkPrompts } from '@trazum/core/node';
-
-const { config, path } = await loadConfig();   // null path = none found
-const { files, truncated } = await walkPrompts('prompts/');
-```
-
-`parseConfig` and `budgetFor` are pure functions of their arguments, so they sit
-on both.
-
----
+Install `@trazum/core` to use analysis in your application.
+[Library examples](docs/setup.md#library) and [package API](packages/core/README.md).
 
 ## Languages
 
@@ -1012,10 +460,10 @@ advisory only ever suggests models from the provider you are already on. Droppin
 a tier is a one-line change; switching vendor is a migration, and this advisory is
 a keyword heuristic — it has no business recommending that you change supplier.
 
-**Not covered: Cursor, Claude Code, Codex and other subscriptions.** They do not
-bill per token, so "saves $184/month" would be false for anyone inside their plan.
-The honest saving there is context-window and rate-limit headroom, which is a
-different report rather than a row in this table.
+**Not covered: subscription invoices.** API token prices cannot establish how
+much a subscription bill will change. Claude Code, Codex and Cursor identify
+the tool, not its payment mode; Trazum defaults to token figures in those hosts.
+An explicit `--cost` requests an API-price scenario, not guaranteed invoice savings.
 
 ### Optimising a prompt that lives in code
 
@@ -1047,9 +495,8 @@ trazum where src/prompts.ts
 ```
 Running inside
   Claude Code (CLAUDECODE)
-  Claude Code bills by subscription, not by the token. A monthly saving below is
-  arithmetic about tokens, not money you get back — what you gain is context
-  window and rate-limit headroom.
+  Claude Code identifies the execution host only. Payment mode is unknown;
+  token prices do not establish invoice savings.
 
 Prompts in src/prompts.ts go to
   anthropic · Claude Sonnet 5
@@ -1069,25 +516,25 @@ silently is how somebody budgets against the wrong provider for a month.
 Detection sits in the usual layering — a flag beats config, config beats
 detection, detection beats the built-in default.
 
-With no file it reports only the host — useful because that is what decides
-whether a monthly saving is money at all:
+With no file it reports only the host. Environment variables identify the tool,
+not whether a workload uses an API, a subscription, credits or a local model:
 
-| Host | Bills |
+| Host | Payment mode inferred from environment |
 |---|---|
-| Claude Code, Codex, Cursor | subscription — the saving is context and rate-limit headroom, not cash |
-| GitHub Actions, CI | per token |
-| VS Code, plain terminal | unknown, and it says so rather than guessing |
+| Claude Code, Codex, Cursor | unknown |
+| GitHub Actions, CI | unknown |
+| VS Code, plain terminal | unknown |
 
-### On a subscription, there is no bill to reduce
+### Agent harnesses default to tokens, not invoice savings
 
-Inside Claude Code, Codex or Cursor you pay the same whatever your prompt costs.
-A monthly figure there is arithmetic about tokens dressed as money, so Trazum
-stops printing one and reports what is actually scarce:
+Inside Claude Code, Codex or Cursor, Trazum conservatively defaults to token
+figures. This is a display policy, not a claim about your payment arrangement.
+Use `--cost` to request the API-price scenario; it is not a subscription invoice:
 
 ```
 What this buys on Claude Code
-  Claude Code bills by subscription, so there is no bill to reduce and no
-  monthly figure to print.
+  Claude Code identifies the tool, not your payment mode. Tokens are shown
+  by default; invoice savings are unknown.
 
   1,001 tokens back, every call.
   Context window: 12.4% → 2.1% of Claude Opus 5's 1,000,000 tokens — room the
@@ -1098,8 +545,8 @@ What this buys on Claude Code
 The context window is the real currency in an agent: every token the system
 prompt holds is one the conversation cannot.
 
-**Advisories whose only pitch is money go too.** "Use a cheaper model" is not
-weaker advice on a flat plan — it is not advice. `model-downgrade`, `batch-api`,
+**Advisories whose only pitch is money are hidden in this view.** Whether they
+reduce your invoice depends on your payment arrangement. `model-downgrade`, `batch-api`,
 `output-dominated` and `promo-pricing` are dropped; caching, context overflow,
 contradictions and redundant examples stay, because latency, headroom and
 correctness are still real.
@@ -1203,7 +650,7 @@ packages/core/     dependency-free library (rules, tokens, pricing, LLM)
 packages/cli/      dependency-free CLI
   src/markdown.ts    the report as markdown, and the three escapers
   src/git.ts         the only module here that runs another program
-packages/mcp/      dependency-free MCP server — five tools over stdio
+packages/mcp/      dependency-free MCP server — nine tools over stdio
   src/rpc.ts         JSON-RPC 2.0 by hand; the invariant beat the SDK
   src/tools.ts       the whole surface an agent can reach, in one file
 packages/tokenizer-openai/   optional exact counter, and the only dependency here
@@ -1255,8 +702,8 @@ prompt library shipped and made that conditional.
 
 ## The rest of the documentation
 
-This README is one of four documents, and it is the only one written for
-somebody who has not decided yet. **[docs/README.md](docs/README.md) is the
+This README is the overview. Tutorials, integration recipes and reference
+material have their own pages. **[docs/README.md](docs/README.md) is the
 index**, arranged by what you came here to do rather than by what the files are
 called: choosing the tool, using it, extending it, maintaining it, or reporting
 a problem.
