@@ -25,9 +25,10 @@ fails instead of writing an empty output.
 also accepts uploaded rollout files and converts them locally. For MCP
 workflows, call `import_usage` with `format: "codex"`, rollout `text` and an
 optional explicit `label`. Pass its normalized `log` to [the usage tools](agents.md)
-and preserve the import diagnostics alongside their reports. The CLI conversion
-remains available; neither route establishes source completeness. The local HTTP API estimates proposed
-calls; it does not ingest raw logs. Raw conversation text is not required.
+and preserve the import diagnostics alongside their reports. CLI conversion
+remains available; neither route establishes source completeness. The HTTP
+savings API accepts the resulting normalized text, not native rollouts.
+Raw conversation text is not required by savings analysis.
 
 ## What is counted
 

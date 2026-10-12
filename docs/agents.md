@@ -58,6 +58,8 @@ completeness, and separate imports do not share deduplication state. Do not
 concatenate overlapping imports. CLI normalization remains an alternative.
 For already normalized JSONL, use `profile_usage`, `plan_savings`, and
 `verify_savings` directly.
+HTTP equivalents are [`POST /savings/plan` and `POST /savings/verify`](api.md#plan-and-verify-savings),
+using the server catalogue and a shared 1,000,000-byte request limit.
 Save the `plan` field from `plan_savings` as the document; the surrounding
 response holds additional evidence. Pass JSONL contents and serialized plan
 text to MCP, never file paths. The same plan can be opened in the dashboard.
