@@ -2394,7 +2394,7 @@ describe('the packaged Action', () => {
     const allowlist = /allowlist:\s*'([^']*)'/.exec(cla);
     assert.ok(allowlist, 'cla.yml declares no allowlist — every PR would demand a signature');
     const listed = allowlist[1].split(',').map((entry) => entry.trim());
-    for (const identity of ['Davmunrey', 'claude', 'Claude']) {
+    for (const identity of ['Davmunrey', 'claude', 'Claude', 'Trazum automation']) {
       assert.ok(
         listed.includes(identity),
         `"${identity}" commits in this repository and is not allowlisted — the gate would block every pull request it authors`,
