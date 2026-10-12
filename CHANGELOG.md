@@ -13,6 +13,12 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Local HTTP savings lifecycle.** `POST /savings/plan` and `POST /savings/verify`
+  accept normalized usage text and portable plan JSON, price with the server
+  catalogue, preserve incomplete evidence and expose OpenAPI 3.1 contracts.
+  Strict input validation and the existing 1 MB body cap apply; no provider,
+  filesystem or write capability is added.
+
 - **Local integration discovery.** `GET /openapi.json` publishes the HTTP
   contract and `GET /capabilities` separates native session import from generic
   CLI/MCP/HTTP access. An immutable browser-safe harness registry names supported

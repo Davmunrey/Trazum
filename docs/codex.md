@@ -22,10 +22,10 @@ to stdout; diagnostics go to stderr. Conversion with no attributable records
 fails instead of writing an empty output.
 
 `bill` detects this format in explicitly supplied inputs. The browser Bill
-also accepts uploaded rollout files and converts them locally. For MCP
+also accepts uploaded rollout files and converts them locally. For MCP or HTTP savings
 workflows, first convert the rollout and pass the resulting normalized text to
-[the existing usage tools](agents.md). The local HTTP API estimates proposed
-calls; it does not ingest raw logs. Raw conversation text is not required.
+[the existing usage tools](agents.md). The HTTP savings API accepts
+normalized text, not native rollouts. Raw conversation text is not required.
 
 ## What is counted
 

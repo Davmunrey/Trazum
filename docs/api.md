@@ -2,7 +2,7 @@
 
 [Documentation index](README.md) · [Setup](setup.md) · [JSON contracts](json-output.md#the-cost-answer-document) · [Gateway](gateway.md)
 
-`trazum serve` exposes a read-only cost oracle on **127.0.0.1**, or a Unix socket.
+`trazum serve` exposes read-only cost and savings analysis on **127.0.0.1**, or a Unix socket.
 It estimates a proposed call against the configured budget and scoped limits. It
 does not invoke a model, reserve money, update spending, or enforce a provider
 request. Use the [gateway](gateway.md) when the decision must sit in the call path.
@@ -25,6 +25,8 @@ with `--port`. The Unix-socket transport exposes the same paths.
 | `GET /health` | `200`, `{ "ok": true, "schemaVersion": 1 }` |
 | `GET /openapi.json` | `200`, the complete OpenAPI contract |
 | `GET /capabilities` | `200`, static harness import and access-channel metadata |
+| `POST /savings/plan` | `200`, ranked savings plan with coverage evidence |
+| `POST /savings/verify` | `200`, saved-plan outcomes with later usage evidence |
 | `POST /cost` | `200`, estimated call, measured budget, verdict and scoped policy |
 | Any other path or method | `404`, `error: "not-found"` with a detail string |
 
@@ -109,3 +111,72 @@ measurements into zero, or treat an unknown model as free.
 The endpoint evaluates snapshots supplied by the CLI. Concurrent callers can
 receive the same answer; this API has no reservation ledger. See the
 [gateway](gateway.md) for enforcement semantics and its limits.
+
+
+## Plan and verify savings
+
+`POST /savings/plan` takes `{ "log": "normalized JSONL text" }`.
+`POST /savings/verify` takes `{ "log": "later normalized JSONL text", "plan": "serialized plan JSON" }`.
+These endpoints receive text, never file paths. They do not read files, persist
+plans, invoke models, reserve funds or access provider services. Import native
+sessions first with `from-claude-code` or `from-codex` and retain their conversion
+diagnostics separately. The HTTP endpoints cannot recover excluded source records.
+
+Use the same server configuration for both requests. Its selected catalogue,
+including any configured price overlay, prices all supplied logs. Request-level
+pricing overrides are refused. `GET /openapi.json` is the runtime contract;
+check it before using endpoints from a local development build with an older release.
+
+This complete example uses synthetic normalized records and Node.js 20+:
+
+```js
+const base = 'http://127.0.0.1:7317';
+const log = JSON.stringify({
+  model: 'claude-opus-5', label: 'synthetic-work',
+  usage: { input_tokens: 400000, output_tokens: 1000 },
+});
+async function post(path, payload) {
+  const response = await fetch(base + path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.detail);
+  return result;
+}
+const planned = await post('/savings/plan', { log });
+const checked = await post('/savings/verify', {
+  plan: JSON.stringify(planned.plan), log,
+});
+console.log(checked.verification, checked.evidence);
+```
+
+For real verification, replace the second `log` with later comparable usage.
+Save only the response's `plan` field as a plan document; the complete response
+also contains evidence and limitations worth retaining. The plan is compatible
+with CLI `verify --against` and MCP `verify_savings`.
+
+| Response field | Meaning |
+|---|---|
+| `schemaVersion` | `1` |
+| `plan` or `verification` | The core plan document or verification result |
+| `evidence` | Priced/unpriced calls, skipped line numbers, period and catalogue provenance |
+| `limitations` | Assumptions and limits that the arithmetic cannot establish |
+
+Projected savings and measured stakes remain separate. Verification retains
+`arrived`, `not-arrived`, `cannot-tell`, attribution and gate failures. An arrived
+action does not prove equal answer quality or net savings. A vanished workload
+remains unknown. `evidence.complete` only means no unpriced calls or skipped
+lines were detected; it does not prove complete billing or comparable periods.
+Pricing review dates alone do not establish identical custom rates.
+
+Both endpoints reject unknown request properties, missing/whitespace text,
+invalid JSON, paths with no readable records and malformed nested plan fields.
+Plan fields are validated defensively, including unknown properties. Empty or
+entirely unreadable logs return `400 bad-request`; a log with recognized but
+unpriced records returns `200` with explicit incomplete evidence and no invented
+priced usage. Mixed malformed lines remain numbered evidence gaps.
+
+The **1,000,000-byte** cap covers the entire UTF-8 request, including both text
+fields and JSON escaping. Oversized bodies return `400`, not a partial result.
+The `/cost` endpoint keeps its older permissive unknown-property behavior.

@@ -1,4 +1,5 @@
-/** Public contract for the local, read-only cost oracle. No provider calls occur here. */
+import { SAVINGS_SCHEMAS } from './serve-savings-schema.js';
+/** Public contract for local, read-only cost and savings analysis. No provider calls occur here. */
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 const nullable = (schema: object) => ({ anyOf: [schema, { type: 'null' }] });
 const object = (properties: Record<string, unknown>) => ({
@@ -45,6 +46,7 @@ export function validateCostPayload(value: unknown): asserts value is Record<str
 }
 
 const schemas = {
+  ...SAVINGS_SCHEMAS,
   CostRequest: COST_REQUEST_SCHEMA,
   HarnessCapabilities: object({
     schemaVersion: { const: 1 },
@@ -115,12 +117,24 @@ const response = (name: string, description: string) => ({ description, content:
 export const SERVE_OPENAPI = {
   openapi: '3.1.0',
   jsonSchemaDialect: 'https://json-schema.org/draft/2020-12/schema',
-  info: { title: 'Trazum local cost oracle', version: '1.0.0', description: 'Loopback-only read-only estimates and policy judgements. No authentication or CORS. Does not reserve budget, send model calls, or enforce an upstream decision. Measured positions are snapshots supplied by the CLI; inspect their windows.' },
+  info: { title: 'Trazum local cost and savings API', version: '1.0.0', description: 'Loopback-only read-only estimates, policy judgements and savings analysis. No authentication or CORS. Does not reserve budget, send model calls, or enforce an upstream decision. Measured positions are snapshots supplied by the CLI; inspect their windows.' },
   servers: [{ url: 'http://127.0.0.1:7317', description: 'Default TCP listener. Substitute the chosen --port, or use the Unix socket transport.' }],
   paths: {
     '/capabilities': { get: { operationId: 'getCapabilities', summary: 'Discover native import formats and Trazum access channels', responses: { '200': response('HarnessCapabilities', 'Static metadata; no environment, filesystem, session or network discovery.') } } },
     '/health': { get: { operationId: 'getHealth', summary: 'Check the local process', responses: { '200': response('Health', 'Process is available.') } } },
     '/openapi.json': { get: { operationId: 'getOpenApi', summary: 'Read this OpenAPI document', responses: { '200': { description: 'OpenAPI 3.1 document.', content: { 'application/json': { schema: { type: 'object', required: ['openapi', 'info', 'paths', 'components'] } } } } } } },
+    '/savings/plan': { post: {
+      operationId: 'planSavings', summary: 'Rank savings actions from normalized usage',
+      description: 'Read-only text inputs, priced using the server catalogue. No filesystem, provider or network calls. Unknown properties and empty text are refused. Whole-body limit: 1,000,000 UTF-8 bytes, including JSON escaping. Evidence gaps remain explicit; success does not certify realized savings or task quality.',
+      requestBody: { required: true, content: { 'application/json': { schema: ref('SavingsPlanRequest') } } },
+      responses: { '200': response('SavingsPlanAnswer', 'Savings analysis with evidence and limitations.'), '400': response('Error', 'Malformed, unreadable or oversized inputs.') },
+    } },
+    '/savings/verify': { post: {
+      operationId: 'verifySavings', summary: 'Verify a saved plan against later normalized usage',
+      description: 'Read-only text inputs, priced using the server catalogue. No filesystem, provider or network calls. Unknown properties and empty text are refused. Whole-body limit: 1,000,000 UTF-8 bytes, including JSON escaping. Evidence gaps remain explicit; success does not certify realized savings or task quality.',
+      requestBody: { required: true, content: { 'application/json': { schema: ref('SavingsVerifyRequest') } } },
+      responses: { '200': response('SavingsVerifyAnswer', 'Savings analysis with evidence and limitations.'), '400': response('Error', 'Malformed, unreadable or oversized inputs.') },
+    } },
     '/cost': { post: {
       operationId: 'estimateCost', summary: 'Estimate a proposed call against measured budget and scoped policy',
       description: 'Body limit: 1,000,000 bytes; violations return 400. Missing or whitespace-only body is {}. Unknown properties are ignored. Content-Type is not enforced by the server; send application/json. All successful judgements, including over and cannot-tell, return 200. A judgement does not reserve or spend funds.',
