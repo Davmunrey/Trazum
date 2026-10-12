@@ -75,6 +75,7 @@ ${bold('USO')}
   trazum owners <log>
   trazum ladder <log>
   trazum feedback
+  trazum filter compact|restore|instructions [--recovery-dir <directory>]
   trazum --version
 
 ${bold('OPCIONES DE init')}
@@ -430,6 +431,10 @@ ${bold('OPCIONES DE rules')}
 
   "Inerte" se dice siempre sobre el corpus. Una regla que no encuentra nada en
   estos ficheros no ha demostrado no encontrar nada en ninguna parte.
+
+${bold('OPCIONES DE filter')}
+  --recovery-dir <directorio> Directorio privado; obligatorio para compact/restore.
+  trazum filter --help explica el filtro opcional (ayuda en inglés).
 
 ${bold('OPCIONES DE feedback')}
   (ninguna)

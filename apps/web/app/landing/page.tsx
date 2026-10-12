@@ -114,7 +114,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'One core does the measuring; four surfaces carry it. They cannot disagree, because they are the same functions.',
     doorCliTitle: 'CLI + CI',
     doorCliBody:
-      '52 commands. Token budgets and drift baselines that exit 1, a pre-commit hook that is one pipe, and a GitHub Action that comments the report on your PR.',
+      '53 commands. Token budgets and drift baselines that exit 1, a pre-commit hook that is one pipe, and a GitHub Action that comments the report on your PR.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
       'Stands in front of the provider and refuses a call that breaks your spend policy (per day, per session, per label), with waivers that carry an author and an expiry.',
@@ -162,7 +162,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Un solo núcleo mide; cuatro superficies lo llevan. No pueden estar en desacuerdo, porque son las mismas funciones.',
     doorCliTitle: 'CLI + CI',
     doorCliBody:
-      '52 comandos. Presupuestos de tokens y baselines de deriva que salen con 1, un hook de pre-commit que es una tubería, y una GitHub Action que comenta el informe en tu PR.',
+      '53 comandos. Presupuestos de tokens y baselines de deriva que salen con 1, un hook de pre-commit que es una tubería, y una GitHub Action que comenta el informe en tu PR.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
       'Se pone delante del proveedor y rechaza la llamada que rompe tu política de gasto (por día, por sesión, por etiqueta), con waivers que llevan autor y caducidad.',
@@ -210,7 +210,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Un seul cœur mesure ; quatre surfaces le portent. Ils ne peuvent pas diverger, car ce sont les mêmes fonctions.',
     doorCliTitle: 'CLI + CI',
     doorCliBody:
-      '52 commandes. Budgets de tokens et lignes de base de dérive qui sortent en 1, un hook de pré-commit tenant en un pipe, et une GitHub Action qui commente le rapport sur votre PR.',
+      '53 commandes. Budgets de tokens et lignes de base de dérive qui sortent en 1, un hook de pré-commit tenant en un pipe, et une GitHub Action qui commente le rapport sur votre PR.',
     doorGatewayTitle: 'Passerelle',
     doorGatewayBody:
       'Se place devant le fournisseur et refuse un appel qui casse votre politique de dépense (par jour, par session, par étiquette), avec des dérogations portant un auteur et une échéance.',
@@ -258,7 +258,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Ein Kern misst; vier Oberflächen tragen es. Sie können nicht widersprechen, denn es sind dieselben Funktionen.',
     doorCliTitle: 'CLI + CI',
     doorCliBody:
-      '52 Befehle. Token-Budgets und Drift-Baselines, die mit 1 beenden, ein Pre-Commit-Hook aus einer einzigen Pipe, und eine GitHub-Action, die den Bericht an Ihre PR kommentiert.',
+      '53 Befehle. Token-Budgets und Drift-Baselines, die mit 1 beenden, ein Pre-Commit-Hook aus einer einzigen Pipe, und eine GitHub-Action, die den Bericht an Ihre PR kommentiert.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
       'Stellt sich vor den Anbieter und verweigert einen Aufruf, der Ihre Ausgaben-Richtlinie bricht (pro Tag, pro Sitzung, pro Label), mit Ausnahmen, die Autor und Ablaufdatum tragen.',
@@ -306,7 +306,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Um só núcleo mede; quatro superfícies levam-no. Não podem discordar, porque são as mesmas funções.',
     doorCliTitle: 'CLI + CI',
     doorCliBody:
-      '52 comandos. Orçamentos de tokens e baselines de deriva que saem com 1, um hook de pré-commit que é um só pipe, e uma GitHub Action que comenta o relatório no seu PR.',
+      '53 comandos. Orçamentos de tokens e baselines de deriva que saem com 1, um hook de pré-commit que é um só pipe, e uma GitHub Action que comenta o relatório no seu PR.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
       'Coloca-se à frente do fornecedor e recusa uma chamada que quebra a sua política de gasto (por dia, por sessão, por rótulo), com dispensas que trazem autor e validade.',

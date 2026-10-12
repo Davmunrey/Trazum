@@ -88,6 +88,7 @@ ${bold('USAGE')}
   trazum owners <log>
   trazum ladder <log>
   trazum feedback
+  trazum filter compact|restore|instructions [--recovery-dir <directory>]
   trazum --version
 
 ${bold('OPTIONS FOR init')}
@@ -426,6 +427,10 @@ ${bold('OPTIONS FOR rules')}
 
   "Inert" is always said about the corpus. A rule that finds nothing in these
   files has not been shown to find nothing anywhere.
+
+${bold('OPTIONS FOR filter')}
+  --recovery-dir <directory> Private recovery directory; required for compact/restore.
+  Run trazum filter --help for the opt-in stdin log-filter workflow.
 
 ${bold('OPTIONS FOR feedback')}
   (none)

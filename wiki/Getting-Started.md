@@ -18,8 +18,8 @@ its projected savings are not a provider invoice. See the
 
 ### The first five minutes: `trazum init`
 
-Run `npx @trazum/cli init` in your project to inspect prompts and available
-usage, write a config and identify a finding. Read
+After your first report, optionally run `npx @trazum/cli init` in your project
+to inspect prompts and available usage, write a config and identify a finding. Read
 [what init writes and refuses to overwrite](https://github.com/Davmunrey/Trazum/blob/main/docs/setup.md#the-first-five-minutes-trazum-init).
 
 ### CLI

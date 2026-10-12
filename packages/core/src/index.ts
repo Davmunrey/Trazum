@@ -669,3 +669,6 @@ export type { CodexRecord, CodexConversion } from './codex.js';
 
 export { HARNESS_CAPABILITIES, getHarnessCapability } from './harnesses.js';
 export type { HarnessCapability, HarnessCapabilities } from './harnesses.js';
+
+export { compactToolOutput, EFFICIENT_OUTPUT_INSTRUCTIONS } from './tool-output.js';
+export type { ToolOutputView } from './tool-output.js';

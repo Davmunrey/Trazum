@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.5.1**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.5.2**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,31 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.5.2 — Less repeated context, recoverable originals
+
+**Adoption, read 2026-10-12:** 1815 downloads of @trazum/cli in the last 30 days, 1 GitHub stars, MCP registry latest unavailable (The operation was aborted due to timeout).
+
+An opt-in local filter reduces consecutive identical tool-log lines before
+an agent reads them. Original output is saved first in an explicit private
+recovery directory; errors, warnings and unique lines stay visible. The
+`restore` command verifies the stored content hash. Unsupported input or a
+storage failure passes through unchanged.
+
+```bash
+set -o pipefail
+npm test | trazum filter compact --recovery-dir "$HOME/.trazum-tool-logs"
+```
+
+`trazum filter instructions` prints optional concise-output guidance. The
+Claude Code skill explains when to use the filter. This is selective shell
+integration, not automatic interception. Token figures are estimates and no
+subscription quota increase is promised.
+
+This release also brings native Claude Code and Codex usage import, MCP and
+local HTTP savings planning/verification, integration discovery, the refreshed
+web interface and a first-report adoption guide from the accumulated changes
+since 2.5.1. See CHANGELOG.md for the complete list.
 
 ## 2.5.1 — A bill for a period
 
