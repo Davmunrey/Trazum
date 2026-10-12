@@ -24,6 +24,7 @@
  */
 
 import { createServer } from 'node:http';
+import { planSavings, verifySavings, validateSavingsPayload } from './serve-savings.js';
 import { SERVE_OPENAPI, validateCostPayload } from './serve-schema.js';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { answerCost, judgeLimits, HARNESS_CAPABILITIES } from '@trazum/core';
@@ -109,10 +110,11 @@ export function buildServer(context: ServeContext): Server {
         return;
       }
 
-      if (request.method !== 'POST' || url.pathname !== '/cost') {
+      const savings = url.pathname === '/savings/plan' || url.pathname === '/savings/verify';
+      if (request.method !== 'POST' || (url.pathname !== '/cost' && !savings)) {
         send(response, 404, {
           error: 'not-found',
-          detail: 'POST /cost, GET /health, GET /capabilities, or GET /openapi.json.',
+          detail: 'POST /cost, POST /savings/plan, POST /savings/verify, GET /health, GET /capabilities, or GET /openapi.json.',
         });
         return;
       }
@@ -121,6 +123,16 @@ export function buildServer(context: ServeContext): Server {
       try {
         const raw = await readBody(request);
         const parsed: unknown = raw.trim() === '' ? {} : JSON.parse(raw);
+        if (savings) {
+          if (url.pathname === '/savings/verify') {
+            validateSavingsPayload(parsed, true);
+            send(response, 200, verifySavings(parsed, context.catalogue));
+          } else {
+            validateSavingsPayload(parsed, false);
+            send(response, 200, planSavings(parsed, context.catalogue));
+          }
+          return;
+        }
         validateCostPayload(parsed);
         payload = parsed;
       } catch (error) {

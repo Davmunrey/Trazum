@@ -14,7 +14,7 @@ intercept its requests.
 |---|---|---|
 | CLI | Read authorized files, generate reports and plans, run CI checks | Files and commands run with the caller's permissions |
 | MCP | Inspect costs, propose savings, verify a saved plan | Tools receive text; no filesystem, network or model calls |
-| Local HTTP | Ask for a cost and policy judgement before a request | Read-only startup baseline; no spending reservation |
+| Local HTTP | Check costs, plan savings and verify saved plans | Normalized text inputs; server catalogue; no spending reservation |
 | Gateway | Apply policy to calls explicitly routed through it | Process-local accounting; external calls remain unseen |
 | Agent skill | Teach an agent which interface and evidence to use | Instructions are not enforcement or spending authorization |
 

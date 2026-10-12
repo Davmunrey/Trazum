@@ -52,7 +52,7 @@ it('serves an OpenAPI 3.1 contract on loopback without opening CORS or extra met
   assert.equal(response.headers.get('access-control-allow-origin'), null);
   assert.deepEqual(await response.json(), SERVE_OPENAPI);
   assert.equal(SERVE_OPENAPI.openapi, '3.1.0');
-  assert.deepEqual(Object.keys(SERVE_OPENAPI.paths).sort(), ['/capabilities', '/cost', '/health', '/openapi.json']);
+  assert.deepEqual(Object.keys(SERVE_OPENAPI.paths).sort(), ['/capabilities', '/cost', '/health', '/openapi.json', '/savings/plan', '/savings/verify']);
   assert.ok(matches(await (await api.get('/health')).json(), SERVE_OPENAPI.components.schemas.Health));
   const unsupported = await api.get('/cost');
   assert.equal(unsupported.status, 404);
