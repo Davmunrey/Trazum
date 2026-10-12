@@ -71,6 +71,7 @@ const gatewayOver = async (stub, over = {}) => {
 
 const body = JSON.stringify({
   model: 'claude-opus-5',
+  max_tokens: 100,
   stream: true,
   messages: [{ role: 'user', content: 'hello' }],
 });
@@ -152,7 +153,7 @@ describe('a streamed answer is relayed as it arrives', () => {
     const response = await fetch(`${where}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-5', stream: true, messages: [] }),
+      body: JSON.stringify({ model: 'gpt-5', max_completion_tokens: 100, stream: true, messages: [] }),
     });
     await response.text();
     assert.deepEqual(recorded, []);
@@ -209,7 +210,7 @@ describe('a forwarded call that could not be measured is named', () => {
     const response = await fetch(`${where}${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ model: 'gpt-5', stream: true, messages: [] }),
+      body: JSON.stringify({ model: 'gpt-5', max_completion_tokens: 100, stream: true, messages: [] }),
     });
     await response.text();
 

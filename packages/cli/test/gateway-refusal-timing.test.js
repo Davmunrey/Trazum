@@ -73,6 +73,7 @@ const gatewayOver = async (stub, standing) => {
 
 const body = JSON.stringify({
   model: 'claude-opus-5',
+  max_tokens: 100,
   stream: true,
   messages: [{ role: 'user', content: 'hello' }],
 });

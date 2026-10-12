@@ -62,6 +62,24 @@ describe('gatewayDecision — it forwards what fits', () => {
   });
 });
 
+describe('gatewayDecision — an unknown output ceiling is not free output', () => {
+  for (const maxOutputTokens of [null, -1, Infinity, NaN]) {
+    it(`fails closed for output bound ${maxOutputTokens}`, () => {
+      const result = decide(call({ maxOutputTokens }), standing());
+      assert.equal(result.kind, 'refuse');
+      assert.equal(result.cause, 'output-unbounded');
+      assert.equal(result.estimatedUsd, null);
+    });
+  }
+
+  it('preserves explicit fail-open with the missing bound named', () => {
+    const result = decide(call({ maxOutputTokens: null }), standing(), { onCannotTell: 'fail-open' });
+    assert.equal(result.kind, 'forward');
+    assert.equal(result.unjudged, 'output-unbounded');
+    assert.equal(result.estimatedUsd, null);
+  });
+});
+
 describe('gatewayDecision — it refuses, and never substitutes', () => {
   it('refuses an exhausted budget on measurement alone', () => {
     const decision = decide(call(), standing({ consumedUsd: 120 }));
@@ -260,5 +278,41 @@ describe('usageFromResponse', () => {
 
   it('returns null for a provider it does not know how to read', () => {
     assert.equal(usageFromResponse('somebody-else', { usage: { input_tokens: 1 } }), null);
+  });
+});
+
+describe('complete usage required for live accounting', () => {
+  const strict = { requireComplete: true };
+
+  it('refuses incomplete or malformed counts instead of filling them with zero', () => {
+    for (const usage of [
+      { input_tokens: 1 },
+      { output_tokens: 1 },
+      { input_tokens: NaN, output_tokens: 0 },
+      { input_tokens: 1, output_tokens: -1 },
+      { input_tokens: 1, output_tokens: 0, cache_read_input_tokens: 'invalid' },
+      { input_tokens: 1, output_tokens: 0, cache_creation: {} },
+      { input_tokens: 1, output_tokens: 0, cache_creation_input_tokens: 0,
+        cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 10 } },
+    ]) assert.equal(usageFromResponse('anthropic', { usage }, strict), null);
+    assert.ok(usageFromResponse('anthropic', { usage: { input_tokens: 1, output_tokens: 0 } }, strict));
+    // Reporting callers retain the existing partial-count contract.
+    assert.ok(usageFromResponse('anthropic', { usage: { input_tokens: 1 } }));
+  });
+
+  it('does not hide malformed or impossible OpenAI cache counts', () => {
+    for (const cached_tokens of [-1, NaN, 'invalid', 11]) {
+      assert.equal(usageFromResponse('openai', { usage: {
+        prompt_tokens: 10, completion_tokens: 2, prompt_tokens_details: { cached_tokens },
+      } }, strict), null);
+    }
+    assert.equal(usageFromResponse('openai', { usage: { prompt_tokens: 10 } }, strict), null);
+    assert.ok(usageFromResponse('openai', { usage: { prompt_tokens: 10, completion_tokens: 0 } }, strict));
+  });
+
+  it('does not silently omit Gemini reasoning tokens from live spend', () => {
+    const usageMetadata = { promptTokenCount: 10, candidatesTokenCount: 2, thoughtsTokenCount: 5 };
+    assert.equal(usageFromResponse('google', { usageMetadata }, strict), null);
+    assert.ok(usageFromResponse('google', { usageMetadata: { ...usageMetadata, thoughtsTokenCount: 0 } }, strict));
   });
 });

@@ -35,6 +35,7 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { estimateTokens, gatewayDecision, streamingUsageReader, usageFromResponse } from '@trazum/core';
+import { GatewaySpend } from './gateway-spend.js';
 import type {
   GatewayDecision,
   GatewayPolicy,
@@ -277,6 +278,8 @@ const HOP_BY_HOP = new Set([
 ]);
 
 export interface GatewayContext {
+  /** Add this process's usage and in-flight reservations to startup snapshots. */
+  liveBudget?: boolean;
   provider: string;
   catalogue: PricingCatalogue;
   policy: GatewayPolicy;
@@ -466,8 +469,10 @@ function refusalBody(decision: Extract<GatewayDecision, { kind: 'refuse' }>): st
 export function buildGateway(context: GatewayContext): Server {
   const upstream = UPSTREAMS[context.provider];
   const doFetch = context.fetchImpl ?? fetch;
+  const spend = context.liveBudget ? new GatewaySpend(context.catalogue) : null;
 
   return createServer((request: IncomingMessage, response: ServerResponse) => {
+    let ticket: symbol | undefined;
     void (async () => {
       if (upstream === undefined) {
         response.writeHead(500, { 'content-type': 'application/json' });
@@ -560,21 +565,25 @@ export function buildGateway(context: GatewayContext): Server {
         return;
       }
 
+      const call = { provider: context.provider, ...described };
+      const baseStanding = context.standing();
+      const standing = spend === null ? baseStanding : spend.standing(baseStanding);
+      const basePosition = context.position?.({
+        ...(described.label === null ? {} : { label: described.label }),
+        ...(described.session === null ? {} : { session: described.session }),
+      });
       const decision = gatewayDecision(
-        { provider: context.provider, ...described },
-        context.standing(),
+        call,
+        standing,
         {
           catalogue: context.catalogue,
           policy: context.policy,
           ...(context.limits === undefined ? {} : { limits: context.limits }),
           ...(context.waivers === undefined ? {} : { waivers: context.waivers }),
-          ...(context.position === undefined
+          ...(basePosition === undefined
             ? {}
             : {
-                position: context.position({
-                  ...(described.label === null ? {} : { label: described.label }),
-                  ...(described.session === null ? {} : { session: described.session }),
-                }),
+                position: spend === null ? basePosition : spend.position(basePosition, call),
               }),
         },
       );
@@ -593,6 +602,16 @@ export function buildGateway(context: GatewayContext): Server {
         response.end(refusalBody(decision));
         context.note(`refused ${described.model}: ${decision.reason}`);
         return;
+      }
+
+      if (spend !== null) {
+        const admission = spend.reserve(call, decision, standing, context.policy.onCannotTell === 'fail-closed');
+        if (admission.refusal !== undefined) {
+          response.writeHead(402, { 'content-type': 'application/json' });
+          response.end(`${JSON.stringify(admission.refusal)}\n`);
+          return;
+        }
+        ticket = admission.ticket;
       }
 
       const outgoing = new Headers();
@@ -624,6 +643,8 @@ export function buildGateway(context: GatewayContext): Server {
           body: forwarded,
         });
       } catch (error) {
+        // A transport failure does not prove the provider did no billable work.
+        if (ticket !== undefined) spend?.settle(ticket, described.model, null);
         /**
          * The upstream is unreachable. This is **not** a budget refusal and
          * must not look like one: the caller needs to tell "your provider is
@@ -646,6 +667,13 @@ export function buildGateway(context: GatewayContext): Server {
 
       /** Counts only ever reach `record`; the body is never kept, either way. */
       const recordUsage = (usage: ReturnType<typeof usageFromResponse>): void => {
+        if (ticket !== undefined) {
+          // Only explicit request/auth/rate-limit rejections establish no generation.
+          // Server errors and timeouts may arrive after billable work.
+          const rejectedBeforeGeneration = [400, 401, 403, 404, 405, 413, 415, 422, 429].includes(upstreamResponse.status);
+          if (rejectedBeforeGeneration && usage === null) spend?.release(ticket);
+          else spend?.settle(ticket, decision.kind === 'substitute' ? decision.to.id : described.model, usage);
+        }
         if (usage === null) return;
         context.record({
           model: decision.kind === 'substitute' ? decision.to.id : described.model,
@@ -681,7 +709,7 @@ export function buildGateway(context: GatewayContext): Server {
         } catch {
           measured = null;
         }
-        const buffered = usageFromResponse(context.provider, measured);
+        const buffered = usageFromResponse(context.provider, measured, { requireComplete: context.liveBudget === true });
         /**
          * The buffered path was the silent one.
          *
@@ -712,7 +740,7 @@ export function buildGateway(context: GatewayContext): Server {
 
       response.writeHead(upstreamResponse.status, back);
 
-      const reader = streamingUsageReader(context.provider);
+      const reader = streamingUsageReader(context.provider, { requireComplete: context.liveBudget === true });
       const decoder = new TextDecoder();
       try {
         for await (const chunk of upstreamResponse.body as AsyncIterable<Uint8Array>) {
@@ -725,6 +753,7 @@ export function buildGateway(context: GatewayContext): Server {
         }
         reader.push(decoder.decode());
       } catch (error) {
+        if (ticket !== undefined) spend?.settle(ticket, described.model, null);
         /**
          * The stream broke partway. The head is already sent, so there is no
          * status left to change and no refusal to render — destroying the
@@ -756,7 +785,14 @@ export function buildGateway(context: GatewayContext): Server {
       }
       recordUsage(streamed);
       response.end();
-    })();
+    })().catch(() => {
+      if (ticket !== undefined) spend?.settle(ticket, 'unknown', null);
+      if (response.headersSent) response.destroy();
+      else {
+        response.writeHead(502, { 'content-type': 'application/json' });
+        response.end(`${JSON.stringify({ error: { type: 'trazum_gateway_error', message: 'The gateway could not complete this call.' } })}\n`);
+      }
+    }).finally(() => { if (ticket !== undefined) spend?.release(ticket); });
   });
 }
 

@@ -115,6 +115,7 @@ export type CannotTellCause =
   | 'no-budget'
   | 'nothing-measured'
   | 'model-unpriced'
+  | 'output-unbounded'
   /** A ceiling in the `limits` policy could not be judged — see `policy`. */
   | 'limit-unjudged';
 
@@ -215,10 +216,11 @@ function priceCall(
   call: GatewayCall,
   on: Date,
 ): number | null {
-  if (model === undefined || call.inputTokens === null) return null;
+  if (model === undefined || call.inputTokens === null || !Number.isFinite(call.inputTokens) || call.inputTokens < 0 ||
+      call.maxOutputTokens === null || !Number.isFinite(call.maxOutputTokens) || call.maxOutputTokens < 0) return null;
   // The call's own prompt decides a model priced by prompt length.
   const rates = effectivePricing(model, on, { inputTokens: call.inputTokens });
-  const output = call.maxOutputTokens ?? 0;
+  const output = call.maxOutputTokens;
   return (call.inputTokens / 1_000_000) * rates.inputPerMTok + (output / 1_000_000) * rates.outputPerMTok;
 }
 
@@ -273,9 +275,11 @@ function alternativesFor(
 function whyCannotTell(
   standing: GatewayStanding | null,
   priced: number | null,
+  call: GatewayCall,
 ): CannotTellCause | null {
   if (standing === null) return 'no-budget';
   if (standing.consumedUsd === 0 && standing.provenance !== 'measured') return 'nothing-measured';
+  if (call.maxOutputTokens === null || !Number.isFinite(call.maxOutputTokens) || call.maxOutputTokens < 0) return 'output-unbounded';
   return priced === null ? 'model-unpriced' : null;
 }
 
@@ -352,7 +356,7 @@ export function gatewayDecision(
     };
   }
 
-  const cause = whyCannotTell(standing, estimatedUsd);
+  const cause = whyCannotTell(standing, estimatedUsd, call);
   if (cause !== null) {
     /**
      * Cannot judge. The operator decided this in advance, and a substitution
@@ -429,6 +433,7 @@ export function gatewayDecision(
 
 
 function becauseCannotTell(cause: CannotTellCause): string {
+  if (cause === 'output-unbounded') return 'The request has no valid output-token bound, so its cost cannot be bounded, and this gateway is configured to fail closed.';
   return cause === 'no-budget'
     ? 'No budget is configured, so there is nothing to judge this against, and this gateway is configured to fail closed.'
     : cause === 'nothing-measured'
@@ -482,6 +487,20 @@ export interface GatewayUsage {
   outputTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
+  /** Present only when the provider reports the cache-write TTL split. */
+  cacheWrite5mTokens?: number;
+  cacheWrite1hTokens?: number;
+}
+
+function cacheWriteBreakdown(usage: Record<string, unknown>): Partial<GatewayUsage> {
+  const creation = usage.cache_creation;
+  if (typeof creation !== 'object' || creation === null) return {};
+  const values = creation as Record<string, unknown>;
+  const short = values.ephemeral_5m_input_tokens;
+  const long = values.ephemeral_1h_input_tokens;
+  if (typeof short !== 'number' || typeof long !== 'number' ||
+      !Number.isFinite(short) || !Number.isFinite(long) || short < 0 || long < 0) return {};
+  return { cacheWrite5mTokens: short, cacheWrite1hTokens: long };
 }
 
 /**
@@ -520,7 +539,39 @@ export interface StreamingUsageReader {
  */
 const MAX_SSE_LINE_BYTES = 1024 * 1024;
 
-export function streamingUsageReader(provider: string): StreamingUsageReader {
+/** Strict accounting cannot turn missing or malformed token counts into zero. */
+function completeUsage(shape: WireShape, usage: Record<string, unknown>): boolean {
+  const count = (value: unknown): boolean => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  const required = shape === 'anthropic' ? ['input_tokens', 'output_tokens']
+    : shape === 'openai' ? ['prompt_tokens', 'completion_tokens']
+      : ['promptTokenCount', 'candidatesTokenCount'];
+  if (!required.every((key) => count(usage[key]))) return false;
+  const optional = shape === 'anthropic' ? ['cache_read_input_tokens', 'cache_creation_input_tokens']
+    : shape === 'google' ? ['cachedContentTokenCount', 'thoughtsTokenCount'] : [];
+  if (optional.some((key) => usage[key] !== undefined && !count(usage[key]))) return false;
+  if (shape === 'anthropic' && usage.cache_creation !== undefined) {
+    const breakdown = cacheWriteBreakdown(usage);
+    if (breakdown.cacheWrite5mTokens === undefined || breakdown.cacheWrite1hTokens === undefined ||
+        breakdown.cacheWrite5mTokens + breakdown.cacheWrite1hTokens !== (usage.cache_creation_input_tokens ?? 0)) return false;
+  }
+  if (shape === 'openai' && usage.prompt_tokens_details !== undefined) {
+    const details = usage.prompt_tokens_details;
+    if (typeof details !== 'object' || details === null || Array.isArray(details)) return false;
+    const cached = (details as Record<string, unknown>).cached_tokens;
+    if (cached !== undefined && (!count(cached) || (cached as number) > (usage.prompt_tokens as number))) return false;
+  }
+  if (shape === 'google') {
+    if ((usage.cachedContentTokenCount as number | undefined ?? 0) > (usage.promptTokenCount as number)) return false;
+    // The current price path has no separate reasoning-token treatment.
+    if ((usage.thoughtsTokenCount as number | undefined ?? 0) > 0) return false;
+  }
+  return true;
+}
+
+export function streamingUsageReader(
+  provider: string,
+  options: { requireComplete?: boolean } = {},
+): StreamingUsageReader {
   /**
    * `google` is deliberately not among the shapes this reads.
    *
@@ -535,6 +586,10 @@ export function streamingUsageReader(provider: string): StreamingUsageReader {
   let pending = '';
   let seen = false;
   let overlong = false;
+  let invalid = false;
+  let completeStart = false;
+  let completeDelta = false;
+  let stopped = false;
   const usage: GatewayUsage = {
     inputTokens: 0,
     outputTokens: 0,
@@ -556,14 +611,20 @@ export function streamingUsageReader(provider: string): StreamingUsageReader {
     const doc = parsed as Record<string, unknown>;
 
     if (shape === 'anthropic') {
+      if (doc.type === 'message_stop') stopped = true;
       const message = doc.message;
       if (typeof message === 'object' && message !== null) {
         const u = (message as Record<string, unknown>).usage;
         if (typeof u === 'object' && u !== null) {
           const start = u as Record<string, unknown>;
+          if (options.requireComplete) {
+            completeStart = completeUsage('anthropic', start);
+            if (!completeStart) invalid = true;
+          }
           usage.inputTokens = num(start.input_tokens);
           usage.cacheReadTokens = num(start.cache_read_input_tokens);
           usage.cacheWriteTokens = num(start.cache_creation_input_tokens);
+          Object.assign(usage, cacheWriteBreakdown(start));
           // `message_start` also carries an output count, which is the tokens
           // emitted so far and therefore near zero. Taken anyway so a stream
           // that ends before any delta still reports what it reported.
@@ -574,6 +635,13 @@ export function streamingUsageReader(provider: string): StreamingUsageReader {
       const delta = doc.usage;
       if (typeof delta === 'object' && delta !== null) {
         const d = delta as Record<string, unknown>;
+        if (options.requireComplete) {
+          const complete = completeUsage('anthropic', {
+            input_tokens: usage.inputTokens, output_tokens: usage.outputTokens, ...d,
+          });
+          if (!complete || typeof d.output_tokens !== 'number') invalid = true;
+          if (doc.type === 'message_delta' && complete && typeof d.output_tokens === 'number') completeDelta = true;
+        }
         // Cumulative, so the last one wins rather than accumulating.
         if (typeof d.output_tokens === 'number') usage.outputTokens = num(d.output_tokens);
         if (typeof d.input_tokens === 'number') usage.inputTokens = num(d.input_tokens);
@@ -586,6 +654,7 @@ export function streamingUsageReader(provider: string): StreamingUsageReader {
       const u = doc.usage;
       if (typeof u !== 'object' || u === null) return;
       const o = u as Record<string, unknown>;
+      if (options.requireComplete && !completeUsage('openai', o)) { invalid = true; return; }
       if (typeof o.prompt_tokens !== 'number' && typeof o.completion_tokens !== 'number') return;
       const details = o.prompt_tokens_details;
       const cached =
@@ -621,6 +690,8 @@ export function streamingUsageReader(provider: string): StreamingUsageReader {
       }
     },
     done(): GatewayUsage | null {
+      if (options.requireComplete && (invalid || overlong ||
+          (shape === 'anthropic' && (!completeStart || !completeDelta || !stopped)))) return null;
       if (overlong && !seen) return null;
       return seen ? usage : null;
     },
@@ -640,7 +711,8 @@ export function streamingUsageReader(provider: string): StreamingUsageReader {
 export function usageFromResponse(
   provider: string,
   body: unknown,
-): { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number } | null {
+  options: { requireComplete?: boolean } = {},
+): GatewayUsage | null {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
   const num = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 
@@ -660,6 +732,7 @@ export function usageFromResponse(
     : (body as { usage?: unknown }).usage;
   if (typeof carrier !== 'object' || carrier === null || Array.isArray(carrier)) return null;
   const u = carrier as Record<string, unknown>;
+  if (options.requireComplete && !completeUsage(shape, u)) return null;
 
   if (shape === 'anthropic') {
     if (typeof u.input_tokens !== 'number' && typeof u.output_tokens !== 'number') return null;
@@ -668,6 +741,7 @@ export function usageFromResponse(
       outputTokens: num(u.output_tokens),
       cacheReadTokens: num(u.cache_read_input_tokens),
       cacheWriteTokens: num(u.cache_creation_input_tokens),
+      ...cacheWriteBreakdown(u),
     };
   }
   if (shape === 'openai') {
