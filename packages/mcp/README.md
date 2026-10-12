@@ -29,6 +29,7 @@ because "MCP server" reads like infrastructure and this is not.
 | --- | --- |
 | `check_prompt` | Does this prompt fit `maxTokens`? And if not, would optimising it fit? |
 | `optimize_prompt` | The shorter text, the token counts either side, what the difference is worth per month, and any advisories. |
+| `import_usage` | Convert explicit Claude Code or Codex transcript text into normalized JSONL; retain diagnostics and evidence gaps. No file access or inferred labels. |
 | `profile_usage` | Where the money went, from a usage log passed as text: the spend split, per label and per model, whether caching paid for itself, and the levers that would actually move the bill. `label`, `since`/`until` and `previous_log` drill down and compare; `what_if` prices the same calls on another model — arithmetic, not advice, and it says so. `pricing_overlay` takes the same JSON a `--pricing` overlay file holds, as text — models it adds or overrides price the whole report, and the report says the overlay is in effect. Uses recorded token counts priced with the selected catalogue; this is not a reconciled invoice. |
 | `plan_savings` | Rank actions from normalized usage-log text, keeping projected savings, measured stakes, assumptions and evidence gaps separate. Returns a JSON plan compatible with the CLI. |
 | `verify_savings` | Check saved plan JSON against newer log text. Returns arrived, not-arrived or cannot-tell per action, attribution and gate failures. |
@@ -48,6 +49,29 @@ which fits. Optimise rather than cut.
 "Over budget" and "over budget but the rules would fix it" are different
 instructions. A boolean throws away the actionable half.
 
+## Import native usage
+
+Call `import_usage` with `{ "format": "codex", "text": "<rollout JSONL contents>", "label": "approved-workload" }`,
+or `format: "claude-code"`. The format is required; `label` is optional, explicit,
+and limited to 200 characters. Text is limited to 2,000,000 characters. Empty
+text is refused; malformed or unsupported records produce diagnostics and may
+produce an empty `log`. Empty output is not evidence of zero spend.
+
+The JSON text response contains `schemaVersion`, `format`, `log` (normalized
+JSONL), `records` (count), converter `diagnostics`, `evidence` and `limitations`.
+Pass `log` to `profile_usage` or `plan_savings`; preserve the import envelope
+alongside their reports because those tools cannot recover excluded source
+records. `evidence.completeness` is always `not-established`, and valuation is
+`api-equivalent` with `billingMode: "unknown"`, never a subscription invoice.
+
+Claude diagnostics include collapsed/streamed requests, disagreements, missing
+request IDs, missing usage, synthetic events and malformed lines. Codex names
+repeated snapshots, missing models and unsupported or uncorroborated counters.
+Other events are counted separately. Deduplication applies within one call only;
+do not concatenate overlapping imports. Prompt/tool/path content is excluded;
+session identifiers remain and labels come only from the explicit argument.
+No paths are opened, no environment is read and no network or writes occur.
+
 ## Plan, change, verify
 
 1. Call `plan_savings` with `{ "log": "<normalized JSONL text>" }`.
@@ -63,7 +87,7 @@ Both accept optional `pricing_overlay`, the same pricing-overlay JSON text as
 review dates; matching dates do not prove two custom rate cards are identical.
 Logs and plans are limited to 2,000,000 characters each. These tools take
 **text**, not paths, and refuse empty or wholly unreadable logs. Import provider
-exports to normalized JSONL with the CLI before handing them to these tools.
+exports to normalized JSONL with the CLI, or use `import_usage` for native agent transcripts.
 Unknown arguments are rejected rather than ignored.
 
 The JSON returned in MCP text content has this structure:

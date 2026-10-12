@@ -23,7 +23,7 @@ spell it for you.
 |---|---|---|
 | Run a shell, in a checkout of this repository | the CLI, built from source | `node packages/cli/dist/index.js` — after `npm install && npm run build` once per session |
 | Run a shell, anywhere else | the CLI, straight from npm | `npx -y @trazum/cli` — no install, fetched on first use |
-| Call MCP tools but not a shell | the MCP server | **[Through MCP](#through-mcp)** below — nine tools, no shell needed |
+| Call MCP tools but not a shell | the MCP server | **[Through MCP](#through-mcp)** below — ten tools, no shell needed |
 | Call a local HTTP service | `trazum serve` | `GET /openapi.json` describes `POST /cost`; loopback only |
 | Import a module | the library | **[From code](#from-code)** below — `@trazum/core`, zero dependencies, browser-safe |
 | None of these | the web app | <https://trazum.vercel.app> — the pure subset runs in the page |
@@ -56,7 +56,7 @@ client can run the server over stdio; nothing here is specific to one vendor:
 }
 ```
 
-Nine tools. Budget checks can be used within an authorized task; a successful
+Ten tools. Budget checks can be used within an authorized task; a successful
 check never grants permission to make a paid call:
 
 | Tool | The question it answers |
@@ -65,6 +65,7 @@ check never grants permission to make a paid call:
 | `position` | *Where does the month stand against every ceiling?* Measured, with the denominator on every figure. It never forecasts. |
 | `check_prompt` | *Does this prompt fit the budget, and would optimising it be enough?* |
 | `optimize_prompt` | The shorter text, both token counts, what the difference is worth, and the advisories. |
+| `import_usage` | Convert explicit Claude Code or Codex transcript text into normalized JSONL; retain diagnostics and evidence gaps. No file access or inferred labels. |
 | `profile_usage` | Where the money went, from a usage log: the split per label and per model, whether caching paid for itself, and the levers that would actually move the bill. |
 | `list_models` | Every model in the bundled catalogue with its rates, context window and cacheable minimum. |
 | `prompt_writer` | Interviews you and assembles a prompt from your answers. Nothing is generated — the words are yours, so the same answers always produce the same text. |

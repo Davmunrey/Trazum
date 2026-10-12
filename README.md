@@ -650,7 +650,7 @@ packages/core/     dependency-free library (rules, tokens, pricing, LLM)
 packages/cli/      dependency-free CLI
   src/markdown.ts    the report as markdown, and the three escapers
   src/git.ts         the only module here that runs another program
-packages/mcp/      dependency-free MCP server — nine tools over stdio
+packages/mcp/      dependency-free MCP server — ten tools over stdio
   src/rpc.ts         JSON-RPC 2.0 by hand; the invariant beat the SDK
   src/tools.ts       the whole surface an agent can reach, in one file
 packages/tokenizer-openai/   optional exact counter, and the only dependency here
