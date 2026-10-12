@@ -30,9 +30,13 @@ have native JSONL adapters; other clients can supply the normalized
 [usage-log format](usage-logs.md). Do not treat Cursor or another MCP client's
 transcripts as supported simply because that client can call Trazum tools.
 
-Use explicit paths when importing another harness's sessions. Import only the
-usage fields necessary for analysis; do not forward transcript content to a
-model. Native adapter output excludes original prompts and tool responses.
+With the CLI, use explicit authorized paths with `from-claude-code` or
+`from-codex`. With MCP, call `import_usage` with explicit `format` (`claude-code`
+or `codex`), transcript `text` and an optional approved `label`. The server never
+opens a path and never derives labels from working directories. Native adapter
+output excludes prompts, tool responses and paths, but retains session IDs.
+Keep raw transcripts out of model context where the host can pass them directly
+to the local tool.
 
 The model ID comes from the source, not the harness name. Unknown models stay
 unpriced unless the user supplies a [price card](usage-logs.md). Recorded token
@@ -47,9 +51,13 @@ trazum plan usage.jsonl --json -o plan.json
 trazum verify plan.json --against later.jsonl --json
 ```
 
-MCP equivalents are `profile_usage`, `plan_savings`, and `verify_savings`.
-HTTP equivalents are [`POST /savings/plan` and `POST /savings/verify`](api.md#plan-and-verify-savings),
-using the server catalogue and a shared 1,000,000-byte request limit.
+For native transcripts, first call `import_usage` and pass its returned `log`
+to `profile_usage` or `plan_savings`. Preserve its diagnostics alongside later
+reports: empty output is not zero usage, conversion cannot establish source
+completeness, and separate imports do not share deduplication state. Do not
+concatenate overlapping imports. CLI normalization remains an alternative.
+For already normalized JSONL, use `profile_usage`, `plan_savings`, and
+`verify_savings` directly.
 Save the `plan` field from `plan_savings` as the document; the surrounding
 response holds additional evidence. Pass JSONL contents and serialized plan
 text to MCP, never file paths. The same plan can be opened in the dashboard.

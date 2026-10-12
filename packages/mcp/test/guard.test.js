@@ -19,6 +19,7 @@ describe('spend_guard over MCP', () => {
       [...TOOLS.map((tool) => tool.name)].sort(),
       [
         'check_prompt',
+        'import_usage',
         'list_models',
         'optimize_prompt',
         'plan_savings',
