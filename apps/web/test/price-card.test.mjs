@@ -98,6 +98,10 @@ describe('the Bill tab reads a dropped price card', () => {
   });
 
   it('a card-only drop never analyses an empty log over a live report', () => {
-    assert.match(code, /if \(parts\.length > 0\) analyze\(/);
+    const ingest = code.slice(code.indexOf('async function ingestFiles('), code.indexOf('async function ', code.indexOf('async function ingestFiles(') + 1));
+    assert.match(ingest, /if \(parts\.length > 0\) replaceDataset\(parts\.join\('\\n'\), previousText\);/);
+    assert.equal((ingest.match(/replaceDataset\(/g) ?? []).length, 1, 'dataset replacement must stay behind the non-empty usage guard');
+    assert.doesNotMatch(ingest, /setDrillLabel\(/, 'a card-only drop must preserve the active workload');
+    assert.match(code, /if \(logText !== null\) analyze\(logText, previousText\);/, 'catalogue changes must reprice the existing log without replacing it');
   });
 });
