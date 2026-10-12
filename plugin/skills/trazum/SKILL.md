@@ -198,9 +198,9 @@ budget, and `--json`, `--csv-out` and `--markdown-out` carry the same report
 into pipelines.
 
 **Lead with "What would actually move this bill".** It is the section the command
-exists for, and the one that answers the fair complaint that Trazum saves 1%. The
-rules recover about 1%; which model a call goes to moves 60% to 80% and the Batch
-API moves 50% flat, and both are priced there from the user's own tokens. If you
+exists for. Model routing, caching and batch processing are priced there from
+the user's own tokens and the selected provider's actual terms. Do not promise
+a fixed percentage or a batch discount a provider does not offer. If you
 summarise the report and leave that section out, you have handed the user the
 smallest lever in the tool.
 
@@ -211,8 +211,10 @@ Four things to get right about those levers:
   Adding "route $12.60" and "batch $10.50" gives $23.10 on a slice that spent
   $21.00, which is impossible. Quote the combined figure.
 - **A route is worth testing, not worth doing.** The arithmetic is exact and says
-  nothing about quality. Give the user the `trazum eval --model <candidate>`
-  command the report prints; never present a route as a recommendation.
+  nothing about quality. Use the report's `trazum route <log> --prompt-file
+  <prompt> --cases <cases>` command to explain the required evaluation. Running
+  it with `--yes` makes paid calls and requires explicit authorization.
+  `eval --model` changes pricing, not the evaluated model.
 - **No figure is per month.** A usage log covers whatever period was recorded and
   the tool is not told which. Say "on this bill", not "/month".
 - **The prompt ceiling is a ceiling.** "Shortening prompts can touch at most X%"
