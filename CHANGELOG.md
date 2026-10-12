@@ -36,6 +36,8 @@ merged commit with no entry is a change only `git log` remembers.
   Bash integration with pipefail. No gateway rewrite, new process execution,
   network access, automatic interception or subscription-quota promise is added.
   Estimates include recovery overhead; the core transformation is browser-safe.
+  The pipefail regression uses a literal shell command without environment-derived
+  command arguments, and checks that stdout and stderr retain their channels.
 
 - **Local HTTP savings lifecycle.** `POST /savings/plan` and `POST /savings/verify`
   accept normalized usage text and portable plan JSON, price with the server

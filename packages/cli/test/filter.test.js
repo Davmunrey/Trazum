@@ -75,8 +75,8 @@ describe('trazum-filter display pipeline', () => {
   });
   it('preserves producer errors with pipefail and never merges stderr into the filter', { skip: process.platform === 'win32' }, () => {
     const result = spawnSync('bash', ['-o', 'pipefail', '-c',
-      'printf "ok\\n"; (printf "ERROR original\\n" >&2; exit 7) | "$1" "$2" filter compact --recovery-dir "$3"',
-      'test', process.execPath, CLI, store('pipeline')], { encoding: 'utf8', env: SPAWN_ENV, timeout: 10000 });
+      '(printf "ok\\n"; printf "ERROR original\\n" >&2; exit 7) | node packages/cli/dist/index.js filter compact --recovery-dir ./unused-recovery'],
+    { cwd: new URL('../../../', import.meta.url), encoding: 'utf8', env: SPAWN_ENV, timeout: 10000 });
     assert.equal(result.status, 7);
     assert.equal(result.stdout, 'ok\n');
     assert.equal(result.stderr, 'ERROR original\n');
