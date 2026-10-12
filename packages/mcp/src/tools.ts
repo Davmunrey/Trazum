@@ -10,6 +10,8 @@ import {
   bandFor,
   billLevers,
   buildPlan,
+  claudeCodeRecords,
+  codexRecords,
   parsePlanDocument,
   verifyPlan,
   cacheEconomics,
@@ -1752,6 +1754,50 @@ function savingsPlan(text: string) {
   return plan;
 }
 
+const IMPORT_USAGE: ToolDefinition = {
+  name: 'import_usage',
+  title: 'Import native agent usage from transcript text',
+  description: 'Converts explicit Claude Code or Codex transcript text into normalized JSONL for profile_usage and plan_savings. Returns conversion diagnostics, never subscription billing or a completeness guarantee. No files, network or writes; prompt/tool/path content is excluded. Session identifiers remain. Labels are explicit only.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      format: { type: 'string', enum: ['claude-code', 'codex'] },
+      text: { type: 'string', minLength: 1, maxLength: MAX_LOG_CHARS,
+        description: 'Transcript JSONL contents, never a path. Import one source at a time; separate calls do not share deduplication state.' },
+      label: { type: 'string', minLength: 1, maxLength: 200,
+        description: 'Optional caller-approved workload label. Never derived from cwd or filenames.' },
+    },
+    required: ['format', 'text'], additionalProperties: false,
+  },
+  run: (args) => {
+    if (args.format !== 'claude-code' && args.format !== 'codex') {
+      throw new InvalidArguments('format must be claude-code or codex');
+    }
+    const text = savingsText(args, 'text', MAX_LOG_CHARS);
+    if (args.label !== undefined && (typeof args.label !== 'string' ||
+        args.label.trim() === '' || args.label.length > 200)) {
+      throw new InvalidArguments('label must be non-empty text of at most 200 characters');
+    }
+    const options = args.label === undefined ? {} : { label: args.label as string };
+    const conversion = args.format === 'codex' ? codexRecords(text, options) : claudeCodeRecords(text, options);
+    const { records, ...diagnostics } = conversion;
+    const log = records.map((record) => JSON.stringify(record)).join('\n');
+    // A repeated explicit label can expand output beyond the accepted downstream log size.
+    if (log.length > MAX_LOG_CHARS) throw new InvalidArguments('normalized log exceeds 2000000 characters; import a smaller transcript or use a shorter label');
+    return JSON.stringify({
+      schemaVersion: 1, format: args.format, log, records: records.length, diagnostics,
+      evidence: { billingMode: 'unknown', valuation: 'api-equivalent', completeness: 'not-established' },
+      limitations: [
+        'Conversion diagnostics describe the supplied text only; missing source events and missing files cannot be detected.',
+        'Usage priced downstream is API-equivalent, not a subscription invoice or proof of realized savings.',
+        'No deduplication state is shared between calls. Do not concatenate overlapping imports.',
+        'Session identifiers are retained. Prompt, tool, cwd and path content is not copied; labels are caller supplied.',
+        'Empty output means no convertible records, not zero usage or zero cost. Preserve these diagnostics alongside downstream reports.',
+      ],
+    });
+  },
+};
+
 const PLAN_SAVINGS: ToolDefinition = {
   name: 'plan_savings',
   title: 'Rank savings actions from recorded usage',
@@ -1810,4 +1856,4 @@ const VERIFY_SAVINGS: ToolDefinition = {
   },
 };
 
-export const TOOLS: readonly ToolDefinition[] = [SPEND_GUARD, CHECK, OPTIMIZE, PROFILE, PLAN_SAVINGS, VERIFY_SAVINGS, POSITION, MODELS, WRITER];
+export const TOOLS: readonly ToolDefinition[] = [SPEND_GUARD, CHECK, OPTIMIZE, IMPORT_USAGE, PROFILE, PLAN_SAVINGS, VERIFY_SAVINGS, POSITION, MODELS, WRITER];

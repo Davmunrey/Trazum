@@ -13,6 +13,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Native usage import over MCP.** `import_usage` accepts bounded Claude Code
+  or Codex transcript text and an optional explicit workload label. It returns
+  normalized JSONL for profiling and savings plans, converter diagnostics and
+  explicit evidence limits. Prompts, tool content and paths are excluded;
+  session IDs remain. Empty output is not zero spend, imports cannot establish
+  source completeness, and pricing remains API-equivalent rather than a
+  subscription invoice. No filesystem, network or write capability is added.
+
 - **Local integration discovery.** `GET /openapi.json` publishes the HTTP
   contract and `GET /capabilities` separates native session import from generic
   CLI/MCP/HTTP access. An immutable browser-safe harness registry names supported

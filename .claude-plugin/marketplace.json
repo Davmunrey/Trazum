@@ -7,7 +7,7 @@
     {
       "name": "trazum",
       "source": "./plugin",
-      "description": "Price a prompt before it costs money, and read the bill after. Deterministic prompt optimisation (no API key, no network), token budgets and drift gates for CI, usage-log profiling that names what would actually move the bill, and MCP tools for spend guards, savings plans and outcome verification."
+      "description": "Price a prompt before it costs money, and read the bill after. Deterministic prompt optimisation (no API key, no network), token budgets and drift gates for CI, usage-log profiling that names what would actually move the bill, and MCP tools for native Claude Code/Codex usage imports, spend guards, savings plans and outcome verification."
     }
   ]
 }
