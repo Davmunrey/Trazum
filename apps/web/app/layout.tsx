@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 
+import { THEME_BOOTSTRAP } from '../lib/theme';
 import { Analytics } from '../components/Analytics';
 import { getWebMessages, localeFromHeaders } from '../lib/i18n';
 import './globals.css';
@@ -43,10 +44,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const locale = localeFromHeaders((await headers()).get('accept-language'));
+  const requestHeaders = await headers();
+  const locale = localeFromHeaders(requestHeaders.get('accept-language'));
 
   return (
-    <html lang={locale}>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        <script nonce={requestHeaders.get('x-nonce') ?? undefined} dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
+      </head>
       <body>
         {children}
         <Analytics />

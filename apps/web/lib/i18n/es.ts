@@ -44,6 +44,10 @@ export const es: WebMessages = {
       `Precios revisados el ${pricingReviewed}. El recuento de tokens es una estimación y su margen depende del texto (±6% en prosa, hasta ±33% en tablas numéricas); para cifras exactas usa el endpoint oficial de recuento desde la CLI con `,
     footerTail: '. Los ahorros son proyecciones sobre el escenario que indiques, no facturación.',
     localeSwitchLabel: 'Idioma',
+    themeLabel: 'Apariencia',
+    themeLight: 'Claro',
+    themeDark: 'Oscuro',
+    themeSystem: 'Sistema',
     closeMenu: 'Cerrar menú',
     openMenu: 'Abrir menú',
     collapseRail: 'Contraer la barra lateral',
@@ -458,12 +462,12 @@ export const es: WebMessages = {
     chooseFile: 'Elegir un archivo',
     chooseFolder: 'Elegir una carpeta',
     dropFolderHint:
-      'Arrastra aquí tu carpeta ~/.claude/projects para tasar tus sesiones de Claude Code, convertidas en esta pestaña, sin subir nada.',
+      'Arrastra aquí archivos de sesiones de Claude Code o Codex. Convertidos en esta pestaña, sin subir nada.',
     transcriptSummary: (transcripts, calls) =>
-      `Convertidos ${transcripts} transcript(s) de Claude Code en ${calls} llamada(s) tasada(s), aquí en tu navegador.`,
+      `Convertidas ${transcripts} transcripciones de agentes en ${calls} registros de uso, aquí en tu navegador.`,
     transcriptAlsoLogs: (logs) => `Más ${logs} log(s) de uso, leídos tal cual.`,
     transcriptCollapsed: (lines) =>
-      `${lines} línea(s) extra de llamadas ya contadas colapsadas: una llamada a la API se escribe como una línea por bloque de contenido.`,
+      `${lines} instantáneas de uso duplicadas o bloques de llamada repetidos colapsados.`,
     transcriptStreamed: (calls) =>
       `${calls} llamada(s) capturadas en streaming; quedaron sus recuentos finales.`,
     priceCardApplied: (touched, added) =>
@@ -476,7 +480,7 @@ export const es: WebMessages = {
     otelNoCache: (spans) =>
       `${spans} span(s) sin datos de caché: OTel no ha estandarizado el reparto de TTL de caché, así que sus veredictos de caché dicen "no se puede saber" en vez de uno inventado.`,
     transcriptApiEquivalent:
-      'Las transcripciones de Claude Code se cobran a las tarifas de la API de Anthropic. Con un plan Pro o Max pagaste el plan, no esto: léelo como lo que costaría el mismo trabajo a través de la API.',
+      'Las transcripciones de Claude Code y Codex se valoran con tarifas API del catálogo, no con tu factura de suscripción. La telemetría incompleta y las tarifas propias pueden cambiar esta estimación.',
     transcriptPrivacy:
       'Los transcripts se leyeron en esta pestaña. Se quedaron los números y no las palabras: ni texto de mensajes, ni rutas, ni ramas cruzaron la conversión.',
     orPaste: 'o pega el registro debajo',
@@ -493,6 +497,15 @@ export const es: WebMessages = {
       + 'factura que mostrar. La CLI puede ponerles precio con un overlay: trazum profile '
       + '--pricing.',
     heading: 'Adónde fue el dinero',
+    reportNavigation: 'Secciones del informe',
+    reportSummary: 'Resumen',
+    reportOpportunities: 'Oportunidades',
+    reportContext: 'Contexto de uso',
+    reportPlan: 'Plan de acción',
+    reportSpend: 'Gasto a precios de catálogo',
+    reportCalls: 'Llamadas registradas',
+    reportCoverage: 'Llamadas con precio',
+    reportScope: 'Selección actual. Las llamadas sin precio se excluyen del gasto; los registros no válidos se detallan debajo.',
     headline: (calls, total) =>
       `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada' : 'llamadas'} · ${total}`,
     partInput: 'Entrada',
@@ -867,6 +880,7 @@ export const es: WebMessages = {
       + 'recuento, y es la cifra que juzga un presupuesto por conversación.',
     byLabelHeading: 'Por etiqueta',
     byModelHeading: 'Por modelo',
+    priceUnknown: 'Sin precio',
     unlabelled: '(sin etiqueta)',
     moreRows: (count) => `…y ${count} más.`,
     tierCeiling: (rows, models, ceiling, floor) =>
@@ -1088,7 +1102,7 @@ export const es: WebMessages = {
       cli: {
         title: 'La CLI, completa',
         body:
-          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Todo lo que acabas de ver es la CLI real; sus 51 comandos se instalan con «npm i -g @trazum/cli», y «help» lista aquí lo que el navegador puede ejecutar.',
+          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Todo lo que acabas de ver es la CLI real; sus 52 comandos se instalan con «npm i -g @trazum/cli», y «help» lista aquí lo que el navegador puede ejecutar.',
       },
       finish: {
         title: 'Ese es el tour',

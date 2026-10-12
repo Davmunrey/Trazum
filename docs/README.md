@@ -1,16 +1,21 @@
 # Trazum documentation
 
-Somebody choosing this tool, somebody using it, somebody extending it and
-somebody maintaining it want four different documents, and a file that serves
-two of them serves neither. Find yourself below. The fifth section is for when
-something is wrong.
+**Start with a task.** Reference contracts and historical plans are kept separate
+from the steps needed to use the tool.
 
----
+| Task | First page | Then |
+|---|---|---|
+| See a result in minutes | [Quick start](quick-start.md) | [Setup and integrations](setup.md) |
+| Understand recorded spend | [Codex sessions](codex.md) | Import local rollout telemetry and understand its limits |
+| [Usage logs](usage-logs.md) | [Commands](commands.md#find-a-command), [plans](plan-format.md) |
+| Set a budget | [CI gates](ci.md) | [Gateway](gateway.md), [scheduled checks](running.md) |
+| Build an integration | [Agents and harnesses](agents.md) or [Setup](setup.md) | [Local HTTP API](api.md), [JSON output](json-output.md) |
+| Change Trazum | [Contributing](../CONTRIBUTING.md) | [Rules](authoring-rules.md), [releases](releasing.md) |
 
 ## I am deciding whether to use this
 
 Start at the [README](../README.md) — what it is, what it costs you to try, and
-one worked example per command.
+a short introduction and links to the relevant workflow.
 
 Then, if you want to know whether to trust the numbers:
 
@@ -35,8 +40,11 @@ In the order somebody actually meets them:
 | | |
 |---|---|
 | [The command reference](commands.md) | Every command's full chapter — the book behind the README's table |
+| [Codex sessions](codex.md) | Import local rollout telemetry and understand its limits |
 | [Usage logs](usage-logs.md) | What Trazum can read, and what each optional field unlocks |
 | [Accounts](accounts.md) | Signing in to the web app: the prompt library, share links, and what the database holds |
+| [Local HTTP API](api.md) | Loopback cost oracle and discoverable OpenAPI contract |
+| [Agent integrations](agents.md) | Harnesses, providers, CLI/MCP workflows and deterministic evaluations |
 | [The gateway](gateway.md) | Standing in the path of the call, and refusing |
 | [CI](ci.md) | Gating a build on tokens, dollars and quality |
 | [Running it](running.md) | Making it happen on a schedule, and why that schedule is yours |
@@ -82,12 +90,12 @@ In the order somebody actually meets them:
 
 ## The arcs, as they were planned
 
-Nineteen plans have been written down **before** the code. Eighteen delivered in
-full; one landed six of its nine arcs. The delivered plans are kept because
-the reasoning is the useful part, not because anything in them is still
-forthcoming: every chapter in them shipped. The 1.52–1.60 plan keeps its three
-open arcs visible for the same reason — what a plan could not build, and why,
-is the half a reader cannot reconstruct.
+These are historical design records, **not setup instructions or promises of
+current availability**. Some record unfinished work. Check the current command
+reference and release notes before relying on a capability.
+
+<details>
+<summary>Browse the historical plan archive</summary>
 
 | Arc | Thesis | Landed |
 |---|---|---|
@@ -124,3 +132,5 @@ each; the remaining six are an ordering of intentions. The plan says which kind
 each arc is, because presenting all nine with equal confidence would merge a
 measurement with a projection on the roadmap of a tool whose first doctrine rule
 forbids that.
+
+</details>

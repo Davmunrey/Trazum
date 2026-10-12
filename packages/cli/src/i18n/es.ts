@@ -50,6 +50,7 @@ ${bold('USO')}
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
               [--since <cuándo>] [--until <cuándo>] [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
+  trazum from-codex <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
   trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
@@ -343,6 +344,15 @@ ${bold('OPCIONES DE from-otel')}
   tiene reparto de TTL de caché, así que los veredictos de caché dicen "no se
   puede saber" en vez de uno inventado. Los spans que no son de LLM se cuentan
   y se omiten, dicho en stderr.
+
+${bold('OPCIONES DE from-codex')}
+  --label <nombre>            Marca cada registro con una etiqueta.
+  -o, --out <fichero>         Escribe el uso normalizado en vez de stdout.
+
+  Lee un archivo o directorio de Codex indicado explícitamente, en local.
+  Solo contadores corroborados: colapsa duplicados y excluye uso ambiguo.
+  Los huecos se indican en stderr. Los precios son equivalentes API,
+  nunca tu factura de suscripción. El contenido de prompts se descarta.
 
 ${bold('OPCIONES DE from-claude-code')}
   --label <nombre>            Marca cada registro con una etiqueta.
@@ -1353,7 +1363,7 @@ ${bold('EJEMPLOS')}
     diff: () => 'Diff',
     tokensOnlyHeading: (host) => `Qué ganas con esto en ${host}`,
     tokensOnlyWhy: (host) =>
-      `${host} cobra por suscripción, así que no hay factura que reducir ni cifra mensual que imprimir.`,
+      `${host} identifica la herramienta, no tu forma de pago. Se muestran tokens por defecto; el ahorro en factura es desconocido.`,
     tokensOnlyAsked: () => 'Costes ocultos porque has pedido solo tokens.',
     tokensSaved: (tokens) =>
       `${tokens} token${tokens === '1' ? '' : 's'} de vuelta, en cada llamada.`,
@@ -1921,6 +1931,17 @@ ${bold('EJEMPLOS')}
     nothingToBill: () => 'Nada de este log se pudo precificar, así que el recibo no tiene líneas.',
   },
 
+  fromCodex: {
+    noPath: () => 'from-codex necesita una ruta explícita: trazum from-codex ./sesiones',
+    notFound: (path) => `No se puede leer ${path}`,
+    noFiles: (path) => `No hay archivos JSONL en ${path}`,
+    noUsage: () => 'No hay uso de Codex atribuible. Revisa los huecos indicados; no se escribió un registro de coste cero.',
+    summary: (files, records, duplicates) => `${files} archivo(s) Codex, ${records} registro(s) corroborados, ${duplicates} instantáneas repetidas descartadas.`,
+    gaps: (missingModel, unsupported, unparseable) => `Huecos Codex: ${missingModel} sin contexto de modelo, ${unsupported} instantáneas no admitidas o sin corroborar, ${unparseable} líneas ilegibles. No son llamadas de coste cero.`,
+    caveat: () => 'La telemetría Codex se valora a tarifas API del catálogo, no como factura de suscripción. Totales restaurados, reinicios y deltas ambiguos quedan excluidos.',
+    written: (file) => `Registro normalizado escrito en ${file}`,
+  },
+
   fromOtel: {
     noPath: () => 'from-otel necesita un archivo o directorio OTLP: trazum from-otel spans.json',
     notFound: (path) => `${path}: no existe`,
@@ -2085,7 +2106,7 @@ ${bold('EJEMPLOS')}
     pricingLiveHint: (count) =>
       `${count} id(s) de modelo sin precio llevan prefijo de proveedor, como nombran los modelos OpenRouter y LiteLLM, y el catálogo incluido no los trae. Vuelve a ejecutar con --pricing-live para cobrar los slugs de OpenRouter desde su propia lista.`,
     apiEquivalent: () =>
-      'Las transcripciones de Claude Code se cobran a las tarifas de la API de Anthropic. Con un plan Pro o Max pagaste el plan, no esto: léelo como lo que costaría el mismo trabajo a través de la API.',
+      'Las sesiones de Claude Code y Codex se valoran a tarifas API del catálogo. Si pagas una suscripción, pagaste el plan, no esta estimación equivalente; los datos ausentes y las tarifas propias pueden cambiar el resultado.',
     prefixedKnown: (ids) =>
       `${ids}: el modelo tras la barra tiene precio aquí con su propio nombre. El prefijo no se quita por ti, porque el mismo modelo a través de un router puede facturarse distinto. Si esas llamadas fueron directas al proveedor, registra el modelo sin el prefijo.`,
     windowMatchesNothing: (from, to) =>
@@ -2339,8 +2360,8 @@ ${bold('EJEMPLOS')}
 
   where: {
     hostHeading: () => 'Ejecutándose dentro de',
-    subscription: (host) =>
-      `${host} cobra por suscripción, no por token. Un ahorro mensual de los de abajo es aritmética sobre tokens, no dinero que recuperes: lo que ganas es margen de ventana de contexto y de rate limit.`,
+    billingUnknown: (host) =>
+      `${host} solo identifica el entorno de ejecución. La forma de pago es desconocida; los precios por token no demuestran ahorro en factura.`,
     noTarget: () => 'Pasa un fichero fuente para ver a qué proveedor van sus prompts.',
     sourceHeading: (path) => `Los prompts de ${path} van a`,
     conflict: () => 'No se puede saber: el fichero nombra más de un proveedor.',

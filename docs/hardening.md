@@ -1,5 +1,7 @@
 # Any input
 
+[Documentation](README.md) / [Contributing](../CONTRIBUTING.md) · [Security](../SECURITY.md)
+
 This page states what Trazum promises about input it was never meant to see —
 and where each promise is enforced, so the claim can be checked rather than
 believed. It exists because a stress session found **seven defects in an

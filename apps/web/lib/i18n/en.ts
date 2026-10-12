@@ -45,6 +45,10 @@ export const en: WebMessages = {
     footerTail:
       '. Savings are projections over the scenario you describe, not billing.',
     localeSwitchLabel: 'Language',
+    themeLabel: 'Appearance',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeSystem: 'System',
     closeMenu: 'Close menu',
     openMenu: 'Open menu',
     collapseRail: 'Collapse sidebar',
@@ -455,12 +459,12 @@ export const en: WebMessages = {
     chooseFile: 'Choose a file',
     chooseFolder: 'Choose a folder',
     dropFolderHint:
-      'Drop your ~/.claude/projects folder here to price your Claude Code sessions. Converted in this tab, nothing uploaded.',
+      'Drop Claude Code or Codex session files here. Converted in this tab, nothing uploaded.',
     transcriptSummary: (transcripts, calls) =>
-      `Converted ${transcripts} Claude Code transcript(s) into ${calls} priced call(s), here in your browser.`,
+      `Converted ${transcripts} agent transcript(s) into ${calls} usage record(s), here in your browser.`,
     transcriptAlsoLogs: (logs) => `Plus ${logs} usage log(s), read as they are.`,
     transcriptCollapsed: (lines) =>
-      `${lines} extra line(s) of already-counted calls collapsed: one API call is written as one line per content block.`,
+      `${lines} duplicate usage snapshot(s) or repeated call block(s) collapsed.`,
     transcriptStreamed: (calls) =>
       `${calls} call(s) were captured mid-stream; their final counts stood.`,
     priceCardApplied: (touched, added) =>
@@ -473,7 +477,7 @@ export const en: WebMessages = {
     otelNoCache: (spans) =>
       `${spans} span(s) carried no cache data: OTel has not standardised the cache TTL split, so their cache verdicts read "cannot tell" rather than a guessed one.`,
     transcriptApiEquivalent:
-      "Claude Code transcripts are priced at Anthropic's API rates. On a Pro or Max plan you paid the plan, not this: read it as what the same work would cost through the API.",
+      "Claude Code and Codex transcripts are priced at catalogue API rates, not your subscription invoice. Missing telemetry and custom rates can change this estimate.",
     transcriptPrivacy:
       'The transcripts were read in this tab. The numbers were kept and the words were not: no message text, no paths, no branches crossed the conversion.',
     orPaste: 'or paste the log below',
@@ -490,6 +494,15 @@ export const en: WebMessages = {
       + 'report. The CLI can price unknown models with a pricing overlay: trazum profile '
       + '--pricing.',
     heading: 'Where the money went',
+    reportNavigation: 'Report sections',
+    reportSummary: 'Summary',
+    reportOpportunities: 'Opportunities',
+    reportContext: 'Usage context',
+    reportPlan: 'Action plan',
+    reportSpend: 'Catalogue-priced spend',
+    reportCalls: 'Recorded calls',
+    reportCoverage: 'Calls with a price',
+    reportScope: 'Current selection. Unpriced calls are excluded from spend; invalid records are listed below.',
     headline: (calls, total) =>
       `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'} · ${total}`,
     partInput: 'Input',
@@ -850,6 +863,7 @@ export const en: WebMessages = {
       + 'is the figure a per-conversation budget judges.',
     byLabelHeading: 'By label',
     byModelHeading: 'By model',
+    priceUnknown: 'Unpriced',
     unlabelled: '(no label)',
     moreRows: (count) => `…and ${count} more.`,
     tierCeiling: (rows, models, ceiling, floor) =>
@@ -1069,7 +1083,7 @@ export const en: WebMessages = {
       cli: {
         title: 'The CLI, complete',
         body:
-          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. Everything you just watched is the real CLI: 51 commands install with "npm i -g @trazum/cli", and "help" lists what the browser can run.',
+          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. Everything you just watched is the real CLI: 52 commands install with "npm i -g @trazum/cli", and "help" lists what the browser can run.',
       },
       finish: {
         title: 'That is the tour',

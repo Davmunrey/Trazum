@@ -1,5 +1,7 @@
 # Maintaining a language
 
+[Documentation](README.md) / [Contributing](../CONTRIBUTING.md) · [Authoring rules](authoring-rules.md)
+
 Trazum's trimming dictionaries cover seven languages. **Two of them have
 somebody here who reads them. Five do not.**
 

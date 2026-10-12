@@ -164,7 +164,7 @@ const pageFor = (page) =>
   `${provenance(page.source)}\n${absolute(sectionOf(read(page.source), page.heading))}\n`;
 
 const home = () => {
-  const opening = absolute(sectionOf(read('README.md'), '### Most of your LLM bill is not the prompt. Trazum finds where it is.'));
+  const opening = absolute(sectionOf(read('README.md'), '### Understand your AI spend. Decide what to change.'));
   const contents = PAGES.map((page) => `- [${page.title}](${WIKI}${page.name})`).join('\n');
   return `${provenance('README.md')}\n# Trazum\n\n${opening}\n\n## Pages\n\n${contents}\n\n`
     + `Everything else lives in the repository: the [README](${BLOB}README.md) and the\n`

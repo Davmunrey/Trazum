@@ -625,6 +625,17 @@ export interface CliMessages {
     nothingToBill(): string;
   };
 
+  fromCodex: {
+    noPath(): string;
+    notFound(path: string): string;
+    noFiles(path: string): string;
+    noUsage(): string;
+    summary(files: number, records: number, duplicates: number): string;
+    gaps(missingModel: number, unsupported: number, unparseable: number): string;
+    caveat(): string;
+    written(file: string): string;
+  };
+
   fromOtel: {
     noPath(): string;
     notFound(path: string): string;
@@ -979,7 +990,7 @@ export interface CliMessages {
 
   where: {
     hostHeading(): string;
-    subscription(host: string): string;
+    billingUnknown(host: string): string;
     noTarget(): string;
     sourceHeading(path: string): string;
     conflict(): string;

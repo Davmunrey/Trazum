@@ -663,3 +663,9 @@ export type {
   Section,
   Slot,
 } from './write.js';
+
+export { codexRecords, looksLikeCodexTranscript } from './codex.js';
+export type { CodexRecord, CodexConversion } from './codex.js';
+
+export { HARNESS_CAPABILITIES, getHarnessCapability } from './harnesses.js';
+export type { HarnessCapability, HarnessCapabilities } from './harnesses.js';

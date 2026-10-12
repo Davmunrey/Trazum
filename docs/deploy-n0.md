@@ -1,5 +1,7 @@
 # Deploying the web app on N0
 
+[Documentation](README.md) / [Web setup](setup.md#web) · [Accounts](accounts.md) · [Contributing](../CONTRIBUTING.md)
+
 What ships is the **web app** (`apps/web`) and nothing else. The CLI, the
 gateway and `trazum serve` are loopback-only by design — a cost oracle on a
 network interface is an attack surface — and they belong on the machines

@@ -114,6 +114,8 @@ import {
   parseUsageLine,
   plannedCalls,
   claudeCodeRecords,
+  codexRecords,
+  looksLikeCodexTranscript,
   type CwdLabel,
   type WorkspaceLabel,
   type ProjectLabel,
@@ -762,6 +764,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   rollup: ['json', 'html-out'],
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
   receipt: ['out', 'o', 'stamp', 'pricing', 'pricing-live', 'since', 'until'],
+  'from-codex': ['label', 'out', 'o'],
   'from-claude-code': ['label', 'label-by-cwd', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
@@ -1341,6 +1344,11 @@ function printMoney(
  * a measurable one, and it is the honest answer to "what did I gain" on a plan
  * that costs the same either way.
  */
+/** A conservative display default, never evidence of a payment arrangement. */
+function prefersTokenReport(host: HostEnvironment): boolean {
+  return ['claude-code', 'codex', 'cursor'].includes(host.id);
+}
+
 function printTokensOnly(
   result: OptimizationResult,
   host: HostEnvironment,
@@ -1354,15 +1362,10 @@ function printTokensOnly(
 
   console.log();
   console.log(sectionHeading(t.report.tokensOnlyHeading(host.displayName)));
-  // Only claim the host bills by subscription when it does. Forced with the
-  // flag on GitHub Actions, the first version said "GitHub Actions bills by
-  // subscription", which is simply false.
   console.log(
-    `  ${
-      host.billing === 'subscription'
-        ? t.report.tokensOnlyWhy(host.displayName)
-        : t.report.tokensOnlyAsked()
-    }`,
+    `  ${prefersTokenReport(host)
+      ? t.report.tokensOnlyWhy(host.displayName)
+      : t.report.tokensOnlyAsked()}`,
   );
   console.log();
   console.log(`  ${c.green(t.report.tokensSaved(n(saved)))}`);
@@ -1672,12 +1675,7 @@ async function commandWhere(
   console.log(
     `  ${host.displayName}${host.evidence ? c.dim(` (${host.evidence})`) : ''}`,
   );
-  // The reason this is worth printing at all. Inside a flat plan the monthly
-  // figure Trazum computes is arithmetic about tokens, not money anybody gets
-  // back, and saying so is more useful than saying nothing.
-  if (host.billing === 'subscription') {
-    console.log(`  ${c.yellow(t.where.subscription(host.displayName))}`);
-  }
+  console.log(`  ${c.dim(t.where.billingUnknown(host.displayName))}`);
 
   const target = args.positional[0];
   if (target === undefined) {
@@ -1857,9 +1855,7 @@ function renderInit(proposal: InitProposal, ctx: InitRenderContext): void {
 
   // 1. Where this is running.
   console.log(`  ${t.init.host(ctx.host.displayName)}`);
-  if (ctx.host.billing === 'subscription') {
-    console.log(`  ${c.yellow(t.where.subscription(ctx.host.displayName))}`);
-  }
+  console.log(`  ${c.dim(t.where.billingUnknown(ctx.host.displayName))}`);
 
   // 2. The prompts.
   console.log(
@@ -3432,6 +3428,7 @@ function printReceiptSummary(document: ReceiptDocument, t: CliMessages): void {
 /** The shapes `bill` can tell apart from a file's own text. */
 type UsageSource =
   | 'claude-code'
+  | 'codex'
   | 'otel'
   | 'litellm'
   | 'helicone'
@@ -3448,6 +3445,7 @@ type UsageSource =
  */
 function usageSourcesOf(text: string): UsageSource[] {
   const claims: UsageSource[] = [];
+  if (looksLikeCodexTranscript(text)) claims.push('codex');
   if (looksLikeClaudeCodeTranscript(text)) claims.push('claude-code');
   if (looksLikeOtel(text)) claims.push('otel');
   if (looksLikeAnthropicUsage(text)) claims.push('anthropic-usage');
@@ -3556,6 +3554,8 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   let labelledByProject = 0;
   /* Claude Code transcripts read: their money is an API-rate equivalent. */
   let claudeCodeFiles = 0;
+  let codexFiles = 0;
+  const codexEvidence = { source: 'codex', basis: 'api-equivalent-telemetry', files: 0, duplicates: 0, missingModel: 0, unsupported: 0, unparseable: 0 };
   const lines: string[] = [];
   let sources = 0;
   /*
@@ -3589,6 +3589,19 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
     let records: unknown[] = [];
     let leftOut = 0;
     switch (shape) {
+      case 'codex': {
+        codexFiles += 1;
+        const c = codexRecords(text, withLabel);
+        codexEvidence.files += 1;
+        codexEvidence.duplicates += c.duplicates;
+        codexEvidence.missingModel += c.missingModel;
+        codexEvidence.unsupported += c.unsupported;
+        codexEvidence.unparseable += c.unparseable;
+        records = c.records;
+        leftOut = c.missingModel + c.unsupported + c.unparseable;
+        if (leftOut > 0) console.error(t.fromCodex.gaps(c.missingModel, c.unsupported, c.unparseable));
+        break;
+      }
       case 'claude-code': {
         claudeCodeFiles += 1;
         const project =
@@ -3677,7 +3690,11 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   });
   refuseEmptyPeriod(text, report, period, pricing, t);
   const document = receiptFrom(report, pricing, boolFlag(args, 'stamp') ? { emittedAt: new Date() } : {});
-  const json = JSON.stringify(document, null, 2);
+  const billDocument = codexFiles === 0 ? document : {
+    ...document,
+    importEvidence: [{ ...codexEvidence, complete: codexEvidence.missingModel + codexEvidence.unsupported + codexEvidence.unparseable === 0 }],
+  };
+  const json = JSON.stringify(billDocument, null, 2);
 
   /*
     A terminal gets a statement a person can read; a pipe gets the receipt.
@@ -3698,8 +3715,8 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   }
   console.error(t.bill.sources(sources, files.length));
   printReceiptSummary(document, t);
-  if (statement) printBillStatement(report, labelledByProject > 0, t, period.words, claudeCodeFiles > 0);
-  await writeBillSideFiles(args, report, pricing, csvShape, t, period.words, claudeCodeFiles > 0);
+  if (statement) printBillStatement(report, labelledByProject > 0, t, period.words, claudeCodeFiles + codexFiles > 0);
+  await writeBillSideFiles(args, report, pricing, csvShape, t, period.words, claudeCodeFiles + codexFiles > 0);
 
   /*
     A slug with a slash in it is how OpenRouter names a model, and the bundled
@@ -4066,6 +4083,48 @@ function commandOwnrate(args: Args, t: CliMessages): void {
     },
   };
   console.log(JSON.stringify(snippet, null, 2));
+}
+
+/** Explicit paths only: Codex histories are not discovered from the user's home. */
+async function commandFromCodex(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromCodex.noPath());
+  let info;
+  try { info = await stat(target); } catch { throw new Error(t.fromCodex.notFound(target)); }
+  const files = info.isDirectory()
+    ? (await readdir(target, { recursive: true, withFileTypes: true }))
+      .filter((entry) => entry.isFile() && /\.(jsonl|ndjson)$/i.test(entry.name))
+      .map((entry) => join(entry.parentPath, entry.name)).sort()
+    : [target];
+  if (files.length === 0) throw new Error(t.fromCodex.noFiles(target));
+  const label = stringFlag(args, 'label');
+  const lines: string[] = [];
+  let duplicates = 0;
+  let missingModel = 0;
+  let unsupported = 0;
+  let unparseable = 0;
+  for (const file of files) {
+    const text = await readFile(file, 'utf8');
+    if (!looksLikeCodexTranscript(text)) { unsupported++; continue; }
+    const conversion = codexRecords(text, label === undefined ? {} : { label });
+    for (const record of conversion.records) lines.push(JSON.stringify(record));
+    duplicates += conversion.duplicates;
+    missingModel += conversion.missingModel;
+    unsupported += conversion.unsupported;
+    unparseable += conversion.unparseable;
+  }
+  console.error(t.fromCodex.summary(files.length, lines.length, duplicates));
+  if (missingModel + unsupported + unparseable > 0) {
+    console.error(t.fromCodex.gaps(missingModel, unsupported, unparseable));
+  }
+  console.error(t.fromCodex.caveat());
+  if (lines.length === 0) throw new Error(t.fromCodex.noUsage());
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  const text = lines.join('\n') + '\n';
+  if (out !== undefined) {
+    await writeFile(out, text, 'utf8');
+    console.error(t.fromCodex.written(out));
+  } else console.log(text.trimEnd());
 }
 
 async function commandFromOtel(args: Args, t: CliMessages): Promise<void> {
@@ -5287,12 +5346,13 @@ async function commandGateway(
   const position = budget.positions[0] ?? null;
 
   /**
-   * Read once at start, like `serve`'s.
+   * Read the baseline once at start. The gateway adds its own completed
+   * usage and reserves in-flight estimates in memory via `liveBudget`.
    *
    * A file read in the request path would put Trazum's own latency between a
    * caller and their provider on every call, which is a cost this product
-   * would otherwise be reporting on somebody else. The staleness is real, so a
-   * refusal carries `asOfMs` and says what it rested on.
+   * would otherwise be reporting on somebody else. External spend is still
+   * stale, so a refusal carries the baseline's `asOfMs`.
    */
   const standing: GatewayStanding | null =
     position === null || position.coverage === 'none'
@@ -5317,6 +5377,7 @@ async function commandGateway(
    */
   let unmeasured = 0;
   const server = buildGateway({
+    liveBudget: true,
     provider,
     catalogue: pricing,
     policy: {
@@ -7081,24 +7142,12 @@ async function commandOptimize(
     return;
   }
 
-  // Tokens-only when the host bills by subscription: there is no bill to
-  // reduce, so a monthly figure would be arithmetic about tokens dressed as
-  // money. Either flag overrides it, because the host says where *Trazum* runs
-  // and not where the prompt goes — somebody editing a production prompt inside
-  // Cursor wants the dollars, and they should not have to leave the editor to
-  // see them.
+  // Agent harnesses default to token context; their identity does not establish
+  // billing. Explicit API-cost requests and usage-log scenarios retain pricing.
   const host = detectHost();
-  /**
-   * `--from-log` implies `--cost`, and the reasoning is different from the
-   * `--calls` case documented below: `--calls` is a typed scenario parameter,
-   * but a usage log with billed token counts is *evidence* — proof this
-   * prompt's traffic goes to a metered API, whatever the terminal running
-   * the command bills like. Withholding the money there would suppress
-   * exactly the figures the person measured in order to see.
-   */
   const tokensOnly = boolFlag(args, 'cost') || measured !== null
     ? false
-    : boolFlag(args, 'tokens-only') || host.billing === 'subscription';
+    : boolFlag(args, 'tokens-only') || prefersTokenReport(host);
   /**
    * Whether they named a scenario while the money was being withheld.
    *
@@ -13666,6 +13715,9 @@ async function main(): Promise<void> {
       break;
     case 'reconcile':
       await commandReconcile(args, t);
+      break;
+    case 'from-codex':
+      await commandFromCodex(args, t);
       break;
     case 'from-otel':
       await commandFromOtel(args, t);

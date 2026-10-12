@@ -57,10 +57,10 @@ advisory only ever suggests models from the provider you are already on. Droppin
 a tier is a one-line change; switching vendor is a migration, and this advisory is
 a keyword heuristic — it has no business recommending that you change supplier.
 
-**Not covered: Cursor, Claude Code, Codex and other subscriptions.** They do not
-bill per token, so "saves $184/month" would be false for anyone inside their plan.
-The honest saving there is context-window and rate-limit headroom, which is a
-different report rather than a row in this table.
+**Not covered: subscription invoices.** API token prices cannot establish how
+much a subscription bill will change. Claude Code, Codex and Cursor identify
+the tool, not its payment mode; Trazum defaults to token figures in those hosts.
+An explicit `--cost` requests an API-price scenario, not guaranteed invoice savings.
 
 ### Optimising a prompt that lives in code
 
@@ -92,9 +92,8 @@ trazum where src/prompts.ts
 ```
 Running inside
   Claude Code (CLAUDECODE)
-  Claude Code bills by subscription, not by the token. A monthly saving below is
-  arithmetic about tokens, not money you get back — what you gain is context
-  window and rate-limit headroom.
+  Claude Code identifies the execution host only. Payment mode is unknown;
+  token prices do not establish invoice savings.
 
 Prompts in src/prompts.ts go to
   anthropic · Claude Sonnet 5
@@ -114,25 +113,25 @@ silently is how somebody budgets against the wrong provider for a month.
 Detection sits in the usual layering — a flag beats config, config beats
 detection, detection beats the built-in default.
 
-With no file it reports only the host — useful because that is what decides
-whether a monthly saving is money at all:
+With no file it reports only the host. Environment variables identify the tool,
+not whether a workload uses an API, a subscription, credits or a local model:
 
-| Host | Bills |
+| Host | Payment mode inferred from environment |
 |---|---|
-| Claude Code, Codex, Cursor | subscription — the saving is context and rate-limit headroom, not cash |
-| GitHub Actions, CI | per token |
-| VS Code, plain terminal | unknown, and it says so rather than guessing |
+| Claude Code, Codex, Cursor | unknown |
+| GitHub Actions, CI | unknown |
+| VS Code, plain terminal | unknown |
 
-### On a subscription, there is no bill to reduce
+### Agent harnesses default to tokens, not invoice savings
 
-Inside Claude Code, Codex or Cursor you pay the same whatever your prompt costs.
-A monthly figure there is arithmetic about tokens dressed as money, so Trazum
-stops printing one and reports what is actually scarce:
+Inside Claude Code, Codex or Cursor, Trazum conservatively defaults to token
+figures. This is a display policy, not a claim about your payment arrangement.
+Use `--cost` to request the API-price scenario; it is not a subscription invoice:
 
 ```
 What this buys on Claude Code
-  Claude Code bills by subscription, so there is no bill to reduce and no
-  monthly figure to print.
+  Claude Code identifies the tool, not your payment mode. Tokens are shown
+  by default; invoice savings are unknown.
 
   1,001 tokens back, every call.
   Context window: 12.4% → 2.1% of Claude Opus 5's 1,000,000 tokens — room the
@@ -143,8 +142,8 @@ What this buys on Claude Code
 The context window is the real currency in an agent: every token the system
 prompt holds is one the conversation cannot.
 
-**Advisories whose only pitch is money go too.** "Use a cheaper model" is not
-weaker advice on a flat plan — it is not advice. `model-downgrade`, `batch-api`,
+**Advisories whose only pitch is money are hidden in this view.** Whether they
+reduce your invoice depends on your payment arrangement. `model-downgrade`, `batch-api`,
 `output-dominated` and `promo-pricing` are dropped; caching, context overflow,
 contradictions and redundant examples stay, because latency, headroom and
 correctness are still real.

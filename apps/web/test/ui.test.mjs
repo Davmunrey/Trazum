@@ -131,7 +131,7 @@ describe('the palette stays Trazum, not shadcn defaults', () => {
     // looks like a routine token update.
     const css = read('app/globals.css');
     for (const [token, source] of [
-      ['--primary', '--terracotta'],
+      ['--primary', '--acid'],
       ['--background', '--paper'],
       ['--foreground', '--ink'],
       ['--muted-foreground', '--ink-soft'],
@@ -196,7 +196,7 @@ describe('the browser cannot build a request the API refuses', () => {
     const source = codeOf('components/Optimizer.tsx');
     assert.match(
       source,
-      /applySuggestions:\s*suggest\s*&&\s*applySuggestions/,
+      /applySuggestions:\s*options\.auto !== true && suggest\s*&&\s*applySuggestions/,
       'the request passes applySuggestions straight through — with suggest off the ' +
         'API will refuse it',
     );

@@ -1,5 +1,7 @@
 # Something that runs, and why it is not us
 
+[Documentation](README.md) / [Usage inputs](usage-logs.md) · [CI gates](ci.md) · [Gateway](gateway.md)
+
 Everything in Trazum happens when somebody runs a command. The failures worth
 catching — a retry loop, a prompt that grew, a model swapped in a deploy —
 happen at 3pm on a Tuesday, and a report somebody runs three weeks later is an
@@ -18,11 +20,10 @@ answer runs out.
 | An alert reaching a person | A non-zero exit code, `--json` on stdout, `--webhook <url>` | The inbox, the channel, the URL |
 | Knowing the scheduler itself stopped | `trazum pulse --max-stale-hours <n>` | Somewhere that already runs on a schedule — your CI |
 
-**There is no account, no upload and no hosted anything.** That is not an
-omission somebody means to fix later: a tool whose whole argument is that it
-reads your bill without uploading it cannot also be the place everybody's bill
-is uploaded. The reasoning is in [the doctrine](doctrine.md); this page is what
-follows from it in practice.
+**These CLI schedules require no Trazum account or hosted control plane.**
+Provider imports contact the provider you configure; optional webhooks send
+alerts to the endpoint you select. The optional [web accounts](accounts.md)
+and prompt library are separate from this local scheduling workflow.
 
 ## What actually has to run
 

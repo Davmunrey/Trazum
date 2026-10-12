@@ -165,15 +165,31 @@ describe('where Trazum itself is running', () => {
     assert.equal(detectHost({ CURSOR_TRACE_ID: 'x', TERM_PROGRAM: 'vscode' }).id, 'cursor');
   });
 
-  it('says how the host bills, because that is what changes the report', () => {
-    // The point of knowing. Inside a subscription the per-call saving is real
-    // arithmetic about tokens and not money anybody gets back.
-    assert.equal(detectHost({ CLAUDECODE: '1' }).billing, 'subscription');
-    assert.equal(detectHost({ CURSOR_TRACE_ID: 'x' }).billing, 'subscription');
-    assert.equal(detectHost({ GITHUB_ACTIONS: 'true' }).billing, 'per-token');
-    // Not a guess either way: a VS Code terminal says nothing about whether the
-    // prompts written in it go to a metered API or a flat plan.
-    assert.equal(detectHost({ TERM_PROGRAM: 'vscode' }).billing, 'unknown');
+  it('never infers payment mode from an execution host', () => {
+    for (const env of [
+      { CLAUDECODE: '1' },
+      { CODEX_SANDBOX: 'seatbelt' },
+      { CODEX_HOME: '/tmp/trazum-test-codex' },
+      { CURSOR_TRACE_ID: 'synthetic-trace' },
+      { GITHUB_ACTIONS: 'true' },
+      { CI: 'true' },
+      { TERM_PROGRAM: 'vscode' },
+      {},
+    ]) {
+      assert.equal(detectHost(env).billing, 'unknown');
+    }
+  });
+
+  it('credentials and overlapping host markers still do not establish billing', () => {
+    // The presence of a key does not say whether this workload uses it.
+    const host = detectHost({
+      CLAUDECODE: '1',
+      GITHUB_ACTIONS: 'true',
+      ANTHROPIC_API_KEY: 'synthetic-unused-key',
+    });
+    assert.equal(host.id, 'claude-code');
+    assert.equal(host.evidence, 'CLAUDECODE');
+    assert.equal(host.billing, 'unknown');
   });
 
   it('always names the variable it decided on', () => {

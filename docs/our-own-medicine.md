@@ -1,5 +1,7 @@
 # Our own medicine
 
+[Documentation](README.md) / [Doctrine](doctrine.md) · [Release notes](../RELEASES.md)
+
 This project gates other people's promises, refuses to let them merge a measured
 figure with an estimated one, and insists that a plan which did not arrive says
 so out loud.

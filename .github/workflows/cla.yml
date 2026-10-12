@@ -42,7 +42,9 @@ jobs:
           # `Claude` stays beside it because it is what the same resolver
           # falls back to if that email is ever unlinked. The CLA exists
           # for external contributors, not for the maintainer's tools.
-          allowlist: 'Davmunrey,claude,Claude,dependabot[bot],github-actions[bot],*[bot]'
+          # The maintainer also authorizes the synthetic identity used by
+          # local Codex commits; it does not resolve to a GitHub account.
+          allowlist: 'Davmunrey,claude,Claude,Trazum automation,dependabot[bot],github-actions[bot],*[bot]'
           # Chosen, not inherited: the action defaults this to true, which
           # locks the conversation on every merged pull request. A merged
           # PR is still where somebody asks why a change was made.

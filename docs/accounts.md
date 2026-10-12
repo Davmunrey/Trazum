@@ -1,13 +1,15 @@
 # Accounts
 
+[Documentation](README.md) / [Web setup](setup.md#web) · [Deployment](deploy-n0.md) · [Privacy](../README.md#analytics-and-privacy)
+
 Signing in is **off by default**. With nothing configured, Trazum's web app is
 what it has always been: you paste a prompt, it answers, and it remembers
 nothing about you. Nothing in this document is required to run it.
 
-Turn it on when you want the things that need to know who you are — a saved
-prompt library, shared budgets, an organisation's spend in one place. This first
-release ships the foundation those need: sign in with GitHub, and a session that
-lasts.
+Enable accounts for the saved prompt library and share links. GitHub sign-in,
+sessions and database-backed storage are optional deployment features. Shared
+organisation budgets should not be inferred from the presence of accounts;
+use the documented CLI policies and gateway for budget decisions.
 
 ---
 
@@ -59,7 +61,7 @@ psql "$TRAZUM_DATABASE_URL" -f apps/web/db/002_prompts.sql
 psql "$TRAZUM_DATABASE_URL" -f apps/web/db/003_shares.sql
 ```
 
-Apply them in order. Both files are idempotent — re-running it is safe — and it works on any Postgres:
+Apply the three migrations in order. They are idempotent and support Postgres:
 Supabase, Neon, RDS, or a container on your laptop.
 
 **Without `TRAZUM_DATABASE_URL`, sessions are held in memory.** That is a real

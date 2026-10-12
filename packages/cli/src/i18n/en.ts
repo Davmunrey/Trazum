@@ -63,6 +63,7 @@ ${bold('USAGE')}
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
               [--since <when>] [--until <when>] [--pdf-out|--html-out|--markdown-out|--csv-out <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
+  trazum from-codex <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
   trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
@@ -304,6 +305,15 @@ ${bold('OPTIONS FOR from-otel')}
   and trace ids stay in the span. OTel has no cache TTL split, so cache
   verdicts read "cannot tell" rather than a guessed one. Non-LLM spans are
   counted and skipped, said on stderr.
+
+${bold('OPTIONS FOR from-codex')}
+  --label <name>              Stamp every record with one label.
+  -o, --out <file>            Write normalized usage instead of stdout.
+
+  Read an explicit Codex rollout file or directory, locally. Corroborated
+  counters only: replayed snapshots collapse, ambiguous usage is excluded.
+  Conversion gaps are reported on stderr. Prices are API equivalents,
+  never your subscription invoice. Prompt content is discarded.
 
 ${bold('OPTIONS FOR from-claude-code')}
   --label <name>              Stamp every record with one label.
@@ -1311,7 +1321,7 @@ ${bold('EXAMPLES')}
     diff: () => 'Diff',
     tokensOnlyHeading: (host) => `What this buys on ${host}`,
     tokensOnlyWhy: (host) =>
-      `${host} bills by subscription, so there is no bill to reduce and no monthly figure to print.`,
+      `${host} identifies the tool, not your payment mode. Tokens are shown by default; invoice savings are unknown.`,
     tokensOnlyAsked: () => 'Costs hidden because you asked for tokens only.',
     // `tokens` arrives already formatted for the locale, so the singular is
     // decided on the string rather than on a number that is no longer here.
@@ -1892,6 +1902,17 @@ ${bold('EXAMPLES')}
     nothingToBill: () => 'Nothing in this log could be priced, so the receipt has no lines.',
   },
 
+  fromCodex: {
+    noPath: () => 'from-codex needs an explicit rollout file or directory: trazum from-codex ./sessions',
+    notFound: (path) => `Cannot read ${path}`,
+    noFiles: (path) => `No JSONL rollout files in ${path}`,
+    noUsage: () => 'No attributable Codex usage. Inspect the named gaps; no zero-cost log was written.',
+    summary: (files, records, duplicates) => `${files} Codex file(s), ${records} corroborated usage record(s), ${duplicates} repeated snapshot(s) collapsed.`,
+    gaps: (missingModel, unsupported, unparseable) => `Codex gaps: ${missingModel} without model context, ${unsupported} unsupported or uncorroborated snapshots, ${unparseable} unreadable lines. These are not zero-cost calls.`,
+    caveat: () => 'Codex telemetry is priced at catalogue API rates, not your subscription invoice. Restored totals, counter resets and ambiguous deltas are excluded, not guessed.',
+    written: (file) => `Wrote normalized usage to ${file}`,
+  },
+
   fromOtel: {
     noPath: () => 'from-otel needs an OTLP file or directory: trazum from-otel spans.json',
     notFound: (path) => `${path}: not found`,
@@ -2056,7 +2077,7 @@ ${bold('EXAMPLES')}
     pricingLiveHint: (count) =>
       `${count} unpriced model id(s) carry a provider prefix, the way OpenRouter and LiteLLM name models, and the bundled catalogue does not carry those. Run again with --pricing-live to price OpenRouter's slugs from its own list.`,
     apiEquivalent: () =>
-      'Claude Code transcripts are priced at Anthropic\'s API rates. On a Pro or Max plan you paid the plan, not this: read it as what the same work would cost through the API.',
+      'Claude Code and Codex transcripts are priced at catalogue API rates. On a subscription you paid the plan, not this API-equivalent estimate; missing telemetry and custom rates can change the result.',
     prefixedKnown: (ids) =>
       `${ids}: the model after the slash is priced here under its own name. The prefix is not stripped for you, because the same model through a router can bill differently. If those calls went straight to the provider, log the model without the prefix.`,
     windowMatchesNothing: (from, to) =>
@@ -2309,8 +2330,8 @@ ${bold('EXAMPLES')}
 
   where: {
     hostHeading: () => 'Running inside',
-    subscription: (host) =>
-      `${host} bills by subscription, not by the token. A monthly saving below is arithmetic about tokens, not money you get back, what you gain is context window and rate-limit headroom.`,
+    billingUnknown: (host) =>
+      `${host} identifies the execution host only. Payment mode is unknown; token prices do not establish invoice savings.`,
     noTarget: () => 'Pass a source file to see which provider its prompts are sent to.',
     sourceHeading: (path) => `Prompts in ${path} go to`,
     conflict: () => 'Cannot tell: the file names more than one provider.',

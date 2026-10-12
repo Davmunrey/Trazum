@@ -1,12 +1,14 @@
 @import 'tailwindcss';
 /*
- * Fraunces, self-hosted from npm. The display voice for the wordmark and the
- * figures that are the point of the page — a warm old-style serif that belongs
- * to the paper-and-terracotta identity in a way no system sans can. Served
+ * Space Grotesk, self-hosted from npm. The display voice for the wordmark and the
+ * figures that are the point of the page — a precise grotesk that belongs
+ * to the acid neobrutalist identity in a way no system sans can. Served
  * from this origin, so the CSP's `font-src 'self'` holds and nothing is
  * fetched from a foreign host at runtime.
  */
-@import '@fontsource-variable/fraunces/wght.css';
+@import '@fontsource-variable/space-grotesk/index.css';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 /*
  * Trazum's palette, wearing shadcn's variable names.
@@ -22,15 +24,15 @@
  * is still one edit in one place.
  */
 :root {
-  /* The identity. Warm paper, terracotta, ink. */
-  --paper: #fbfbfa;
-  --paper-raised: #ffffff;
-  --paper-sunken: #f4f4f2;
-  --rule: #e3e2de;
+  /* The identity. Warm paper, ink, and restrained acid yellow. Legacy terracotta aliases remain for compatibility. */
+  --paper: #f6f4ec;
+  --paper-raised: #fbf9f1;
+  --paper-sunken: #eeeee0;
+  --rule: #999f8a;
   /* A second border tier, for edges that separate regions rather than parts. */
-  --rule-strong: #d2d0ca;
-  --ink: #1b1b19;
-  --ink-soft: #6b6a65;
+  --rule-strong: #20231e;
+  --ink: #20231e;
+  --ink-soft: #555a4f;
   /*
    * A third tier, and the reason it exists.
    *
@@ -49,7 +51,7 @@
    * size and weight rather than by a drop in contrast the eye can measure.
    * A legibility floor outranks a visual tier.
    */
-  --ink-faint: #71706b;
+  --ink-faint: #5b6053;
 
   /*
    * The one colour in this file that is the same in both themes, on purpose.
@@ -65,8 +67,9 @@
    * dark block; that omission is the point, not an oversight.
    */
   --scrim: rgb(20 19 17 / 0.45);
-  --terracotta: #b0522f;
-  --terracotta-wash: #f6ece7;
+  --acid: #dce94d;
+  --terracotta: #526014;
+  --terracotta-wash: #e9edce;
   --good: #2f6f4e;
   --good-wash: #e8f2ec;
   --warn: #8a6320;
@@ -80,8 +83,8 @@
    * changing "what hover feels like" meant finding every one. These are the
    * two states an interactive surface has, named once.
    */
-  --layer-hover: #efeeeb;
-  --layer-active: #e6e5e1;
+  --layer-hover: #e6e8d5;
+  --layer-active: #dce94d;
 
   /*
    * The alternating band, and the reason it is a token rather than a reach for
@@ -96,18 +99,13 @@
    * A hair off `--paper` rather than the full sunken step: on a long page the
    * band is a change of ground, not a panel.
    */
-  --layer: #f7f6f4;
+  --layer: #eeeee0;
 
-  --radius: 0.625rem;
+  --radius: 0.25rem;
 
-  /*
-   * Two tiers of depth, and only two. Working surfaces sit almost flush — a
-   * hairline and a breath of shadow. The result panel is the one focal moment
-   * the page has, and it alone earns the second tier; both shadows carry an
-   * offset and a soft blur, because a zero-offset halo is decoration.
-   */
-  --shadow-raised: 0 1px 2px rgb(27 27 25 / 0.05);
-  --shadow-focal: 0 1px 2px rgb(27 27 25 / 0.06), 0 12px 32px -12px rgb(76 46 33 / 0.18);
+  /* Hard offset belongs to actions only; passive content stays flat. */
+  --shadow-raised: 3px 3px 0 var(--ink);
+  --shadow-focal: none;
 
   /* The shadcn contract, derived. */
   --background: var(--paper);
@@ -116,8 +114,8 @@
   --card-foreground: var(--ink);
   --popover: var(--paper-raised);
   --popover-foreground: var(--ink);
-  --primary: var(--terracotta);
-  --primary-foreground: #ffffff;
+  --primary: var(--acid);
+  --primary-foreground: #20231e;
   --secondary: var(--paper-sunken);
   --secondary-foreground: var(--ink);
   --muted: var(--paper-sunken);
@@ -145,27 +143,17 @@
   --color-layer-active: var(--layer-active);
 }
 
-/*
- * Dark stays on `prefers-color-scheme`, which is what the app has always used
- * and what Tailwind's `dark:` variant reads by default. No toggle, no
- * class-on-html, no flash of the wrong theme on first paint.
- */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /*
-     * Warmed, not just darkened. The first dark palette was a cool violet-grey
-     * — the default of every dashboard — which put the terracotta on a surface
-     * from someone else's identity. These carry the same umber cast as the
-     * paper does in the light theme, so the brand survives the scheme change.
-     */
-    --paper: #171512;
-    --paper-raised: #1e1c18;
-    --paper-sunken: #262420;
-    --rule: #363329;
-    --rule-strong: #474334;
-    --ink: #efece4;
-    --ink-soft: #a8a495;
-    --ink-faint: #93907f;
+/* Explicit choice overrides system; without JavaScript the OS remains the default. */
+:root[data-theme='dark'] {
+    /* Preserve the acid accent and structural contrast in low ambient light. */
+    --paper: #1c211b;
+    --paper-raised: #242a21;
+    --paper-sunken: #2c3227;
+    --rule: #67715c;
+    --rule-strong: #aab39a;
+    --ink: #f0f1e5;
+    --ink-soft: #c0c6af;
+    --ink-faint: #bac2a8;
 
     /*
      * Redefined here, and that is the point. A token whose only definition
@@ -173,25 +161,61 @@
      * from the light one — which is how a page ends up drawing one theme's
      * hover on the other theme's surface.
      */
-    --layer-hover: #2b2924;
-    --layer-active: #33302a;
+    --layer-hover: #363e2c;
+    --layer-active: #414b30;
     /* Redefined here for the reason the block above states: a token defined
        only in the light theme is one the dark theme silently inherits. */
-    --layer: #1b1915;
-    --terracotta: #e08a63;
-    --terracotta-wash: #2e211b;
+    --layer: #20261d;
+    --terracotta: #dce94d;
+    --terracotta-wash: #343c20;
     --good: #6fc99a;
     --good-wash: #1c2a21;
     --warn: #d6ad63;
     --warn-wash: #2a2417;
 
-    --primary-foreground: #171512;
-    --destructive: #e08a63;
+    --primary-foreground: #1c211b;
+    --destructive: #f39f87;
 
-    /* Shadows read as murk on dark paper; the raised tier leans on a lifted
-       surface and a hairline instead. */
-    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5);
-    --shadow-focal: 0 2px 6px rgb(0 0 0 / 0.45), 0 12px 32px -12px rgb(0 0 0 / 0.6);
+    /* A dark hard offset keeps action depth without a luminous outline. */
+    --shadow-raised: 3px 3px 0 #080c07;
+    --shadow-focal: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    /* Preserve the acid accent and structural contrast in low ambient light. */
+    --paper: #1c211b;
+    --paper-raised: #242a21;
+    --paper-sunken: #2c3227;
+    --rule: #67715c;
+    --rule-strong: #aab39a;
+    --ink: #f0f1e5;
+    --ink-soft: #c0c6af;
+    --ink-faint: #bac2a8;
+
+    /*
+     * Redefined here, and that is the point. A token whose only definition
+     * lives in the light block is a token the dark theme silently inherits
+     * from the light one — which is how a page ends up drawing one theme's
+     * hover on the other theme's surface.
+     */
+    --layer-hover: #363e2c;
+    --layer-active: #414b30;
+    /* Redefined here for the reason the block above states: a token defined
+       only in the light theme is one the dark theme silently inherits. */
+    --layer: #20261d;
+    --terracotta: #dce94d;
+    --terracotta-wash: #343c20;
+    --good: #6fc99a;
+    --good-wash: #1c2a21;
+    --warn: #d6ad63;
+    --warn-wash: #2a2417;
+
+    --primary-foreground: #1c211b;
+    --destructive: #f39f87;
+
+    /* A dark hard offset keeps action depth without a luminous outline. */
+    --shadow-raised: 3px 3px 0 #080c07;
+    --shadow-focal: none;
   }
 }
 
@@ -224,13 +248,13 @@
   --color-terracotta: var(--terracotta);
   --color-terracotta-wash: var(--terracotta-wash);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
 
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  --font-display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+  --font-display: 'Space Grotesk Variable', 'Arial', sans-serif;
 
   --shadow-raised: var(--shadow-raised);
   --shadow-focal: var(--shadow-focal);
@@ -368,7 +392,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -381,7 +405,7 @@
    * built rather than assembled.
    */
   ::selection {
-    background: var(--terracotta);
+    background: var(--primary);
     color: var(--primary-foreground);
   }
 
@@ -492,3 +516,39 @@
 .tour-card-in {
   animation: tour-card-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
+/* Acid neobrutalism: strong task boundaries, restrained accent, no decorative panels. */
+.trazum-rail {
+  color: var(--ink);
+  background: var(--paper-sunken);
+  border-color: var(--ink);
+  border-right-width: 2px;
+}
+.trazum-rail [role='tab'][data-state='active'] {
+  color: #20231e;
+  background: #dce94d;
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.trazum-rail [role='tab'][data-state='active'] svg { color: #20231e; }
+.trazum-rail [role='tab'] { min-height: 44px; border-radius: 0; font-weight: 600; }
+.trazum-wordmark { font-weight: 700; letter-spacing: -0.04em; }
+.trazum-workspace { background: var(--paper); }
+.trazum-panel-heading { font-weight: 700; }
+.trazum-import { border: 2px solid var(--rule-strong); box-shadow: none; background: var(--paper-raised); }
+.trazum-dropzone {
+  min-height: 156px;
+  border: 2px dashed var(--rule-strong);
+  border-radius: 0;
+  background: var(--layer);
+  transition: background 180ms ease-out, border-color 180ms ease-out;
+}
+.trazum-dropzone:hover, .trazum-dropzone:focus-within { background: var(--terracotta-wash); border-color: var(--terracotta); }
+.trazum-workspace [data-slot='card'] { box-shadow: none; }
+.trazum-workspace [data-slot='card'] [data-slot='card'] { border-width: 1px 0 0; background: transparent; }
+[data-slot='button'], [data-slot='input'], [data-slot='textarea'], [data-slot='select-trigger'], [data-slot='select-content'], [data-slot='card'], [data-slot='note'] { border-radius: 0; }
+[data-slot='card'] { border-color: var(--rule-strong); }
+[data-slot='card-title'] { letter-spacing: 0; }
+h1, h2, h3 { text-wrap: balance; }
+@media (min-width: 1024px) { .trazum-workspace { padding-top: 42px; } }
+@media (prefers-reduced-motion: reduce) { .trazum-dropzone { transition: none; } }

@@ -1,7 +1,7 @@
 # @trazum/cli
 
-Optimise prompts, enforce token budgets in CI, and price the saving — from your
-terminal.
+Understand recorded AI spend, estimate prompt changes and apply budget policies
+from your terminal.
 
 **Zero runtime dependencies**, asserted in CI. This tool reads your prompts;
 every dependency would be someone else's code reading them too.
@@ -12,6 +12,22 @@ Part of [Trazum](https://github.com/Davmunrey/Trazum). For the library, see
 ```bash
 npm install -g @trazum/cli
 ```
+
+## Start with your bill
+
+```bash
+trazum bill
+trazum bill ./usage-export.jsonl
+```
+
+With no path, reads local Claude Code transcripts. Subscription sessions are
+priced at API-equivalent rates, not presented as your subscription invoice.
+Unknown models remain gaps. Local analysis does not upload these files.
+
+[Quick start](https://github.com/Davmunrey/Trazum/blob/main/docs/quick-start.md) ·
+[Find a command](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#find-a-command) ·
+[Setup](https://github.com/Davmunrey/Trazum/blob/main/docs/setup.md) ·
+[Documentation](https://github.com/Davmunrey/Trazum/blob/main/docs/README.md)
 
 ## Commands
 
@@ -341,3 +357,7 @@ provider calls per case, prints the count before spending anything, and says
 Needs `TRAZUM_LLM_*` configured. Exits 1 on `diverges`.
 
 MIT.
+
+Read a Codex rollout with `trazum from-codex ./rollout.jsonl -o usage.jsonl` or
+`trazum bill ./rollout.jsonl --table`. Paths are explicit; API-equivalent costs
+are not subscription charges. See [format and limits](../../docs/codex.md).
