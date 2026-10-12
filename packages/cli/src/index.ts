@@ -114,6 +114,8 @@ import {
   parseUsageLine,
   plannedCalls,
   claudeCodeRecords,
+  codexRecords,
+  looksLikeCodexTranscript,
   type CwdLabel,
   type WorkspaceLabel,
   type ProjectLabel,
@@ -762,6 +764,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   rollup: ['json', 'html-out'],
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
   receipt: ['out', 'o', 'stamp', 'pricing', 'pricing-live', 'since', 'until'],
+  'from-codex': ['label', 'out', 'o'],
   'from-claude-code': ['label', 'label-by-cwd', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
@@ -3425,6 +3428,7 @@ function printReceiptSummary(document: ReceiptDocument, t: CliMessages): void {
 /** The shapes `bill` can tell apart from a file's own text. */
 type UsageSource =
   | 'claude-code'
+  | 'codex'
   | 'otel'
   | 'litellm'
   | 'helicone'
@@ -3441,6 +3445,7 @@ type UsageSource =
  */
 function usageSourcesOf(text: string): UsageSource[] {
   const claims: UsageSource[] = [];
+  if (looksLikeCodexTranscript(text)) claims.push('codex');
   if (looksLikeClaudeCodeTranscript(text)) claims.push('claude-code');
   if (looksLikeOtel(text)) claims.push('otel');
   if (looksLikeAnthropicUsage(text)) claims.push('anthropic-usage');
@@ -3549,6 +3554,8 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   let labelledByProject = 0;
   /* Claude Code transcripts read: their money is an API-rate equivalent. */
   let claudeCodeFiles = 0;
+  let codexFiles = 0;
+  const codexEvidence = { source: 'codex', basis: 'api-equivalent-telemetry', files: 0, duplicates: 0, missingModel: 0, unsupported: 0, unparseable: 0 };
   const lines: string[] = [];
   let sources = 0;
   /*
@@ -3582,6 +3589,19 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
     let records: unknown[] = [];
     let leftOut = 0;
     switch (shape) {
+      case 'codex': {
+        codexFiles += 1;
+        const c = codexRecords(text, withLabel);
+        codexEvidence.files += 1;
+        codexEvidence.duplicates += c.duplicates;
+        codexEvidence.missingModel += c.missingModel;
+        codexEvidence.unsupported += c.unsupported;
+        codexEvidence.unparseable += c.unparseable;
+        records = c.records;
+        leftOut = c.missingModel + c.unsupported + c.unparseable;
+        if (leftOut > 0) console.error(t.fromCodex.gaps(c.missingModel, c.unsupported, c.unparseable));
+        break;
+      }
       case 'claude-code': {
         claudeCodeFiles += 1;
         const project =
@@ -3670,7 +3690,11 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   });
   refuseEmptyPeriod(text, report, period, pricing, t);
   const document = receiptFrom(report, pricing, boolFlag(args, 'stamp') ? { emittedAt: new Date() } : {});
-  const json = JSON.stringify(document, null, 2);
+  const billDocument = codexFiles === 0 ? document : {
+    ...document,
+    importEvidence: [{ ...codexEvidence, complete: codexEvidence.missingModel + codexEvidence.unsupported + codexEvidence.unparseable === 0 }],
+  };
+  const json = JSON.stringify(billDocument, null, 2);
 
   /*
     A terminal gets a statement a person can read; a pipe gets the receipt.
@@ -3691,8 +3715,8 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   }
   console.error(t.bill.sources(sources, files.length));
   printReceiptSummary(document, t);
-  if (statement) printBillStatement(report, labelledByProject > 0, t, period.words, claudeCodeFiles > 0);
-  await writeBillSideFiles(args, report, pricing, csvShape, t, period.words, claudeCodeFiles > 0);
+  if (statement) printBillStatement(report, labelledByProject > 0, t, period.words, claudeCodeFiles + codexFiles > 0);
+  await writeBillSideFiles(args, report, pricing, csvShape, t, period.words, claudeCodeFiles + codexFiles > 0);
 
   /*
     A slug with a slash in it is how OpenRouter names a model, and the bundled
@@ -4059,6 +4083,48 @@ function commandOwnrate(args: Args, t: CliMessages): void {
     },
   };
   console.log(JSON.stringify(snippet, null, 2));
+}
+
+/** Explicit paths only: Codex histories are not discovered from the user's home. */
+async function commandFromCodex(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromCodex.noPath());
+  let info;
+  try { info = await stat(target); } catch { throw new Error(t.fromCodex.notFound(target)); }
+  const files = info.isDirectory()
+    ? (await readdir(target, { recursive: true, withFileTypes: true }))
+      .filter((entry) => entry.isFile() && /\.(jsonl|ndjson)$/i.test(entry.name))
+      .map((entry) => join(entry.parentPath, entry.name)).sort()
+    : [target];
+  if (files.length === 0) throw new Error(t.fromCodex.noFiles(target));
+  const label = stringFlag(args, 'label');
+  const lines: string[] = [];
+  let duplicates = 0;
+  let missingModel = 0;
+  let unsupported = 0;
+  let unparseable = 0;
+  for (const file of files) {
+    const text = await readFile(file, 'utf8');
+    if (!looksLikeCodexTranscript(text)) { unsupported++; continue; }
+    const conversion = codexRecords(text, label === undefined ? {} : { label });
+    for (const record of conversion.records) lines.push(JSON.stringify(record));
+    duplicates += conversion.duplicates;
+    missingModel += conversion.missingModel;
+    unsupported += conversion.unsupported;
+    unparseable += conversion.unparseable;
+  }
+  console.error(t.fromCodex.summary(files.length, lines.length, duplicates));
+  if (missingModel + unsupported + unparseable > 0) {
+    console.error(t.fromCodex.gaps(missingModel, unsupported, unparseable));
+  }
+  console.error(t.fromCodex.caveat());
+  if (lines.length === 0) throw new Error(t.fromCodex.noUsage());
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  const text = lines.join('\n') + '\n';
+  if (out !== undefined) {
+    await writeFile(out, text, 'utf8');
+    console.error(t.fromCodex.written(out));
+  } else console.log(text.trimEnd());
 }
 
 async function commandFromOtel(args: Args, t: CliMessages): Promise<void> {
@@ -13649,6 +13715,9 @@ async function main(): Promise<void> {
       break;
     case 'reconcile':
       await commandReconcile(args, t);
+      break;
+    case 'from-codex':
+      await commandFromCodex(args, t);
       break;
     case 'from-otel':
       await commandFromOtel(args, t);
