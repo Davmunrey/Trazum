@@ -21,10 +21,12 @@ describe('spend_guard over MCP', () => {
         'check_prompt',
         'list_models',
         'optimize_prompt',
+        'plan_savings',
         'position',
         'profile_usage',
         'prompt_writer',
         'spend_guard',
+        'verify_savings',
       ],
     );
 

@@ -8,6 +8,7 @@ import {
   BUILD_SECTION,
   PLUGIN_SKILL,
   PROJECT_SKILL,
+  SKILL_REFERENCES,
   derivePluginSkill,
 } from '../../../scripts/build-plugin-skill.mjs';
 
@@ -59,6 +60,13 @@ describe('the plugin is the published product, not a fork of it', () => {
     // plugin copy by hand fails here; the fix is editing the project skill
     // and running scripts/build-plugin-skill.mjs.
     assert.equal(read(PLUGIN_SKILL), derivePluginSkill(read(PROJECT_SKILL)));
+  });
+
+  it('ships every workflow reference linked from the skill', () => {
+    for (const reference of SKILL_REFERENCES) {
+      assert.ok(read(PROJECT_SKILL).includes(`](${reference})`));
+      assert.equal(read(join(dirname(PLUGIN_SKILL), reference)), read(join(dirname(PROJECT_SKILL), reference)));
+    }
   });
 
   it('the derivation replaces the build section and every repo path', () => {
