@@ -434,6 +434,7 @@ ${bold('OPCIONES DE rules')}
 
 ${bold('OPCIONES DE filter')}
   --recovery-dir <directorio> Directorio privado; obligatorio para compact/restore.
+  --stats                    Solo compact: emite ahorro neto estimado en JSON por stderr.
   trazum filter --help explica el filtro opcional (ayuda en inglés).
 
 ${bold('OPCIONES DE feedback')}

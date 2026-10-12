@@ -430,6 +430,7 @@ ${bold('OPTIONS FOR rules')}
 
 ${bold('OPTIONS FOR filter')}
   --recovery-dir <directory> Private recovery directory; required for compact/restore.
+  --stats                   Compact only: emit net estimated savings as JSON on stderr.
   Run trazum filter --help for the opt-in stdin log-filter workflow.
 
 ${bold('OPTIONS FOR feedback')}

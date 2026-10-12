@@ -737,7 +737,7 @@ function disabledRules(args: Args, config: TrazumConfig): RuleId[] | undefined {
  */
 const GLOBAL_FLAGS = ['help', 'h', 'version', 'v', 'locale', 'json', 'config', 'pricing', 'pricing-live', 'max-input'];
 const COMMAND_FLAGS: Record<string, string[]> = {
-  filter: ['recovery-dir'],
+  filter: ['recovery-dir', 'stats'],
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
     'disable', 'llm', 'exact-tokens', 'diff', 'reorder', 'out', 'o',

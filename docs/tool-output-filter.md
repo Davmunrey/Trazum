@@ -14,7 +14,8 @@ hook or intercept every tool invocation.
 
 ## Try it
 
-Use the built checkout until a package version containing the feature is released:
+The filter is available in `@trazum/cli` starting at 2.5.2. To try the latest
+source checkout:
 
 ```bash
 npm ci
@@ -51,6 +52,42 @@ In a source checkout, replace `trazum` with `node packages/cli/dist/index.js`.
 Recovery validates the identifier and content hash before emitting bytes.
 Expansion is appropriate when exact output, line counts or surrounding context
 matter; recovering every result would defeat the purpose of the filter.
+
+## Measure the emitted view
+
+In the next release after 2.5.2 (or a built checkout), add `--stats` to `compact`
+to write one JSON record to the filter's stderr. Stdout stays the same. For
+example, in Bash:
+
+```bash
+set -o pipefail
+npm test | trazum filter compact --recovery-dir "$HOME/.trazum-tool-logs" --stats 2>filter-stats.jsonl
+```
+
+The redirect applies only to the filter. The producing command's stderr remains
+visible, and `pipefail` still exposes its failure. Use a fresh report filename
+for each comparison, or `2>>filter-stats.jsonl` to append runs.
+
+| JSON field | Meaning |
+|---|---|
+| `schemaVersion`, `kind`, `estimateOnly` | `1`, `trazum-tool-filter`, and `true`; these are local estimates. |
+| `applied`, `reason` | Whether the view was actually compacted, and why. |
+| `inputBytes`, `outputBytes` | Exact byte counts at this filter, not provider token usage. |
+| `estimatedTokensBefore`, `estimatedTokensAfter` | Heuristic counts including recovery instructions in the emitted view. |
+| `estimatedTokensSaved`, `estimatedReductionPercent` | Net estimated reduction for this invocation. |
+| `repeatedLines` | Repetitions omitted from the view actually emitted. |
+
+The report contains no original log text, paths, hashes or recovery commands.
+It is opt-in: avoid feeding telemetry back into the model just to measure a
+smaller context. Reports do not accumulate automatically and do not measure
+recovery requests, later turns, retries, cache behavior or task quality.
+
+An unchanged supported input reports zero estimated savings. A `storage-failed`
+result also reports zero, even if the discarded candidate would have been
+shorter. `invalid-utf8`, `stream-limit` (above 1 MiB) and core `too-large`
+results keep token estimates `null`; unknown token counts are not zero usage.
+Other reasons are `compacted`, `unchanged`, `unsupported` and `not-worthwhile`.
+Invalid arguments still fail normally and do not promise a stats record.
 
 ## Optional output instructions
 
