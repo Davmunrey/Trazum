@@ -345,6 +345,15 @@ ${bold('OPCIONES DE from-otel')}
   puede saber" en vez de uno inventado. Los spans que no son de LLM se cuentan
   y se omiten, dicho en stderr.
 
+${bold('OPCIONES DE from-codex')}
+  --label <nombre>            Marca cada registro con una etiqueta.
+  -o, --out <fichero>         Escribe el uso normalizado en vez de stdout.
+
+  Lee un archivo o directorio de Codex indicado explícitamente, en local.
+  Solo contadores corroborados: colapsa duplicados y excluye uso ambiguo.
+  Los huecos se indican en stderr. Los precios son equivalentes API,
+  nunca tu factura de suscripción. El contenido de prompts se descarta.
+
 ${bold('OPCIONES DE from-claude-code')}
   --label <nombre>            Marca cada registro con una etiqueta.
   --label-from-project        Etiqueta cada registro con el nombre del

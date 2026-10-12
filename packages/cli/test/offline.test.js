@@ -146,6 +146,13 @@ function workspace() {
   write('prompt.txt', prompt);
   writeFileSync(at('prompts/support.txt'), prompt);
 
+  const codexUsage = { input_tokens: 100, cached_input_tokens: 40, output_tokens: 20, reasoning_output_tokens: 5, total_tokens: 120 };
+  write('codex-rollout.jsonl', [
+    { type: 'session_meta', payload: { id: 'synthetic-offline-session' } },
+    { type: 'turn_context', payload: { model: 'gpt-5-mini' } },
+    { timestamp: '2026-10-12T09:00:00Z', type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: codexUsage, last_token_usage: codexUsage } } },
+  ].map((row) => JSON.stringify(row)).join('\n'));
+
   const day = (month, n) => new Date(Date.UTC(2026, month - 1, n, 9, 0, 0)).toISOString();
   const month = (m) => {
     const records = [];
@@ -431,6 +438,7 @@ const INVOCATION = {
   rollup: ['report.json'],
   position: ['usage.jsonl'],
   receipt: ['usage.jsonl'],
+  'from-codex': ['codex-rollout.jsonl', '--label', 'offline-test', '-o', 'codex-usage.jsonl'],
   'from-claude-code': ['transcript.jsonl', '-o', 'c1.jsonl'],
   'from-otel': ['spans.json', '-o', 'c2.jsonl'],
   'from-litellm': ['litellm.json', '-o', 'c3.jsonl'],
