@@ -85,8 +85,12 @@ export const SPAWN_ENV = {
   ...withoutColour,
   ...Object.fromEntries(NEUTRALISED.map((name) => [name, ''])),
   NO_COLOR: '1',
-  // `where` warns when it is running inside a tool that bills by subscription,
-  // and Claude Code is one. Left set, that warning lands in output these tests
-  // assert on — but only for the person running them from inside it.
+  // Host detection must be explicit in each test, not inherited from its runner.
   CLAUDECODE: '',
+  CODEX_SANDBOX: '',
+  CODEX_HOME: '',
+  CURSOR_TRACE_ID: '',
+  GITHUB_ACTIONS: '',
+  CI: '',
+  TERM_PROGRAM: '',
 };

@@ -52,7 +52,7 @@ describe('the front door says where the money actually is', () => {
     }
   });
 
-  it('points at it inside a subscription host too, without claiming a bill', async () => {
+  it('points at it inside an agent harness without claiming a bill', async () => {
     /**
      * The tokens-only branch has just said there is no bill to reduce. A pointer
      * that opened "this is the smallest lever on your bill" contradicted the line
@@ -62,7 +62,8 @@ describe('the front door says where the money actually is', () => {
     const result = run([path, '-o', out], { CLAUDECODE: '1' });
     const text = flat(result);
 
-    assert.match(text, /no bill to reduce/, 'not the subscription branch, so this proves nothing');
+    assert.match(text, /invoice savings are unknown/, 'not the conservative harness view');
+    assert.doesNotMatch(text, /bills by subscription/);
     assert.match(text, /smallest lever there is/, 'the pointer is missing where most readers are');
     assert.doesNotMatch(text, /smallest lever on your bill/, 'claimed a bill the same report denies');
   });

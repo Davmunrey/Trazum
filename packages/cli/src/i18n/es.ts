@@ -1353,7 +1353,7 @@ ${bold('EJEMPLOS')}
     diff: () => 'Diff',
     tokensOnlyHeading: (host) => `Qué ganas con esto en ${host}`,
     tokensOnlyWhy: (host) =>
-      `${host} cobra por suscripción, así que no hay factura que reducir ni cifra mensual que imprimir.`,
+      `${host} identifica la herramienta, no tu forma de pago. Se muestran tokens por defecto; el ahorro en factura es desconocido.`,
     tokensOnlyAsked: () => 'Costes ocultos porque has pedido solo tokens.',
     tokensSaved: (tokens) =>
       `${tokens} token${tokens === '1' ? '' : 's'} de vuelta, en cada llamada.`,
@@ -2339,8 +2339,8 @@ ${bold('EJEMPLOS')}
 
   where: {
     hostHeading: () => 'Ejecutándose dentro de',
-    subscription: (host) =>
-      `${host} cobra por suscripción, no por token. Un ahorro mensual de los de abajo es aritmética sobre tokens, no dinero que recuperes: lo que ganas es margen de ventana de contexto y de rate limit.`,
+    billingUnknown: (host) =>
+      `${host} solo identifica el entorno de ejecución. La forma de pago es desconocida; los precios por token no demuestran ahorro en factura.`,
     noTarget: () => 'Pasa un fichero fuente para ver a qué proveedor van sus prompts.',
     sourceHeading: (path) => `Los prompts de ${path} van a`,
     conflict: () => 'No se puede saber: el fichero nombra más de un proveedor.',

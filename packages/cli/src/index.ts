@@ -1341,6 +1341,11 @@ function printMoney(
  * a measurable one, and it is the honest answer to "what did I gain" on a plan
  * that costs the same either way.
  */
+/** A conservative display default, never evidence of a payment arrangement. */
+function prefersTokenReport(host: HostEnvironment): boolean {
+  return ['claude-code', 'codex', 'cursor'].includes(host.id);
+}
+
 function printTokensOnly(
   result: OptimizationResult,
   host: HostEnvironment,
@@ -1354,15 +1359,10 @@ function printTokensOnly(
 
   console.log();
   console.log(sectionHeading(t.report.tokensOnlyHeading(host.displayName)));
-  // Only claim the host bills by subscription when it does. Forced with the
-  // flag on GitHub Actions, the first version said "GitHub Actions bills by
-  // subscription", which is simply false.
   console.log(
-    `  ${
-      host.billing === 'subscription'
-        ? t.report.tokensOnlyWhy(host.displayName)
-        : t.report.tokensOnlyAsked()
-    }`,
+    `  ${prefersTokenReport(host)
+      ? t.report.tokensOnlyWhy(host.displayName)
+      : t.report.tokensOnlyAsked()}`,
   );
   console.log();
   console.log(`  ${c.green(t.report.tokensSaved(n(saved)))}`);
@@ -1672,12 +1672,7 @@ async function commandWhere(
   console.log(
     `  ${host.displayName}${host.evidence ? c.dim(` (${host.evidence})`) : ''}`,
   );
-  // The reason this is worth printing at all. Inside a flat plan the monthly
-  // figure Trazum computes is arithmetic about tokens, not money anybody gets
-  // back, and saying so is more useful than saying nothing.
-  if (host.billing === 'subscription') {
-    console.log(`  ${c.yellow(t.where.subscription(host.displayName))}`);
-  }
+  console.log(`  ${c.dim(t.where.billingUnknown(host.displayName))}`);
 
   const target = args.positional[0];
   if (target === undefined) {
@@ -1857,9 +1852,7 @@ function renderInit(proposal: InitProposal, ctx: InitRenderContext): void {
 
   // 1. Where this is running.
   console.log(`  ${t.init.host(ctx.host.displayName)}`);
-  if (ctx.host.billing === 'subscription') {
-    console.log(`  ${c.yellow(t.where.subscription(ctx.host.displayName))}`);
-  }
+  console.log(`  ${c.dim(t.where.billingUnknown(ctx.host.displayName))}`);
 
   // 2. The prompts.
   console.log(
@@ -7083,24 +7076,12 @@ async function commandOptimize(
     return;
   }
 
-  // Tokens-only when the host bills by subscription: there is no bill to
-  // reduce, so a monthly figure would be arithmetic about tokens dressed as
-  // money. Either flag overrides it, because the host says where *Trazum* runs
-  // and not where the prompt goes — somebody editing a production prompt inside
-  // Cursor wants the dollars, and they should not have to leave the editor to
-  // see them.
+  // Agent harnesses default to token context; their identity does not establish
+  // billing. Explicit API-cost requests and usage-log scenarios retain pricing.
   const host = detectHost();
-  /**
-   * `--from-log` implies `--cost`, and the reasoning is different from the
-   * `--calls` case documented below: `--calls` is a typed scenario parameter,
-   * but a usage log with billed token counts is *evidence* — proof this
-   * prompt's traffic goes to a metered API, whatever the terminal running
-   * the command bills like. Withholding the money there would suppress
-   * exactly the figures the person measured in order to see.
-   */
   const tokensOnly = boolFlag(args, 'cost') || measured !== null
     ? false
-    : boolFlag(args, 'tokens-only') || host.billing === 'subscription';
+    : boolFlag(args, 'tokens-only') || prefersTokenReport(host);
   /**
    * Whether they named a scenario while the money was being withheld.
    *

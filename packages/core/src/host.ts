@@ -6,17 +6,16 @@
  * the same prompt optimises the same way everywhere, as it must, and that is a
  * standing constraint rather than a coincidence.
  *
- * What the answer earns is the right to stop quoting a monthly dollar saving to
- * somebody on a flat-rate plan. Inside Cursor or a Claude Code subscription the
- * per-call saving is real arithmetic about tokens and **not money anybody gets
- * back**, and "$184/month" is wrong in the direction that matters most.
+ * Environment markers identify the execution host, not its payment mode. The
+ * same host can use a subscription, API credentials, credits or a local model.
+ * Never infer invoice savings from the terminal running the command.
  */
 
 export interface HostEnvironment {
   id: string;
   displayName: string;
   /**
-   * How the host bills.
+   * Verified payment mode, if known. Host identity alone cannot establish it.
    *
    * `unknown` is honest rather than lazy: a VS Code terminal says nothing about
    * whether the prompts written in it go to a metered API or a subscription, and
@@ -42,38 +41,32 @@ export interface HostEnvironment {
 const HOSTS: Array<{
   id: string;
   displayName: string;
-  billing: HostEnvironment['billing'];
   test: (env: NodeJS.ProcessEnv) => string | null;
 }> = [
   {
     id: 'claude-code',
     displayName: 'Claude Code',
-    billing: 'subscription',
     test: (e) => (e.CLAUDECODE ? 'CLAUDECODE' : null),
   },
   {
     id: 'codex',
     displayName: 'Codex',
-    billing: 'subscription',
     test: (e) => (e.CODEX_SANDBOX ? 'CODEX_SANDBOX' : e.CODEX_HOME ? 'CODEX_HOME' : null),
   },
   {
     id: 'cursor',
     displayName: 'Cursor',
-    billing: 'subscription',
     test: (e) => (e.CURSOR_TRACE_ID ? 'CURSOR_TRACE_ID' : null),
   },
   {
     id: 'github-actions',
     displayName: 'GitHub Actions',
-    billing: 'per-token',
     test: (e) => (e.GITHUB_ACTIONS ? 'GITHUB_ACTIONS' : null),
   },
-  { id: 'ci', displayName: 'CI', billing: 'per-token', test: (e) => (e.CI ? 'CI' : null) },
+  { id: 'ci', displayName: 'CI', test: (e) => (e.CI ? 'CI' : null) },
   {
     id: 'vscode',
     displayName: 'VS Code',
-    billing: 'unknown',
     test: (e) => (e.TERM_PROGRAM === 'vscode' ? 'TERM_PROGRAM' : null),
   },
 ];
@@ -83,7 +76,7 @@ export function detectHost(env: NodeJS.ProcessEnv = process.env): HostEnvironmen
   for (const host of HOSTS) {
     const evidence = host.test(env);
     if (evidence !== null) {
-      return { id: host.id, displayName: host.displayName, billing: host.billing, evidence };
+      return { id: host.id, displayName: host.displayName, billing: 'unknown', evidence };
     }
   }
   return { id: 'terminal', displayName: 'terminal', billing: 'unknown', evidence: null };
