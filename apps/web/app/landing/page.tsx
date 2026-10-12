@@ -88,7 +88,7 @@ const UNREVIEWED_NOTE: Record<MarketingLocale, string> = {
 };
 
 /** The first line of the README, verbatim: one door, nothing installed. */
-const HERO_COMMAND = 'npx @trazum/cli bill ~/.claude/projects';
+const HERO_COMMAND = 'npx @trazum/cli bill usage.jsonl';
 
 const COPY: Record<MarketingLocale, Copy> = {
   en: {
@@ -123,7 +123,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Paste a usage log and read your bill, the what-if, and where the month stands against your ceilings. Nothing you paste leaves the page: there is no fetch, and a test holds it.',
     doorAgentTitle: 'Agents',
     doorAgentBody:
-      'An MCP server with a spend guard your agent consults before it spends, and a converter that prices your Claude Code sessions from the transcripts already on disk: numbers only, never the words.',
+      'An MCP server with a spend guard your agent consults before it spends. Read usage from Anthropic, OpenAI, OpenRouter, OpenTelemetry and LiteLLM, plus local Claude Code transcripts: numbers only, never the words.',
     proofTitle: 'What one wordy support prompt gave back',
     proofBody:
       'The bundled demo prompt, aggressive level, one million calls a month. The product’s own output, not a projection:',
@@ -171,7 +171,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Pega un log de uso y lee tu factura, el what-if y dónde está el mes contra tus techos. Nada de lo que pegas sale de la página: no hay ningún fetch, y un test lo vigila.',
     doorAgentTitle: 'Agentes',
     doorAgentBody:
-      'Un servidor MCP con un guardián de gasto que tu agente consulta antes de gastar, y un conversor que tasa tus sesiones de Claude Code desde los transcripts que ya tienes en disco: solo los números, jamás las palabras.',
+      'Un servidor MCP con un guardián de gasto que tu agente consulta antes de gastar. Lee uso de Anthropic, OpenAI, OpenRouter, OpenTelemetry y LiteLLM, además de transcripts locales de Claude Code: solo los números, jamás las palabras.',
     proofTitle: 'Lo que devolvió un prompt de soporte verborreico',
     proofBody:
       'El prompt de demo incluido, nivel agresivo, un millón de llamadas al mes. La salida del propio producto, no una proyección:',
@@ -219,7 +219,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Collez un journal d’usage et lisez votre facture, le what-if, et où en est le mois face à vos plafonds. Rien de ce que vous collez ne quitte la page : aucun fetch, et un test le garantit.',
     doorAgentTitle: 'Agents',
     doorAgentBody:
-      'Un serveur MCP avec un garde de dépense que votre agent consulte avant de dépenser, et un convertisseur qui tarifie vos sessions Claude Code depuis les transcriptions déjà sur le disque : les chiffres seulement, jamais les mots.',
+      'Un serveur MCP avec un garde de dépense que votre agent consulte avant de dépenser. Lisez les usages Anthropic, OpenAI, OpenRouter, OpenTelemetry et LiteLLM, ainsi que les transcriptions locales de Claude Code : les chiffres seulement, jamais les mots.',
     proofTitle: 'Ce qu’un prompt de support verbeux a rendu',
     proofBody:
       'Le prompt de démo fourni, niveau agressif, un million d’appels par mois. La sortie du produit lui-même, pas une projection :',
@@ -267,7 +267,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Fügen Sie ein Nutzungsprotokoll ein und lesen Sie Ihre Rechnung, das Was-wäre-wenn und wo der Monat gegen Ihre Grenzen steht. Nichts, was Sie einfügen, verlässt die Seite: kein Fetch, und ein Test hält das fest.',
     doorAgentTitle: 'Agenten',
     doorAgentBody:
-      'Ein MCP-Server mit einem Ausgaben-Wächter, den Ihr Agent vor dem Ausgeben befragt, und ein Konverter, der Ihre Claude-Code-Sitzungen aus den bereits auf der Platte liegenden Transkripten bepreist: nur die Zahlen, nie die Worte.',
+      'Ein MCP-Server mit Ausgabenprüfung vor dem Aufruf. Liest Nutzungsdaten von Anthropic, OpenAI, OpenRouter, OpenTelemetry und LiteLLM sowie lokale Claude-Code-Transkripte: nur die Zahlen, nie die Worte.',
     proofTitle: 'Was ein wortreicher Support-Prompt zurückgab',
     proofBody:
       'Der mitgelieferte Demo-Prompt, aggressive Stufe, eine Million Aufrufe im Monat. Die eigene Ausgabe des Produkts, keine Projektion:',
@@ -315,7 +315,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Cole um registo de uso e leia a sua fatura, o what-if, e onde está o mês face aos seus tetos. Nada do que cola sai da página: não há fetch, e um teste garante-o.',
     doorAgentTitle: 'Agentes',
     doorAgentBody:
-      'Um servidor MCP com um guarda de gasto que o seu agente consulta antes de gastar, e um conversor que tarifa as suas sessões de Claude Code a partir das transcrições já em disco: só os números, nunca as palavras.',
+      'Um servidor MCP com um guarda de gasto que o seu agente consulta antes de gastar. Leia uso de Anthropic, OpenAI, OpenRouter, OpenTelemetry e LiteLLM, além de transcrições locais do Claude Code: só os números, nunca as palavras.',
     proofTitle: 'O que um prompt de suporte prolixo devolveu',
     proofBody:
       'O prompt de demo incluído, nível agressivo, um milhão de chamadas por mês. A saída do próprio produto, não uma projeção:',
@@ -335,94 +335,23 @@ const COPY: Record<MarketingLocale, Copy> = {
 
 const GITHUB = 'https://github.com/Davmunrey/Trazum';
 
-/**
- * The hero's figure: the ledger this product shortens.
- *
- * Geometry, not illustration. Six rules of falling length under a heading
- * rule, the lower three drawn in the saving colour and clipped to the width
- * the measured reduction leaves — the same −20.1% the proof section states, so
- * the picture is an index of the claim rather than decoration invented to fill
- * a column. Every colour is a token, so it themes with the page instead of
- * carrying one theme's palette into the other.
- *
- * It is `aria-hidden`: everything it depicts is written in words within two
- * hundred pixels of it, and a screen reader does not need the drawing twice.
- */
+/** The bar encodes the verified reduction for the bundled demo prompt. */
 function LedgerFigure() {
-  /*
-    Each row is a call: what it costs, and what is left once the rules have
-    run. The pair is the shape of the claim, so the figure is an index of the
-    −20.1% stated below rather than decoration invented to fill a column.
-  */
-  const rows = [
-    [186, 117],
-    [152, 95],
-    [204, 128],
-    [134, 84],
-    [170, 107],
-  ];
-  const ROW_TOP = 62;
-  const ROW_STEP = 26;
-  const RULE_Y = ROW_TOP + rows.length * ROW_STEP + 12;
-
   return (
-    <svg
-      viewBox={`0 0 264 ${RULE_Y + 54}`}
-      aria-hidden="true"
-      className="h-auto w-full max-w-[430px]"
-      role="presentation"
-    >
-      <rect
-        x="0.5"
-        y="0.5"
-        width="263"
-        height={RULE_Y + 53}
-        rx="15.5"
-        className="fill-card stroke-border"
-      />
+    <svg viewBox="0 0 420 92" aria-hidden="true" className="h-auto w-full" role="presentation">
+      {[0, 84, 168, 252, 336, 420].map((x) => (
+        <line key={x} x1={x} y1="0" x2={x} y2="92" stroke="currentColor" opacity="0.14" />
+      ))}
+      <rect x="0" y="22" width="420" height="18" className="fill-muted stroke-foreground" strokeWidth="2" />
+      <rect x="0" y="54" width="335.58" height="18" className="ledger-bar fill-primary stroke-foreground" strokeWidth="2" />
+    </svg>
+  );
+}
 
-      {/* The mark, so the figure is recognisably this product's ledger. */}
-      <g transform="translate(24 22)">
-        <rect width="20" height="20" rx="4.5" className="fill-terracotta" />
-        <g stroke="var(--primary-foreground)" strokeWidth="1.8" strokeLinecap="round">
-          <path d="M4.5 6h11" />
-          <path d="M4.5 10h5" />
-          <path d="M4.5 14h3" />
-        </g>
-      </g>
-
-      {rows.map(([full, kept], index) => {
-        const y = ROW_TOP + index * ROW_STEP;
-        return (
-          <g key={y}>
-            <rect x="24" y={y} width={full} height="10" rx="5" className="fill-muted" />
-            {/* The saving, drawn last and filling once. The row beneath it is
-                the full cost and never moves, so the animation reads as the
-                rules running rather than as the panel loading. */}
-            <rect
-              x="24"
-              y={y}
-              width={kept}
-              height="10"
-              rx="5"
-              className="ledger-bar fill-good"
-              style={{ animationDelay: `${120 + index * 90}ms` }}
-            />
-          </g>
-        );
-      })}
-
-      <line x1="24" y1={RULE_Y} x2="240" y2={RULE_Y} className="stroke-border" strokeWidth="1" />
-      <text
-        x="24"
-        y={RULE_Y + 34}
-        className="fill-good font-display"
-        fontSize="22"
-        fontWeight="700"
-        style={{ fontVariantNumeric: 'tabular-nums' }}
-      >
-        −20.1%
-      </text>
+function Arrow({ diagonal = false }: { diagonal?: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="h-5 w-5 shrink-0">
+      <path d={diagonal ? 'M5 19 19 5M5 5h14v14' : 'M4 12h16m-6-6 6 6-6 6'} />
     </svg>
   );
 }
@@ -431,222 +360,145 @@ export default function Landing() {
   const [locale, setLocale] = useMarketingLocale();
   const t = COPY[locale];
   const reviewed = MARKETING_LOCALE_META[locale].reviewed;
-
-  /*
-    The four surfaces, as a list with rules rather than four identical cards.
-
-    Cards were the page's structure twice running — four here and three under
-    the proof — and a grid of same-shaped boxes is the default that says the
-    author did not decide. These are a set of doors onto one core, which is a
-    list of named things, so they are drawn as one.
-  */
-  const doors: readonly (readonly [string, string])[] = [
-    [t.doorCliTitle, t.doorCliBody],
-    [t.doorGatewayTitle, t.doorGatewayBody],
-    [t.doorBrowserTitle, t.doorBrowserBody],
-    [t.doorAgentTitle, t.doorAgentBody],
+  const doors = [
+    [t.doorCliTitle, t.doorCliBody, '>_'],
+    [t.doorGatewayTitle, t.doorGatewayBody, '→|'],
+    [t.doorBrowserTitle, t.doorBrowserBody, '[ ]'],
+    [t.doorAgentTitle, t.doorAgentBody, '/mcp'],
+  ];
+  const stories = [
+    [t.story1Title, t.story1Body],
+    [t.story2Title, t.story2Body],
+    [t.story3Title, t.story3Body],
   ];
 
   return (
-    <main className="min-h-dvh bg-background text-foreground">
+    <main className="min-h-dvh overflow-x-clip bg-background text-foreground" lang={locale}>
       <ScrollProgress />
-
-      <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 pt-6">
-        <Link
-          href="/"
-          className="font-display text-xl font-bold tracking-[-0.01em] transition-opacity hover:opacity-80"
-        >
-          Trazum
+      <header className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-6 gap-y-4 border-b-2 border-foreground px-5 py-6 sm:px-10 lg:px-16">
+        <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-75">
+          <span className="font-display text-[34px] font-bold tracking-[-0.04em]">Trazum</span>
         </Link>
-        <LocaleToggle locale={locale} onChange={setLocale} />
+        <div className="flex flex-wrap items-center gap-4 sm:gap-8">
+          <a href={GITHUB} target="_blank" rel="noreferrer noopener" className="hidden items-center gap-2 text-sm font-medium transition-colors hover:text-terracotta sm:inline-flex">
+            GitHub <Arrow diagonal />
+          </a>
+          <LocaleToggle locale={locale} onChange={setLocale} />
+        </div>
       </header>
 
-      {/*
-        The honesty line, on machine-drafted languages only: unreviewed, and
-        saying so, with the fix one issue away — the maintainers-doctrine
-        pattern applied to selling copy. The reviewed languages show nothing.
-      */}
       {!reviewed && (
-        <div className="mx-auto max-w-6xl px-6 pt-4">
-          <p className="rounded-lg border bg-warn-wash px-3.5 py-2.5 text-[12.5px] leading-snug text-warn">
-            {UNREVIEWED_NOTE[locale]}
-          </p>
+        <div className="mx-auto max-w-[1440px] px-5 pt-5 sm:px-10 lg:px-16">
+          <p className="border-l-2 border-warn bg-warn-wash px-4 py-3 text-sm leading-relaxed text-warn">{UNREVIEWED_NOTE[locale]}</p>
         </div>
       )}
 
-      {/*
-        Hero.
-
-        Two columns from `lg`, and the second one is the reason. At 1440 the
-        copy ran to 62 characters and left roughly half the viewport empty
-        beside it — the page's first impression was a paragraph and a void. The
-        figure is the product's own claim drawn as geometry, so the space is
-        spent on the thing being sold rather than padded.
-      */}
-      <section className="mx-auto max-w-6xl px-6 pt-16 pb-20 sm:pt-24 lg:pt-28 lg:pb-28">
-        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-16">
+      <section className="mx-auto max-w-[1440px] px-5 pt-14 pb-16 sm:px-10 sm:pt-20 lg:px-16 lg:pt-24 lg:pb-24">
+        <h1 className="max-w-[21ch] font-display text-[clamp(43px,7.6vw,110px)] leading-[0.98] font-bold tracking-[-0.04em] [text-wrap:balance]">
+          {t.heroTitle}
+        </h1>
+        <div className="mt-10 grid gap-10 border-t-2 border-foreground pt-8 lg:mt-14 lg:grid-cols-[1.05fr_1fr] lg:gap-20">
           <div>
-              <h1 className="max-w-[19ch] font-display text-[clamp(36px,5.6vw,60px)] leading-[1.04] font-bold tracking-[-0.02em] [text-wrap:balance]">
-                {t.heroTitle}
-              </h1>
-              <p className="mt-6 max-w-[58ch] text-[17px] leading-[1.65] text-muted-foreground">
-                {t.heroLede}
-              </p>
-              {/*
-                The one thing that works with nothing configured, shown before
-                either button: plan 2.4's first move. A visitor who copies this
-                line has the product's answer in the time the buttons take to
-                read, and it is the product's own command rather than a claim.
-              */}
-              <p className="mt-7 text-[13px] font-semibold uppercase tracking-[0.06em] text-faint">
-                {t.heroCommandLabel}
-              </p>
-              <pre className="mt-2 max-w-[58ch] overflow-x-auto rounded-lg border bg-layer px-4 py-3 font-mono text-[14px] leading-[1.6]">
-                <code>{HERO_COMMAND}</code>
-              </pre>
-              <div className="mt-9 flex flex-wrap items-center gap-3">
-                <Link
-                  href="/"
-                  className="rounded-lg bg-terracotta px-5 py-2.5 text-[15px] font-semibold text-white shadow-[var(--shadow-raised)] transition-[transform,opacity] hover:-translate-y-px hover:opacity-95 active:translate-y-0"
-                >
-                  {t.ctaDemo}
-                </Link>
-                <a
-                  href={GITHUB}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="rounded-lg border px-5 py-2.5 text-[15px] font-semibold transition-colors hover:bg-layer-hover"
-                >
-                  {t.ctaGitHub}
-                </a>
-              </div>
-          </div>
-            <LedgerFigure />
-        </div>
-      </section>
-
-      {/* The story: three beats against a labelled rail. */}
-      <section className="border-t bg-layer">
-        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-24 lg:grid-cols-[200px_minmax(0,1fr)] lg:gap-16 lg:py-28">
-          <p className="font-display text-[15px] font-semibold text-faint lg:sticky lg:top-24 lg:self-start">
-            {t.storyLabel}
-          </p>
-          <div className="flex flex-col gap-14 lg:gap-20">
-            {[
-              [t.story1Title, t.story1Body],
-              [t.story2Title, t.story2Body],
-              [t.story3Title, t.story3Body],
-            ].map(([title, body]) => (
-              <article key={title}>
-                <h2 className="max-w-[26ch] font-display text-[clamp(24px,3.2vw,33px)] leading-[1.16] font-bold tracking-[-0.015em] [text-wrap:balance]">
-                  {title}
-                </h2>
-                <p className="mt-4 max-w-[62ch] text-[16px] leading-[1.7] text-muted-foreground">
-                  {body}
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* The four doors, as one ruled list. */}
-      <section className="mx-auto max-w-6xl px-6 py-24 lg:py-28">
-          <h2 className="max-w-[30ch] font-display text-[clamp(24px,3.2vw,33px)] leading-[1.16] font-bold tracking-[-0.015em] [text-wrap:balance]">
-            {t.doorsTitle}
-          </h2>
-          <p className="mt-4 max-w-[62ch] text-[16px] leading-[1.7] text-muted-foreground">
-            {t.doorsLede}
-          </p>
-        <dl className="mt-12 border-t">
-          {doors.map(([title, body]) => (
-            <div
-              key={title}
-              className="grid gap-2 border-b py-7 sm:grid-cols-[168px_minmax(0,1fr)] sm:gap-10"
-            >
-                <dt className="font-display text-[18px] leading-snug font-bold">{title}</dt>
-                <dd className="max-w-[62ch] text-[15px] leading-[1.7] text-muted-foreground">
-                  {body}
-                </dd>
-              </div>
-          ))}
-        </dl>
-      </section>
-
-      {/*
-        The measured figures, as one ledger rather than three stat cards.
-
-        Three equal cards each holding a big number and a caption is the
-        hero-metric template, and it made the three spans look like three
-        unrelated boasts. They are three lines of one answer to *where does the
-        money go*, so they are set as three rows of one panel, in the order the
-        product itself reports them.
-      */}
-      <section className="border-t bg-layer">
-        <div className="mx-auto max-w-6xl px-6 py-24 lg:py-28">
-            <h2 className="font-display text-[clamp(24px,3.2vw,33px)] leading-[1.16] font-bold tracking-[-0.015em] [text-wrap:balance]">
-              {t.proofTitle}
-            </h2>
-            <p className="mt-4 max-w-[62ch] text-[16px] leading-[1.7] text-muted-foreground">
-              {t.proofBody}
-            </p>
-            <div className="mt-10 overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-raised)]">
-              {[
-                ['−20.1%', t.proofRules],
-                ['60–80%', t.proofRoute],
-                ['−50%', t.proofBatch],
-              ].map(([figure, caption], index) => (
-                <div
-                  key={figure}
-                  className={`flex flex-col gap-1 px-6 py-6 sm:flex-row sm:items-baseline sm:gap-8 sm:px-8 ${
-                    index > 0 ? 'border-t' : ''
-                  }`}
-                >
-                  <div className="font-display text-[34px] leading-none font-bold tabular-nums text-good sm:w-[168px] sm:shrink-0">
-                    {figure}
-                  </div>
-                  <p className="max-w-[58ch] text-[15px] leading-[1.6] text-muted-foreground">
-                    {caption}
-                  </p>
-                </div>
-              ))}
+            <p className="max-w-[60ch] text-[16px] leading-[1.75] text-muted-foreground sm:text-[18px]">{t.heroLede}</p>
+            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+              <Link href="/" className="inline-flex min-h-12 items-center gap-7 border-2 border-foreground bg-primary px-6 py-3 text-[15px] font-bold text-primary-foreground shadow-[4px_4px_0_var(--foreground)] transition-colors hover:bg-primary/85">
+                {t.ctaDemo} <Arrow />
+              </Link>
+              <a href={GITHUB} target="_blank" rel="noreferrer noopener" className="inline-flex min-h-12 items-center gap-2 border-b-2 border-current text-sm font-semibold transition-colors hover:text-terracotta">
+                {t.ctaGitHub} <Arrow diagonal />
+              </a>
             </div>
+          </div>
+          <div className="min-w-0 border-2 border-foreground bg-layer p-5 sm:p-7">
+            <p className="max-w-[50ch] text-sm leading-relaxed text-muted-foreground">{t.heroCommandLabel}</p>
+            <pre className="mt-4 overflow-x-auto border-y-2 border-foreground py-5 font-mono text-[12px] leading-[1.7] sm:text-[14px]"><code>{HERO_COMMAND}</code></pre>
+            <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 font-mono text-xs text-muted-foreground" aria-hidden="true">
+              <span>CLI</span><span>CI</span><span>MCP</span><span>Gateway</span><span>MIT</span>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Open source */}
-      <section className="mx-auto max-w-6xl px-6 py-24 lg:py-28">
-          <h2 className="max-w-[26ch] font-display text-[clamp(24px,3.2vw,33px)] leading-[1.16] font-bold tracking-[-0.015em] [text-wrap:balance]">
-            {t.openTitle}
-          </h2>
-          <p className="mt-4 max-w-[62ch] text-[16px] leading-[1.7] text-muted-foreground">
-            {t.openBody}
-          </p>
-          <a
-            href={GITHUB}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="mt-7 inline-block rounded-lg border px-5 py-2.5 text-[15px] font-semibold transition-colors hover:bg-layer-hover"
-          >
-            {t.openCta}
-          </a>
+      <section className="border-y-2 border-foreground bg-layer">
+        <div className="mx-auto grid max-w-[1440px] gap-12 px-5 py-16 sm:px-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-24 lg:px-16 lg:py-24">
+          <div>
+            <h2 className="max-w-[20ch] font-display text-[clamp(32px,3.8vw,52px)] leading-[1.13] font-bold tracking-[-0.035em]">{t.proofTitle}</h2>
+            <p className="mt-5 max-w-[54ch] text-base leading-[1.75] text-muted-foreground">{t.proofBody}</p>
+            <div className="mt-8 max-w-[420px]"><LedgerFigure /></div>
+          </div>
+          <dl className="border-2 border-foreground">
+            {[
+              ['−20.1%', t.proofRules],
+              ['60–80%', t.proofRoute],
+              ['−50%', t.proofBatch],
+            ].map(([figure, caption], index) => (
+              <div key={figure} className={`grid items-baseline gap-3 px-5 py-6 sm:grid-cols-[1fr_1fr] sm:gap-5 ${index === 0 ? 'bg-primary text-primary-foreground' : 'border-t-2 border-foreground'}`}>
+                <dt className="font-display text-[clamp(40px,4.5vw,64px)] leading-none tracking-[-0.05em] font-bold tabular-nums">{figure}</dt>
+                <dd className="max-w-[28ch] text-sm leading-[1.65]">{caption}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="border-t bg-layer">
-        <div className="mx-auto max-w-6xl px-6 py-28 text-center lg:py-32">
-            <h2 className="mx-auto max-w-[20ch] font-display text-[clamp(30px,4.4vw,46px)] leading-[1.08] font-bold tracking-[-0.02em] [text-wrap:balance]">
-              {t.finalTitle}
-            </h2>
-            <p className="mx-auto mt-5 max-w-[52ch] text-[16px] leading-[1.7] text-muted-foreground">
-              {t.finalBody}
-            </p>
-            <Link
-              href="/"
-              className="mt-9 inline-block rounded-lg bg-terracotta px-6 py-3 text-[16px] font-semibold text-white shadow-[var(--shadow-raised)] transition-[transform,opacity] hover:-translate-y-px hover:opacity-95 active:translate-y-0"
-            >
-              {t.finalCta}
-            </Link>
+      <section className="mx-auto max-w-[1440px] px-5 py-16 sm:px-10 lg:px-16 lg:py-24">
+        <div className="flex items-baseline justify-between gap-6 border-b-2 border-foreground pb-5">
+          <h2 className="font-display text-3xl font-bold tracking-[-0.03em] sm:text-4xl">{t.storyLabel}</h2>
+          <span aria-hidden="true" className="font-mono text-xs text-muted-foreground">01 / 03</span>
+        </div>
+        {stories.map(([title, body], index) => (
+          <article key={title} className="grid gap-5 border-b-2 border-foreground py-9 sm:grid-cols-[40px_1fr] sm:gap-x-7 lg:grid-cols-[64px_1fr_1fr] lg:gap-12 lg:py-12">
+            <span aria-hidden="true" className="pt-1 font-mono text-sm text-terracotta">0{index + 1}</span>
+            <h3 className="max-w-[25ch] font-display text-[clamp(27px,2.8vw,38px)] leading-[1.18] font-bold tracking-[-0.03em]">{title}</h3>
+            <p className="max-w-[60ch] text-base leading-[1.8] text-muted-foreground sm:col-start-2 lg:col-start-auto">{body}</p>
+          </article>
+        ))}
+      </section>
+
+      <section className="border-y-2 border-foreground bg-layer">
+        <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-10 lg:px-16 lg:py-24">
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:gap-20">
+            <h2 className="max-w-[26ch] font-display text-[clamp(32px,3.8vw,52px)] leading-[1.13] font-bold tracking-[-0.035em]">{t.doorsTitle}</h2>
+            <p className="max-w-[54ch] self-end text-base leading-[1.75] text-muted-foreground">{t.doorsLede}</p>
+          </div>
+          <dl className="mt-12 border-t-2 border-foreground lg:mt-16">
+            {doors.map(([title, body, symbol]) => (
+              <div key={title} className="grid gap-4 border-b-2 border-foreground py-7 sm:grid-cols-[1fr_2fr] sm:gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:py-9">
+                <dt className="flex items-baseline gap-5 font-display text-[25px] font-bold tracking-[-0.025em]">
+                  <span aria-hidden="true" className="w-12 shrink-0 font-mono text-base tracking-normal text-terracotta">{symbol}</span>{title}
+                </dt>
+                <dd className="max-w-[65ch] text-[15px] leading-[1.8] text-muted-foreground">{body}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      </section>
+
+      <section className="mx-auto grid max-w-[1440px] gap-8 px-5 py-16 sm:px-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-24 lg:px-16 lg:py-24">
+        <h2 className="max-w-[18ch] font-display text-[clamp(34px,4vw,56px)] leading-[1.12] font-bold tracking-[-0.035em]">{t.openTitle}</h2>
+        <div>
+          <p className="max-w-[65ch] text-base leading-[1.8] text-muted-foreground">{t.openBody}</p>
+          <a href={GITHUB} target="_blank" rel="noreferrer noopener" className="mt-6 inline-flex min-h-11 items-center gap-8 border-b-2 border-current text-sm font-semibold transition-colors hover:text-terracotta">
+            {t.openCta} <Arrow diagonal />
+          </a>
+        </div>
+      </section>
+
+      <section className="bg-foreground text-background">
+        <div className="mx-auto max-w-[1440px] px-5 py-16 sm:px-10 lg:px-16 lg:py-24">
+          <div className="grid items-end gap-9 lg:grid-cols-[1.2fr_0.8fr] lg:gap-20">
+            <h2 className="max-w-[19ch] font-display text-[clamp(44px,6vw,84px)] leading-[1.04] font-bold tracking-[-0.05em]">{t.finalTitle}</h2>
+            <div>
+              <p className="max-w-[50ch] text-base leading-[1.75]">{t.finalBody}</p>
+              <Link href="/" className="mt-7 inline-flex min-h-12 items-center gap-8 border-2 border-background bg-primary px-6 py-3 text-[15px] font-bold text-primary-foreground shadow-[4px_4px_0_var(--background)] transition-opacity hover:opacity-85">
+                {t.finalCta} <Arrow />
+              </Link>
+            </div>
+          </div>
+          <footer className="mt-16 flex flex-wrap items-center justify-between gap-6 border-t-2 border-background pt-7 lg:mt-24">
+            <span className="flex items-center gap-3 font-display text-3xl font-bold tracking-[-0.045em]">Trazum</span>
+            <a href={GITHUB} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-3 text-sm transition-opacity hover:opacity-75">GitHub <Arrow diagonal /></a>
+          </footer>
         </div>
       </section>
     </main>

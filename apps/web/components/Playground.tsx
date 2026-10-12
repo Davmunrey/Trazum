@@ -176,21 +176,12 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
         terminal does; the output region is still selectable text.
       */}
       <div
-        className="overflow-hidden rounded-xl border border-[#363329] bg-[#171512] font-mono text-[13px] leading-relaxed text-[#efece4] shadow-[var(--shadow-focal)]"
+        className="overflow-hidden rounded-none border-2 border-[#67715c] bg-[#1c211b] font-mono text-[13px] leading-relaxed text-[#f0f1e5] shadow-[var(--shadow-focal)]"
         onClick={() => inputRef.current?.focus()}
       >
-        <div className="flex items-center gap-2.5 border-b border-[#363329] bg-[#1e1c18] px-3.5 py-2.5">
-          <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[18px] shrink-0">
-            <rect width="24" height="24" rx="5.5" fill="#b0522f" />
-            <g strokeWidth="2" strokeLinecap="round">
-              <path d="M5.5 7h13.5" stroke="#fff" />
-              <path d="M5.5 12h9.5" stroke="#fff" opacity=".45" />
-              <path d="M5.5 12h6" stroke="#fff" />
-              <path d="M5.5 17h6" stroke="#fff" opacity=".45" />
-              <path d="M5.5 17h3.5" stroke="#fff" />
-            </g>
-          </svg>
-          <span className="text-[12px] text-[#a8a495]">trazum</span>
+        <div className="flex items-center gap-2.5 border-b border-[#67715c] bg-[#242a21] px-3.5 py-2.5">
+
+          <span className="font-display text-[20px] font-bold tracking-[-0.025em] text-[#f0f1e5]">Trazum</span>
         </div>
         <div
           ref={outputRef}
@@ -198,7 +189,7 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
           aria-live="polite"
         >
           {lines.length === 0 && (
-            <div className="whitespace-pre-wrap text-[#a8a495]">{t.playground.lead}</div>
+            <div className="whitespace-pre-wrap text-[#c0c6af]">{t.playground.lead}</div>
           )}
           {lines.map((line, index) => (
             <div
@@ -206,15 +197,15 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
               className={
                 line.kind === 'input'
                   ? 'whitespace-pre-wrap font-semibold'
-                  : 'whitespace-pre text-[#a8a495]'
+                  : 'whitespace-pre text-[#c0c6af]'
               }
             >
               {line.text === '' ? ' ' : line.text}
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2 border-t border-[#363329] px-3.5 py-2.5">
-          <span aria-hidden="true" className="select-none text-[#e08a63]">
+        <div className="flex items-center gap-2 border-t border-[#67715c] px-3.5 py-2.5">
+          <span aria-hidden="true" className="select-none text-[#dce94d]">
             $
           </span>
           <input
@@ -233,7 +224,7 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
-            className="w-full bg-transparent text-[#efece4] caret-[#e08a63] outline-none placeholder:text-[#93907f]"
+            className="w-full bg-transparent text-[#f0f1e5] caret-[#dce94d] outline-none placeholder:text-[#bac2a8]"
           />
         </div>
       </div>

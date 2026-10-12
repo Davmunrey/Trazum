@@ -8,6 +8,9 @@ import {
   Compass,
   GitCompare,
   Menu,
+  Sun,
+  Moon,
+  Monitor,
   Package,
   PanelLeftClose,
   PanelLeftOpen,
@@ -34,6 +37,7 @@ function GitHubMark({ className }: { className?: string }) {
 
 import type { Locale } from '@trazum/core';
 
+import { BrandMark } from './BrandMark';
 import { Account, type SessionResponse } from './Account';
 import { Bill } from './Bill';
 import { Library } from './Library';
@@ -49,6 +53,7 @@ import { LOCALES, LOCALE_STORAGE_KEY, getWebMessages } from '../lib/i18n';
 import { TOUR_SEEN_KEY } from '../lib/tour';
 import { usePromptText } from '../lib/prompt-text';
 import { useScenario } from '../lib/scenario';
+import { applyTheme, saveTheme, storedTheme, type Theme } from '../lib/theme';
 
 /** Where the rail's expanded/collapsed preference lives between visits. */
 const RAIL_STORAGE_KEY = 'trazum:rail';
@@ -82,6 +87,18 @@ export function App({
   models: readonly { id: string; displayName: string }[];
 }) {
   const [locale, setLocale] = useState<Locale>(initialLocale);
+  const [theme, setTheme] = useState<Theme | null>(null);
+  useEffect(() => { setTheme(storedTheme()); }, []);
+  useEffect(() => {
+    if (theme === null) return;
+    applyTheme(theme);
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const update = () => { if (theme === 'system') applyTheme(theme); };
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, [theme]);
+  function chooseTheme(next: Theme) { saveTheme(next); setTheme(next); }
+
 
   /**
    * Two independent disclosures, and they are not the same thing.
@@ -532,7 +549,7 @@ export function App({
         than by a number somebody has to keep in step. Collapsed, both are
         dropped and the glyph is simply centred, like every other glyph.
       */}
-      <div className={cn('flex h-14 items-center', railCollapsed ? 'justify-center' : 'px-2')}>
+      <div className={cn('flex h-24 items-center', railCollapsed ? 'justify-center' : 'px-2')}>
         <div
           className={cn(
             'flex min-w-0 items-center gap-2.5',
@@ -545,19 +562,7 @@ export function App({
             'pr-10 lg:pr-2.5',
           )}
         >
-          <svg
-            viewBox="0 0 22 22"
-            aria-hidden="true"
-            className="size-[17px] shrink-0 text-terracotta"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M4.5 5 11 11l-6.5 6" />
-            <path d="M14 17h4.5" />
-          </svg>
+          {railCollapsed && <BrandMark className="size-8 shrink-0 text-terracotta" />}
           {!railCollapsed && (
             <span className="flex min-w-0 flex-col">
               {/*
@@ -569,7 +574,7 @@ export function App({
                 walking the headings should land on what this page is, not on
                 what the product is called.
               */}
-              <span className="font-display text-[19px] leading-none font-semibold tracking-[-0.01em]">
+              <span className="trazum-wordmark font-display text-[29px] leading-none font-bold tracking-[-0.025em]">
                 Trazum
               </span>
               <span className="truncate text-[11px] text-faint" title={t.meta.tagline}>
@@ -727,6 +732,21 @@ export function App({
           not part of the navigation, and reached last rather than first. */}
       <div className={cn('mt-auto flex flex-col gap-2 border-t p-2', railCollapsed && 'items-center')}>
         <Account t={t} session={session} collapsed={railCollapsed} />
+        <div role="group" aria-label={t.page.themeLabel} className={cn('flex gap-1 border p-1', railCollapsed && 'flex-col')}>
+          {([
+            ['light', Sun, t.page.themeLight],
+            ['dark', Moon, t.page.themeDark],
+            ['system', Monitor, t.page.themeSystem],
+          ] as const).map(([value, Icon, label]) => (
+            <button key={value} type="button" aria-pressed={theme === value} aria-label={label} title={label}
+              onClick={() => chooseTheme(value)}
+              className={cn('flex min-h-9 flex-1 items-center justify-center gap-1 px-1 text-[11px] hover:bg-layer-hover',
+                theme === value && 'bg-primary font-semibold text-primary-foreground', FOCUS_RING)}>
+              <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+              {!railCollapsed && <span>{label}</span>}
+            </button>
+          ))}
+        </div>
         <div
           className={cn('flex gap-0.5 rounded-lg border p-0.5', railCollapsed && 'flex-col')}
           role="group"
@@ -774,7 +794,7 @@ export function App({
       value={activeTab}
       onValueChange={selectTab}
       orientation="vertical"
-      className="min-h-screen flex-col gap-0 lg:flex-row"
+      className="trazum-app min-h-screen flex-col gap-0 lg:flex-row"
     >
       {/*
         A bar that exists only where the rail cannot: below `lg` there is no
@@ -793,7 +813,7 @@ export function App({
         >
           <Menu className="size-[18px]" aria-hidden="true" />
         </Button>
-        <span className="font-display text-[17px] leading-none font-semibold">Trazum</span>
+        <span className="font-display text-[23px] leading-none font-bold">Trazum</span>
       </div>
 
       {/* The scrim. Clicking it closes, which is the other half of Escape. Its
@@ -817,7 +837,7 @@ export function App({
           : {})}
         ref={railRef}
         className={cn(
-          'z-50 flex shrink-0 flex-col border-r bg-muted transition-[width] duration-150',
+          'trazum-rail z-50 flex shrink-0 flex-col border-r transition-[width] duration-150',
           /*
             The width animates; the contents do not. Every label re-renders at
             full size on the first frame while the box is still 60px wide, and
@@ -838,7 +858,7 @@ export function App({
           // sitting at x=-248. `visibility: hidden` takes them out of the tree
           // and is undone by a media query at `lg`, where the rail is real.
           drawerOpen ? 'translate-x-0' : '-translate-x-full invisible lg:visible',
-          collapsed ? 'lg:w-[60px]' : 'lg:w-[236px]',
+          collapsed ? 'lg:w-[72px]' : 'lg:w-[252px]',
         )}
       >
         {/*
@@ -881,7 +901,7 @@ export function App({
         </button>
       </aside>
 
-      <main className="min-w-0 flex-1 px-5 pt-6 pb-16 lg:px-8">
+      <main className="trazum-workspace min-w-0 flex-1 px-5 pt-6 pb-16 lg:px-10 xl:px-14">
         {/*
           1080 was the whole page at every width. On a 1440 display it left
           180px of paper down each side while the Optimise panel's two columns
@@ -904,7 +924,7 @@ export function App({
               the least important thing on the page. The row earns its place
               through the surface it sits on and the weight of its action.
             */
-            <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-muted/70 px-4 py-3 text-[13px]">
+            <div className="mb-7 flex flex-wrap items-center gap-x-4 gap-y-2 border-b pb-3 text-[13px]">
               <span className="text-muted-foreground">{t.tour.offer}</span>
               <span className="flex gap-3">
                 <button
@@ -941,8 +961,8 @@ export function App({
             off `GROUPS` rather than typed here, so a panel added to the rail
             cannot arrive with a title that disagrees with its own nav entry.
           */}
-          <header className="mb-9 border-b pb-7">
-            <h1 className="font-display text-[29px] leading-[1.08] font-semibold tracking-[-0.025em] text-balance sm:text-[35px]">
+          <header className="mb-8 border-b-2 border-rule-strong pb-8">
+            <h1 className="trazum-panel-heading font-display text-[38px] leading-[1.08] font-bold tracking-[-0.035em] text-balance sm:text-[56px]">
               {activeLabel}
             </h1>
             <p className="mt-3 max-w-[66ch] text-[15px] leading-[1.65] text-muted-foreground">

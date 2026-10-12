@@ -45,6 +45,10 @@ export const en: WebMessages = {
     footerTail:
       '. Savings are projections over the scenario you describe, not billing.',
     localeSwitchLabel: 'Language',
+    themeLabel: 'Appearance',
+    themeLight: 'Light',
+    themeDark: 'Dark',
+    themeSystem: 'System',
     closeMenu: 'Close menu',
     openMenu: 'Open menu',
     collapseRail: 'Collapse sidebar',
@@ -490,6 +494,15 @@ export const en: WebMessages = {
       + 'report. The CLI can price unknown models with a pricing overlay: trazum profile '
       + '--pricing.',
     heading: 'Where the money went',
+    reportNavigation: 'Report sections',
+    reportSummary: 'Summary',
+    reportOpportunities: 'Opportunities',
+    reportContext: 'Usage context',
+    reportPlan: 'Action plan',
+    reportSpend: 'Catalogue-priced spend',
+    reportCalls: 'Recorded calls',
+    reportCoverage: 'Calls with a price',
+    reportScope: 'Current selection. Unpriced calls are excluded from spend; invalid records are listed below.',
     headline: (calls, total) =>
       `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'} · ${total}`,
     partInput: 'Input',
