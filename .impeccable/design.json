@@ -1,0 +1,12 @@
+{
+  "name": "Trazum acid neobrutalism",
+  "status": "user-approved",
+  "colors": { "background": "#f6f4ec", "foreground": "#20231e", "primary": "#dce94d", "accentText": "#526014", "border": "#999f8a" },
+  "typography": { "display": "Space Grotesk Variable", "body": "Space Grotesk Variable", "trackingMinimum": "-0.04em" },
+  "radius": "0",
+  "border": "2px",
+  "actionShadow": "3px 3px 0 var(--ink)",
+  "breakpoints": { "drawer": "1024px" },
+  "motion": { "duration": "180ms", "easing": "ease-out", "reducedMotion": true },
+  "source": "apps/web/app/globals.css"
+}

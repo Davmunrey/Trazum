@@ -41,6 +41,10 @@ export interface WebMessages {
     /** Text after it. */
     footerTail: string;
     localeSwitchLabel: string;
+    themeLabel: string;
+    themeLight: string;
+    themeDark: string;
+    themeSystem: string;
     /** The drawer's dismiss control, which needs a name for a screen reader. */
     closeMenu: string;
     openMenu: string;
@@ -426,6 +430,15 @@ export interface WebMessages {
     empty: string;
     nothingPriced: string;
     heading: string;
+    reportNavigation: string;
+    reportSummary: string;
+    reportOpportunities: string;
+    reportContext: string;
+    reportPlan: string;
+    reportSpend: string;
+    reportCalls: string;
+    reportCoverage: string;
+    reportScope: string;
     headline(calls: number, total: string): string;
     partInput: string;
     partCacheRead: string;

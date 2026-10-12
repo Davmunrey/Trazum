@@ -18,7 +18,7 @@ import { useEffect, useState } from 'react';
  * So the landing carries its own locale, under its own storage key, and
  * never pushes an unreviewed language into the tool: a French visitor reads
  * a French landing and lands in the English tool, which is the honest split.
- * The visual system is the app's own — Fraunces, terracotta, the wash tokens
+ * The visual system is the app's own — Space Grotesk, acid yellow, the semantic tokens
  * — not a second brand. Like the Bill tab, there is no fetch here.
  */
 
