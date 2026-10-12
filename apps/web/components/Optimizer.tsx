@@ -285,7 +285,7 @@ export function Optimizer({
           level,
           locale,
           reorder,
-          suggest,
+          suggest: options.auto !== true && suggest,
           /*
             Derived rather than passed through. The API refuses
             `applySuggestions` without `suggest` — on its own it would return a
@@ -295,9 +295,9 @@ export function Optimizer({
             whatever the state turns out to be, which is a different guarantee
             and the one that survives somebody editing the handler.
           */
-          applySuggestions: suggest && applySuggestions,
+          applySuggestions: options.auto !== true && suggest && applySuggestions,
           usage: { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible },
-          llm: llmEnabled
+          llm: options.auto !== true && llmEnabled
             ? {
                 enabled: true,
                 provider: llmProvider,
