@@ -2746,8 +2746,18 @@ Subscription quotas and task quality remain outside the filter's claims.
 
 ## Next
 
-**Nothing is planned that this repository can deliver alone.** [The 2.4
-plan](docs/plan-2.4.md) was the last thing planned, 2.4.0 delivered every
+**Target: 2.6.0, task efficiency (unreleased).** The approved next product step
+connects explicit Claude Code/Codex task sources, repetition evidence, a
+reviewed instruction policy and an explicit acceptance outcome. The
+[checkout workflow](docs/task-efficiency.md) provides analysis, reversible
+local application and conservative before/after comparison through CLI/core,
+with MCP analysis and comparison. It does not establish causal savings,
+infer task success or control a running harness. The next release requires
+the same build, type and behavioral checks as the existing surfaces; keeping
+the policy as a default requires evidence from representative accepted tasks.
+
+**Historical boundary.** [The 2.4
+plan](docs/plan-2.4.md) was the previous plan, 2.4.0 delivered every
 move of it that did not need something held outside this repository,
 2.4.1 carried the door to the README's first line and the browser, 2.4.2
 priced the models Claude Code runs today and gave the bill a PDF, 2.4.3
@@ -2759,7 +2769,7 @@ billed a period and said what a Claude Code bill's figure is. [The
 every other plan in that directory — not what this should do next, but when
 it is finished — and 2.0.0 answered it by freezing the surface at 46
 commands. 2.4.0 lifted that freeze deliberately, from a download count rather
-than a feature wish, and the CLI stands at 51 commands. What remains of the
+than a feature wish, reaching 51 commands at that point. What remains of the
 2.4 plan waits on things outside this repository: a real Cursor export to
 build a converter against, a Hugging Face token for the Space, and the
 provider keys that would let `kimi-k2` and `grok-4`, discontinued by their

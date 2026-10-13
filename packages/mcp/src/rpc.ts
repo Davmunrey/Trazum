@@ -50,6 +50,12 @@ export interface ToolDefinition {
   description: string;
   /** JSON Schema, written out, since there is no schema library to build one. */
   inputSchema: Record<string, unknown>;
+  annotations?: {
+    readOnlyHint: boolean;
+    destructiveHint: boolean;
+    idempotentHint: boolean;
+    openWorldHint: boolean;
+  };
   /**
    * Validates and coerces the arguments, or throws with a message the model can
    * act on. Returns the text to send back.
@@ -175,6 +181,7 @@ export function handle(
             title: tool.title,
             description: tool.description,
             inputSchema: tool.inputSchema,
+            ...(tool.annotations === undefined ? {} : { annotations: tool.annotations }),
           })),
         },
       };

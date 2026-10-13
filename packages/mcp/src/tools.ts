@@ -7,12 +7,16 @@ import {
   PricingOverlayError,
   UNLABELLED,
   assemble,
+  analyzeTask,
   bandFor,
   billLevers,
   buildPlan,
   claudeCodeRecords,
   codexRecords,
+  compareTasks,
   parsePlanDocument,
+  parseTaskReport,
+  taskPolicy,
   verifyPlan,
   cacheEconomics,
   cacheHitRate,
@@ -1856,4 +1860,86 @@ const VERIFY_SAVINGS: ToolDefinition = {
   },
 };
 
-export const TOOLS: readonly ToolDefinition[] = [SPEND_GUARD, CHECK, OPTIMIZE, IMPORT_USAGE, PROFILE, PLAN_SAVINGS, VERIFY_SAVINGS, POSITION, MODELS, WRITER];
+const TASK_ANNOTATIONS = {
+  readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false,
+} as const;
+
+function taskOutput(value: unknown): string {
+  const text = JSON.stringify(value);
+  if (text.length > MAX_INPUT_CHARS) {
+    throw new InvalidArguments(`task result exceeds ${MAX_INPUT_CHARS} characters; analyze a smaller task`);
+  }
+  return text;
+}
+
+const ANALYZE_TASK: ToolDefinition = {
+  name: 'analyze_task',
+  title: 'Analyze explicit agent task transcripts',
+  description: 'Analyze caller-supplied Claude Code or Codex transcript text for one task. Return bounded token evidence, repeated tool-call findings with source/line references, and a fixed review policy when actionable findings exist. Reads no files and applies no policy. Outcome and assessor are caller assertions, never inferred from tokens. Task metadata is retained; raw transcript content is not returned.',
+  annotations: TASK_ANNOTATIONS,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      taskId: { type: 'string', minLength: 1, maxLength: 80, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$' },
+      taskType: { type: 'string', minLength: 1, maxLength: 80, pattern: '^[A-Za-z0-9][A-Za-z0-9._-]*$' },
+      criterion: { type: 'string', minLength: 1, maxLength: 500,
+        description: 'Caller-approved acceptance criterion. Retained in the report; exclude sensitive text.' },
+      policyId: { type: 'string', enum: ['baseline', 'repeat-review-v1'] },
+      outcome: { type: 'string', enum: ['accepted', 'rejected', 'unknown'] },
+      assessor: { type: 'string', minLength: 1, maxLength: 100,
+        description: 'Caller-approved assessment label, required for accepted or rejected outcomes. Retained in the report.' },
+      sources: { type: 'array', minItems: 1, maxItems: 16,
+        description: `Explicit transcript contents for this task. Combined text limit: ${MAX_INPUT_CHARS} characters. No path discovery.`,
+        items: { type: 'object', properties: {
+          format: { type: 'string', enum: ['claude-code', 'codex'] },
+          text: { type: 'string', minLength: 1, maxLength: MAX_INPUT_CHARS },
+        }, required: ['format', 'text'], additionalProperties: false },
+      },
+    },
+    required: ['taskId', 'taskType', 'criterion', 'sources'], additionalProperties: false,
+  },
+  run: (args) => {
+    try {
+      const report = analyzeTask(args);
+      const actionable = report.tools.findings.some((finding) =>
+        finding.category === 'read' || finding.category === 'search' || finding.kind === 'repeated-failure');
+      return taskOutput({ report, policy: actionable ? taskPolicy(report) : null });
+    } catch (error) {
+      if (error instanceof InvalidArguments) throw error;
+      // Core validation must not turn malformed source or saved-report text into an echo.
+      throw new InvalidArguments('task input is invalid; check identifiers, criterion, assessor, source formats and the aggregate text limit');
+    }
+  },
+};
+
+const COMPARE_TASKS: ToolDefinition = {
+  name: 'compare_tasks',
+  title: 'Compare recorded task outcomes and token evidence',
+  description: 'Compare two saved task report JSON strings from analyze_task or trazum task. Refuse malformed reports and retain comparability gates, outcome assertions and evidence gaps. Lower recorded tokens alone do not prove equal quality, causal improvement or realized savings. No files, network, model calls or writes.',
+  annotations: TASK_ANNOTATIONS,
+  inputSchema: {
+    type: 'object',
+    properties: {
+      before: { type: 'string', minLength: 1, maxLength: MAX_INPUT_CHARS,
+        description: 'JSON.stringify of the baseline report field, not the analyze_task envelope or a path.' },
+      after: { type: 'string', minLength: 1, maxLength: MAX_INPUT_CHARS,
+        description: `JSON.stringify of the later report field. Combined before/after limit: ${MAX_INPUT_CHARS} characters.` },
+    },
+    required: ['before', 'after'], additionalProperties: false,
+  },
+  run: (args) => {
+    const before = savingsText(args, 'before', MAX_INPUT_CHARS);
+    const after = savingsText(args, 'after', MAX_INPUT_CHARS);
+    if (before.length + after.length > MAX_INPUT_CHARS) {
+      throw new InvalidArguments(`combined task reports exceed ${MAX_INPUT_CHARS} characters`);
+    }
+    try {
+      return taskOutput(compareTasks(parseTaskReport(before), parseTaskReport(after)));
+    } catch (error) {
+      if (error instanceof InvalidArguments) throw error;
+      throw new InvalidArguments('before and after must be valid saved Trazum task reports');
+    }
+  },
+};
+
+export const TOOLS: readonly ToolDefinition[] = [SPEND_GUARD, CHECK, OPTIMIZE, IMPORT_USAGE, ANALYZE_TASK, COMPARE_TASKS, PROFILE, PLAN_SAVINGS, VERIFY_SAVINGS, POSITION, MODELS, WRITER];

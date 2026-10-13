@@ -94,6 +94,7 @@ describe('--json means JSON, not JSON after a report', () => {
    * that stops being true without anybody noticing.
    */
   const COVERED_ELSEWHERE = {
+    task: 'task.test.js analyzes native transcripts, applies and reverts a policy, compares saved reports and parses every JSON response whole',
     history: 'history.test.js drives it on three dated reports and parses stdout whole',
     rollup:
       'rollup-cli.test.js drives it on profile documents this CLI wrote, parses stdout whole and pipes it through conform',

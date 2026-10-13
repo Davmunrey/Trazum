@@ -20,6 +20,11 @@ that no longer exists.
 
 ## The promise
 
+These promises apply to the `schemaVersion` documents. The unreleased
+[task document](#the-task-document) uses its own strict `version` / `kind`
+contract and retains explicit task metadata and non-cryptographic reuse
+checksums; its separate privacy and validation boundaries are stated below.
+
 - **`schemaVersion` is the only thing you must branch on.** It starts at `1`
   and changes only when a field's *meaning* changes or one is removed.
 - **Fields are added without a version bump.** New findings arrive as new
@@ -601,3 +606,59 @@ other.
 | `suppressed` | Still over the limit, and already reported on an earlier cycle. Same shape as `crossings`. These are why a quiet cycle is not a clean one: the alert was suppressed, the crossing was not, and only one of those is news. |
 | `abstentions` | Gates that could not be judged, which is neither a pass nor a failure: the `gate`, a `reason` (`window-too-short`, `dimension-unavailable`), and a `detail` with `coveredMs` and `neededMs` where there is a figure to give. A gate silently skipped for a week reads exactly like a gate that has been passing for a week. |
 | `gap` | The stretch this cycle did not watch — `fromMs`, `toMs` — when the watcher was down or is starting for the first time. Null when there is none. A resumed watcher that said nothing would imply coverage it did not have. |
+
+## The task document
+
+**Unreleased; not in npm 2.5.2.** One versioned task family contains three
+variants. Branch on `version` and `kind`, not `schemaVersion`. `conform` and
+`schema` do not support this family. Saved report inputs are validated strictly
+by `parseTaskReport` and the task workflow; unknown fields and inconsistent
+evidence are refused. Valid input is not authenticated evidence.
+
+The [task efficiency output contract](task-efficiency.md#output-contract)
+documents nested fields, limits, coverage and privacy. All task outcomes and
+policy use are caller declarations; the comparison observes differences
+without establishing causal savings. Task policy export is plain text.
+
+### Report
+
+CLI `task analyze` emits this object; MCP `analyze_task` wraps it in `report`.
+Save this object, not the MCP response envelope, for later comparison.
+
+| Field | What it holds |
+| --- | --- |
+| `version` | `1`, the task document family version. |
+| `kind` | `trazum-task`. |
+| `task` | Declared task ID, type, criterion, policy ID, outcome and assessor. |
+| `usage` | Recorded token counters, API-equivalent valuation, unpriced coverage and `pricing` provenance: bundled catalogue source, review date and API-equivalent basis. Missing evidence does not establish zero usage. |
+| `sources` | Source indexes, harness formats, non-cryptographic reuse checks, converter diagnostics and completeness limits; no raw session IDs or file paths. |
+| `coverage` | Observed harnesses, recognized models and evidence gaps. |
+| `tools` | Call/result coverage, replayed calls and repeated-result findings with local source/line references. |
+| `limitations` | Preserved evidence and interpretation boundaries. |
+
+### Comparison
+
+CLI `task compare` and MCP `compare_tasks` emit this object from two validated
+task reports. Neither report is mutated.
+
+| Field | What it holds |
+| --- | --- |
+| `version` | `1`. |
+| `kind` | `trazum-task-comparison`. |
+| `verdict` | `lower-usage`, `higher-usage`, `similar-usage`, `quality-regressed` or `inconclusive`. |
+| `reasons` | Why the observation supports a verdict or cannot be compared. |
+| `tokenChange` | `before`, `after`, `delta` and `percent` for a supported accepted comparison; otherwise `null`. |
+| `limitations` | Evidence and interpretation boundaries, including absence of causal proof. |
+
+### Policy receipt
+
+CLI `task apply` and `task revert` emit this receipt. It records the managed
+instruction block's state, not whether a harness loaded or obeyed it.
+
+| Field | What it holds |
+| --- | --- |
+| `version` | `1`. |
+| `kind` | `trazum-task-policy`. |
+| `policyId` | `repeat-review-v1`. |
+| `applied` | `true` after apply, `false` after revert. |
+| `changed` | Whether this invocation changed the selected instruction file; idempotent repeats return `false`. |

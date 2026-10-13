@@ -415,6 +415,7 @@ function workspace() {
 
 /** What each command needs to do its work, against that workspace. */
 const INVOCATION = {
+  task: ['analyze', '--id', 'synthetic-offline-task', '--type', 'test', '--criterion', 'Synthetic checks pass', '--codex', 'codex-rollout.jsonl'],
   init: ['.', '--dry-run'],
   optimize: ['prompt.txt'],
   check: ['prompts', '--max-tokens', '5000'],

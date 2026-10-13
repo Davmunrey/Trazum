@@ -30,6 +30,8 @@ because "MCP server" reads like infrastructure and this is not.
 | `check_prompt` | Does this prompt fit `maxTokens`? And if not, would optimising it fit? |
 | `optimize_prompt` | The shorter text, the token counts either side, what the difference is worth per month, and any advisories. |
 | `import_usage` | Convert explicit Claude Code or Codex transcript text into normalized JSONL; retain diagnostics and evidence gaps. No file access or inferred labels. |
+| `analyze_task` | Analyze explicit native task transcripts for recorded usage and repeated tool results. Return evidence references and a fixed, optional review policy; never apply it. Unreleased after 2.5.2. |
+| `compare_tasks` | Compare two saved task reports using declared acceptance criteria, outcomes and evidence gates. Lower usage alone does not prove better quality or savings. Unreleased after 2.5.2. |
 | `profile_usage` | Where the money went, from a usage log passed as text: the spend split, per label and per model, whether caching paid for itself, and the levers that would actually move the bill. `label`, `since`/`until` and `previous_log` drill down and compare; `what_if` prices the same calls on another model — arithmetic, not advice, and it says so. `pricing_overlay` takes the same JSON a `--pricing` overlay file holds, as text — models it adds or overrides price the whole report, and the report says the overlay is in effect. Uses recorded token counts priced with the selected catalogue; this is not a reconciled invoice. |
 | `plan_savings` | Rank actions from normalized usage-log text, keeping projected savings, measured stakes, assumptions and evidence gaps separate. Returns a JSON plan compatible with the CLI. |
 | `verify_savings` | Check saved plan JSON against newer log text. Returns arrived, not-arrived or cannot-tell per action, attribution and gate failures. |
@@ -71,6 +73,59 @@ Other events are counted separately. Deduplication applies within one call only;
 do not concatenate overlapping imports. Prompt/tool/path content is excluded;
 session identifiers remain and labels come only from the explicit argument.
 No paths are opened, no environment is read and no network or writes occur.
+
+## Analyze, review and compare a task
+
+`analyze_task` and `compare_tasks` are available from this checkout; they are not
+in the published `2.5.2` package. Both are read-only and deterministic. The server
+advertises these properties through MCP tool annotations.
+
+1. Call `analyze_task` with an explicit task, acceptance criterion and transcripts:
+
+   ```json
+   {
+     "taskId": "synthetic-bugfix-baseline",
+     "taskType": "bugfix",
+     "criterion": "The agreed regression tests pass",
+     "sources": [{ "format": "claude-code", "text": "<transcript JSONL contents>" }],
+     "outcome": "accepted",
+     "assessor": "regression-check"
+   }
+   ```
+
+2. Read the `{ "report": ..., "policy": ... }` JSON text response. Findings
+   reference source indexes and line numbers without returning commands, paths,
+   prompts or tool results. `policy` is `null` when no actionable repetition is
+   found; otherwise it contains the fixed `repeat-review-v1` instructions. Review
+   those instructions before using them in a later task. Trazum changes no agent
+   configuration and cannot verify that a caller applied the policy.
+3. Analyze a later, comparable task with a distinct `taskId`, the same `taskType`
+   and `criterion`, and `policyId: "repeat-review-v1"` if that policy was applied.
+   Record its outcome and assessor explicitly. Missing outcomes remain `unknown`;
+   neither successful-looking tool output nor lower tokens establishes acceptance.
+4. Call `compare_tasks` with
+   `{ "before": "<JSON.stringify(baseline.report)>", "after": "<JSON.stringify(later.report)>" }`.
+   Save the **report field**, not its surrounding envelope. Read `verdict`,
+   `reasons`, `tokenChange` and `limitations`; failed evidence gates keep the
+   result inconclusive. CLI task reports use the same format.
+
+Analysis accepts 1–16 explicitly supplied sources, each `claude-code` or `codex`,
+with a combined limit of 400,000 UTF-16 code units. Mixed harnesses are supported;
+the caller is responsible for assigning their sessions to the intended task.
+Task IDs and types must be 1–80 ASCII letters, digits, dots, underscores or
+hyphens, starting with a letter or digit. Criteria are limited to 500 characters,
+assessor labels to 100. `accepted` and `rejected` require an assessor; `policyId`
+defaults to `baseline` and outcome to `unknown`. Unknown fields are rejected,
+including inside source objects. Before/after report text has a combined
+400,000-character limit; serialized tool output has the same ceiling.
+
+Reports retain caller-approved task metadata, aggregate token counts, converter
+diagnostics, recognized model names, source references and reuse fingerprints.
+Do not put sensitive text in task metadata. Fingerprints detect obvious source
+reuse; they do not authenticate reports or guarantee anonymization. Source
+completeness remains unestablished, repeated calls can be deliberate checks,
+and API-equivalent valuation is neither an invoice nor subscription savings.
+A before/after observation does not establish a causal improvement.
 
 ## Plan, change, verify
 

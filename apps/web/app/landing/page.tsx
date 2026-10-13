@@ -114,7 +114,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'One core does the measuring; four surfaces carry it. They cannot disagree, because they are the same functions.',
     doorCliTitle: 'CLI + CI',
     doorCliBody:
-      '53 commands. Token budgets and drift baselines that exit 1, a pre-commit hook that is one pipe, and a GitHub Action that comments the report on your PR.',
+      '54 commands. Token budgets and drift baselines that exit 1, a pre-commit hook that is one pipe, and a GitHub Action that comments the report on your PR.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
       'Stands in front of the provider and refuses a call that breaks your spend policy (per day, per session, per label), with waivers that carry an author and an expiry.',

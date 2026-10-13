@@ -2,10 +2,11 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 53 commands
+## The 54 commands
 
 | Command | What it answers |
 |---|---|
+| [`trazum task`](https://github.com/Davmunrey/Trazum/blob/main/docs/task-efficiency.md) | Did an accepted task use less after a reviewed instruction change? Analyze, apply, compare and revert. *Unreleased.* |
 | [`trazum filter`](https://github.com/Davmunrey/Trazum/blob/main/docs/tool-output-filter.md) | Compact repeated tool-log lines before agent context, retaining the original locally. *Opt-in.* |
 | [`trazum init`](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-first-five-minutes-trazum-init) | Inspect repository prompts and available usage, then write a configuration. *Optional setup after your first report.* |
 | [`trazum optimize`](https://github.com/Davmunrey/Trazum/blob/main/README.md#cli) | What can come out of this prompt, and what is that worth a month? |

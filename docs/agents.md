@@ -13,7 +13,7 @@ intercept its requests.
 | Interface | Use it for | Boundary |
 |---|---|---|
 | CLI | Read authorized files, generate reports and plans, run CI checks | Files and commands run with the caller's permissions |
-| MCP | Inspect costs, propose savings, verify a saved plan | Tools receive text; no filesystem, network or model calls |
+| MCP | Inspect costs, propose savings, verify plans and analyze task efficiency | Tools receive text; no filesystem, network or model calls |
 | Local HTTP | Import native usage, check costs, plan and verify savings | Explicit text inputs; server catalogue; no spending reservation |
 | Gateway | Apply policy to calls explicitly routed through it | Process-local accounting; external calls remain unseen |
 | Agent skill | Teach an agent which interface and evidence to use | Instructions are not enforcement or spending authorization |
@@ -78,6 +78,26 @@ evidence of savings. A cheaper model still needs a quality evaluation.
 
 See the [agent workflow reference](../.claude/skills/trazum/references/agent-workflows.md)
 for budget checks, unknown results, paid calls and gateway limitations.
+
+## Review efficiency across a task
+
+The unreleased [task workflow](task-efficiency.md) groups explicit Claude Code
+and Codex sources, records a caller-supplied acceptance criterion and outcome,
+and reports repeated calls with matching recorded results. MCP `analyze_task`
+returns `report` and a fixed optional `policy`; `compare_tasks` compares saved
+reports. The policy is `null` without actionable repetition evidence. Discover
+their schemas with `tools/list`. They are not in npm 2.5.2.
+
+Task analysis reads tool content in memory to detect repetition. Reports omit
+raw tool content, paths and session IDs, retaining source/line references and
+non-cryptographic reuse checks. Explicit task metadata remains in the report.
+This is a separate workflow from usage-only native import.
+
+Repeated calls can be necessary validation. Outcomes and policy application
+are explicit declarations, not independently verified facts. Keep incomplete
+coverage, inconclusive comparisons and quality regressions visible. For a
+reviewed policy, the CLI can append or revert its exact managed block in an
+explicit existing instruction file; MCP does not edit files or run the task.
 
 ## Evaluate the integration
 

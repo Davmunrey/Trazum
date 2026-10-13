@@ -76,6 +76,7 @@ ${bold('USO')}
   trazum ladder <log>
   trazum feedback
   trazum filter compact|restore|instructions [--recovery-dir <directory>]
+  trazum task analyze|policy|apply|revert|compare [--help]
   trazum --version
 
 ${bold('OPCIONES DE init')}
@@ -431,6 +432,20 @@ ${bold('OPCIONES DE rules')}
 
   "Inerte" se dice siempre sobre el corpus. Una regla que no encuentra nada en
   estos ficheros no ha demostrado no encontrar nada en ninguna parte.
+
+${bold('OPCIONES DE task')}
+  --id <id> --type <tipo>     Identifica una tarea y su tipo comparable.
+  --criterion <texto>        Declara el criterio de aceptación antes del cambio.
+  --claude-code <archivo>    Añade una sesión explícita de Claude Code; repetible.
+  --codex <archivo>          Añade una sesión explícita de Codex; repetible.
+  --outcome <valor>          accepted, rejected o unknown (por defecto unknown).
+  --assessor <etiqueta>      Obligatorio para un resultado accepted o rejected.
+  --policy <id>             baseline (por defecto) o repeat-review-v1.
+  --instructions <archivo>  Archivo local existente para apply o revert.
+  -o, --out <archivo-nuevo>  Crea un informe o política privados; no sobrescribe.
+  --json                    Los informes y comparaciones ya usan JSON por defecto.
+  Consulta task --help para analyze, policy, apply, revert y compare.
+  Máximo 400.000 caracteres entre fuentes. Nunca se infiere el éxito de la tarea.
 
 ${bold('OPCIONES DE filter')}
   --recovery-dir <directorio> Directorio privado; obligatorio para compact/restore.
