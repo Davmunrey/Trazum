@@ -14,7 +14,7 @@ intercept its requests.
 |---|---|---|
 | CLI | Read authorized files, generate reports and plans, run CI checks | Files and commands run with the caller's permissions |
 | MCP | Inspect costs, propose savings, verify a saved plan | Tools receive text; no filesystem, network or model calls |
-| Local HTTP | Check costs, plan savings and verify saved plans | Normalized text inputs; server catalogue; no spending reservation |
+| Local HTTP | Import native usage, check costs, plan and verify savings | Explicit text inputs; server catalogue; no spending reservation |
 | Gateway | Apply policy to calls explicitly routed through it | Process-local accounting; external calls remain unseen |
 | Agent skill | Teach an agent which interface and evidence to use | Instructions are not enforcement or spending authorization |
 
@@ -38,6 +38,11 @@ output excludes prompts, tool responses and paths, but retains session IDs.
 Keep raw transcripts out of model context where the host can pass them directly
 to the local tool.
 
+The unreleased [HTTP `/usage/import`](api.md#import-native-usage) accepts the
+same `format`, `text` and optional `label` (maximum 200 characters). Its whole
+request and complete response each have a 1,000,000-byte UTF-8 cap. This route
+is not in npm 2.5.2; discover it through the running server's OpenAPI document.
+
 The model ID comes from the source, not the harness name. Unknown models stay
 unpriced unless the user supplies a [price card](usage-logs.md). Recorded token
 usage priced at catalogue rates is an API-equivalent estimate. A subscription,
@@ -51,7 +56,7 @@ trazum plan usage.jsonl --json -o plan.json
 trazum verify plan.json --against later.jsonl --json
 ```
 
-For native transcripts, first call `import_usage` and pass its returned `log`
+For native transcripts, first call MCP `import_usage` and pass its returned `log`
 to `profile_usage` or `plan_savings`. Preserve its diagnostics alongside later
 reports: empty output is not zero usage, conversion cannot establish source
 completeness, and separate imports do not share deduplication state. Do not
@@ -59,7 +64,9 @@ concatenate overlapping imports. CLI normalization remains an alternative.
 For already normalized JSONL, use `profile_usage`, `plan_savings`, and
 `verify_savings` directly.
 HTTP equivalents are [`POST /savings/plan` and `POST /savings/verify`](api.md#plan-and-verify-savings),
-using the server catalogue and a shared 1,000,000-byte request limit.
+using the server catalogue and a shared 1,000,000-byte request limit. Native
+HTTP import returns the same normalized `log`; preserve its diagnostics too.
+A verify request must fit both the log and serialized plan inside that cap.
 Save the `plan` field from `plan_savings` as the document; the surrounding
 response holds additional evidence. Pass JSONL contents and serialized plan
 text to MCP, never file paths. The same plan can be opened in the dashboard.

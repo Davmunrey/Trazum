@@ -1,4 +1,5 @@
 import { SAVINGS_SCHEMAS } from './serve-savings-schema.js';
+import { IMPORT_SCHEMAS } from './serve-import-schema.js';
 /** Public contract for local, read-only cost and savings analysis. No provider calls occur here. */
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 const nullable = (schema: object) => ({ anyOf: [schema, { type: 'null' }] });
@@ -47,6 +48,7 @@ export function validateCostPayload(value: unknown): asserts value is Record<str
 
 const schemas = {
   ...SAVINGS_SCHEMAS,
+  ...IMPORT_SCHEMAS,
   CostRequest: COST_REQUEST_SCHEMA,
   HarnessCapabilities: object({
     schemaVersion: { const: 1 },
@@ -120,6 +122,12 @@ export const SERVE_OPENAPI = {
   info: { title: 'Trazum local cost and savings API', version: '1.0.0', description: 'Loopback-only read-only estimates, policy judgements and savings analysis. No authentication or CORS. Does not reserve budget, send model calls, or enforce an upstream decision. Measured positions are snapshots supplied by the CLI; inspect their windows.' },
   servers: [{ url: 'http://127.0.0.1:7317', description: 'Default TCP listener. Substitute the chosen --port, or use the Unix socket transport.' }],
   paths: {
+    '/usage/import': { post: {
+      operationId: 'importUsage', summary: 'Normalize explicit Claude Code or Codex transcript text',
+      description: 'Read-only conversion with explicit source format. No files, provider calls or measured-budget lookup. Prompts, tool content and cwd are excluded; session identifiers remain. Whole request and complete response each have a 1,000,000-byte UTF-8 limit, including JSON escaping. Unknown properties and blank inputs are refused. Conversion success does not certify source completeness or subscription billing.',
+      requestBody: { required: true, content: { 'application/json': { schema: ref('UsageImportRequest') } } },
+      responses: { '200': response('UsageImportAnswer', 'Normalized JSONL and conversion diagnostics, including zero-record imports.'), '400': response('Error', 'Malformed request, unsupported format, or input/output exceeding its byte limit.') },
+    } },
     '/capabilities': { get: { operationId: 'getCapabilities', summary: 'Discover native import formats and Trazum access channels', responses: { '200': response('HarnessCapabilities', 'Static metadata; no environment, filesystem, session or network discovery.') } } },
     '/health': { get: { operationId: 'getHealth', summary: 'Check the local process', responses: { '200': response('Health', 'Process is available.') } } },
     '/openapi.json': { get: { operationId: 'getOpenApi', summary: 'Read this OpenAPI document', responses: { '200': { description: 'OpenAPI 3.1 document.', content: { 'application/json': { schema: { type: 'object', required: ['openapi', 'info', 'paths', 'components'] } } } } } } },
