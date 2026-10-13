@@ -1,6 +1,6 @@
 ---
 name: trazum
-description: Analyse AI usage costs, check the budget in trazum.config.json before making a model call, improve prompts, and create or verify savings plans using Trazum CLI, MCP or local HTTP API. Use for usage-log analysis, prompt cost reviews, budget checks and evidence-based savings verification. Deterministic analysis needs no provider key; paid evaluations require explicit authorization.
+description: Analyse AI usage costs, check the budget in trazum.config.json before making a model call, improve prompts, and create or verify savings plans using Trazum CLI, MCP or local HTTP API. Use for usage-log analysis, prompt cost reviews, budget checks, task repetition reviews and evidence-based savings verification. Deterministic analysis needs no provider key; paid evaluations require explicit authorization.
 ---
 
 # Trazum — price a model call before you make it
@@ -22,7 +22,7 @@ spell it for you.
 | You can | Use | Spell `trazum` as |
 |---|---|---|
 | Run a shell | the CLI, straight from npm | `npx -y @trazum/cli` — no install, fetched on first use |
-| Call MCP tools but not a shell | the MCP server | **[Through MCP](#through-mcp)** below — ten tools, no shell needed |
+| Call MCP tools but not a shell | the MCP server | **[Through MCP](#through-mcp)** below — twelve tools in this checkout, no shell needed |
 | Call a local HTTP service | `trazum serve` | `GET /openapi.json` describes `POST /cost`; loopback only |
 | Import a module | the library | **[From code](#from-code)** below — `@trazum/core`, zero dependencies, browser-safe |
 | None of these | the web app | <https://trazum.vercel.app> — the pure subset runs in the page |
@@ -49,6 +49,11 @@ When the user enables tool-log filtering, read
 locally before loading them into model context; retain originals and preserve
 producer exit status. This is a shell workflow, not an automatic MCP or host hook.
 
+For task-level repetition evidence and a reversible instruction change, read
+[the task workflow](references/agent-workflows.md#task-efficiency). It requires
+explicit task sources and acceptance criteria. It is available in this checkout,
+not npm 2.5.2; check CLI help or MCP discovery before using it.
+
 ## Through MCP
 
 For an agent with no shell, this is the whole product that matters. Any MCP
@@ -62,7 +67,7 @@ client can run the server over stdio; nothing here is specific to one vendor:
 }
 ```
 
-Ten tools. Budget checks can be used within an authorized task; a successful
+Twelve tools in this checkout. Budget checks can be used within an authorized task; a successful
 check never grants permission to make a paid call:
 
 | Tool | The question it answers |
@@ -77,6 +82,8 @@ check never grants permission to make a paid call:
 | `prompt_writer` | Interviews you and assembles a prompt from your answers. Nothing is generated — the words are yours, so the same answers always produce the same text. |
 | `plan_savings` | Builds a savings plan from log text, with explicit assumptions and separate coverage evidence. Returns a plan; it applies no changes. |
 | `verify_savings` | Compares a saved plan with later log text, preserving arrived, not-arrived and cannot-tell outcomes. |
+| `analyze_task` | Groups explicit Claude Code/Codex task transcripts, returns repeated-call evidence and an optional fixed policy. Returns `{report, policy}`; applies no changes. |
+| `compare_tasks` | Compares serialized `report` fields from a baseline and later task, retaining acceptance declarations, coverage gaps and inconclusive results. |
 
 **The one rule that decides whether this works: the server never opens a
 file.** Every tool takes the *text* — the prompt itself, the log itself — and

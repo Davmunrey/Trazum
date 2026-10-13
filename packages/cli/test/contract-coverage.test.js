@@ -79,6 +79,7 @@ const CLAIMED = {
   '## The store inventory document': 'packages/cli/test/contract-coverage.test.js',
   '## The conformance document': 'packages/cli/test/contract-coverage.test.js',
   '## The watch cycle document': 'packages/cli/test/contract-coverage.test.js',
+  '## The task document': 'packages/cli/test/task-contract.test.js',
 };
 
 describe('every contract in docs/json-output.md is claimed by a guard', () => {

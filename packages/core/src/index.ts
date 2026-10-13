@@ -1,5 +1,7 @@
 export * from './types.js';
 export { MAX_INPUT_CHARS } from './limits.js';
+export { analyzeTask, parseTaskReport, compareTasks, taskPolicy, TASK_POLICY_INSTRUCTIONS } from './task.js';
+export type { TaskCategory, TaskComparison, TaskFinding, TaskFormat, TaskInput, TaskOutcome, TaskPolicy, TaskPolicyId, TaskReport } from './task.js';
 export {
   ESTIMATE_ERROR_BAND_PCT,
   BAND_CALIBRATED_PROVIDER,

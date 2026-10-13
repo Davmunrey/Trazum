@@ -18,7 +18,9 @@ describe('spend_guard over MCP', () => {
     assert.deepEqual(
       [...TOOLS.map((tool) => tool.name)].sort(),
       [
+        'analyze_task',
         'check_prompt',
+        'compare_tasks',
         'import_usage',
         'list_models',
         'optimize_prompt',

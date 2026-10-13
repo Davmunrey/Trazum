@@ -2,16 +2,15 @@
 
 [Documentation](README.md) / [JSON output](json-output.md) · [Usage inputs](usage-logs.md) · [Library](../packages/core/README.md)
 
-Trazum emits **twenty-three** documents as data, and it
-defines a twenty-fourth it does not emit. All twenty-four are contracts,
-enforced in both directions by parity tests in this repository, and this page
-is what makes them something another tool can build against rather than
-something to reverse engineer from output.
+Trazum emits **twenty-four** documents as data, and it
+defines a twenty-fifth it does not emit. The task document is one versioned
+family with report, comparison and policy-receipt variants. This index names
+the formats and the boundaries a consumer needs before depending on output.
 
-Two distinctions are drawn in the table rather than blurred, because each one
+Three distinctions are drawn in the table rather than blurred, because each one
 changes what you can actually do:
 
-- **`--contract` names twenty-four of them.** Every documented contract — the
+- **`--contract` names twenty-four of them.** These named contracts — the
   defined-but-not-emitted outcome report included — can be checked against a
   document *you* produced with a single command. The distinction between named
   and merely documented existed for releases and closed in the 1.65 arc: a
@@ -21,6 +20,10 @@ changes what you can actually do:
   as terminal text and `@trazum/core` computes it; no command writes it as JSON.
   It is a contract so that a tool of yours can produce one and have it checked —
   not a claim that Trazum will hand you one.
+- **The unreleased task family uses `version: 1` and `kind`.** Saved task
+  reports are validated by `parseTaskReport` and the task workflow; `conform`
+  and `schema` do not accept a task contract. See its separate output contract
+  below before assuming the `schemaVersion` rules apply.
 
 | Contract | Written by | `--contract` | Documented in |
 | --- | --- | --- | --- |
@@ -48,6 +51,7 @@ changes what you can actually do:
 | **store inventory** | `trazum store --json` | `store-inventory` | [json-output.md](json-output.md#the-store-inventory-document) |
 | **conformance** | `trazum conform --json` | `conformance` | [json-output.md](json-output.md#the-conformance-document) |
 | **watch cycle** | `trazum watch --json` | `watch-cycle` | [json-output.md](json-output.md#the-watch-cycle-document) |
+| **task document** | `trazum task analyze`, `compare`, `apply` and `revert`; MCP analysis/comparison | — | [json-output.md](json-output.md#the-task-document) |
 
 The count above said **seven** for as long as the table had ten rows in it, and
 it was still saying seven after the outcome report and the annual record were
@@ -166,8 +170,11 @@ because a schema cannot hold them.
 
 ## What `schemaVersion` promises
 
-Every document carries `schemaVersion`, currently `1`. It is the **only** thing
-a consumer must branch on.
+Every named `--contract` document carries `schemaVersion`, currently `1`.
+For those documents it is the **only** version a consumer must branch on.
+The task family's separate `version` / `kind` contract is documented in
+[task efficiency](task-efficiency.md#output-contract); the table below applies
+to the named `schemaVersion` contracts.
 
 | Change | Allowed in | Why |
 | --- | --- | --- |
@@ -186,12 +193,14 @@ that produces a wrong report rather than a rejected one.
 
 ## What is deliberately not in any of them
 
-**No prompt text, no completion text, no session keys, no credentials.** Session
-identifiers group turns inside Trazum and never reach any output. A usage log
-handed to Trazum carries no content, and nothing identifying comes back out.
+**No raw prompt or completion text in analysis reports.** Session identifiers
+group turns internally; usage-log inputs and native import output can retain
+them. Task reports omit raw session IDs, retaining non-cryptographic reuse
+checksums and explicit task metadata. These checksums are not anonymization;
+see the [task privacy boundary](task-efficiency.md#privacy-and-evidence-boundaries).
 
-That is enforced, not promised: the security suite fails the build if a session
-key reaches any rendering, and the store's documentation states exactly what a
+The security suite checks rendered analysis for raw session identifiers, and
+the store's documentation states exactly what a
 stored file holds so nobody has to guess about their own backup.
 
 ## Writing a connector

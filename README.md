@@ -73,6 +73,11 @@ context or guarantee more messages under your provider's limits.
 
 [Subscription efficiency workflow](docs/quick-start.md#subscription-efficiency).
 
+**In the unreleased checkout:** [task efficiency](docs/task-efficiency.md)
+connects Claude Code/Codex task usage, repeated-tool evidence, a reversible
+instruction policy and an explicit acceptance decision. Compare observed usage
+before and after a change without inferring success or guaranteed savings.
+
 ## Keep or share a report
 
 ```bash
@@ -92,6 +97,7 @@ MCP clients can query Trazum without having a native transcript adapter.
 |---|---|
 | A terminal report | [Quick start](docs/quick-start.md) |
 | Native agent session import | [Claude Code](docs/commands.md#the-agents-own-bill-trazum-from-claude-code) or [Codex](docs/codex.md) |
+| A task-level efficiency experiment | [Analyze, apply a policy and compare](docs/task-efficiency.md), unreleased |
 | An agent integration | [CLI, MCP and skill workflows](docs/agents.md) |
 | An API contract or enforced call path | [Local HTTP API](docs/api.md) or [gateway](docs/gateway.md) |
 | The full documentation | [Task-based index](docs/README.md) |
@@ -187,7 +193,7 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
     ┌────────────┬─────────────┼─────────────┬─────────────┐
  @trazum/cli  @trazum/mcp  trazum-vscode  @trazum/web    action/
- 53 commands   MCP server    the editor      Next.js    comments on
+ 54 commands   MCP server    the editor      Next.js    comments on
               for your agents  status bar               pull requests
 
               @trazum/tokenizer-openai   optional: exact counts for OpenAI
@@ -284,8 +290,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 53 commands — [the table
-above](#the-53-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 54 commands — [the table
+above](#the-54-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -301,11 +307,13 @@ from the exit codes it is supposed to relay.
 
 <a id="the-51-commands"></a>
 <a id="the-52-commands"></a>
+<a id="the-53-commands"></a>
 
-## The 53 commands
+## The 54 commands
 
 | Command | What it answers |
 |---|---|
+| [`trazum task`](docs/task-efficiency.md) | Did an accepted task use less after a reviewed instruction change? Analyze, apply, compare and revert. *Unreleased.* |
 | [`trazum filter`](docs/tool-output-filter.md) | Compact repeated tool-log lines before agent context, retaining the original locally. *Opt-in.* |
 | [`trazum init`](#the-first-five-minutes-trazum-init) | Inspect repository prompts and available usage, then write a configuration. *Optional setup after your first report.* |
 | [`trazum optimize`](#cli) | What can come out of this prompt, and what is that worth a month? |
@@ -674,7 +682,7 @@ packages/core/     dependency-free library (rules, tokens, pricing, LLM)
 packages/cli/      dependency-free CLI
   src/markdown.ts    the report as markdown, and the three escapers
   src/git.ts         the only module here that runs another program
-packages/mcp/      dependency-free MCP server — ten tools over stdio
+packages/mcp/      dependency-free MCP server — twelve tools over stdio in this checkout
   src/rpc.ts         JSON-RPC 2.0 by hand; the invariant beat the SDK
   src/tools.ts       the whole surface an agent can reach, in one file
 packages/tokenizer-openai/   optional exact counter, and the only dependency here

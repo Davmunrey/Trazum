@@ -9,12 +9,16 @@ Installing this plugin gives Claude Code two things:
   every caveat the reports themselves carry. The skill is the same document
   this repository's own agents work from, with the invocation swapped to the
   published CLI (`npx -y @trazum/cli`).
-- **The Trazum MCP server** (`npx -y @trazum/mcp`) — ten tools, including
+- **The Trazum MCP server** (`npx -y @trazum/mcp`) — twelve tools in this checkout, including
   `spend_guard`, which judges a call against the USD ceilings in your
   `trazum.config.json` *before* the call is made, and `position`, which
   states where the month stands against those ceilings from a usage log.
   `plan_savings` creates an explicit proposal and `verify_savings` checks it
   against later usage. See the [agent workflow](skills/trazum/references/agent-workflows.md).
+
+Task analysis and comparison are unreleased after npm 2.5.2. Discover the tools
+your installed server exposes before invoking them; the source checkout includes
+`analyze_task` and `compare_tasks`.
 
 Nothing here needs an API key or makes a network call: the optimiser is
 deterministic, and the profiler reads a log you already have. The one
@@ -81,6 +85,6 @@ move the cache off `$TMPDIR`.
 
 ## The rest of the product
 
-The CLI (53 commands), the HTTP gateway, the GitHub Action and the web app
+The CLI (54 commands), the HTTP gateway, the GitHub Action and the web app
 are documented in the [repository](https://github.com/Davmunrey/Trazum).
 Everything installable is on npm under `@trazum/*`.

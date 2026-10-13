@@ -21,7 +21,7 @@ serve(process.stdin, process.stdout, TOOLS, {
   name: 'trazum',
   version: '2.5.2',
   instructions:
-    'Price and budget a prompt before sending it; import native usage, plan savings and verify them against usage. Tools take text and return '
+    'Price and budget a prompt before sending it; import native usage, analyze and compare explicit tasks, plan savings and verify them against usage. Tools take text and return '
     + 'figures; none of them read files, reach the network or call a model. Token counts are '
     + `estimates, so treat a prompt within a few percent of its budget as uncertain. `
     + `Protocol ${PROTOCOL_VERSION}, tools only.`,

@@ -324,6 +324,7 @@ interface Args {
 }
 
 const VALUE_FLAGS = new Set([
+  'id', 'type', 'criterion', 'outcome', 'assessor', 'policy', 'claude-code', 'codex', 'instructions',
   'recovery-dir',
   'answers',
   'label-by-cwd',
@@ -737,6 +738,7 @@ function disabledRules(args: Args, config: TrazumConfig): RuleId[] | undefined {
  */
 const GLOBAL_FLAGS = ['help', 'h', 'version', 'v', 'locale', 'json', 'config', 'pricing', 'pricing-live', 'max-input'];
 const COMMAND_FLAGS: Record<string, string[]> = {
+  task: ['id', 'type', 'criterion', 'outcome', 'assessor', 'policy', 'claude-code', 'codex', 'instructions', 'out', 'o', 'json'],
   filter: ['recovery-dir', 'stats'],
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
@@ -13507,6 +13509,11 @@ function printRank(
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
+  if (argv[0] === 'task') {
+    const { runTask } = await import('./task.js');
+    await runTask(argv.slice(1));
+    return;
+  }
   // The stdin display filter has its own small grammar and no project config.
   if (argv[0] === 'filter') {
     const { runFilter } = await import('./filter.js');

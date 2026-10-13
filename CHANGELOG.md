@@ -19,6 +19,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Task efficiency across explicit agent sessions.** Unreleased `trazum task`
+  and MCP `analyze_task` / `compare_tasks` connect Claude Code/Codex usage,
+  repeated calls with matching recorded results, explicit acceptance and a
+  fixed opt-in instruction policy. CLI apply/revert manages only its exact
+  block in a selected existing file. Reports exclude raw tool content, paths
+  and session IDs; source/line references and non-cryptographic reuse checks
+  retain reviewability without authenticating or anonymizing evidence.
+  Paired comparisons retain quality regressions and inconclusive results;
+  repetition is not proof of waste and lower usage is not causal savings.
+  No automatic hooks, task execution, model calls or quota forecast are added.
+
 - **Native usage import over local HTTP.** Unreleased `POST /usage/import`
   accepts explicit Claude Code or Codex transcript text and an optional label,
   returning normalized JSONL, conversion diagnostics and evidence limits for

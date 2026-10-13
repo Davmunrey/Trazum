@@ -1083,7 +1083,7 @@ export const en: WebMessages = {
       cli: {
         title: 'The CLI, complete',
         body:
-          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. Everything you just watched is the real CLI: 53 commands install with "npm i -g @trazum/cli", and "help" lists what the browser can run.',
+          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. This checkout has 54 commands; install the published CLI with "npm i -g @trazum/cli". The new task workflow requires a built checkout until its release. "help" lists what the browser can run.',
       },
       finish: {
         title: 'That is the tour',

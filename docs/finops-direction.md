@@ -2,9 +2,11 @@
 
 [Documentation](README.md) / Proposed product experiments
 
-**Decision proposed for review:** position Trazum around the cost and capacity
+**Direction:** position Trazum around the cost and capacity
 needed to complete useful work, then use measurements to improve the next task.
-This document proposes experiments; it does not announce shipped automation.
+The [task efficiency workflow](task-efficiency.md) is implemented in the
+unreleased checkout. The broader control loop below remains a product direction,
+not shipped automation.
 
 ## Two budgets, one outcome
 
@@ -53,25 +55,31 @@ so overhead and quality can be measured rather than inferred.
 
 **Opt-in context and output policy, evaluated over complete tasks.**
 
-Start with the [compact instruction template](context-efficiency.md), which is
-usable now as a manual experiment. A subsequent implementation could expose an
-explicit policy export and an adapter-specific installation step. Proposed
-policy export is not an existing CLI command.
+Start with the [task efficiency workflow](task-efficiency.md): import explicit
+Claude Code/Codex sources, inspect repeated calls with matching recorded
+results, review the fixed `repeat-review-v1` policy, optionally append it to a
+selected instruction file, and compare a later task with an explicit outcome.
+The CLI supports local apply/revert; MCP provides analysis and comparison.
+These additions are unreleased and are not in npm 2.5.2. The existing
+[compact instruction template](context-efficiency.md) remains a manual option.
 
 For the first adapter, require documented access to the necessary events. Read
 metadata where available; do not assume transcripts reveal exact file-range
 reuse, hidden system context, quota accounting or task success. If the host
 cannot expose an event or enforce an action, label it unavailable.
 
-Minimum task record to design and validate:
+The first record keeps task identity/type, criterion, declared acceptance and
+assessor, policy version, measured usage, source diagnostics, harness/model
+coverage and repetition evidence. It excludes raw tool text and source paths;
+its reuse checksums do not authenticate or anonymize a report. Comparison
+refuses to treat missing coverage or replayed evidence as an improvement.
 
-- Local task identifier and task type; source/host, model and configuration.
+Additional record capabilities to design and validate:
+
 - Start/end timestamps and measurement coverage.
-- Input, cached input and output tokens when the source distinguishes them.
-- API-equivalent estimate and actual billed cost as separate optional fields.
+- Actual billed cost kept separate from the existing API-equivalent estimate.
 - Attempt count and controller overhead where attributable.
-- Acceptance criterion and result, with a human or test as the named assessor.
-- Policy version and whether it was advised, applied or unenforceable.
+- Independent evidence that a host loaded a policy and that acceptance passed.
 
 Do not infer success from a zero exit code alone or put raw file paths, prompts
 and answers in a shared record by default. Keep unknown counters unknown.
@@ -86,10 +94,10 @@ are observed. Ship a default only after the net benefit survives that check.
 
 | Existing surface | Role in this direction | Additional work required |
 |---|---|---|
-| Native imports and usage profiling | Baseline counts, cost estimates and conversation-growth evidence | Host/task attribution and coverage beyond current telemetry. |
+| Native imports and usage profiling | Baseline counts, cost estimates and conversation-growth evidence | Automatic task attribution and coverage beyond explicitly supplied telemetry. |
 | Prompt optimization and token checks | Review controlled instruction text and check chosen budgets | Whole-task quality and net-overhead evaluation. |
-| Saved plans and verification | Keep a proposed change and inspect later evidence | Task acceptance and comparable-task experiments. |
-| MCP skill and tools | Let an agent request analysis and receive advice | Compact opt-in efficiency policy and host-specific behaviour. |
+| Saved plans and verification | Keep a proposed change and inspect later evidence | Repeated experiments beyond the unreleased paired task comparison. |
+| MCP skill and tools | Let an agent request analysis and receive advice | Verified host behavior beyond the unreleased optional instruction policy. |
 | Local API and gateway | Expose policy decisions; enforce supported rules on routed calls | No blanket control over subscription-host turns; adapters need explicit support. |
 
 ## Adoption test

@@ -119,7 +119,7 @@ describe('the handshake', () => {
     fresh.close();
   });
 
-  it('lists exactly the ten tools, and no more', async () => {
+  it('lists exactly the twelve tools, and no more', async () => {
     /**
      * Asserted as an exact set. This package's whole security argument is what it
      * *cannot* do — no paths, no network, no writes — and the way that argument
@@ -145,7 +145,9 @@ describe('the handshake', () => {
     const answer = await client.send('tools/list', {});
     const names = answer.result.tools.map((tool) => tool.name).sort();
     assert.deepEqual(names, [
+      'analyze_task',
       'check_prompt',
+      'compare_tasks',
       'import_usage',
       'list_models',
       'optimize_prompt',
@@ -759,5 +761,40 @@ describe('native import through real stdio', () => {
     })));
     assert.equal(verified.verification.actions.length, planned.plan.actions.length);
     assert.equal(verified.verification.arrived, 0);
+  });
+
+  it('analyzes explicit task evidence and compares saved reports through real stdio', async () => {
+    const source = (session, tokens) => JSON.stringify({ type: 'assistant',
+      requestId: `${session}-call`, sessionId: session, timestamp: '2026-10-01T00:00:00Z',
+      message: { model: 'claude-opus-5', content: [{ type: 'text', text: 'PRIVATE-PROMPT' }],
+        usage: { input_tokens: tokens, output_tokens: 10 } } });
+    const analyze = async (taskId, session, tokens, policyId) => {
+      const response = await client.call('analyze_task', {
+        taskId, taskType: 'bugfix', criterion: 'Synthetic acceptance tests pass',
+        outcome: 'accepted', assessor: 'synthetic-check', policyId,
+        sources: [{ format: 'claude-code', text: source(session, tokens) }],
+      });
+      assert.notEqual(response.result.isError, true, bodyOf(response));
+      assert.doesNotMatch(bodyOf(response), /PRIVATE-/);
+      return JSON.parse(bodyOf(response));
+    };
+    const before = await analyze('synthetic-before', 'PRIVATE-BEFORE', 200, 'baseline');
+    const after = await analyze('synthetic-after', 'PRIVATE-AFTER', 100, 'repeat-review-v1');
+    assert.equal(before.policy, null);
+    assert.equal(before.report.task.outcome, 'accepted');
+    const response = await client.call('compare_tasks', {
+      before: JSON.stringify(before.report), after: JSON.stringify(after.report),
+    });
+    assert.notEqual(response.result.isError, true, bodyOf(response));
+    const compared = JSON.parse(bodyOf(response));
+    assert.equal(compared.kind, 'trazum-task-comparison');
+    assert.equal(compared.verdict, 'lower-usage');
+    assert.equal(compared.tokenChange.delta, -100);
+    assert.ok(compared.limitations.length > 0);
+    assert.doesNotMatch(bodyOf(response), /PRIVATE-/);
+    const invalid = await client.call('compare_tasks', {
+      before: JSON.stringify(before), after: JSON.stringify(after.report),
+    });
+    assert.equal(invalid.result.isError, true);
   });
 });
