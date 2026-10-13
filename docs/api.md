@@ -25,6 +25,7 @@ with `--port`. The Unix-socket transport exposes the same paths.
 | `GET /health` | `200`, `{ "ok": true, "schemaVersion": 1 }` |
 | `GET /openapi.json` | `200`, the complete OpenAPI contract |
 | `GET /capabilities` | `200`, static harness import and access-channel metadata |
+| `POST /usage/import` | `200`, normalized native usage and conversion diagnostics; unreleased |
 | `POST /savings/plan` | `200`, ranked savings plan with coverage evidence |
 | `POST /savings/verify` | `200`, saved-plan outcomes with later usage evidence |
 | `POST /cost` | `200`, estimated call, measured budget, verdict and scoped policy |
@@ -113,13 +114,49 @@ receive the same answer; this API has no reservation ledger. See the
 [gateway](gateway.md) for enforcement semantics and its limits.
 
 
+## Import native usage
+
+`POST /usage/import` is **unreleased**, not part of published npm **2.5.2**.
+[Build this checkout](setup.md#getting-started) and run
+`node packages/cli/dist/index.js serve --port 7317` from the repository root.
+Check `GET /openapi.json` for the route before using it.
+
+The request has required `format` (`claude-code` or `codex`) and nonblank
+`text` containing native transcript JSONL. Optional `label` is nonblank text
+of at most 200 characters, supplied explicitly; it is never inferred from a
+path. Unknown properties, invalid types and unsupported formats return
+`400 bad-request`. The endpoint receives content, never a filename: no files,
+network services, models or provider APIs are accessed.
+
+A successful response has `schemaVersion: 1`, `format`, normalized JSONL
+`log`, numeric `records`, converter `diagnostics`, `evidence` and `limitations`.
+Evidence reports `billingMode: "unknown"`, `valuation: "api-equivalent"` and
+`completeness: "not-established"`. Prompts, tool content, working directories
+and paths are not copied; session IDs and explicit labels remain. Inspect
+those identifiers before sharing the normalized output.
+
+Pass the returned `log` to `/savings/plan` or `/savings/verify` and retain
+import diagnostics alongside their results. Zero output means **no convertible
+records**, not zero usage or free work. A successful conversion cannot establish
+that the supplied source is complete. Deduplication is limited to each request;
+do not concatenate overlapping imports.
+
+Both the whole JSON request and the complete JSON response are capped at
+**1,000,000 UTF-8 bytes**. This includes labels, diagnostics and JSON escaping,
+so an accepted input can still produce an oversized response. Overflow returns
+`400`, without a partial result. Reduce the source or shorten the label; do not
+blindly split and recombine Codex snapshots, whose interpretation depends on
+counter and model context. For verification, normalized `log` and serialized
+`plan` together must fit the separate savings request's 1,000,000-byte cap.
+
 ## Plan and verify savings
 
 `POST /savings/plan` takes `{ "log": "normalized JSONL text" }`.
 `POST /savings/verify` takes `{ "log": "later normalized JSONL text", "plan": "serialized plan JSON" }`.
 These endpoints receive text, never file paths. They do not read files, persist
 plans, invoke models, reserve funds or access provider services. Import native
-sessions first with CLI `from-claude-code` / `from-codex` or MCP `import_usage`,
+sessions first with [HTTP `/usage/import`](#import-native-usage), CLI
+`from-claude-code` / `from-codex` or MCP `import_usage`,
 and retain their conversion diagnostics separately. The HTTP endpoints cannot recover excluded source records.
 
 Use the same server configuration for both requests. Its selected catalogue,
@@ -127,10 +164,9 @@ including any configured price overlay, prices all supplied logs. Request-level
 pricing overrides are refused. `GET /openapi.json` is the runtime contract;
 check it before using endpoints from a local development build with an older release.
 
-The published npm package may not include these new routes yet. To use this
-checkout, [build from source](setup.md#getting-started), then start
-`node packages/cli/dist/index.js serve --port 7317` from the repository root.
-Do not assume `npx @trazum/cli@latest` exposes them.
+The savings routes are included in release 2.5.2. The native import route above
+requires the unreleased checkout; inspect runtime OpenAPI rather than assuming
+all servers expose the same routes.
 
 This complete example uses synthetic normalized records and Node.js 20+:
 

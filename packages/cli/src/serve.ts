@@ -24,6 +24,7 @@
  */
 
 import { createServer } from 'node:http';
+import { importUsage, validateImportPayload } from './serve-import.js';
 import { planSavings, verifySavings, validateSavingsPayload } from './serve-savings.js';
 import { SERVE_OPENAPI, validateCostPayload } from './serve-schema.js';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
@@ -111,10 +112,11 @@ export function buildServer(context: ServeContext): Server {
       }
 
       const savings = url.pathname === '/savings/plan' || url.pathname === '/savings/verify';
-      if (request.method !== 'POST' || (url.pathname !== '/cost' && !savings)) {
+      const importing = url.pathname === '/usage/import';
+      if (request.method !== 'POST' || (url.pathname !== '/cost' && !savings && !importing)) {
         send(response, 404, {
           error: 'not-found',
-          detail: 'POST /cost, POST /savings/plan, POST /savings/verify, GET /health, GET /capabilities, or GET /openapi.json.',
+          detail: 'POST /cost, POST /usage/import, POST /savings/plan, POST /savings/verify, GET /health, GET /capabilities, or GET /openapi.json.',
         });
         return;
       }
@@ -123,6 +125,11 @@ export function buildServer(context: ServeContext): Server {
       try {
         const raw = await readBody(request);
         const parsed: unknown = raw.trim() === '' ? {} : JSON.parse(raw);
+        if (importing) {
+          validateImportPayload(parsed);
+          send(response, 200, importUsage(parsed));
+          return;
+        }
         if (savings) {
           if (url.pathname === '/savings/verify') {
             validateSavingsPayload(parsed, true);
