@@ -26,8 +26,15 @@ also accepts uploaded rollout files and converts them locally. For MCP
 workflows, call `import_usage` with `format: "codex"`, rollout `text` and an
 optional explicit `label`. Pass its normalized `log` to [the usage tools](agents.md)
 and preserve the import diagnostics alongside their reports. CLI conversion
-remains available; neither route establishes source completeness. The HTTP
-savings API accepts the resulting normalized text, not native rollouts.
+remains available; neither route establishes source completeness. The unreleased
+[HTTP `/usage/import`](api.md#import-native-usage) also accepts `format: "codex"`
+and transcript `text`, with an optional explicit label of at most 200 characters.
+It is not available in npm 2.5.2. Both its request and complete JSON response
+are capped at 1,000,000 UTF-8 bytes; overflow returns `400`. Do not blindly split
+and recombine snapshots to fit: counter/model context and per-request
+deduplication affect the result. Preserve diagnostics even when the normalized
+log is empty; empty does not mean free usage. The HTTP savings endpoints consume
+the normalized log, with log and plan sharing the verification request cap.
 Raw conversation text is not required by savings analysis.
 
 ## What is counted

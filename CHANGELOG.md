@@ -13,6 +13,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Native usage import over local HTTP.** Unreleased `POST /usage/import`
+  accepts explicit Claude Code or Codex transcript text and an optional label,
+  returning normalized JSONL, conversion diagnostics and evidence limits for
+  the savings workflow. Request and complete response each have a 1,000,000-byte
+  UTF-8 cap; overflow returns `400`, never partial data. Session IDs remain;
+  prompt, tool and path content is excluded. Empty output does not establish
+  zero usage, and separate requests do not share deduplication state.
+
 - **Tool-filter FinOps measurements.** `trazum filter compact --stats` emits
   opt-in JSON on stderr with exact byte counts and net heuristic token savings
   for the view actually emitted, including recovery overhead. Failed recovery
