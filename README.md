@@ -73,7 +73,7 @@ context or guarantee more messages under your provider's limits.
 
 [Subscription efficiency workflow](docs/quick-start.md#subscription-efficiency).
 
-**In the unreleased checkout:** [task efficiency](docs/task-efficiency.md)
+**In the [Tasks dashboard](https://trazum.vercel.app/?tab=tasks) and unreleased checkout:** [task efficiency](docs/task-efficiency.md)
 connects Claude Code/Codex task usage, repeated-tool evidence, a reversible
 instruction policy and an explicit acceptance decision. Compare observed usage
 before and after a change without inferring success or guaranteed savings.

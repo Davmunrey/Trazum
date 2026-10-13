@@ -6,6 +6,7 @@ import {
   BookMarked,
   BookOpen,
   Compass,
+  ClipboardCheck,
   GitCompare,
   Menu,
   Sun,
@@ -40,6 +41,7 @@ import type { Locale } from '@trazum/core';
 import { BrandMark } from './BrandMark';
 import { Account, type SessionResponse } from './Account';
 import { Bill } from './Bill';
+import { Tasks } from './Tasks';
 import { Library } from './Library';
 import { Comparer } from './Comparer';
 import { Optimizer } from './Optimizer';
@@ -430,6 +432,7 @@ export function App({
           tab are one decision, not two.
         */
         { value: 'bill', label: t.bill.tab, Icon: Receipt },
+        { value: 'tasks', label: t.tasks.tab, Icon: ClipboardCheck },
         // The playground demonstrates the tool the tabs here only allude to:
         // the CLI's pure subset, run in the page on sample data. Public on
         // purpose — it is the demo, and it holds nothing personal.
@@ -999,6 +1002,9 @@ export function App({
           <TabsContent value="bill" forceMount data-tour="panel-bill" className="data-[state=inactive]:hidden">
             <Bill t={t} />
           </TabsContent>
+          <TabsContent value="tasks" forceMount data-tour="panel-tasks" className="data-[state=inactive]:hidden">
+            <Tasks t={t} />
+          </TabsContent>
           {/*
             forceMount for the same reason as every other tab: the terminal's
             scrollback and its virtual files live only in the browser, and an
@@ -1019,9 +1025,9 @@ export function App({
           )}
 
           <footer className="mt-8 border-t pt-3.5 text-xs text-faint">
-            {t.page.footerLead(pricingReviewed)}
+            {activeTab === 'tasks' ? t.tasks.footer : <>{t.page.footerLead(pricingReviewed)}
             <code className="font-mono">--exact-tokens</code>
-            {t.page.footerTail}
+            {t.page.footerTail}</>}
           </footer>
         </div>
       </main>

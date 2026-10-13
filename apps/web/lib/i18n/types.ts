@@ -1,4 +1,5 @@
 import type { AdvisoryId, Locale } from '@trazum/core';
+import type { TaskMessages } from './tasks-en';
 
 /**
  * The web app's message dictionary.
@@ -8,6 +9,7 @@ import type { AdvisoryId, Locale } from '@trazum/core';
  * deliberately absent here — one string, one home.
  */
 export interface WebMessages {
+  tasks: TaskMessages;
   locale: Locale;
   /** BCP 47 tag used to format numbers and dates. */
   numberLocale: string;

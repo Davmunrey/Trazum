@@ -609,7 +609,7 @@ other.
 
 ## The task document
 
-**Unreleased; not in npm 2.5.2.** One versioned task family contains three
+**CLI/MCP unreleased; not in npm 2.5.2.** One versioned task family contains three
 variants. Branch on `version` and `kind`, not `schemaVersion`. `conform` and
 `schema` do not support this family. Saved report inputs are validated strictly
 by `parseTaskReport` and the task workflow; unknown fields and inconsistent
@@ -624,6 +624,8 @@ without establishing causal savings. Task policy export is plain text.
 
 CLI `task analyze` emits this object; MCP `analyze_task` wraps it in `report`.
 Save this object, not the MCP response envelope, for later comparison.
+The [Tasks dashboard](task-efficiency.md#dashboard) imports and exports this
+same report object, and exports the comparison object below without a wrapper.
 
 | Field | What it holds |
 | --- | --- |

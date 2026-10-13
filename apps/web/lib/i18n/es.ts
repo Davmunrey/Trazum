@@ -1,7 +1,9 @@
 import type { WebMessages } from './types';
+import { taskEs } from './tasks-es';
 
 /** Spanish dictionary. Mirrors `en.ts`; see that file for the contract. */
 export const es: WebMessages = {
+  tasks: taskEs,
   locale: 'es',
   numberLocale: 'es-ES',
   endonym: 'Español',
@@ -19,6 +21,7 @@ export const es: WebMessages = {
   page: {
     lede: 'Calcula todo lo que hace que este prompt cueste más de lo necesario (el caching, la gama de modelo, la Batch API) y acorta el texto sin cambiar lo que pide. El código, las URLs y los marcadores de plantilla se quedan intactos. La pestaña Tu factura lee en cambio un registro de uso, por completo en este navegador, y dice adónde fue el dinero de verdad.',
     purpose: {
+      tasks: taskEs.purpose,
       optimise:
         'Pone precio a todo lo que este prompt cuesta de más y luego acorta el texto sin cambiar '
         + 'lo que pide. El código, las URL y los marcadores de plantilla quedan exactamente como '

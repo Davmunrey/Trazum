@@ -1,7 +1,9 @@
 import type { WebMessages } from './types';
+import { taskEn } from './tasks-en';
 
 /** English dictionary, the source of truth. */
 export const en: WebMessages = {
+  tasks: taskEn,
   locale: 'en',
   numberLocale: 'en-US',
   endonym: 'English',
@@ -19,6 +21,7 @@ export const en: WebMessages = {
   page: {
     lede: 'Prices every way this prompt costs more than it needs to (caching, model tier, the Batch API) and shortens the text itself without changing what it asks for. Code, URLs and template placeholders stay exactly as they were. The Your bill tab reads a usage log instead, entirely in this browser, and says where the money actually went.',
     purpose: {
+      tasks: taskEn.purpose,
       optimise:
         'Prices every way this prompt costs more than it needs to, then shortens the text '
         + 'without changing what it asks for. Code, URLs and template placeholders stay exactly '
