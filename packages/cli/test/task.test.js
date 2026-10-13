@@ -159,6 +159,35 @@ describe('task efficiency CLI', () => {
     assert.equal(JSON.parse(readFileSync(output, 'utf8')).kind, 'trazum-task');
   });
 
+  it('refuses an input replaced after opening without publishing a report', () => {
+    const source = save('race-source.jsonl', transcript());
+    const replacement = save('replacement.jsonl', transcript(1, 80, 'synthetic-replacement'));
+    const output = location('race-report.json');
+    const preload = save('replace-input.mjs', `
+      import fs from 'node:fs/promises';
+      import { syncBuiltinESMExports } from 'node:module';
+      const original = fs.open;
+      fs.open = async (...args) => {
+        const handle = await original(...args);
+        if (args[0] === process.env.TRAZUM_RACE_SOURCE) {
+          await fs.rename(process.env.TRAZUM_RACE_REPLACEMENT, args[0]);
+        }
+        return handle;
+      };
+      syncBuiltinESMExports();
+    `);
+    const result = spawnSync(process.execPath, ['--import', preload, CLI, 'task', 'analyze',
+      ...metadata, '--claude-code', source, '-o', output], {
+      encoding: 'utf8', timeout: 15000,
+      env: { ...SPAWN_ENV, TRAZUM_RACE_SOURCE: source, TRAZUM_RACE_REPLACEMENT: replacement },
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /changed while opening/);
+    assert.equal(result.stdout, '');
+    assert.equal(existsSync(output), false);
+  });
+
   it('rejects unknown flags, duplicate metadata, extra paths and missing flag values', () => {
     const source = save('grammar.jsonl', transcript());
     for (const result of [analyze(source, '--upload'), analyze(source, '--id', 'another'),

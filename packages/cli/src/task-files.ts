@@ -14,12 +14,12 @@ export class TaskFileError extends Error {}
 export async function readTaskText(path: string, maxChars = MAX_INPUT_CHARS): Promise<string> {
   let file;
   try {
-    const entry = await lstat(path);
-    if (!entry.isFile() || entry.isSymbolicLink()) throw new TaskFileError('Input must be a regular file, not a symlink or stream.');
     file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     const before = await file.stat();
     const maxBytes = maxChars * 4;
     if (!before.isFile() || before.size > maxBytes) throw new TaskFileError('Input must be a bounded regular file, not a symlink or stream.');
+    const entry = await lstat(path);
+    if (!entry.isFile() || entry.isSymbolicLink()) throw new TaskFileError('Input must be a regular file, not a symlink or stream.');
     if (before.dev !== entry.dev || before.ino !== entry.ino || before.mtimeMs !== entry.mtimeMs || before.size !== entry.size) {
       throw new TaskFileError('Input changed while opening; retry after other edits finish.');
     }
