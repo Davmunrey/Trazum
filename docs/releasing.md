@@ -251,9 +251,10 @@ including what it costs a reader pinning with a tilde, is in
 2. **Move the `ROADMAP.md` entry** from `Next` to `Released`, and say what
    actually shipped rather than what was planned — they differ more often than
    they should.
-3. **Bump the version in all five manifests** — root, `packages/core`,
-   `packages/cli`, `packages/mcp`, `apps/web` — plus the `@trazum/core` dependency in
-   `packages/cli`, `packages/mcp` **and `apps/web`**, and the lockfile.
+3. **Bump the root and all six workspace manifests** — `packages/core`,
+   `packages/cli`, `packages/mcp`, `packages/tokenizer-openai`, `apps/web` and
+   `apps/vscode` — plus every workspace's pinned `@trazum/core` dependency
+   and the lockfile. The web app and editor extension remain private to npm.
    `publish.test.js` fails if they disagree, which is how the missing third one
    was found: this list said two for as long as the web app has depended on core,
    and every release that followed it left `apps/web` resolving a registry copy
@@ -329,6 +330,12 @@ including what it costs a reader pinning with a tilde, is in
    provider's page under the step above or not at all.
 
 8. `npm run verify`, and read the exit code rather than the output.
+   The agent suite includes the synthetic task stress probes documented in
+   [Contributing](../CONTRIBUTING.md#pull-requests). Run `npm run verify:packages`
+   to pack the public workspaces, install their tarballs together in a temporary
+   directory and rerun the stress probes against that installation. CI and the
+   release workflow both require this check before publication. This catches
+   missing package files and workspace-only resolution.
    Then `node scripts/adoption.mjs` and paste the line it prints under the
    new heading in `RELEASES.md`. Three public counters — npm downloads of
    `@trazum/cli` over the last thirty days, GitHub stars, the MCP registry's

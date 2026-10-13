@@ -12,7 +12,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 |---|---|
 | Read and reconcile spend | [bill](#one-door-trazum-bill) · [profile](#where-the-money-actually-went-trazum-profile) · [connect](#your-bill-without-the-export-trazum-connect) · [reconcile](#what-you-were-actually-billed-trazum-reconcile) · [import OpenTelemetry](#the-universal-cost-lens-trazum-from-otel) |
 | Plan and measure changes | [plan](#the-plan-trazum-plan) · [verify](#did-it-work-trazum-verify) · [switch](#when-does-the-switch-pay-trazum-switch) · [route](#is-the-cheaper-model-good-enough-trazum-route) · [history](#the-long-run-trazum-history) |
-| Review an agent task | [task](#task-efficiency-trazum-task): analyze repetitions, apply a reviewed policy and compare explicit outcomes; unreleased |
+| Review an agent task | [task](#task-efficiency-trazum-task): analyze repetitions, apply a reviewed policy and compare explicit outcomes; since 2.6.0 |
 | Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
 | Improve prompts | [use measured traffic](#the-multiplication-stops-guessing---from-log) · [reorder](#reordering-for-the-cache---reorder) · [rank](#which-prompt-to-fix-first-trazum-rank) · [prune](#which-few-shot-examples-earn-their-tokens-trazum-prune) · [evaluate](#does-the-shorter-prompt-still-work) |
 | Integrate and report | [MCP](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) · [conform](#building-on-the-format-trazum-conform) · [rollup](#more-than-one-machine-trazum-rollup) · [receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt) · [report](#the-year-from-what-was-already-written-down-trazum-report) |
@@ -102,7 +102,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 
 ### Task efficiency: `trazum task`
 
-**Unreleased; use a built checkout, not npm 2.5.2.** Group explicit Claude Code
+**Available since 2.6.0.** Group explicit Claude Code
 and Codex transcripts under a declared task and acceptance criterion, review
 repetition evidence, and compare a later accepted task after one instruction
 change. See the [complete walkthrough](task-efficiency.md) for commands,
@@ -1813,7 +1813,7 @@ believe a limit is set.
 
 Trazum emits twenty-four documents, defines a twenty-fifth it does not emit, and
 [docs/format.md](format.md) is the index. `conform` checks its twenty-four named
-contracts; the unreleased task document family has a separate `version` / `kind`
+contracts; the task document family introduced in 2.6.0 has a separate `version` / `kind`
 contract and is validated by the task workflow. This is how you check your own
 emitter against a named contract.
 

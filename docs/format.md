@@ -20,7 +20,7 @@ changes what you can actually do:
   as terminal text and `@trazum/core` computes it; no command writes it as JSON.
   It is a contract so that a tool of yours can produce one and have it checked —
   not a claim that Trazum will hand you one.
-- **The unreleased task family uses `version: 1` and `kind`.** Saved task
+- **The task family introduced in 2.6.0 uses `version: 1` and `kind`.** Saved task
   reports are validated by `parseTaskReport` and the task workflow; `conform`
   and `schema` do not accept a task contract. See its separate output contract
   below before assuming the `schemaVersion` rules apply.

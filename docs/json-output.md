@@ -20,7 +20,7 @@ that no longer exists.
 
 ## The promise
 
-These promises apply to the `schemaVersion` documents. The unreleased
+These promises apply to the `schemaVersion` documents. The 2.6.0
 [task document](#the-task-document) uses its own strict `version` / `kind`
 contract and retains explicit task metadata and non-cryptographic reuse
 checksums; its separate privacy and validation boundaries are stated below.
@@ -609,7 +609,7 @@ other.
 
 ## The task document
 
-**CLI/MCP unreleased; not in npm 2.5.2.** One versioned task family contains three
+**Available in CLI/MCP 2.6.0 and later.** One versioned task family contains three
 variants. Branch on `version` and `kind`, not `schemaVersion`. `conform` and
 `schema` do not support this family. Saved report inputs are validated strictly
 by `parseTaskReport` and the task workflow; unknown fields and inconsistent

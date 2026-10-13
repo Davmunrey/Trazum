@@ -16,7 +16,7 @@ Installing this plugin gives Claude Code two things:
   `plan_savings` creates an explicit proposal and `verify_savings` checks it
   against later usage. See the [agent workflow](skills/trazum/references/agent-workflows.md).
 
-Task analysis and comparison are unreleased after npm 2.5.2. Discover the tools
+Task analysis and comparison require npm 2.6.0 or later. Discover the tools
 your installed server exposes before invoking them; the source checkout includes
 `analyze_task` and `compare_tasks`.
 

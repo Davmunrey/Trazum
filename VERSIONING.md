@@ -220,9 +220,10 @@ To release:
    current arc's thesis — then the minor. There is no rule about how many
    chapters an arc has; there is a rule that the minor is not spent on
    anything less than a finished story.
-2. Bump the version in **all five** manifests — the root, `@trazum/core`,
-   `@trazum/cli`, `@trazum/mcp` and the web app — including the `@trazum/core`
-   dependency pinned by the CLI and the MCP server. Regenerate the lockfile.
+2. Bump the root and **all six workspace** manifests — core, CLI, MCP,
+   tokenizer, web app and editor extension — including every pinned
+   `@trazum/core` dependency. Regenerate the lockfile and follow the plugin
+   and MCP registry steps in the release procedure.
 3. `npm run verify` must be green — build, tests, typecheck across all four
    workspaces, and the web build. The web build in particular catches things
    nothing else does: `@trazum/core` is bundled for the browser, so one

@@ -25,7 +25,7 @@ with `--port`. The Unix-socket transport exposes the same paths.
 | `GET /health` | `200`, `{ "ok": true, "schemaVersion": 1 }` |
 | `GET /openapi.json` | `200`, the complete OpenAPI contract |
 | `GET /capabilities` | `200`, static harness import and access-channel metadata |
-| `POST /usage/import` | `200`, normalized native usage and conversion diagnostics; unreleased |
+| `POST /usage/import` | `200`, normalized native usage and conversion diagnostics; since 2.6.0 |
 | `POST /savings/plan` | `200`, ranked savings plan with coverage evidence |
 | `POST /savings/verify` | `200`, saved-plan outcomes with later usage evidence |
 | `POST /cost` | `200`, estimated call, measured budget, verdict and scoped policy |
@@ -116,7 +116,7 @@ receive the same answer; this API has no reservation ledger. See the
 
 ## Import native usage
 
-`POST /usage/import` is **unreleased**, not part of published npm **2.5.2**.
+`POST /usage/import` is available in **2.6.0 and later**.
 [Build this checkout](setup.md#getting-started) and run
 `node packages/cli/dist/index.js serve --port 7317` from the repository root.
 Check `GET /openapi.json` for the route before using it.
@@ -165,7 +165,7 @@ pricing overrides are refused. `GET /openapi.json` is the runtime contract;
 check it before using endpoints from a local development build with an older release.
 
 The savings routes are included in release 2.5.2. The native import route above
-requires the unreleased checkout; inspect runtime OpenAPI rather than assuming
+requires 2.6.0 or later; inspect runtime OpenAPI rather than assuming
 all servers expose the same routes.
 
 This complete example uses synthetic normalized records and Node.js 20+:

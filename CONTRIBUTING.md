@@ -290,6 +290,18 @@ vulnerability privately.
 
 ## Pull requests
 
+Release candidates must pass the synthetic stress probes in `npm run test:agents`
+as well as the full verification below. The task probes exercise the 16-source,
+400,000-character ceiling, bounded/truncated evidence, queued MCP requests,
+concurrent local HTTP imports and recovery after invalid input. They check
+correctness and isolation; their elapsed times are diagnostics, not production
+capacity guarantees. `npm run verify:packages` packs and installs all public
+packages in a temporary directory, then runs these probes against that install.
+CI and the release workflow require it. For an existing packed install, set
+`TRAZUM_STRESS_INSTALL_ROOT` to a temporary directory containing the installed
+`@trazum/core`, `@trazum/cli` and `@trazum/mcp`, then run
+`node --test test/task-stress.test.mjs` from this checkout.
+
 Say what changed and why, and be explicit about anything you did not do.
 
 Add a `CHANGELOG.md` entry under `Unreleased`. Not only for user-visible

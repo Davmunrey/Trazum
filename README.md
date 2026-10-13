@@ -73,7 +73,7 @@ context or guarantee more messages under your provider's limits.
 
 [Subscription efficiency workflow](docs/quick-start.md#subscription-efficiency).
 
-**In the [Tasks dashboard](https://trazum.vercel.app/?tab=tasks) and unreleased checkout:** [task efficiency](docs/task-efficiency.md)
+**In the [Tasks dashboard](https://trazum.vercel.app/?tab=tasks) and CLI/MCP 2.6.0:** [task efficiency](docs/task-efficiency.md)
 connects Claude Code/Codex task usage, repeated-tool evidence, a reversible
 instruction policy and an explicit acceptance decision. Compare observed usage
 before and after a change without inferring success or guaranteed savings.
@@ -97,7 +97,7 @@ MCP clients can query Trazum without having a native transcript adapter.
 |---|---|
 | A terminal report | [Quick start](docs/quick-start.md) |
 | Native agent session import | [Claude Code](docs/commands.md#the-agents-own-bill-trazum-from-claude-code) or [Codex](docs/codex.md) |
-| A task-level efficiency experiment | [Analyze, apply a policy and compare](docs/task-efficiency.md), unreleased |
+| A task-level efficiency experiment | [Analyze, apply a policy and compare](docs/task-efficiency.md), since 2.6.0 |
 | An agent integration | [CLI, MCP and skill workflows](docs/agents.md) |
 | An API contract or enforced call path | [Local HTTP API](docs/api.md) or [gateway](docs/gateway.md) |
 | The full documentation | [Task-based index](docs/README.md) |
@@ -313,7 +313,7 @@ from the exit codes it is supposed to relay.
 
 | Command | What it answers |
 |---|---|
-| [`trazum task`](docs/task-efficiency.md) | Did an accepted task use less after a reviewed instruction change? Analyze, apply, compare and revert. *Unreleased.* |
+| [`trazum task`](docs/task-efficiency.md) | Did an accepted task use less after a reviewed instruction change? Analyze, apply, compare and revert. Since 2.6.0. |
 | [`trazum filter`](docs/tool-output-filter.md) | Compact repeated tool-log lines before agent context, retaining the original locally. *Opt-in.* |
 | [`trazum init`](#the-first-five-minutes-trazum-init) | Inspect repository prompts and available usage, then write a configuration. *Optional setup after your first report.* |
 | [`trazum optimize`](#cli) | What can come out of this prompt, and what is that worth a month? |

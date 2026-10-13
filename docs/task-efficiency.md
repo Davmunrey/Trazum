@@ -2,7 +2,7 @@
 
 [Documentation index](README.md) · [Agent integrations](agents.md) · [Context policy](context-efficiency.md)
 
-**Available in the dashboard and a built checkout; CLI/MCP not published in npm 2.5.2.** This workflow
+**Available in the dashboard and CLI/MCP 2.6.0 and later.** This workflow
 groups explicitly supplied Claude Code and Codex transcripts under one task,
 finds repeated tool calls for review, and compares a later run with an explicit
 acceptance decision. It makes no model calls and does not run the task for you.
@@ -57,7 +57,15 @@ instructions keep the core's fixed English text.
 
 ## Prepare a baseline
 
-From the repository root, build the checkout and use its CLI:
+Without a checkout, use the published CLI:
+
+```sh
+npx -y @trazum/cli@2.6.0 task --help
+```
+
+The examples below use a built checkout so they also work while developing Trazum.
+Replace `node packages/cli/dist/index.js` with `npx -y @trazum/cli@2.6.0` when
+using npm. From the repository root:
 
 ```sh
 npm run build
@@ -229,7 +237,7 @@ an explicitly identified test process.
 
 ## Output contract
 
-The unreleased task document family uses `version: 1` and a `kind`
+The task document family introduced in 2.6.0 uses `version: 1` and a `kind`
 discriminator, separate from the older `schemaVersion` contracts.
 `trazum conform` and `trazum schema` do not support this family. Preserve the full saved
 report: `parseTaskReport`, CLI policy/apply/compare and MCP comparison validate
@@ -295,7 +303,7 @@ future upstream changes can require adapter updates.
 
 ## Use it from an agent
 
-The unreleased MCP tools `analyze_task` and `compare_tasks` use the same core.
+The MCP tools `analyze_task` and `compare_tasks`, available since 2.6.0, use the same core.
 `analyze_task` receives explicit transcript text and task metadata and returns
 `report` and `policy`; `policy` is `null` when no actionable repeated read,
 search or explicit failure was found. Save the `report` object, not the

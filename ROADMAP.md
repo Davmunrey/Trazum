@@ -2744,17 +2744,26 @@ restore and concise-output guidance. Native usage import and local savings
 planning/verification connect measured costs to a selective efficiency workflow.
 Subscription quotas and task quality remain outside the filter's claims.
 
+## 2.6.0 — Task efficiency with explicit outcomes — released
+
+The [task workflow](docs/task-efficiency.md) connects explicit Claude Code/Codex
+sources, repetition evidence, reviewed instructions and declared acceptance.
+CLI/core provide analysis, reversible local policy application and conservative
+comparison; MCP provides analysis/comparison, and the dashboard adds local
+reports with recoverable export. Native HTTP usage import and filter statistics
+complete the release. Bounded and concurrent stress probes cover the installable
+packages. No causal savings, inferred task success or automatic harness control
+is claimed.
+
 ## Next
 
-**Target: 2.6.0, task efficiency (unreleased).** The approved next product step
-connects explicit Claude Code/Codex task sources, repetition evidence, a
-reviewed instruction policy and an explicit acceptance outcome. The
-[checkout workflow](docs/task-efficiency.md) provides analysis, reversible
-local application and conservative before/after comparison through CLI/core,
-with MCP analysis and comparison. It does not establish causal savings,
-infer task success or control a running harness. The next release requires
-the same build, type and behavioral checks as the existing surfaces; keeping
-the policy as a default requires evidence from representative accepted tasks.
+**Target: 2.6.1, repeated-task evaluation.**
+
+Validate repeated experiments on representative accepted tasks before making
+the instruction policy a default. Measure cost per accepted task, quality,
+retries and controller overhead together. Any broader shared-service or fleet
+claim requires workload-specific throughput, backpressure and isolation evidence;
+local stress tests alone do not establish that capacity.
 
 **Historical boundary.** [The 2.4
 plan](docs/plan-2.4.md) was the previous plan, 2.4.0 delivered every

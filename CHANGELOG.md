@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.6.0 — 2026-10-13
+
 ### Fixed
 
 - **Task exports remain accessible when downloads are blocked.** Report JSON,
@@ -33,7 +37,7 @@ merged commit with no entry is a change only `git log` remembers.
   copy, bounded UTF-8 imports and a clear-workspace action keep the workflow
   local. No task execution, automatic policy application or causal savings claim.
 
-- **Task efficiency across explicit agent sessions.** Unreleased `trazum task`
+- **Task efficiency across explicit agent sessions.** `trazum task`
   and MCP `analyze_task` / `compare_tasks` connect Claude Code/Codex usage,
   repeated calls with matching recorded results, explicit acceptance and a
   fixed opt-in instruction policy. CLI apply/revert manages only its exact
@@ -44,7 +48,7 @@ merged commit with no entry is a change only `git log` remembers.
   repetition is not proof of waste and lower usage is not causal savings.
   No automatic hooks, task execution, model calls or quota forecast are added.
 
-- **Native usage import over local HTTP.** Unreleased `POST /usage/import`
+- **Native usage import over local HTTP.** `POST /usage/import`
   accepts explicit Claude Code or Codex transcript text and an optional label,
   returning normalized JSONL, conversion diagnostics and evidence limits for
   the savings workflow. Request and complete response each have a 1,000,000-byte
@@ -59,6 +63,16 @@ merged commit with no entry is a change only `git log` remembers.
   No log content, recovery path or hash enters the report. Stdout and producer
   exit status remain unchanged. These are per-invocation estimates, not billed
   savings, subscription capacity or task-quality measurements.
+
+### Verification
+
+- Synthetic stress probes now run in the agent workflow suite: the 16-source,
+  400,000-character task ceiling, bounded findings with inconclusive comparisons
+  after truncation, CLI/core parity, 16 queued MCP calls with interleaved errors,
+  and 24 concurrent local HTTP imports followed by oversize refusal and recovery.
+  CI and the release workflow also require these probes against tarballs
+  installed outside the workspace before publication. These
+  tests establish bounded correctness, not a hosted-service throughput promise.
 
 ## 2.5.2 — 2026-10-12
 

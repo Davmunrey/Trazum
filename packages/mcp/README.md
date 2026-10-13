@@ -30,8 +30,8 @@ because "MCP server" reads like infrastructure and this is not.
 | `check_prompt` | Does this prompt fit `maxTokens`? And if not, would optimising it fit? |
 | `optimize_prompt` | The shorter text, the token counts either side, what the difference is worth per month, and any advisories. |
 | `import_usage` | Convert explicit Claude Code or Codex transcript text into normalized JSONL; retain diagnostics and evidence gaps. No file access or inferred labels. |
-| `analyze_task` | Analyze explicit native task transcripts for recorded usage and repeated tool results. Return evidence references and a fixed, optional review policy; never apply it. Unreleased after 2.5.2. |
-| `compare_tasks` | Compare two saved task reports using declared acceptance criteria, outcomes and evidence gates. Lower usage alone does not prove better quality or savings. Unreleased after 2.5.2. |
+| `analyze_task` | Analyze explicit native task transcripts for recorded usage and repeated tool results. Return evidence references and a fixed, optional review policy; never apply it. Since 2.6.0. |
+| `compare_tasks` | Compare two saved task reports using declared acceptance criteria, outcomes and evidence gates. Lower usage alone does not prove better quality or savings. Since 2.6.0. |
 | `profile_usage` | Where the money went, from a usage log passed as text: the spend split, per label and per model, whether caching paid for itself, and the levers that would actually move the bill. `label`, `since`/`until` and `previous_log` drill down and compare; `what_if` prices the same calls on another model — arithmetic, not advice, and it says so. `pricing_overlay` takes the same JSON a `--pricing` overlay file holds, as text — models it adds or overrides price the whole report, and the report says the overlay is in effect. Uses recorded token counts priced with the selected catalogue; this is not a reconciled invoice. |
 | `plan_savings` | Rank actions from normalized usage-log text, keeping projected savings, measured stakes, assumptions and evidence gaps separate. Returns a JSON plan compatible with the CLI. |
 | `verify_savings` | Check saved plan JSON against newer log text. Returns arrived, not-arrived or cannot-tell per action, attribution and gate failures. |
@@ -76,8 +76,8 @@ No paths are opened, no environment is read and no network or writes occur.
 
 ## Analyze, review and compare a task
 
-`analyze_task` and `compare_tasks` are available from this checkout; they are not
-in the published `2.5.2` package. Both are read-only and deterministic. The server
+`analyze_task` and `compare_tasks` are available in `2.6.0` and later.
+Both are read-only and deterministic. The server
 advertises these properties through MCP tool annotations.
 
 1. Call `analyze_task` with an explicit task, acceptance criterion and transcripts:
