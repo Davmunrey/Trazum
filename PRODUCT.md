@@ -45,3 +45,13 @@ Keyboard navigation, labelled inputs, visible focus, reduced motion, responsive 
 ## Evidence
 
 Existing code, examples, source-linked claims and test fixtures. Illustrative figures must stay labelled; never present example data as customer evidence.
+
+## Scale and release quality
+
+Evaluate value per accepted task, including retries, failures, analysis overhead
+and unknown outcomes. Lower token use alone does not establish higher value.
+Every release must exercise input/output boundaries, concurrent requests and
+recovery after refusal on its affected surfaces. Test the installable packages
+as well as the checkout. Keep synthetic stress measurements separate from
+production capacity claims; shared-service scale requires its own load and
+isolation evidence before being promised.

@@ -52,8 +52,8 @@ producer exit status. This is a shell workflow, not an automatic MCP or host hoo
 
 For task-level repetition evidence and a reversible instruction change, read
 [the task workflow](references/agent-workflows.md#task-efficiency). It requires
-explicit task sources and acceptance criteria. It is available in this checkout,
-not npm 2.5.2; check CLI help or MCP discovery before using it.
+explicit task sources and acceptance criteria. It requires version 2.6.0 or
+later; check CLI help or MCP discovery before using it.
 
 ## Through MCP
 

@@ -5,7 +5,7 @@
 **Direction:** position Trazum around the cost and capacity
 needed to complete useful work, then use measurements to improve the next task.
 The [task efficiency workflow](task-efficiency.md) is implemented in the
-unreleased checkout. The broader control loop below remains a product direction,
+2.6.0 release. The broader control loop below remains a product direction,
 not shipped automation.
 
 ## Two budgets, one outcome
@@ -60,7 +60,7 @@ Claude Code/Codex sources, inspect repeated calls with matching recorded
 results, review the fixed `repeat-review-v1` policy, optionally append it to a
 selected instruction file, and compare a later task with an explicit outcome.
 The CLI supports local apply/revert; MCP provides analysis and comparison.
-These additions are unreleased and are not in npm 2.5.2. The existing
+These additions are available since 2.6.0. The existing
 [compact instruction template](context-efficiency.md) remains a manual option.
 
 For the first adapter, require documented access to the necessary events. Read
@@ -96,8 +96,8 @@ are observed. Ship a default only after the net benefit survives that check.
 |---|---|---|
 | Native imports and usage profiling | Baseline counts, cost estimates and conversation-growth evidence | Automatic task attribution and coverage beyond explicitly supplied telemetry. |
 | Prompt optimization and token checks | Review controlled instruction text and check chosen budgets | Whole-task quality and net-overhead evaluation. |
-| Saved plans and verification | Keep a proposed change and inspect later evidence | Repeated experiments beyond the unreleased paired task comparison. |
-| MCP skill and tools | Let an agent request analysis and receive advice | Verified host behavior beyond the unreleased optional instruction policy. |
+| Saved plans and verification | Keep a proposed change and inspect later evidence | Repeated experiments beyond the paired task comparison introduced in 2.6.0. |
+| MCP skill and tools | Let an agent request analysis and receive advice | Verified host behavior beyond the optional instruction policy introduced in 2.6.0. |
 | Local API and gateway | Expose policy decisions; enforce supported rules on routed calls | No blanket control over subscription-host turns; adapters need explicit support. |
 
 ## Adoption test

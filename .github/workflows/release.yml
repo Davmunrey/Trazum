@@ -167,6 +167,9 @@ jobs:
           npm pack --dry-run -w @trazum/mcp
           npm pack --dry-run -w @trazum/tokenizer-openai
 
+      - name: Stress the packed release in an isolated installation
+        run: npm run verify:packages
+
       # The packages publish in dependency order, so a half-finished release is
       # the expensive shape: core uploads, the CLI fails, and core's number is
       # spent — npm never reuses a version, so the whole set has to move to the

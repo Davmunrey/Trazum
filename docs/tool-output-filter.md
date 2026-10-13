@@ -55,7 +55,7 @@ matter; recovering every result would defeat the purpose of the filter.
 
 ## Measure the emitted view
 
-In the next release after 2.5.2 (or a built checkout), add `--stats` to `compact`
+In 2.6.0 and later, add `--stats` to `compact`
 to write one JSON record to the filter's stderr. Stdout stays the same. For
 example, in Bash:
 

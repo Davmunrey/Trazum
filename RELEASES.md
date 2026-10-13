@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.5.2**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.6.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,45 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.6.0 — Compare accepted tasks, keep the evidence
+
+**Adoption, read 2026-10-13:** 1815 downloads of @trazum/cli in the last 30 days, 1 GitHub stars, MCP registry latest unavailable (The operation was aborted due to timeout).
+
+Trazum can now group explicit Claude Code and Codex sessions into a task report,
+show repeated tool results, and compare a later run against the same acceptance
+criterion. The CLI supports review, reversible instruction application and
+comparison; MCP adds `analyze_task` and `compare_tasks`. Neither interface runs
+the task or decides that it succeeded.
+
+```bash
+npx -y @trazum/cli@2.6.0 task --help
+npx -y @trazum/mcp@2.6.0
+```
+
+The [task walkthrough](docs/task-efficiency.md) covers the complete workflow.
+The Tasks dashboard analyzes selected files locally and exports portable JSON
+and instructions through preview, download, clipboard copy or text selection.
+Reports retain coverage gaps and caller-declared outcomes. Repeated calls can
+be deliberate verification; fewer tokens do not establish causal savings or
+better quality. Truncated or incomplete evidence yields an inconclusive comparison.
+
+The local HTTP API gains `/usage/import` for Claude Code/Codex transcripts.
+`filter compact --stats` adds opt-in byte/token estimates without changing
+stdout or the producer's exit status. Recovery rejects FIFOs instead of waiting
+indefinitely for a writer.
+
+Release validation now includes dense inputs at the 16-source/400,000-character
+task ceiling, bounded reports, queued MCP calls with errors, and 24 concurrent
+local HTTP requests with subsequent oversize refusal and recovery. The probes
+also run against a packed installation. These are synthetic correctness checks,
+not a hosted-service capacity promise. Evaluation at scale must include accepted
+outcomes, retries, failures and controller overhead, not just token reductions.
+
+No breaking change, new cloud service, automatic hook or default policy is added.
+All packages, the plugin and MCP discovery advance together to 2.6.0.
 
 ---
 

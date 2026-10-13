@@ -33,7 +33,7 @@ equivalent or explain the version gap, rather than inventing a tool response.
 
 ## Task efficiency
 
-This workflow is available in a built checkout, not npm 2.5.2. Check
+This workflow is available in version 2.6.0 and later. Check
 `trazum task --help` or MCP `tools/list` before using it. It has no HTTP or
 Playground equivalent yet. Use it for an authorized task review, not as an
 instruction to inspect every conversation on the machine.

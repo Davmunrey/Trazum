@@ -38,10 +38,10 @@ output excludes prompts, tool responses and paths, but retains session IDs.
 Keep raw transcripts out of model context where the host can pass them directly
 to the local tool.
 
-The unreleased [HTTP `/usage/import`](api.md#import-native-usage) accepts the
+The [HTTP `/usage/import`](api.md#import-native-usage) route accepts the
 same `format`, `text` and optional `label` (maximum 200 characters). Its whole
 request and complete response each have a 1,000,000-byte UTF-8 cap. This route
-is not in npm 2.5.2; discover it through the running server's OpenAPI document.
+is available since 2.6.0; discover it through the running server's OpenAPI document.
 
 The model ID comes from the source, not the harness name. Unknown models stay
 unpriced unless the user supplies a [price card](usage-logs.md). Recorded token
@@ -81,12 +81,12 @@ for budget checks, unknown results, paid calls and gateway limitations.
 
 ## Review efficiency across a task
 
-The unreleased [task workflow](task-efficiency.md) groups explicit Claude Code
+The [task workflow](task-efficiency.md), available since 2.6.0, groups explicit Claude Code
 and Codex sources, records a caller-supplied acceptance criterion and outcome,
 and reports repeated calls with matching recorded results. MCP `analyze_task`
 returns `report` and a fixed optional `policy`; `compare_tasks` compares saved
 reports. The policy is `null` without actionable repetition evidence. Discover
-their schemas with `tools/list`. They are not in npm 2.5.2.
+their schemas with `tools/list`. Older servers may not expose them.
 
 Task analysis reads tool content in memory to detect repetition. Reports omit
 raw tool content, paths and session IDs, retaining source/line references and

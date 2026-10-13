@@ -26,10 +26,10 @@ also accepts uploaded rollout files and converts them locally. For MCP
 workflows, call `import_usage` with `format: "codex"`, rollout `text` and an
 optional explicit `label`. Pass its normalized `log` to [the usage tools](agents.md)
 and preserve the import diagnostics alongside their reports. CLI conversion
-remains available; neither route establishes source completeness. The unreleased
+remains available; neither route establishes source completeness. The
 [HTTP `/usage/import`](api.md#import-native-usage) also accepts `format: "codex"`
 and transcript `text`, with an optional explicit label of at most 200 characters.
-It is not available in npm 2.5.2. Both its request and complete JSON response
+It is available since 2.6.0. Both its request and complete JSON response
 are capped at 1,000,000 UTF-8 bytes; overflow returns `400`. Do not blindly split
 and recombine snapshots to fit: counter/model context and per-request
 deduplication affect the result. Preserve diagnostics even when the normalized
