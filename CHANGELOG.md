@@ -11,6 +11,12 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **Recovery files cannot stall the tool filter.** A FIFO in the recovery store
+  is rejected without waiting for a writer. `restore` fails without emitting
+  content; `compact` passes the original through and reports zero savings.
+
 ### Added
 
 - **Native usage import over local HTTP.** Unreleased `POST /usage/import`

@@ -73,6 +73,28 @@ describe('trazum-filter display pipeline', () => {
     symlinkSync(target, join(dir, `${key}.log`));
     assert.equal(run(['restore', key, '--recovery-dir', dir]).status, 1);
   });
+  it('rejects FIFO recovery files without blocking restore or compact', { skip: process.platform === 'win32' }, () => {
+    const dir = store('fifo');
+    run(['compact', '--recovery-dir', dir], noise);
+    const path = join(dir, `${key}.log`);
+    rmSync(path);
+    const created = spawnSync('mkfifo', [path], { env: SPAWN_ENV, timeout: 5000 });
+    assert.equal(created.error, undefined);
+    assert.equal(created.status, 0);
+    const restore = run(['restore', key, '--recovery-dir', dir]);
+    assert.equal(restore.error, undefined, 'restore must finish without its child-process timeout');
+    assert.equal(restore.status, 1);
+    assert.equal(restore.stdout.length, 0);
+    assert.match(restore.stderr.toString(), /Invalid recovery file/);
+    const compact = run(['compact', '--recovery-dir', dir, '--stats'], noise);
+    assert.equal(compact.error, undefined, 'compact must finish without its child-process timeout');
+    assert.equal(compact.status, 0);
+    assert.deepEqual(compact.stdout, noise);
+    const stats = JSON.parse(compact.stderr);
+    assert.equal(stats.reason, 'storage-failed');
+    assert.equal(stats.applied, false);
+    assert.equal(stats.estimatedTokensSaved, 0);
+  });
   it('preserves producer errors with pipefail and never merges stderr into the filter', { skip: process.platform === 'win32' }, () => {
     const result = spawnSync('bash', ['-o', 'pipefail', '-c',
       '(printf "ok\\n"; printf "ERROR original\\n" >&2; exit 7) | node packages/cli/dist/index.js filter compact --recovery-dir ./unused-recovery'],
