@@ -51,7 +51,8 @@ async function privateDirectory(path: string, create: boolean): Promise<void> {
   }
 }
 async function readOriginal(store: string, key: string): Promise<Buffer> {
-  const file = await open(join(store, `${key}.log`), constants.O_RDONLY | constants.O_NOFOLLOW);
+  // Opening a FIFO must not block before the regular-file check can reject it.
+  const file = await open(join(store, `${key}.log`), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
   try {
     const stat = await file.stat();
     if (!stat.isFile() || stat.size > MAX_BYTES) throw new Error('Invalid recovery file.');
