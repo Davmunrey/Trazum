@@ -128,7 +128,7 @@ describe('browser task reports share the core protocol', () => {
 
 describe('task content stays local', () => {
   it('does not add network, persistence, analytics or HTML injection to the task workflow', () => {
-    for (const path of ['../components/Tasks.tsx', '../components/TaskRunReport.tsx', '../lib/task-workflow.ts']) {
+    for (const path of ['../components/Tasks.tsx', '../components/TaskRunReport.tsx', '../components/TaskExportDialog.tsx', '../lib/task-workflow.ts', '../lib/task-export.ts']) {
       const source = readFileSync(new URL(path, import.meta.url), 'utf8');
       assert.doesNotMatch(source, /\bfetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|localStorage|sessionStorage|indexedDB|\btrack\s*\(|dangerouslySetInnerHTML/);
     }

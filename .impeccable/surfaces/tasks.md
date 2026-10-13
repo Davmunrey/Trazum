@@ -12,4 +12,6 @@ FIRST VIEWPORT: Existing navigation and task heading; two workflow choices; priv
 
 FORM: Code-led extension of the existing surface. The signature interaction carries an analyzed baseline into comparison without re-importing it. Primary buttons retain the established press response; no additional animation or raster assets. Coverage gaps and inconclusive results have equal prominence to a lower-token verdict.
 
+EXPORT: A bounded, square review dialog exposes the exact file contents before delivery. Download, clipboard copy and manual text selection are independent routes; pending clipboard access must not block the alternatives. Report a requested download without claiming the file was saved. Preserve keyboard focus and the entered workspace when closing the dialog.
+
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance. Inspect desktop/mobile and English/Spanish states; document verified behavior and preserve the existing identity. The context engine was unavailable; no engine audit is claimed.
