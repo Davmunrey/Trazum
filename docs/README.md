@@ -8,7 +8,7 @@ from the steps needed to use the tool.
 | See a result in minutes | [Quick start](quick-start.md) | [Setup and integrations](setup.md) |
 | Understand recorded spend | [Usage logs](usage-logs.md) | [Commands](commands.md#find-a-command), [plans](plan-format.md) |
 | Import Codex sessions | [Codex sessions](codex.md) | Local rollout telemetry and its limits |
-| Compare an agent task before and after a change | [Task efficiency](task-efficiency.md) | Repetition evidence, optional policy and explicit acceptance; unreleased |
+| Compare an agent task before and after a change | [Task efficiency](task-efficiency.md#dashboard) | Local dashboard workflow; CLI/MCP commands unreleased |
 | Set a budget | [CI gates](ci.md) | [Gateway](gateway.md), [scheduled checks](running.md) |
 | Build an integration | [Agents and harnesses](agents.md) or [Setup](setup.md) | [Local HTTP API](api.md), [JSON output](json-output.md) |
 | Change Trazum | [Contributing](../CONTRIBUTING.md) | [Rules](authoring-rules.md), [releases](releasing.md) |
@@ -47,7 +47,7 @@ In the order somebody actually meets them:
 | [Local HTTP API](api.md) | Loopback cost oracle and discoverable OpenAPI contract |
 | [Tool-output filter](tool-output-filter.md) | Opt-in repeated-log compression with local recovery and optional output guidance |
 | [Efficient context instructions](context-efficiency.md) | Optional compact agent instructions and a task-level evaluation method |
-| [Task efficiency](task-efficiency.md) | Analyze Claude Code/Codex tasks, review repeated calls, apply a reversible policy and compare outcomes; unreleased |
+| [Task efficiency](task-efficiency.md) | Dashboard analysis and comparison; unreleased CLI/MCP workflow adds reversible policy application |
 | [Agent integrations](agents.md) | Harnesses, providers, CLI/MCP workflows and deterministic evaluations |
 | [The gateway](gateway.md) | Standing in the path of the call, and refusing |
 | [CI](ci.md) | Gating a build on tokens, dollars and quality |

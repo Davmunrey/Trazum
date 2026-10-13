@@ -19,6 +19,13 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Task efficiency in the dashboard.** The Tasks tab reads explicitly selected
+  Claude Code/Codex sessions entirely in the browser, shows repetition evidence
+  and coverage gaps, exports core-compatible JSON and optional instructions,
+  and compares independent reports with declared acceptance. English/Spanish
+  copy, bounded UTF-8 imports and a clear-workspace action keep the workflow
+  local. No task execution, automatic policy application or causal savings claim.
+
 - **Task efficiency across explicit agent sessions.** Unreleased `trazum task`
   and MCP `analyze_task` / `compare_tasks` connect Claude Code/Codex usage,
   repeated calls with matching recorded results, explicit acceptance and a

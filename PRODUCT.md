@@ -20,7 +20,8 @@ Working assumption inferred from the existing product: developers and teams inve
 
 ## Capabilities and constraints
 
-- The web app provides bill analysis, a CLI playground, prompt optimization, prompt writing, comparison, and an authenticated library.
+- The web app provides bill analysis, task-efficiency analysis and comparison, a CLI playground, prompt optimization, prompt writing, comparison, and an authenticated library.
+- Task analysis reads explicitly selected Claude Code/Codex files locally, exports portable reports and optional instructions, and compares declared outcomes. It neither runs tasks nor applies project instructions from the browser.
 - Usage-log bill analysis happens in the browser. Privacy claims are specific to their actual workflows; account and other server-backed features remain distinct.
 - The core and CLI expose deterministic analysis, reports, and policy checks. Estimates and assumptions must remain visible.
 - Native session adapters normalize recorded usage into the existing usage-log

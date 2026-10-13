@@ -2,10 +2,50 @@
 
 [Documentation index](README.md) · [Agent integrations](agents.md) · [Context policy](context-efficiency.md)
 
-**Available in a built checkout; not published in npm 2.5.2.** This workflow
+**Available in the dashboard and a built checkout; CLI/MCP not published in npm 2.5.2.** This workflow
 groups explicitly supplied Claude Code and Codex transcripts under one task,
 finds repeated tool calls for review, and compares a later run with an explicit
 acceptance decision. It makes no model calls and does not run the task for you.
+
+## Dashboard
+
+Open [Tasks](https://trazum.vercel.app/?tab=tasks). No account is required.
+
+1. Choose **Analyze a run**, select Claude Code or Codex, then choose complete
+   JSONL session files for one task. Change the format before adding files from
+   another harness; each file retains its selected format. Limits: 16 files,
+   400,000 UTF-16 code units combined, and 1,200,000 UTF-8 bytes per file.
+2. Enter a run ID, task type and explicit acceptance criterion. Leave the outcome
+   **Not assessed** unless you have checked that criterion. Accepted/rejected
+   outcomes require an assessor label. Use non-sensitive metadata.
+3. Analyze, inspect coverage and repetition evidence, then export the report JSON.
+   File numbers refer to the selected-file list; call/result line numbers refer
+   to the original JSONL. No raw tool content is included in the report.
+4. When actionable evidence exists, review and download the proposed instructions.
+   Add them to a project instruction file your agent reads and run a comparable
+   task. The browser does not edit that file or execute the agent. Select
+   **Repeat review v1** only for a run that actually used those instructions.
+5. Use **Use as baseline** or **Use as comparison run** to carry an analyzed report
+   into **Compare reports**. Import the other report, or analyze it and carry it
+   over too. Compare and export the result. CLI/MCP task-report JSON uses the same
+   schema; a comparison or policy document is not a task report.
+
+The comparison requires the same task type, exact criterion, harness/model
+coverage, independent evidence and baseline → repeat-review policy pair.
+Coverage gaps or unassessed outcomes produce an inconclusive result. An accepted
+baseline followed by a rejected run records declared acceptance regression.
+Lower recorded usage does not establish causal savings.
+
+Files are read in this browser tab, never uploaded, persisted or sent to
+analytics. Moving between dashboard tabs preserves the workspace in memory.
+**Clear workspace** or closing/reloading the page discards it; downloads remain
+where your browser saves them. Exports retain entered task metadata, assessor and
+criterion. Treat those labels as shareable only after reviewing them.
+
+The report's API-equivalent estimate uses the bundled price catalogue and is
+not an invoice or a subscription charge. Missing usage is not displayed as zero.
+English and Spanish interface copy share the same report format; optional policy
+instructions keep the core's fixed English text.
 
 ## Prepare a baseline
 
