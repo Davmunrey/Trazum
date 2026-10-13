@@ -71,7 +71,7 @@ const UNITS = Object.freeze({
 function countsIn(text) {
   const found = [];
 
-  for (const match of text.matchAll(/(\d{1,3})\s+(?:commands|comandos)\b/g)) {
+  for (const match of text.matchAll(/(\d{1,3})\s+(?:commands|comandos|commandes|Befehle)\b/g)) {
     found.push({ written: match[0].trim(), value: Number(match[1]) });
   }
 
@@ -117,6 +117,8 @@ describe('copy that counts the commands counts them right', () => {
     assert.deepEqual(countsIn('45 commands install'), [{ written: '45 commands', value: 45 }]);
     assert.deepEqual(countsIn('forty-two commands install')[0].value, 42);
     assert.deepEqual(countsIn('sus cuarenta y dos comandos')[0].value, 42);
+    assert.deepEqual(countsIn('45 commandes')[0].value, 45);
+    assert.deepEqual(countsIn('45 Befehle')[0].value, 45);
     assert.deepEqual(countsIn('forty commands')[0].value, 40);
     assert.deepEqual(countsIn('no numbers here at all'), []);
   });
@@ -124,8 +126,12 @@ describe('copy that counts the commands counts them right', () => {
   it('never claims a command count the CLI does not have', () => {
     const total = dispatched().size;
     const wrong = [];
-    for (const name of readdirSync(I18N).filter((file) => file.endsWith('.ts'))) {
-      const text = readFileSync(join(I18N, name), 'utf8');
+    const files = [
+      ...readdirSync(I18N).filter((file) => file.endsWith('.ts')).map((file) => join(I18N, file)),
+      join(ROOT, 'apps/web/app/landing/page.tsx'),
+    ];
+    for (const name of files) {
+      const text = readFileSync(name, 'utf8');
       for (const count of countsIn(text)) {
         if (count.value !== total) {
           wrong.push(`${name}: "${count.written}" against ${total} dispatched`);
