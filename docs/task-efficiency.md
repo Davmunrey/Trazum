@@ -21,7 +21,7 @@ Open [Tasks](https://trazum.vercel.app/?tab=tasks). No account is required.
 3. Analyze, inspect coverage and repetition evidence, then export the report JSON.
    File numbers refer to the selected-file list; call/result line numbers refer
    to the original JSONL. No raw tool content is included in the report.
-4. When actionable evidence exists, review and download the proposed instructions.
+4. When actionable evidence exists, review and export the proposed instructions.
    Add them to a project instruction file your agent reads and run a comparable
    task. The browser does not edit that file or execute the agent. Select
    **Repeat review v1** only for a run that actually used those instructions.
@@ -29,6 +29,13 @@ Open [Tasks](https://trazum.vercel.app/?tab=tasks). No account is required.
    into **Compare reports**. Import the other report, or analyze it and carry it
    over too. Compare and export the result. CLI/MCP task-report JSON uses the same
    schema; a comparison or policy document is not a task report.
+
+Every export opens a review panel with the filename and exact contents. Choose
+**Download file**, **Copy contents**, or **Select text**. A download request does
+not confirm that a file was saved: check your browser's downloads. If downloads
+are blocked, copy the contents into a UTF-8 file with the displayed filename.
+If automatic clipboard access is unavailable, the panel selects the text for
+your device's copy command. Close the panel with its button or Escape.
 
 The comparison requires the same task type, exact criterion, harness/model
 coverage, independent evidence and baseline → repeat-review policy pair.
@@ -39,7 +46,8 @@ Lower recorded usage does not establish causal savings.
 Files are read in this browser tab, never uploaded, persisted or sent to
 analytics. Moving between dashboard tabs preserves the workspace in memory.
 **Clear workspace** or closing/reloading the page discards it; downloads remain
-where your browser saves them. Exports retain entered task metadata, assessor and
+where your browser saves them. Clearing the workspace does not clear copied
+clipboard contents or saved files. Exports retain entered task metadata, assessor and
 criterion. Treat those labels as shareable only after reviewing them.
 
 The report's API-equivalent estimate uses the bundled price catalogue and is

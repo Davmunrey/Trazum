@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { analyzeTask, compareTasks, type TaskComparison, type TaskFormat, type TaskOutcome, type TaskPolicyId, type TaskReport } from '@trazum/core';
 import { Button } from './ui/button';
 import { TaskRunReport, TaskRunSummary } from './TaskRunReport';
+import { TaskExportDialog } from './TaskExportDialog';
+import type { TaskExportFile } from '../lib/task-export';
 import type { WebMessages } from '../lib/i18n';
 import { appendTaskFiles, createTaskReadGate, readTaskReport, taskDocumentJson, TaskFileError, type TaskFile, type TaskFileErrorCode } from '../lib/task-workflow';
 
@@ -28,6 +30,8 @@ export function Tasks({ t }: { t: WebMessages }) {
   const [comparison, setComparison] = useState<TaskComparison | null>(null);
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<PanelError | null>(null);
+  const [exportFile, setExportFile] = useState<TaskExportFile | null>(null);
+  const exportTrigger = useRef<HTMLElement | null>(null);
   const gate = useRef(createTaskReadGate());
   const fileInput = useRef<HTMLInputElement>(null);
   const beforeInput = useRef<HTMLInputElement>(null);
@@ -36,9 +40,10 @@ export function Tasks({ t }: { t: WebMessages }) {
 
   useEffect(() => { const pending = gate.current; return () => pending.cancel(); }, []);
 
-  function invalidateRun() { setReport(null); setError(null); }
+  function invalidateRun() { setReport(null); setError(null); setExportFile(null); }
   function clear() {
     gate.current.cancel();
+    setExportFile(null);
     setReading(false); setFiles([]); setReport(null); setBefore(null); setAfter(null); setComparison(null); setError(null);
     setTaskId(''); setTaskType(''); setCriterion(''); setAssessor(''); setOutcome('unknown'); setPolicyId('baseline'); setFormat('claude-code');
     for (const input of [fileInput, beforeInput, afterInput]) if (input.current) input.current.value = '';
@@ -67,17 +72,13 @@ export function Tasks({ t }: { t: WebMessages }) {
       if (gate.current.current(ticket)) setError(cause instanceof TaskFileError ? cause.code : 'invalid-report');
     } finally { if (gate.current.current(ticket)) setReading(false); }
   }
-  function download(name: string, content: string, type: string) {
-    let url: string | undefined;
-    try {
-      url = URL.createObjectURL(new Blob([content], { type }));
-      const anchor = document.createElement('a');
-      anchor.href = url; anchor.download = name; anchor.click();
-    } catch { setError('downloadError'); }
-    finally { if (url) { const captured = url; setTimeout(() => URL.revokeObjectURL(captured), 1000); } }
+  function prepareExport(name: string, content: string, type: TaskExportFile['type']) {
+    exportTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setError(null);
+    setExportFile({ name, content, type });
   }
   function exportDocument(document: TaskReport | TaskComparison) {
-    try { download(document.kind === 'trazum-task' ? 'trazum-task.json' : 'trazum-task-comparison.json', taskDocumentJson(document), 'application/json'); }
+    try { prepareExport(document.kind === 'trazum-task' ? 'trazum-task.json' : 'trazum-task-comparison.json', taskDocumentJson(document), 'application/json'); }
     catch (cause) { setError(cause instanceof TaskFileError ? cause.code : 'downloadError'); }
   }
   function carryReport() {
@@ -140,7 +141,7 @@ export function Tasks({ t }: { t: WebMessages }) {
               <Button type="submit" disabled={reading || !files.length}>{c.analyze}</Button>
             </fieldset>
           </form>
-          {report ? <TaskRunReport report={report} t={t} onExport={() => exportDocument(report)} onUse={carryReport} onPolicy={(instructions) => download('trazum-repeat-review-v1.md', instructions + '\n', 'text/markdown')} /> : <section className="min-w-0 border-t-2 border-foreground py-8 xl:px-4">
+          {report ? <TaskRunReport report={report} t={t} onExport={() => exportDocument(report)} onUse={carryReport} onPolicy={(instructions) => prepareExport('trazum-repeat-review-v1.md', instructions + '\n', 'text/markdown')} /> : <section className="min-w-0 border-t-2 border-foreground py-8 xl:px-4">
             <h2 className="max-w-[18ch] text-3xl font-semibold leading-tight tracking-tight">{c.emptyTitle}</h2>
             <p className="mt-4 max-w-[55ch] text-sm leading-relaxed text-muted-foreground">{c.emptyBody}</p>
             <a className="mt-6 inline-block text-sm font-semibold underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring" href={guideUrl} target="_blank" rel="noreferrer">{c.guide} ↗</a>
@@ -176,6 +177,7 @@ export function Tasks({ t }: { t: WebMessages }) {
           </section>
         </div>
       )}
+      {exportFile && <TaskExportDialog file={exportFile} t={t} onClose={() => setExportFile(null)} returnFocus={exportTrigger.current} />}
     </div>
   );
 }

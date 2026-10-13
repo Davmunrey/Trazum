@@ -13,6 +13,13 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **Task exports remain accessible when downloads are blocked.** Report JSON,
+  comparison JSON and proposed instructions open a review panel with download,
+  clipboard copy and selectable text. Download requests are not reported as
+  saved files; denied clipboard access leaves the content selected for manual
+  copying. English/Spanish feedback, keyboard dismissal and focus return keep
+  the workflow usable without uploading report contents.
+
 - **Recovery files cannot stall the tool filter.** A FIFO in the recovery store
   is rejected without waiting for a writer. `restore` fails without emitting
   content; `compact` passes the original through and reports zero savings.
