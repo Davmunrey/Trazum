@@ -30,7 +30,7 @@ jobs:
       # '4.37.6', but running version '3.37.6'"). Dependabot raises them as two
       # pull requests, so either one merged on its own turns this job red.
       # Bump both in the same commit, and keep the SHAs identical.
-      - uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+      - uses: github/codeql-action/init@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
           languages: javascript-typescript
           queries: security-extended
@@ -38,7 +38,7 @@ jobs:
           # where it can be reviewed: .github/codeql/codeql-config.yml.
           config-file: ./.github/codeql/codeql-config.yml
 
-      - uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
+      - uses: github/codeql-action/analyze@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
 
   # Dormant until Dependency graph is switched on in repository settings.
   #
