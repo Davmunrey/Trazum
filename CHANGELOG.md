@@ -11,7 +11,12 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **The Action pin moves to 2.6.0** in `docs/setup.md` and `docs/running.md`,
+  the commit the `v2.6.0` tag points at. It had stayed at 2.5.1 through 2.5.2
+  and 2.6.0, and once `v2.6.0` was tagged the docs-pin guard failed on every
+  run, which held every open pull request red.
 
 ## 2.6.0 — 2026-10-13
 
