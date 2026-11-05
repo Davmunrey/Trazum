@@ -1,4 +1,7 @@
+import { listModels } from '@trazum/core';
 import type { UsageProfile } from '@trazum/core';
+
+import { flag, number, object, oneOf, optional } from './schema';
 
 /**
  * The `usage` object a request carries, checked at the door.
@@ -11,8 +14,9 @@ import type { UsageProfile } from '@trazum/core';
  * `calls_per_month` was dropped and its default used, which is the same
  * failure the routes already refuse for `disableRules`.
  *
- * One parser, so both routes refuse the same things in the same words, and the
- * message names the field and the range rather than saying "invalid".
+ * One schema, so both routes refuse the same things in the same words, and the
+ * message names the field and the range rather than saying "invalid". It was
+ * the first body checked this way; `lib/body-schemas.ts` is every other one.
  */
 
 export type UsageField = keyof UsageProfile;
@@ -28,7 +32,7 @@ export const USAGE_FIELDS: readonly UsageField[] = [
 /** What each field must be, as a kind the message catalogue words. */
 export type UsageExpectation = 'text' | 'count' | 'tokens' | 'rate' | 'boolean';
 
-const EXPECTED: Readonly<Record<UsageField, UsageExpectation>> = {
+export const USAGE_EXPECTED: Readonly<Record<UsageField, UsageExpectation>> = {
   model: 'text',
   callsPerMonth: 'count',
   avgOutputTokens: 'tokens',
@@ -39,51 +43,18 @@ const EXPECTED: Readonly<Record<UsageField, UsageExpectation>> = {
 /** Upper bounds that no real workload reaches and arithmetic still handles. */
 export const USAGE_LIMITS = { callsPerMonth: 1_000_000_000_000, avgOutputTokens: 10_000_000 } as const;
 
-export type UsageParse =
-  | { ok: true; usage: Partial<UsageProfile> }
-  | { ok: false; kind: 'notAnObject' }
-  | { ok: false; kind: 'unknownField'; field: string }
-  | { ok: false; kind: 'badField'; field: UsageField; expected: UsageExpectation };
+/** Every model this deployment prices: a model it does not is refused, not priced as zero. */
+export const MODEL_IDS: readonly string[] = listModels().map((model) => model.id);
 
-function fits(field: UsageField, value: unknown): boolean {
-  switch (EXPECTED[field]) {
-    case 'text':
-      return typeof value === 'string';
-    case 'boolean':
-      return typeof value === 'boolean';
-    case 'rate':
-      return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
-    case 'count':
-      /* A fraction is allowed: a monthly volume is often an average, and the
-         page's own input passes what the reader typed. A negative is not. */
-      return (
-        typeof value === 'number'
-        && Number.isFinite(value)
-        && value >= 0
-        && value <= USAGE_LIMITS.callsPerMonth
-      );
-    case 'tokens':
-      return (
-        typeof value === 'number'
-        && Number.isFinite(value)
-        && value >= 0
-        && value <= USAGE_LIMITS.avgOutputTokens
-      );
-  }
-}
+/**
+ * A fraction is allowed in a count: a monthly volume is often an average, and
+ * the page's own input passes what the reader typed. A negative is not.
+ */
+export const USAGE = object({
+  model: optional(oneOf(MODEL_IDS)),
+  callsPerMonth: optional(number({ min: 0, max: USAGE_LIMITS.callsPerMonth })),
+  avgOutputTokens: optional(number({ min: 0, max: USAGE_LIMITS.avgOutputTokens })),
+  cacheHitRate: optional(number({ min: 0, max: 1 })),
+  batchEligible: optional(flag()),
+});
 
-/** `undefined` and `null` are an absent object; anything else is checked field by field. */
-export function parseUsage(input: unknown): UsageParse {
-  if (input === undefined || input === null) return { ok: true, usage: {} };
-  if (typeof input !== 'object' || Array.isArray(input)) return { ok: false, kind: 'notAnObject' };
-  const usage: Partial<UsageProfile> = {};
-  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-    if (!(USAGE_FIELDS as readonly string[]).includes(key)) return { ok: false, kind: 'unknownField', field: key };
-    const field = key as UsageField;
-    // An explicit null is the field left out, as JSON writers often send it.
-    if (value === null) continue;
-    if (!fits(field, value)) return { ok: false, kind: 'badField', field, expected: EXPECTED[field] };
-    (usage as Record<string, unknown>)[field] = value;
-  }
-  return { ok: true, usage };
-}

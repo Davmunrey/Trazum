@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 
 import {
-  RULES,
   allowedEndpoints,
   anthropicProvider,
   getModel,
@@ -17,7 +16,6 @@ import {
   resolveEndpoint,
   resolveLocale,
   validateLlmEndpoint,
-  MAX_INPUT_CHARS,
 } from '@trazum/core';
 import type {
   Locale,
@@ -30,16 +28,14 @@ import type {
 } from '@trazum/core';
 
 import { getWebMessages } from '../../../lib/i18n';
-import { saysJson } from '../../../lib/request-body';
+import { OPTIMIZE, readBody } from '../../../lib/body-schemas';
+import { requestedLocale, saysJson } from '../../../lib/request-body';
+import type { Infer } from '../../../lib/schema';
 import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
 import type { WebMessages } from '../../../lib/i18n';
 import { createRateLimiter } from '../../../lib/rate-limit';
-import { USAGE_FIELDS, parseUsage } from '../../../lib/usage-input';
 
 export const runtime = 'nodejs';
-
-/** Size cap: stops an open tab from taking the process down. The number lives in core. */
-const MAX_PROMPT_CHARS = MAX_INPUT_CHARS;
 
 // --------------------------------------------------------------------------
 // Rate limiting
@@ -102,51 +98,7 @@ function resolveRequestedEndpoint(raw: string, t: WebMessages): { url: string } 
   return { url: listed };
 }
 
-interface RequestBody {
-  prompt?: unknown;
-  level?: unknown;
-  locale?: unknown;
-  usage?: Partial<UsageProfile>;
-  disableRules?: unknown;
-  /**
-   * Rearrange the prompt so its stable instructions reach the cacheable prefix.
-   *
-   * Opt-in over HTTP for the same reason it is opt-in on the command line, and
-   * the reason is worth stating rather than leaving in the diff: every other
-   * transformation this endpoint performs deletes text whose absence is local,
-   * and this one *moves* text, where order carries meaning. The caller has to
-   * ask, and the response carries what was declined so they can judge it.
-   *
-   * Nothing about it is less safe here than in the CLI — it runs on the same
-   * deterministic core, sends nothing anywhere, and returns the prompt
-   * byte-identical when it cannot act — but "the browser did it quietly" is not
-   * a thing this endpoint should ever be able to do.
-   */
-  reorder?: unknown;
-  /**
-   * Ask the LLM for phrase-level rewrites and return them without applying any.
-   *
-   * Separate from `llm.enabled` because they are different questions: that one
-   * rewrites the whole prompt, this one proposes phrases you can accept
-   * individually. Asking for both is allowed and runs two calls.
-   */
-  suggest?: unknown;
-  /**
-   * Apply the suggestions. Honoured only on a literal `true`, like `reorder`.
-   *
-   * A truthy check would let `"false"` rewrite somebody's prompt, and this
-   * rewrite comes from a model — which makes it the last thing that should
-   * happen because a string was non-empty.
-   */
-  applySuggestions?: unknown;
-  llm?: {
-    enabled?: boolean;
-    provider?: string;
-    baseUrl?: string;
-    model?: string;
-    apiKey?: string;
-  };
-}
+type RequestBody = Infer<typeof OPTIMIZE.schema>;
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
@@ -158,9 +110,8 @@ function badRequest(message: string) {
  * error messages, so a failure never arrives in a language the caller did not
  * choose.
  */
-function localeOf(request: Request, body?: RequestBody): Locale {
-  const requested = typeof body?.locale === 'string' ? body.locale : null;
-  return resolveLocale(requested ?? request.headers.get('accept-language'));
+function localeOf(request: Request, raw?: unknown): Locale {
+  return resolveLocale(requestedLocale(raw) ?? request.headers.get('accept-language'));
 }
 
 /**
@@ -255,44 +206,26 @@ async function handlePost(request: Request) {
     return NextResponse.json({ error: getWebMessages(localeOf(request)).api.notJson }, { status: 415 });
   }
 
-  let body: RequestBody;
+  let raw: unknown;
   try {
-    body = (await request.json()) as RequestBody;
+    raw = await request.json();
   } catch {
     return unreadableBody(badRequest(getWebMessages(localeOf(request)).api.invalidJson));
   }
 
-  const locale = localeOf(request, body);
+  // The language first, from the body as sent, so a refusal of the body is
+  // worded in the language its caller asked for.
+  const locale = localeOf(request, raw);
   const t = getWebMessages(locale);
 
+  const read = readBody(OPTIMIZE, raw, t);
+  if (!read.ok) return badRequest(read.message);
+  const body = read.value;
+
   const { prompt } = body;
-  if (typeof prompt !== 'string' || !prompt.trim()) {
-    return badRequest(t.api.missingPrompt);
-  }
-  if (prompt.length > MAX_PROMPT_CHARS) {
-    return badRequest(t.api.promptTooLong(MAX_PROMPT_CHARS.toLocaleString(t.numberLocale)));
-  }
-
-  const level: RuleLevel = body.level === 'aggressive' ? 'aggressive' : 'safe';
-
-  const disableRules = Array.isArray(body.disableRules)
-    ? body.disableRules.filter((id): id is string => typeof id === 'string')
-    : [];
-  const unknownRule = disableRules.find((id) => !RULES.some((r) => r.id === id));
-  if (unknownRule) return badRequest(t.api.unknownRule(unknownRule));
-
-  const parsedUsage = parseUsage(body.usage);
-  if (!parsedUsage.ok) {
-    if (parsedUsage.kind === 'notAnObject') return badRequest(t.api.usageNotAnObject);
-    if (parsedUsage.kind === 'unknownField') {
-      return badRequest(t.api.usageUnknownField(parsedUsage.field, USAGE_FIELDS.join(', ')));
-    }
-    return badRequest(t.api.usageBadField(parsedUsage.field, parsedUsage.expected));
-  }
-  const usage = parsedUsage.usage;
-  if (usage.model && !listModels().some((m) => m.id === usage.model)) {
-    return badRequest(t.api.unknownModel(usage.model));
-  }
+  const level: RuleLevel = body.level ?? 'safe';
+  const disableRules = body.disableRules ?? [];
+  const usage: Partial<UsageProfile> = body.usage ?? {};
 
   /**
    * `applySuggestions` on its own is a request that cannot be honoured.
@@ -304,9 +237,8 @@ async function handlePost(request: Request) {
    * the CLI already refuses for the matching pair of flags. There was no reason
    * for the HTTP surface to be the lenient one.
    *
-   * Only a literal `true` is refused, because only a literal `true` would have
-   * been honoured. `applySuggestions: "false"` is declined either way, so it
-   * asks for nothing and gets nothing — which is what it says.
+   * The schema has already refused anything that is not `true` or `false`,
+   * so `"false"` never reaches here as a request for nothing.
    */
   if (body.applySuggestions === true && body.suggest !== true) {
     return badRequest(t.api.applyNeedsSuggest);
@@ -364,10 +296,9 @@ async function handlePost(request: Request) {
       if (body.suggest === true) {
         suggestions = await suggestRewrites(result.optimized, provider, { locale });
 
-        // Applied only on a literal `true`, like `reorder`. The body is
-        // untrusted and a truthy check would let `"false"` rewrite somebody's
-        // prompt — and this rewrite comes from a model, which makes it the last
-        // thing that should happen because a string was non-empty.
+        // Applied only on `true`, which the schema has made the only value
+        // that can mean yes: a truthy check would have let `"false"` rewrite
+        // somebody's prompt, and this rewrite comes from a model.
         if (applySuggestions && suggestions.suggestions.length > 0) {
           const rewritten = applyRewrites(result.optimized, suggestions.suggestions);
           result = {

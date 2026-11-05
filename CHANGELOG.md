@@ -13,6 +13,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **A body of the wrong shape threw instead of being refused.** A body of
+  `null` threw in seven of the nine handlers that read one (`/api/optimize`,
+  `/api/compare`, `/api/write`, saving and renaming a library prompt, and
+  creating a share link), each a 500 with a stack trace in the log;
+  `ttl: "toString"` threw while creating a share link, because the lifetime was
+  looked up with `in`; and `llm.apiKey: 5` was sent to the provider as a key.
+  Every one is now a `400` that names the field. `apps/web/test/body-schemas.test.mjs`
+  sends seven malformed bodies (`null`, a list, a string, a number, `true`, an
+  own `__proto__` key, an undeclared field) to all nine and requires a 400 from
+  each, and nine faults planted in the validator and the routes were each
+  caught.
 - **The privacy probe could fail a clean page on a busy runner.** It began
   reading the bill once the network had been idle for 500 ms, and a runner
   under load hydrated later than that, so the page's own start-up requests
@@ -243,6 +254,26 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **Every body the web API accepts is checked against a declared schema,
+  and anything else is refused by name** (OWASP ASVS 4.0.3 5.1.4, 13.2.2).
+  The nine bodies are listed in one file, `apps/web/lib/body-schemas.ts`,
+  written with a validator of under 250 lines and no dependency
+  (`apps/web/lib/schema.ts`); a route keeps the parsed body as `unknown` and
+  reads nothing from it but the language it asked for until its schema has
+  passed it. **This is stricter than before, on purpose:** a field an
+  endpoint does not take, such as a misspelt `disable_rules`, was dropped
+  and its default used, and is now a `400`; `reorder`, `suggest`,
+  `applySuggestions` and `optimizeBoth` were honoured only on a literal
+  `true` and anything else read as `false`, and a value that is not `true` or
+  `false` is now a `400`; `level` other than `safe` or `aggressive` read as
+  `safe` and is now a `400`, in a share link's settings too; `llm.provider`
+  must be `openai` or `anthropic`; and `callsPerMonth` or `avgOutputTokens`
+  that are not numbers in range are refused by `/api/write` rather than
+  ignored. The app's own pages send none of these, and the messages it
+  already had are kept where it had them (a missing prompt, an unknown rule
+  or model, every `usage` field), in English and Spanish. A test holds each
+  route to the schema the file lists for its route and method, and to
+  reading its body in no other way.
 - **A web session now ends after a day without use, as well as thirty days
   after sign-in.** Until now a session lasted thirty days however long it sat
   unused, the most OWASP ASVS 4.0.3 V3.3.2 accepts at level 1. Each request

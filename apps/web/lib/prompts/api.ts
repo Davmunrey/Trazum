@@ -5,11 +5,6 @@ import { authDisabled, jsonError, sameOrigin } from '../auth/routes';
 import { currentUser } from '../auth/session';
 import { createSharedRateLimiter } from '../shared-limit';
 import { getStore } from '../store';
-import {
-  MAX_NOTE_CHARS,
-  MAX_PROMPT_NAME_CHARS,
-  MAX_PROMPT_TEXT_CHARS,
-} from '../store/prompts';
 import type { PromptSummary, PromptVersionRecord, PromptWithHistory } from '../store/prompts';
 import type { Store, UserRecord } from '../store/types';
 import { attributeRequest, routeOf, securityEvent } from '../security-log';
@@ -75,42 +70,8 @@ export async function requireCaller(
 }
 
 // ---------------------------------------------------------------------------
-// What the browser is allowed to send
+// What the browser is allowed to send: the bodies are in `lib/body-schemas.ts`
 // ---------------------------------------------------------------------------
-
-export type Parsed<T> = { value: T } | { error: string };
-
-export function parseName(raw: unknown): Parsed<string> {
-  if (typeof raw !== 'string') return { error: 'name is required' };
-  const name = raw.trim();
-  if (!name) return { error: 'name is required' };
-  if (name.length > MAX_PROMPT_NAME_CHARS) {
-    return { error: `name must be ${MAX_PROMPT_NAME_CHARS} characters or fewer` };
-  }
-  return { value: name };
-}
-
-export function parseText(raw: unknown): Parsed<string> {
-  if (typeof raw !== 'string') return { error: 'text is required' };
-  // Not trimmed. Trailing whitespace is part of a prompt and changing it changes
-  // the bytes a cache matches on, which is the one thing this tool is about.
-  if (!raw.trim()) return { error: 'text is required' };
-  if (raw.length > MAX_PROMPT_TEXT_CHARS) {
-    return { error: `prompts in the library are limited to ${MAX_PROMPT_TEXT_CHARS} characters` };
-  }
-  return { value: raw };
-}
-
-export function parseNote(raw: unknown): Parsed<string | null> {
-  if (raw === undefined || raw === null) return { value: null };
-  if (typeof raw !== 'string') return { error: 'note must be text' };
-  const note = raw.trim();
-  if (!note) return { value: null };
-  if (note.length > MAX_NOTE_CHARS) {
-    return { error: `note must be ${MAX_NOTE_CHARS} characters or fewer` };
-  }
-  return { value: note };
-}
 
 /**
  * A UUID, checked before it reaches the store.

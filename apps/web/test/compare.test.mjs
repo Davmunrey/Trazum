@@ -120,10 +120,12 @@ describe('what the response has to say about itself', () => {
     );
   });
 
-  it('honours optimizeBoth only on a literal true', async () => {
+  it('takes optimizeBoth as true or false, and refuses a string that looks like one', async () => {
     // The body is untrusted, and every boolean this API takes reads the same way.
-    const { body } = await post({ before: LEAN, after: PADDED, usage, optimizeBoth: 'true' });
-    assert.equal(body.optimizeBoth, false);
+    const { status, body } = await post({ before: LEAN, after: PADDED, usage, optimizeBoth: 'true' });
+    assert.equal(status, 400);
+    assert.match(body.error, /"optimizeBoth" must be true or false/);
+    assert.equal((await post({ before: LEAN, after: PADDED, usage, optimizeBoth: true })).body.optimizeBoth, true);
   });
 
   it('reports advisory ids the client can label', async () => {

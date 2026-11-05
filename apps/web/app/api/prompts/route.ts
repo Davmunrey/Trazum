@@ -1,12 +1,5 @@
-import {
-  parseName,
-  parseNote,
-  parseText,
-  privateJson,
-  promptJson,
-  requireCaller,
-  summaryJson,
-} from '../../../lib/prompts/api';
+import { PROMPT_CREATE, readBody } from '../../../lib/body-schemas';
+import { privateJson, promptJson, requireCaller, summaryJson } from '../../../lib/prompts/api';
 import { MAX_PROMPTS_PER_OWNER } from '../../../lib/store/prompts';
 import { saysJson } from '../../../lib/request-body';
 import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
@@ -37,27 +30,22 @@ async function handlePost(request: Request): Promise<Response> {
 
   if (!saysJson(request)) return privateJson({ error: 'send the body as JSON, with content-type: application/json' }, 415);
 
-  let body: { name?: unknown; text?: unknown; note?: unknown };
+  let raw: unknown;
   try {
-    body = (await request.json()) as typeof body;
+    raw = await request.json();
   } catch {
     return unreadableBody(privateJson({ error: 'invalid JSON' }, 400));
   }
 
-  const name = parseName(body.name);
-  if ('error' in name) return privateJson({ error: name.error }, 400);
-
-  const text = parseText(body.text);
-  if ('error' in text) return privateJson({ error: text.error }, 400);
-
-  const note = parseNote(body.note);
-  if ('error' in note) return privateJson({ error: note.error }, 400);
+  const read = readBody(PROMPT_CREATE, raw);
+  if (!read.ok) return privateJson({ error: read.message }, 400);
+  const { name, text } = read.value;
 
   const created = await caller.store.prompts.createPrompt({
     ownerId: caller.user.id,
-    name: name.value,
-    text: text.value,
-    note: note.value,
+    name,
+    text,
+    note: read.value.note || null,
     now: new Date(),
   });
 
@@ -73,7 +61,7 @@ async function handlePost(request: Request): Promise<Response> {
      */
     return privateJson(
       {
-        error: `could not save: either you already have a prompt called “${name.value}”, or you have reached the limit of ${MAX_PROMPTS_PER_OWNER} saved prompts`,
+        error: `could not save: either you already have a prompt called “${name}”, or you have reached the limit of ${MAX_PROMPTS_PER_OWNER} saved prompts`,
       },
       409,
     );

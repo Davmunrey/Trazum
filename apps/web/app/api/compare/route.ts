@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 
-import { MAX_INPUT_CHARS, RULES, comparePrompts, getMessages, listModels, resolveLocale } from '@trazum/core';
+import { comparePrompts, getMessages, resolveLocale } from '@trazum/core';
 import type { AdvisoryId, Locale, PromptComparison, RuleId, RuleLevel, UsageProfile } from '@trazum/core';
 
 import { getWebMessages } from '../../../lib/i18n';
-import { saysJson } from '../../../lib/request-body';
+import { COMPARE, readBody } from '../../../lib/body-schemas';
+import { requestedLocale, saysJson } from '../../../lib/request-body';
 import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
 import { createRateLimiter } from '../../../lib/rate-limit';
-import { USAGE_FIELDS, parseUsage } from '../../../lib/usage-input';
 
 export const runtime = 'nodejs';
 
@@ -25,9 +25,6 @@ export const runtime = 'nodejs';
  * convention holds for every consumer. Nothing here negates anything again.
  */
 
-/** Per prompt, so a comparison can carry twice the optimise route's cap. */
-const MAX_PROMPT_CHARS = MAX_INPUT_CHARS;
-
 /**
  * In-memory sliding window per IP, in a bucket of its own.
  *
@@ -39,33 +36,13 @@ const MAX_PROMPT_CHARS = MAX_INPUT_CHARS;
  */
 const rateLimited = createRateLimiter({ windowMs: 60_000, max: 30 });
 
-interface RequestBody {
-  before?: unknown;
-  after?: unknown;
-  level?: unknown;
-  locale?: unknown;
-  usage?: Partial<UsageProfile>;
-  disableRules?: unknown;
-  /**
-   * Compare what the rules would leave rather than what was written.
-   *
-   * Honoured only on a literal `true`, like every other boolean this API takes.
-   * Off by default, and the default is the interesting half: a pull request
-   * changed the file on disk, so the file on disk is what the reader is being
-   * asked about. Optimising both sides first would hide a prompt that doubled in
-   * length and happened to double in courtesy — which is exactly the change worth
-   * seeing.
-   */
-  optimizeBoth?: unknown;
-}
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
-function localeOf(request: Request, body?: RequestBody): Locale {
-  const requested = typeof body?.locale === 'string' ? body.locale : null;
-  return resolveLocale(requested ?? request.headers.get('accept-language'));
+function localeOf(request: Request, raw?: unknown): Locale {
+  return resolveLocale(requestedLocale(raw) ?? request.headers.get('accept-language'));
 }
 
 /**
@@ -92,46 +69,25 @@ async function handlePost(request: Request) {
     return NextResponse.json({ error: getWebMessages(localeOf(request)).api.notJson }, { status: 415 });
   }
 
-  let body: RequestBody;
+  let raw: unknown;
   try {
-    body = (await request.json()) as RequestBody;
+    raw = await request.json();
   } catch {
     return unreadableBody(badRequest(getWebMessages(localeOf(request)).api.invalidJson));
   }
 
-  const locale = localeOf(request, body);
+  const locale = localeOf(request, raw);
   const t = getWebMessages(locale);
 
+  const read = readBody(COMPARE, raw, t);
+  if (!read.ok) return badRequest(read.message);
+  const body = read.value;
+
   const { before, after } = body;
-  // Named separately rather than "the prompt is missing": with two fields, a
-  // message that does not say which one leaves the caller guessing.
-  if (typeof before !== 'string' || !before.trim()) return badRequest(t.api.missingBefore);
-  if (typeof after !== 'string' || !after.trim()) return badRequest(t.api.missingAfter);
-
-  const limit = MAX_PROMPT_CHARS.toLocaleString(t.numberLocale);
-  if (before.length > MAX_PROMPT_CHARS) return badRequest(t.api.promptTooLong(limit));
-  if (after.length > MAX_PROMPT_CHARS) return badRequest(t.api.promptTooLong(limit));
-
-  const level: RuleLevel = body.level === 'aggressive' ? 'aggressive' : 'safe';
-
-  const disableRules = Array.isArray(body.disableRules)
-    ? body.disableRules.filter((id): id is string => typeof id === 'string')
-    : [];
-  const unknownRule = disableRules.find((id) => !RULES.some((r) => r.id === id));
-  if (unknownRule) return badRequest(t.api.unknownRule(unknownRule));
-
-  const parsedUsage = parseUsage(body.usage);
-  if (!parsedUsage.ok) {
-    if (parsedUsage.kind === 'notAnObject') return badRequest(t.api.usageNotAnObject);
-    if (parsedUsage.kind === 'unknownField') {
-      return badRequest(t.api.usageUnknownField(parsedUsage.field, USAGE_FIELDS.join(', ')));
-    }
-    return badRequest(t.api.usageBadField(parsedUsage.field, parsedUsage.expected));
-  }
-  const usage = parsedUsage.usage;
-  if (usage.model && !listModels().some((m) => m.id === usage.model)) {
-    return badRequest(t.api.unknownModel(usage.model));
-  }
+  const level: RuleLevel = body.level ?? 'safe';
+  const disableRules = body.disableRules ?? [];
+  const usage: Partial<UsageProfile> = body.usage ?? {};
+  const optimizeBoth = body.optimizeBoth === true;
 
   try {
     const comparison: PromptComparison = comparePrompts(before, after, {
@@ -139,7 +95,7 @@ async function handlePost(request: Request) {
       locale,
       usage,
       disableRules: disableRules as RuleId[],
-      optimizeBoth: body.optimizeBoth === true,
+      optimizeBoth,
     });
 
     return NextResponse.json({
@@ -147,7 +103,7 @@ async function handlePost(request: Request) {
       // Carried in the response rather than left for the client to infer from
       // its own request. A reader who bookmarks a result should be able to tell
       // which question it answered.
-      optimizeBoth: body.optimizeBoth === true,
+      optimizeBoth,
       level,
       rules: {
         newlyFiring: withTitles(comparison.rules.newlyFiring, locale),

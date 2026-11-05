@@ -16,13 +16,15 @@ register('./helpers/loader.mjs', import.meta.url);
 
 let optimize;
 let compare;
-let parseUsage;
+let USAGE;
+let check;
 
 before(async () => {
   delete process.env.TRAZUM_LLM_BASE_URL;
   ({ POST: optimize } = await import('../app/api/optimize/route.ts'));
   ({ POST: compare } = await import('../app/api/compare/route.ts'));
-  ({ parseUsage } = await import('../lib/usage-input.ts'));
+  ({ USAGE } = await import('../lib/usage-input.ts'));
+  ({ check } = await import('../lib/schema.ts'));
 });
 
 const PROMPT = 'Classify the ticket. Answer with the category only.';
@@ -114,9 +116,9 @@ describe('what was always accepted still is', () => {
   });
 
   it('reads an explicit null as the field left out', () => {
-    assert.deepEqual(parseUsage({ model: 'claude-opus-5', cacheHitRate: null }), {
+    assert.deepEqual(check(USAGE, { model: 'claude-opus-5', cacheHitRate: null }), {
       ok: true,
-      usage: { model: 'claude-opus-5' },
+      value: { model: 'claude-opus-5' },
     });
   });
 

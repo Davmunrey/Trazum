@@ -8,6 +8,7 @@ import {
   publicSessionId,
   signedInRecently,
 } from '../../../../lib/auth/session';
+import { SESSION_END, readBody } from '../../../../lib/body-schemas';
 import { saysJson } from '../../../../lib/request-body';
 import { attributeRequest, logsRefusedInput, routeOf, securityEvent, unreadableBody } from '../../../../lib/security-log';
 import { getStore } from '../../../../lib/store';
@@ -108,15 +109,15 @@ async function handleDelete(request: Request): Promise<Response> {
 
   if (!saysJson(request)) return jsonError('send the body as JSON, with content-type: application/json', 415);
 
-  let id: unknown;
+  let raw: unknown;
   try {
-    id = ((await request.json()) as { id?: unknown })?.id;
+    raw = await request.json();
   } catch {
     return unreadableBody(jsonError('invalid JSON', 400));
   }
-  if (typeof id !== 'string' || !/^[0-9a-f]{32}$/.test(id)) {
-    return jsonError('id must be a session id from GET /api/auth/sessions', 400);
-  }
+  const read = readBody(SESSION_END, raw);
+  if (!read.ok) return jsonError(read.message, 400);
+  const { id } = read.value;
 
   const target = (await store.listSessionsForUser(userId, now)).find(
     (session) => publicSessionId(session.tokenHash) === id,

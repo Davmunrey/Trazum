@@ -1,14 +1,8 @@
 import { authConfig } from '../../../lib/auth/config';
 import { privateJson, requireCaller } from '../../../lib/prompts/api';
-import {
-  MAX_SHARE_PROMPT_CHARS,
-  expiryFor,
-  mintShareToken,
-  parseSettings,
-  parseTtl,
-  shareUrl,
-} from '../../../lib/shares/api';
-import { MAX_SHARES_PER_OWNER } from '../../../lib/store/shares';
+import { SHARE_CREATE, readBody } from '../../../lib/body-schemas';
+import { expiryFor, mintShareToken, settingsFrom, shareUrl } from '../../../lib/shares/api';
+import { DEFAULT_SHARE_TTL, MAX_SHARES_PER_OWNER } from '../../../lib/store/shares';
 import { logsRefusedInput, routeOf, securityEvent, unreadableBody } from '../../../lib/security-log';
 import { saysJson } from '../../../lib/request-body';
 
@@ -57,25 +51,18 @@ async function handlePost(request: Request): Promise<Response> {
 
   if (!saysJson(request)) return privateJson({ error: 'send the body as JSON, with content-type: application/json' }, 415);
 
-  let body: { before?: unknown; after?: unknown; settings?: unknown; ttl?: unknown };
+  let raw: unknown;
   try {
-    body = (await request.json()) as typeof body;
+    raw = await request.json();
   } catch {
     return unreadableBody(privateJson({ error: 'invalid JSON' }, 400));
   }
 
-  const { before, after } = body;
-  if (typeof before !== 'string' || !before.trim()) return privateJson({ error: 'before is required' }, 400);
-  if (typeof after !== 'string' || !after.trim()) return privateJson({ error: 'after is required' }, 400);
-  if (before.length > MAX_SHARE_PROMPT_CHARS || after.length > MAX_SHARE_PROMPT_CHARS) {
-    return privateJson({ error: `prompts are limited to ${MAX_SHARE_PROMPT_CHARS} characters` }, 400);
-  }
-
-  const ttl = parseTtl(body.ttl);
-  if (!ttl) return privateJson({ error: 'ttl must be 7, 30, 90 or never' }, 400);
-
-  const settings = parseSettings(body.settings);
-  if ('error' in settings) return privateJson({ error: settings.error }, 400);
+  const read = readBody(SHARE_CREATE, raw);
+  if (!read.ok) return privateJson({ error: read.message }, 400);
+  const { before, after } = read.value;
+  const ttl = read.value.ttl ?? DEFAULT_SHARE_TTL;
+  const settings = settingsFrom(read.value.settings);
 
   const now = new Date();
   const created = await caller.store.shares.createShare({
@@ -84,7 +71,7 @@ async function handlePost(request: Request): Promise<Response> {
     ownerLogin: caller.user.login,
     beforeText: before,
     afterText: after,
-    settings: settings.value,
+    settings,
     now,
     expiresAt: expiryFor(ttl, now),
   });
