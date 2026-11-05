@@ -31,7 +31,7 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  if (authRateLimited(request, Date.now())) {
+  if (await authRateLimited(request, Date.now())) {
     return jsonError('too many sign-in attempts, try again in a minute', 429);
   }
 

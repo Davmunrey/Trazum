@@ -134,9 +134,14 @@ nothing should.
   the string is no longer what gets fetched. For `TRAZUM_LLM_BASE_URL` and the
   CLI the filter is still all there is, and there it is enough: the person who
   typed the URL is the person being protected.
-- **Rate limiting is per instance, in memory.** On serverless each instance
-  keeps its own counter, so the real limit is looser than 30/minute. It is a
-  barrier against accidental abuse, not a quota.
+- **Rate limiting is per address, and per instance where it guards the
+  instance.** The anonymous tool routes count in each instance's memory, so on
+  serverless the real limit is looser than 30/minute; what they protect is that
+  instance's CPU. The sign-in, session and library limits are shared across
+  instances when the deployment has accounts and a database, keyed by an HMAC
+  of the address rather than the address (`apps/web/lib/shared-limit.ts`).
+  Neither stops an attacker with many addresses. It is a barrier against
+  scripts and accidental abuse, not a quota.
 
 - **The web app's dependency tree is clean, but note how it got there.** Next
   15 carried three high-severity advisories in `postcss` and `sharp`. The fix

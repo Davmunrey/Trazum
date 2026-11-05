@@ -44,7 +44,7 @@ export async function GET(request: Request): Promise<Response> {
   const cleared = clearState(config.secure);
 
   const route = routeOf(request);
-  if (authRateLimited(request, Date.now())) {
+  if (await authRateLimited(request, Date.now())) {
     securityEvent('auth.sign_in', 'failure', { reason: 'rate_limited', route });
     return jsonError('too many sign-in attempts, try again in a minute', 429, {
       'set-cookie': cleared,

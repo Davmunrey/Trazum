@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { LimitStore } from './limits';
 import { adminInPostgres, promptsInPostgres } from './prompts-postgres';
 import { sharesInPostgres } from './shares-postgres';
 import type { NewUser, SessionRecord, Store, UserRecord } from './types';
@@ -53,6 +54,40 @@ function toUser(row: Row): UserRecord {
   };
 }
 
+/**
+ * The shared counters: one row per bucket and window, counted in one statement.
+ *
+ * `insert … on conflict do update … returning` is a single atomic statement,
+ * so two instances counting the same bucket at the same moment get 1 and 2,
+ * never 1 and 1. A read followed by a write would lose exactly the races a
+ * shared count exists to catch.
+ */
+function limitsInPostgres(sql: SqlClient): LimitStore {
+  return {
+    async hit(bucket, windowStart, expiresAt) {
+      const rows = await sql`
+        insert into trazum_rate_limits (bucket, window_start, expires_at, hits)
+        values (${bucket}, ${windowStart}, ${expiresAt}, 1)
+        on conflict (bucket, window_start)
+        do update set hits = trazum_rate_limits.hits + 1
+        returning hits
+      `;
+      const hits = Number(rows[0]?.hits);
+      // A count that did not come back is not zero: refuse to guess, and let
+      // the caller fall back to its own count.
+      if (!Number.isFinite(hits)) throw new Error('the rate-limit upsert returned no count');
+      return hits;
+    },
+
+    async sweep(now) {
+      const rows = await sql`
+        delete from trazum_rate_limits where expires_at <= ${now} returning bucket
+      `;
+      return rows.length;
+    },
+  };
+}
+
 export function postgresStore(sql: SqlClient): Store {
   return {
     kind: 'postgres',
@@ -60,6 +95,7 @@ export function postgresStore(sql: SqlClient): Store {
     prompts: promptsInPostgres(sql),
     shares: sharesInPostgres(sql),
     admin: adminInPostgres(sql),
+    limits: limitsInPostgres(sql),
 
     async upsertUser(input: NewUser, now: Date): Promise<UserRecord> {
       // `created_at` is absent from the update list on purpose: a sign-in that

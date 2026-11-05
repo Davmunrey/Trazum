@@ -52,7 +52,7 @@ export async function DELETE(request: Request): Promise<Response> {
    * auth actions rather than in a budget of its own that nothing would ever
    * spend.
    */
-  if (authRateLimited(request, Date.now())) {
+  if (await authRateLimited(request, Date.now())) {
     securityEvent('account.deleted', 'failure', { reason: 'rate_limited', route: routeOf(request) });
     return jsonError('too many requests, try again in a minute', 429);
   }
@@ -128,7 +128,7 @@ export async function GET(request: Request): Promise<Response> {
   if (!config.enabled) return authDisabled(config);
   const route = routeOf(request);
 
-  if (authRateLimited(request, Date.now())) {
+  if (await authRateLimited(request, Date.now())) {
     securityEvent('account.exported', 'failure', { reason: 'rate_limited', route });
     return jsonError('too many requests, try again in a minute', 429);
   }

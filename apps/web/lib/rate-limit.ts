@@ -12,7 +12,10 @@
  * What it is and is not: on a serverless platform each instance keeps its own
  * counters, so the effective limit is looser than the number suggests. This is a
  * barrier against accidental abuse and runaway scripts, not a billing quota and
- * not a defence against a distributed attacker.
+ * not a defence against a distributed attacker. The limits that guard something
+ * every instance shares wrap this one in `shared-limit.ts`, which also counts
+ * them in the database when the deployment has one; this limiter stays their
+ * first line and their fallback.
  */
 
 export interface RateLimiter {

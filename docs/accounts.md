@@ -61,9 +61,12 @@ anywhere. If the consent screen offers more than that, it is not this app.
 psql "$TRAZUM_DATABASE_URL" -f apps/web/db/001_accounts.sql
 psql "$TRAZUM_DATABASE_URL" -f apps/web/db/002_prompts.sql
 psql "$TRAZUM_DATABASE_URL" -f apps/web/db/003_shares.sql
+psql "$TRAZUM_DATABASE_URL" -f apps/web/db/004_rate_limits.sql
 ```
 
-Apply the three migrations in order. They are idempotent and support Postgres:
+Apply the four migrations in order. Without the fourth, everything works and
+the sign-in, session and library limits are counted by each instance on its
+own; the server says so once in its log. They are idempotent and support Postgres:
 Supabase, Neon, RDS, or a container on your laptop.
 
 **Without `TRAZUM_DATABASE_URL`, sessions are held in memory.** That is a real
@@ -295,6 +298,7 @@ of it.
 | GitHub's access token | **Never stored.** Exchanged, used once to read the profile above, dropped |
 | Your session token | Sent to your browser as a cookie. Stored here only as its SHA-256 |
 | Your email address | Never requested. `read:user` does not include it |
+| Your address | Never stored. To count requests across instances, a keyed hash of it (`trazum_rate_limits`) lives for one minute; the key is derived from the GitHub client secret, which the database does not hold |
 | What you sign in, sign out, export, delete, share and revoke | One line per event on the server's standard output, with the account's internal id and never its login, a token, an address or any prompt text (`lib/security-log.ts`). Kept for as long as the operator's platform keeps logs |
 
 Trazum cannot act on your GitHub account, because it does not keep the means to.
@@ -400,17 +404,22 @@ goes wrong.
   2026.** `apps/web/test/store-contract.test.mjs` applies every migration in
   `db/` to an empty database and checks the same contract against it and
   against the memory driver: users, sessions and their expiry, prompts and
-  versions, share links, the admin census, and account deletion. Its first run
-  found two bugs the recorded-SQL tests could not see, both fixed: deleting an
-  account that had ever saved a prompt failed on a foreign key, and share
-  settings were stored as a JSON string, so a shared link replayed defaults.
+  versions, share links, the admin census, account deletion and the shared
+  request counters. Its first run found two bugs the recorded-SQL tests could
+  not see, both fixed: deleting an account that had ever saved a prompt failed
+  on a foreign key, and share settings were stored as a JSON string, so a
+  shared link replayed defaults.
   Neither fix needs a migration. Run it yourself with
   `TRAZUM_TEST_DATABASE_URL=postgres://… node --test apps/web/test/store-contract.test.mjs`
   against an empty database; it drops and recreates the `public` schema.
-- **Rate limiting is per instance and per address.** Thirty sign-in attempts a
-  minute, counted in the memory of whichever instance served the request. It
-  stops a script; it does not stop a botnet, and behind a corporate NAT the
-  budget is the office's rather than yours.
+- **Rate limits are per address, and per instance unless the deployment can
+  share them.** With accounts and a database, the sign-in, session and library
+  limits are counted in `trazum_rate_limits`, so thirty sign-in attempts a
+  minute means thirty across every instance. The anonymous tool routes stay
+  per instance on purpose: they protect the CPU of the instance that runs
+  them. Either way the key is an address, so a script is stopped and a botnet,
+  with an address per request, is not; behind a corporate NAT the budget is
+  the office's rather than yours.
 - **Security events go to standard output and nowhere else.** How long they
   are kept, who can read them and what raises an alert is the platform's
   configuration, which this repository cannot see or set.

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { limitsInMemory } from './limits';
 import { promptTablesInMemory } from './prompts-memory';
 import { sharesInMemory } from './shares-memory';
 import type { NewUser, SessionRecord, Store, UserRecord } from './types';
@@ -36,6 +37,7 @@ export function memoryStore(): Store {
     prompts: tables.prompts,
     shares: shareTable.shares,
     admin: tables.adminFor((ownerId) => users.get(ownerId)?.login ?? ownerId),
+    limits: limitsInMemory(),
 
     async upsertUser(input: NewUser, now: Date): Promise<UserRecord> {
       const existingId = byProvider.get(key(input.provider, input.providerId));

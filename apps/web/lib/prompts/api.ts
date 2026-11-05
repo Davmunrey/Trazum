@@ -3,7 +3,7 @@ import { estimateTokens } from '@trazum/core';
 import { authConfig } from '../auth/config';
 import { authDisabled, jsonError, sameOrigin } from '../auth/routes';
 import { currentUser } from '../auth/session';
-import { createRateLimiter } from '../rate-limit';
+import { createSharedRateLimiter } from '../shared-limit';
 import { getStore } from '../store';
 import {
   MAX_NOTE_CHARS,
@@ -24,8 +24,12 @@ import { routeOf, securityEvent } from '../security-log';
  * continue past a caller it failed to identify.
  */
 
-/** Writes cost a database round trip; reads are cheap but not free. */
-export const libraryRateLimited = createRateLimiter({ windowMs: 60_000, max: 60 });
+/**
+ * Writes cost a database round trip; reads are cheap but not free. Counted
+ * across instances where the deployment can (`lib/shared-limit.ts`), because
+ * the database it protects is the one thing every instance shares.
+ */
+export const libraryRateLimited = createSharedRateLimiter('library', { windowMs: 60_000, max: 60 });
 
 export interface Caller {
   user: UserRecord;
@@ -46,7 +50,7 @@ export async function requireCaller(
   const config = authConfig();
   if (!config.enabled) return authDisabled(config);
 
-  if (libraryRateLimited(request, Date.now())) {
+  if (await libraryRateLimited(request, Date.now())) {
     securityEvent('access.refused', 'failure', { reason: 'rate_limited', route: routeOf(request) });
     return jsonError('too many requests, try again in a minute', 429);
   }
