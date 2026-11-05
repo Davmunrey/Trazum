@@ -26,6 +26,29 @@ merged commit with no entry is a change only `git log` remembers.
   and Haiku 3 are retired and no longer on the pricing page, so they stay
   unpriced rather than carry a figure no page publishes.
 
+- **GPT-5.6 Cyber is priced**: $12.50/$75, cached input $1.25, the 30-minute
+  write $15.625 and the 12-hour one $31.25, a 400,000-token window with at
+  most 272,000 input tokens, and no batch, from the pricing page and its own
+  model page, read 2026-11-05. It needs Daybreak programme approval, so it is
+  never recommended. The price-drift check below found it on its first run.
+
+### Guarded
+
+- **A weekly check that the catalogue still agrees with the pricing pages.**
+  `scripts/price-drift.mjs` reads Anthropic's and OpenAI's pricing pages in
+  their Markdown form and compares every published figure with the catalogue:
+  input, output, cache hits, both cache writes, batch, the long-prompt bands
+  and fast mode, 48 models in all. A changed price, a model the catalogue
+  lacks, or a page whose tables moved is a finding and fails the scheduled CI
+  run; on pull requests it is reported in the job summary. Freshness says how
+  long ago a provider was read; this says whether its page has changed since.
+  Three of the corrections in 2.7.1 were prices already published for weeks.
+  It never writes a price. GPT-5.5 Cyber and the three Rosalind models are on
+  OpenAI's page and left unpriced on purpose, with the reason in the script:
+  each is behind an approval programme and has no model page to give a context
+  window. Google, DeepSeek, Moonshot, xAI and Mistral publish no page a script
+  reads reliably and stay with a person.
+
 ## 2.7.1 — 2026-11-05
 
 ### Added

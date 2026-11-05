@@ -271,6 +271,22 @@ past the 45-day line or the pin is two releases behind, and reports unreleased
 commits. On pull requests the same report goes to the job summary without
 failing, so a stale price review never blocks unrelated work.
 
+**The same weekly run reads the pricing pages themselves.**
+`node scripts/price-drift.mjs` fetches Anthropic's and OpenAI's pricing pages
+in their Markdown form and compares every published figure with the catalogue:
+input, output, cache hits, both cache writes, batch, the long-prompt bands and
+Anthropic's fast mode. A changed price is **drift**, a model on the page that
+the catalogue lacks is **missing**, and a page whose tables are no longer where
+the script looks is **unread**; each fails the scheduled run. Freshness says
+how long ago a provider was read; this says whether its page still agrees.
+It never writes a price: a finding is a reason to re-read the page and change
+`packages/core/src/pricing.ts` by hand, with the page quoted. A model left
+unpriced on purpose goes in `DELIBERATELY_UNPRICED` with its reason, and is
+reported as a note on every run. Google, DeepSeek, Moonshot, xAI and Mistral
+publish no page a script reads reliably, so they stay with freshness and a
+person. `--report` never fails; `--anthropic-file` and `--openai-file` run it
+on saved copies.
+
 The steps below are what the script does and what it leaves, in order.
 
 **Which number first.** Since 1.50.1 the version carries the narrative: a

@@ -912,6 +912,39 @@ export const MODELS: ModelPricing[] = [
     tier: 'haiku',
     notes: OPENAI_CURRENT_NOTE,
   },
+  {
+    /*
+     * The pricing page's "Cyber models" table and the model's own page
+     * (developers.openai.com/api/docs/models/gpt-5.6-cyber.md), read
+     * 2026-11-05: $12.50/$75, cached input $1.25, the 30-minute write $15.625
+     * and the 12-hour one $31.25, the same 0.1x, 1.25x and 2.5x as the rest of
+     * GPT-5.6. A 400,000-token context window with at most 272,000 input
+     * tokens, so the long-prompt band the model page mentions can never be
+     * reached and none is modelled; the pricing page lists none either. The
+     * Batch endpoint is "Not supported", so there is no batch price.
+     *
+     * Found by `scripts/price-drift.mjs` on its first run, as a model on the
+     * pricing page that read as unpriced. It needs Daybreak programme
+     * approval, so it is priced for the logs of people who have it and never
+     * recommended to anyone else.
+     */
+    id: 'gpt-5.6-cyber',
+    provider: 'openai',
+    displayName: 'GPT-5.6 Cyber',
+    recommendable: false,
+    inputPerMTok: 12.5,
+    outputPerMTok: 75,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1.25, cacheWrite1h: 2.5, batch: null },
+    cacheTtl: OPENAI_CACHE_TTL,
+    capability: 'large',
+    tier: 'opus',
+    notes:
+      'Needs approval through the Daybreak programme. At most 272,000 input tokens, Responses API only, no batch.'
+      + ' Cache writes cost 1.25x input for the default 30-minute entry and 2.5x for a 12-hour one.',
+  },
 
   // ------------------------------------------------------------------------
   {

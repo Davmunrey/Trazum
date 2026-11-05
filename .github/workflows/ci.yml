@@ -63,6 +63,18 @@ jobs:
         run: |
           if [ "$EVENT" = "schedule" ]; then node scripts/freshness.mjs; else node scripts/freshness.mjs --report; fi
 
+      # Freshness knows when a provider was last read, not whether its page has
+      # changed since. This reads Anthropic's and OpenAI's pricing pages and
+      # compares every figure with the catalogue: a changed price, a model the
+      # catalogue lacks, or a page it can no longer read is a finding. Reported
+      # on every run, a failure only on the weekly schedule, for the same
+      # reason as above. It never writes a price; a person does.
+      - name: Price drift against the providers' pages (fails only on the weekly schedule)
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "schedule" ]; then node scripts/price-drift.mjs; else node scripts/price-drift.mjs --report; fi
+
       # Named for what it runs. `npm test` at the root covers core, CLI, web and
       # the Action, and has for a while — a step labelled "Core and CLI tests"
       # invites somebody reading a green build to think the other two are

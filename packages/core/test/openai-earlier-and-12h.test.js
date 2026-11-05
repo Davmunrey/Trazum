@@ -138,3 +138,24 @@ describe('the earlier OpenAI models, priced from their own pages', () => {
     }
   });
 });
+
+describe('GPT-5.6 Cyber, found by the price-drift check', () => {
+  it('is priced from the pricing page and its own page, and never recommended', () => {
+    const model = BUNDLED_CATALOGUE.byId.get('gpt-5.6-cyber');
+    assert.ok(model, 'gpt-5.6-cyber is not in the catalogue');
+    const rates = effectivePricing(model, ON, { inputTokens: 100_000 });
+    assert.deepEqual([rates.inputPerMTok, rates.outputPerMTok], [12.5, 75]);
+    const m = multipliersFor(model, ON);
+    close(rates.inputPerMTok * m.cacheRead, 1.25, 'cached input');
+    close(rates.inputPerMTok * m.cacheWrite5m, 15.625, '30-minute write');
+    close(rates.inputPerMTok * m.cacheWrite1h, 31.25, '12-hour write');
+    assert.equal(m.batch, null, 'the model page says the Batch endpoint is not supported');
+    assert.equal(model.contextWindow, 400_000);
+    assert.equal(isOffered(model), false, 'a model behind an approval programme is offered');
+  });
+
+  it('bills a 12-hour write at its own rate', () => {
+    const line = { ...responsesCall({ cache_write_tokens: 100_000, cache_write_tokens_details: { ttl_30m_tokens: 0, ttl_12h_tokens: 100_000 } }), model: 'gpt-5.6-cyber' };
+    close(bill([line]).total.totalUsd, 0.1 * 31.25, 'a 12-hour write on GPT-5.6 Cyber');
+  });
+});
