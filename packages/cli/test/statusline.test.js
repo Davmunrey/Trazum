@@ -108,6 +108,24 @@ describe('the Claude Code status line', () => {
     assert.match(out, /cache \d+%/, 'the cache hit rate is gone');
   });
 
+  it('counts the session’s subagents, whose transcripts are not the one Claude Code names', () => {
+    /*
+      Claude Code writes each subagent's transcript into a folder named after
+      the session, and `transcript_path` is only the session's own. The line
+      left every subagent out: a quarter of the cost on this repository's own
+      sessions.
+    */
+    const b = bench();
+    const agents = join(b.transcript.replace(/\.jsonl$/, ''), 'subagents', 'workflows', 'wf_1');
+    mkdirSync(agents, { recursive: true });
+    writeFileSync(join(agents, 'agent-a.jsonl'), assistantLine('req-sub-1', 10) + '\n');
+    writeFileSync(join(agents, 'agent-a.meta.json'), '{}');
+
+    const refresh = run(b, ['--refresh'], payload(b));
+    assert.equal(refresh.status, 0, refresh.stderr);
+    assert.match(run(b, [], payload(b)).stdout, /3 calls/, 'the subagent’s call is not in the line');
+  });
+
   it('never computes: the status line does not run trazum at all', () => {
     /**
      * The property the whole design exists for, proved the only way that

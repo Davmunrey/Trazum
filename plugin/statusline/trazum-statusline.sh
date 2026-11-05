@@ -86,8 +86,25 @@ log="$cache.log"
 "$trazum_bin" from-claude-code "$path" -o "$log" --state "$cache.state" >/dev/null 2>&1 || exit 0
 [ -s "$log" ] || exit 0
 
+# The session's subagents. Claude Code writes each one's transcript into a
+# folder named after the session, `<session>/subagents/...`, and none of it is
+# in `transcript_path`: without this the line left out every subagent the
+# session ran, a quarter of the cost on this repository's own sessions. The
+# folder is read whole each turn, because `--state` resumes one file and a
+# folder of them grows by new files; on a 60 MB folder of 73 subagents that is
+# 0.9s, after the turn, where the hook already lives.
+whole="$log"
+folder="${path%.jsonl}"
+if [ -d "$folder/subagents" ]; then
+  sublog="$cache.subagents.log"
+  if "$trazum_bin" from-claude-code "$folder/subagents" -o "$sublog" >/dev/null 2>&1 && [ -s "$sublog" ]; then
+    whole="$cache.whole.log"
+    cat "$log" "$sublog" > "$whole" || whole="$log"
+  fi
+fi
+
 line="$(
-  "$trazum_bin" profile "$log" --json 2>/dev/null | node -e '
+  "$trazum_bin" profile "$whole" --json 2>/dev/null | node -e '
     let raw = "";
     process.stdin.on("data", (c) => { raw += c; });
     process.stdin.on("end", () => {

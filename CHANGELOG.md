@@ -32,6 +32,14 @@ merged commit with no entry is a change only `git log` remembers.
   array), which is the only thing the OTel reader ever converted. Found on this
   repository's own transcripts, where it dropped one subagent's file.
 
+- **The status line left out the session's subagents.** Claude Code hands the
+  status line the session's own transcript, and writes each subagent's into a
+  folder named after the session. The Stop hook converted only the first, so
+  the line showed what the session cost without any subagent it ran: a
+  quarter of the cost on this repository's own sessions. It now reads the
+  session's `subagents` folder too, whole each turn, 0.9s on a 60 MB folder of
+  73 subagents, after the turn where the hook already runs.
+
 ### Changed
 
 - **The files a Claude Code session keeps beside its transcripts are counted
