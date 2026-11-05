@@ -28,6 +28,19 @@ merged commit with no entry is a change only `git log` remembers.
   Searches on a model whose row publishes no fee are counted, named, and left
   out of the total.
 
+- **`trazum reconcile` understated the remainder by the batch calls Trazum had
+  already priced.** It took the provider's whole batch charge out of the
+  difference, which was right while Trazum priced no batch call; since 2.7.4
+  the receipt's total holds its batch calls at the batch rate, so the same
+  calls came out twice. It would have done the same with web searches. A
+  receipt now says apart what its batch calls and searches cost
+  (`total.batchUsd`, `total.webSearchUsd`), and `reconcile` sets each against
+  the provider's own charge: the remainder is the standard-tier tokens, billed
+  against computed. A category the report cannot name (OpenAI's batch, any
+  ungrouped report) is set off on neither side. A receipt without the split is
+  read as one that priced neither, and the run says so: one made by 2.7.4
+  should be made again.
+
 ### Added
 
 - **Web search is its own part of every bill.** `webSearchRequests`,

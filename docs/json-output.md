@@ -60,7 +60,7 @@ this section without changing a promise, which must not fail.
 | Field | What it holds |
 | --- | --- |
 | `schemaVersion` | The contract version. `1` today. |
-| `total` | Every priced call, split by input, cache reads, cache writes and output, in tokens and dollars. |
+| `total` | Every priced call, split by input, cache reads, cache writes and output, in tokens and dollars, and by web searches (since 2.7.5): `webSearchRequests`, `webSearchUsd` (inside `totalUsd`, billed per search) and `webSearchUnpricedRequests` (searches on a model with no per-search fee, left out of `totalUsd`). |
 | `byLabel` | The same breakdown per workload label, largest bill first. |
 | `byModel` | The same per model, largest bill first. Unpriced models appear with tokens and zero dollars. |
 | `byLabelAndModel` | The grain a routing decision is made at: one row per workload and model. |
@@ -186,11 +186,11 @@ document:
 | `provider` | Which connector produced it. |
 | `granularity` | `bucketed` for a usage API that serves sums; `per-call` for a source that serves rows. |
 | `span` | The window the buckets actually cover, or null when none parsed. |
-| `total` | `totalUsd`, token counts, and `calls` — **null** when the provider serves no request count, never zero, because zero reads as "no traffic" against real spend. |
-| `byModel[]` | Per model: token counts, the four dollar figures, `cachedTokensAtInputRateUsd` and `cacheWriteUsdIfAssumed1h` for the cache counterfactual, and `writeTtlKnown`. |
+| `total` | `totalUsd`, token counts, `calls` — **null** when the provider serves no request count, never zero, because zero reads as "no traffic" against real spend — and `webSearchRequests` and `webSearchUsd` (since 2.7.5), the searches billed per search inside `totalUsd`. |
+| `byModel[]` | Per model: token counts, the four dollar figures, `cachedTokensAtInputRateUsd` and `cacheWriteUsdIfAssumed1h` for the cache counterfactual, `writeTtlKnown`, and `webSearchRequests` and `webSearchUsd`. |
 | `byDay[]` | Spend per UTC day, oldest first, with the same nullable `calls`. |
 | `unpricedModels[]` | Models the catalogue could not price: named, with their tokens kept and their money absent. |
-| `gaps[]` | What the pull did not get — `rate-limited`, `retention-boundary`, `cursor-expired`, `page-limit`, `unreadable-entry`, `unreadable-field` — each with the detail. A window short by an unknown amount says so here. |
+| `gaps[]` | What the pull did not get — `rate-limited`, `retention-boundary`, `cursor-expired`, `page-limit`, `unreadable-entry`, `unreadable-field` — and what it got and could not price — `unpriced-tier` (a tier or speed no catalogue rate is the rate for) and `unpriced-web-search` (searches on a model with no per-search fee) — each with the detail. A window short by an unknown amount says so here. |
 | `unavailable[]` | Findings this source cannot support, each with `because` and `unlockedBy`. A restricted report that merely omitted them would read as a report that found nothing. |
 
 ## The cost answer document

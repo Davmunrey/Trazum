@@ -134,6 +134,47 @@ describe('setting the two figures beside each other', () => {
     assert.ok(Math.abs(answer.remainderUsd - 0.2) < 1e-9);
   });
 
+  it('sets the bill’s batch and non-token charges against Trazum’s own, not against the whole difference', () => {
+    /*
+      Since 2.7.4 a receipt's total holds its batch calls at the batch rate,
+      and since 2.7.5 its web searches. Taking the provider's whole batch and
+      non-token charges out of the difference took those out twice and
+      understated the remainder by exactly what Trazum had already priced.
+      Here the receipt's $3.80 holds $0.40 of batch calls and $1.20 of
+      searches; the bill $0.50 of batch and $1.50 of non-token charges.
+    */
+    const answer = reconcile(
+      { ...inside(3.8), batchUsd: 0.4, webSearchUsd: 1.2 },
+      billed([
+        cost({ amount: '400.00' }),
+        cost({ amount: '150.00', cost_type: 'web_search' }),
+        cost({ amount: '50.00', service_tier: 'batch' }),
+      ]),
+    );
+    assert.equal(answer.computedSplitKnown, true);
+    assert.equal(answer.computedBatchUsd, 0.4);
+    assert.equal(answer.computedWebSearchUsd, 1.2);
+    /* 2.20 − (1.50 − 1.20) − (0.50 − 0.40) = 1.80: the standard-tier tokens,
+       $4.00 billed against the $2.20 Trazum computed for them. */
+    assert.ok(Math.abs(answer.remainderUsd - 1.8) < 1e-9, `remainder ${answer.remainderUsd}`);
+  });
+
+  it('reads a receipt with no split as one that priced neither, and says it cannot tell', () => {
+    const answer = reconcile(inside(3.8), billed([cost({ amount: '400.00' }), cost({ amount: '50.00', service_tier: 'batch' })]));
+    assert.equal(answer.computedSplitKnown, false);
+    assert.equal(answer.computedBatchUsd, null);
+    assert.ok(Math.abs(answer.remainderUsd - (0.7 - 0.5)) < 1e-9);
+  });
+
+  it('sets off nothing a report cannot name, on either side', () => {
+    /* Not grouped by description: no row says what it was, so both totals
+       hold their batch and searches and the difference is the remainder. */
+    const ungrouped = billed([cost({ cost_type: null, service_tier: null, model: null })]);
+    const answer = reconcile({ ...inside(3.8), batchUsd: 0.4, webSearchUsd: 1.2 }, ungrouped);
+    assert.equal(answer.attributable, false);
+    assert.ok(Math.abs(answer.remainderUsd - answer.differenceUsd) < 1e-9);
+  });
+
   it('reports a negative remainder rather than clamping it at zero', () => {
     /*
       Trazum priced more than the provider charged. That is a stale rate in

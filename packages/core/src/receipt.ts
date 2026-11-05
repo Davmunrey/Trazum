@@ -278,7 +278,13 @@ export interface ReceiptDocument {
    */
   counting: 'counted';
   lines: ReceiptLine[];
-  total: { calls: number; usd: number };
+  /**
+   * The whole receipt. `batchUsd` (calls priced at the Batch API rate, their
+   * tokens) and `webSearchUsd` (searches, per search) are parts of `usd`, said
+   * apart since 2.7.5 so `reconcile` can set each against the provider's own
+   * batch and non-token charges instead of taking those out whole.
+   */
+  total: { calls: number; usd: number; batchUsd: number; webSearchUsd: number };
   /**
    * What this receipt cannot say, and why.
    *
@@ -473,7 +479,12 @@ export function receiptFrom(
      * separation rather than re-deriving it, and `gaps` carries the size of
      * what is missing.
      */
-    total: { calls: report.total.calls, usd: report.total.totalUsd },
+    total: {
+      calls: report.total.calls,
+      usd: report.total.totalUsd,
+      batchUsd: report.total.batchUsd,
+      webSearchUsd: report.total.webSearchUsd,
+    },
     gaps,
   };
 }

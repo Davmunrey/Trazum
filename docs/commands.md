@@ -2886,13 +2886,24 @@ window, and you are the one entitled to say which you trust.
 
 **The difference is attributed, when the report can attribute it.** With
 `group_by[]=description` each row says whether it was tokens, a web search, a
-code execution or a session, and whether it was batch-tier. So the difference
-comes apart into what no token rate covers, what was billed at a discount
-Trazum deliberately does not price, and a **remainder**. That last one is the
-only figure worth arguing about: the same standard-tier tokens priced two ways,
-or usage your log never saw. It is never folded into the other two, and a
-negative one is reported as it is — Trazum priced more than you were charged,
-which is a stale rate in the direction that costs you money.
+code execution or a session, and whether it was batch-tier. Each of those is
+set against what Trazum computed for the same thing, which the receipt says
+apart in `total.batchUsd` (its batch calls, at each model's batch rate) and
+`total.webSearchUsd` (its searches, at $10 per 1,000): the bill's non-token
+charges against the receipt's searches, the bill's batch charge against the
+receipt's batch calls. What is left is a **remainder**, and it is the only
+figure worth arguing about: the same standard-tier tokens priced two ways, or
+usage your log never saw. It is never folded into the other two, and a negative
+one is reported as it is — Trazum priced more than you were charged, which is a
+stale rate in the direction that costs you money.
+
+**A receipt from before 2.7.5 does not carry that split.** It is read as one
+that priced neither, the provider's whole batch and non-token charges are taken
+out, and the run says so. That is right for a receipt from 2.7.3 or earlier,
+which priced no batch call and no search. A receipt made by 2.7.4 did price its
+batch calls, and reconciled as it is the remainder comes out short by them:
+2.7.4 took out the provider's whole batch charge against a figure that already
+held its own. Make the receipt again and reconcile that.
 
 Without that grouping every `cost_type` and `service_tier` is `null`, and the
 run says the difference cannot be attributed rather than reporting a remainder
@@ -2928,7 +2939,9 @@ decomposition is thinner, because the schema names no batch: with
 `group_by[]=line_item` each row carries a `quantity_unit`, so money measured in
 `duration_seconds`, `images`, `characters` or `gibibyte_hours` is set aside as
 what no token rate covers, but a batch discount, if any, stays inside the
-remainder and the run says so. A line item whose unit is `null` is counted
+remainder and the run says so. So do the receipt's own batch calls: both
+totals hold their batch, and setting off Trazum's side alone would move the
+remainder by exactly those calls. A line item whose unit is `null` is counted
 under its own name rather than guessed either way.
 
 ### What the provider itself says: `trazum from-anthropic`

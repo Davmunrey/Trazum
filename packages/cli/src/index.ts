@@ -3338,7 +3338,10 @@ async function commandReconcile(args: Args, t: CliMessages): Promise<void> {
   const against = stringFlag(args, 'against');
   if (against === undefined) throw new Error(t.reconcile.noReport());
 
-  let receipt: { total?: { usd?: unknown }; span?: { fromMs?: unknown; toMs?: unknown } };
+  let receipt: {
+    total?: { usd?: unknown; batchUsd?: unknown; webSearchUsd?: unknown };
+    span?: { fromMs?: unknown; toMs?: unknown };
+  };
   try {
     receipt = JSON.parse(await readFile(file, 'utf8'));
   } catch {
@@ -3363,7 +3366,19 @@ async function commandReconcile(args: Args, t: CliMessages): Promise<void> {
   const billed = openai ?? anthropicCostReport(billedText);
   if (billed.unparseable) throw new Error(t.reconcile.notAReport(against));
 
-  const answer = reconcile({ usd, fromMs, toMs }, billed);
+  /* The receipt's own batch and search figures, when it is new enough to carry them. */
+  const figure = (value: unknown): number | undefined =>
+    typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  const batchUsd = figure(receipt.total?.batchUsd);
+  const webSearchUsd = figure(receipt.total?.webSearchUsd);
+  const answer = reconcile(
+    {
+      usd, fromMs, toMs,
+      ...(batchUsd === undefined ? {} : { batchUsd }),
+      ...(webSearchUsd === undefined ? {} : { webSearchUsd }),
+    },
+    billed,
+  );
   const json = JSON.stringify(answer, null, 2);
 
   const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
@@ -3395,8 +3410,15 @@ async function commandReconcile(args: Args, t: CliMessages): Promise<void> {
 
   console.error(t.reconcile.summary(answer.computedUsd, answer.billedUsd, answer.differenceUsd));
   if (answer.attributable) {
-    if (answer.notTokensUsd !== 0) console.error(t.reconcile.notTokens(answer.notTokensUsd));
-    if (answer.batchUsd !== 0) console.error(t.reconcile.batch(answer.batchUsd));
+    if (answer.notTokensUsd !== 0 || (answer.computedWebSearchUsd ?? 0) !== 0) {
+      console.error(t.reconcile.notTokens(answer.notTokensUsd, answer.computedWebSearchUsd ?? 0));
+    }
+    if (answer.batchUsd !== 0 || (answer.computedBatchUsd ?? 0) !== 0) {
+      console.error(t.reconcile.batch(answer.batchUsd, answer.computedBatchUsd ?? 0));
+    }
+    if (!answer.computedSplitKnown && (answer.batchUsd !== 0 || answer.notTokensUsd !== 0)) {
+      console.error(t.reconcile.splitUnknown());
+    }
     console.error(t.reconcile.remainder(answer.remainderUsd));
     if (!answer.batchSeparable) console.error(t.reconcile.batchNotSeparable());
     if (openai !== null && openai.unknownUnitUsd !== 0) {

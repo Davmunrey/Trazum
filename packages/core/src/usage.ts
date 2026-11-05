@@ -335,6 +335,13 @@ export interface UsageBreakdown {
   webSearchRequests: number;
   webSearchUsd: number;
   webSearchUnpricedRequests: number;
+  /**
+   * What the calls priced at the Batch API rate cost in tokens: already inside
+   * the four token lines above, and said apart so a provider's own batch
+   * charge can be set against it (`reconcile`) rather than against the whole
+   * difference. Their searches are in `webSearchUsd`, at the same fee as any.
+   */
+  batchUsd: number;
 }
 
 /**
@@ -701,6 +708,7 @@ const EMPTY = (): UsageBreakdown => ({
   webSearchRequests: 0,
   webSearchUsd: 0,
   webSearchUnpricedRequests: 0,
+  batchUsd: 0,
 });
 
 /**
@@ -1200,6 +1208,7 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
     per(record.cacheWrite5mTokens, input * rates.cacheWrite5m) +
     per(record.cacheWrite1hTokens, input * rates.cacheWrite1h) +
     per(record.outputTokens, output);
+  if (priced.batch === true) into.batchUsd += recordUsd(inputPerMTok, outputPerMTok);
   const floor = priced.tier?.decided === false ? priced.tier.floor : undefined;
   if (floor !== undefined) {
     into.tierCeilingCalls += 1;

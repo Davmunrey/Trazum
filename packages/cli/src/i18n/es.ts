@@ -2034,10 +2034,12 @@ ${bold('EJEMPLOS')}
       `${file}: no es el JSON que devuelve un endpoint de costes, ni el de Anthropic ni el de OpenAI. Pasa el cuerpo de la respuesta entero.`,
     summary: (computed, billed, difference) =>
       `Trazum calculó $${computed.toFixed(2)}; el proveedor facturó $${billed.toFixed(2)}. Diferencia: $${difference.toFixed(2)}.`,
-    notTokens: (usd) =>
-      `$${usd.toFixed(2)} de eso se factura por algo que ninguna tarifa por token cubre: búsqueda web, ejecución de código, uso de sesión. Trazum cobra tokens y nunca dijo cubrir esto.`,
-    batch: (usd) =>
-      `$${usd.toFixed(2)} es del tramo batch, que from-anthropic deja fuera en vez de cobrarlo a tarifa de catálogo.`,
+    notTokens: (billed, computed) =>
+      `Se facturaron $${billed.toFixed(2)} por algo que no son tokens: búsqueda web, ejecución de código, uso de sesiones. La cifra de Trazum incluye $${computed.toFixed(2)} de búsquedas web y nada más de esto, así que $${(billed - computed).toFixed(2)} de la diferencia son cargos que nunca dijo cubrir.`,
+    batch: (billed, computed) =>
+      `Se facturaron $${billed.toFixed(2)} en el nivel batch; la cifra de Trazum incluye $${computed.toFixed(2)} de llamadas batch, cobradas a la tarifa batch de cada modelo. Los $${(billed - computed).toFixed(2)} que las separan salen de la diferencia.`,
+    splitUnknown: () =>
+      'Este recibo no dice cuánto costaron sus llamadas batch y sus búsquedas web (ningún recibo anterior a 2.7.5 lo dice), así que los cargos batch y no de tokens del proveedor se restaron enteros, como si Trazum no hubiera cobrado ninguno. Un recibo hecho con 2.7.4 sí cobró las llamadas batch, y entonces el resto se queda corto en ellas: vuelve a ejecutar trazum receipt y concilia ese.',
     remainder: (usd) =>
       `Quedan $${usd.toFixed(2)}, y es la única cifra aquí que merece discusión: los mismos tokens estándar cobrados de dos maneras, o uso que tu log nunca vio. Si es negativa, Trazum cobró más de lo que te facturaron, que es una tarifa desactualizada en la dirección que te cuesta dinero.`,
     notAttributable: () =>

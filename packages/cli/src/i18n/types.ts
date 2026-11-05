@@ -682,8 +682,10 @@ export interface CliMessages {
     notAReport(file: string): string;
     summary(computed: number, billed: number, difference: number): string;
     /** Billed for what no token rate covers. Named, never blamed. */
-    notTokens(usd: number): string;
-    batch(usd: number): string;
+    notTokens(billed: number, computed: number): string;
+    batch(billed: number, computed: number): string;
+    /** The receipt does not say what its batch calls and searches cost. */
+    splitUnknown(): string;
     /** The only figure worth arguing about, never folded into the others. */
     remainder(usd: number): string;
     /** Without group_by[]=description nothing can be attributed. */

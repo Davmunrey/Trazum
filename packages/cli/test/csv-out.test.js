@@ -48,7 +48,8 @@ describe('--csv-out', () => {
       ['--since', '2026-08-02'],
     );
     const csv = await readFile(out, 'utf8');
-    assert.match(csv, /,1\.000000$/m);
+    // total_usd, then the two web search columns appended after it (none here).
+    assert.match(csv, /,1\.000000,0,0\.000000$/m);
     assert.doesNotMatch(csv, /5\.000000/);
   });
 

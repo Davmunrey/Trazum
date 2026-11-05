@@ -322,6 +322,7 @@ const BREAKDOWN_SUM = [
   'webSearchRequests',
   'webSearchUsd',
   'webSearchUnpricedRequests',
+  'batchUsd',
 ] as const;
 
 /** Fields whose combination is a maximum, because a sum would invent a call. */

@@ -108,6 +108,17 @@ describe('the decomposition, and how little this report allows', () => {
 });
 
 describe('setting a receipt beside an OpenAI bill', () => {
+  it('leaves the receipt’s batch calls inside the comparison, since the report cannot name batch', () => {
+    /* Both totals hold their batch: OpenAI's inside its token line items,
+       Trazum's at the batch rate. Taking out Trazum's side alone would move
+       the remainder by exactly those calls. */
+    const billed = openaiCostReport(report([cost({ amount: { value: 4, currency: 'usd' } })]));
+    const with_ = reconcile({ ...inside(3.8), batchUsd: 1, webSearchUsd: 0 }, billed);
+    const without = reconcile(inside(3.8), billed);
+    assert.equal(with_.batchSeparable, false);
+    assert.ok(Math.abs(with_.remainderUsd - without.remainderUsd) < 1e-9);
+  });
+
   it('reconciles through the same function the Anthropic reading uses', () => {
     const billed = openaiCostReport(
       report([
