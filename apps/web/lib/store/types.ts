@@ -57,7 +57,14 @@ export interface SessionRecord {
   tokenHash: string;
   userId: string;
   createdAt: Date;
-  /** Absolute expiry. Enforced server-side; the cookie's Max-Age is a courtesy. */
+  /**
+   * When the session ends unless it is used again.
+   *
+   * One idle window after its last use, and never later than its lifetime
+   * from `createdAt`; `currentUser` moves it on each use (see `renewal` in
+   * `lib/auth/session.ts`). Enforced server-side; the cookie's Max-Age is a
+   * courtesy.
+   */
   expiresAt: Date;
 }
 
@@ -126,6 +133,16 @@ export interface Store {
    */
   findSession(tokenHash: string, now: Date): Promise<{ session: SessionRecord; user: UserRecord } | null>;
 
+  /**
+   * Move a live session's end to `expiresAt`, and say whether it moved.
+   *
+   * Never revives one: a row already at or past its end at `now` is left
+   * alone and the answer is false, so a refresh that races an expiry cannot
+   * bring a dead session back. The caller decides the new end and keeps it
+   * inside the session's lifetime; the store does not know the policy.
+   */
+  touchSession(tokenHash: string, expiresAt: Date, now: Date): Promise<boolean>;
+
   deleteSession(tokenHash: string): Promise<void>;
 
   /** Drop every session belonging to a user. Sign out everywhere. */
@@ -138,7 +155,7 @@ export interface Store {
    * and is never presented again sits in the table for ever. That is not a way
    * in: the lookup excludes anything past `expires_at`, so a dead row cannot
    * authenticate anybody. It is unbounded growth in a table whose rows are all
-   * dead weight after thirty days.
+   * dead weight once they end.
    *
    * The count is returned so a test can prove the sweep happened. Nothing in
    * the app reads it and no response ever carries it.

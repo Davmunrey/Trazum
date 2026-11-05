@@ -60,7 +60,7 @@ export async function requireCaller(
   }
 
   const store = await getStore();
-  const user = await currentUser(request, store, new Date(), config.secure);
+  const user = await currentUser(request, store, new Date(), config);
   if (!user) {
     securityEvent('access.refused', 'failure', { reason: 'not_signed_in', route: routeOf(request) });
     return jsonError('sign in to use the prompt library', 401);

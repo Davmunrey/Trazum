@@ -133,6 +133,17 @@ export function postgresStore(sql: SqlClient): Store {
       };
     },
 
+    async touchSession(tokenHash: string, expiresAt: Date, now: Date): Promise<boolean> {
+      // The `expires_at > now` predicate is what keeps this from reviving a
+      // session that ended between the lookup and the write.
+      const rows = await sql`
+        update trazum_sessions set expires_at = ${expiresAt}
+        where token_hash = ${tokenHash} and expires_at > ${now}
+        returning token_hash
+      `;
+      return rows.length > 0;
+    },
+
     async deleteSession(tokenHash: string): Promise<void> {
       await sql`delete from trazum_sessions where token_hash = ${tokenHash}`;
     },

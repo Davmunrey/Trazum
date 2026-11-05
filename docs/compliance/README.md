@@ -52,10 +52,11 @@ guide. Prompt text is stored only when a signed-in user saves it to the
 library or publishes a share link. Usage logs pasted into the web app are
 never sent to the server, which the CI privacy probe checks on every change.
 
-## What this change fixed
+## What has been fixed
 
-Found by reading the code against the three frameworks, and fixed in the same
-change as this pack:
+Found by reading the code against the three frameworks. The first four rows
+were fixed in the same change as this pack, the rest in the pull requests
+after it:
 
 | Gap | Fix | Requirement |
 | --- | --- | --- |
@@ -64,17 +65,15 @@ change as this pack:
 | No `Permissions-Policy` or `Cross-Origin-Opener-Policy` | Both added to every page, with a test | ASVS V14.4, ISO 27001 8.26 |
 | The accounts guide said account deletion did not exist, after it shipped | Corrected, and the export and the log documented | SOC 2 CC2.3 |
 | The Postgres driver had never run against Postgres. When it did, account deletion failed for anyone with a saved prompt, and share settings were stored as a string | `apps/web/test/store-contract.test.mjs` runs one contract on both drivers, against the runner's PostgreSQL in CI; both bugs fixed without a migration | SOC 2 CC8.1, P4.3; ISO 27001 8.29, 8.10; ASVS V8.3 |
+| A session lasted thirty days however long it sat unused | An idle window on top of the lifetime: a day and thirty days by default, configurable down to ASVS level 2's thirty minutes and twelve hours; a request moves the end on, never past the lifetime, and writes at most every five minutes; sessions from before the change end at their next use. `apps/web/lib/auth/session.ts`, `apps/web/test/session-lifetime.test.mjs` | SOC 2 CC6.1; ISO 27001 8.5; ASVS V3.3.2 |
 
 ## What remains, in code
 
 Things a pull request can still do, in the order they matter to an audit:
 
-1. **An idle timeout for sessions**, on top of the 30-day absolute one. ASVS
-   level 1 accepts 30 days; level 2 asks for less, and a SOC 2 auditor will ask
-   what the number is and why.
-2. **A shared rate-limit store.** Limits are counted per server instance today
+1. **A shared rate-limit store.** Limits are counted per server instance today
    (TRZ-08), which stops scripts and not a distributed attacker.
-3. **The ASVS level 2 rows not yet mapped**, worked through section by section.
+2. **The ASVS level 2 rows not yet mapped**, worked through section by section.
 
 ## What only the owner can do
 
@@ -86,6 +85,7 @@ requirement that asks for it.
 | An information security policy, roles and responsibilities, approved and reviewed yearly | It is where both frameworks start | SOC 2 CC1, CC2, CC5.3; ISO 27001 clauses 5 and 6, A.5.1 to A.5.4 |
 | A risk assessment and treatment plan, with a Statement of Applicability | ISO 27001 cannot be certified without one; SOC 2 asks for the risk process | SOC 2 CC3; ISO 27001 6.1, 8.2, 8.3 |
 | Multi-factor authentication on GitHub, the hosting platform, npm and the database provider, for every person with access | The repository's controls are only as strong as the accounts that change them | SOC 2 CC6.1; ISO 27001 5.17, 8.5 |
+| Decide the session numbers: the defaults (thirty days, a day idle) or ASVS level 2 (`TRAZUM_SESSION_MAX_HOURS=12`, `TRAZUM_SESSION_IDLE_MINUTES=30`), and write the choice and its reason into the security policy | An auditor asks what the numbers are and why; the code holds a default, only the policy can hold the reason | SOC 2 CC6.1; ISO 27001 5.15, 8.5 |
 | Quarterly access reviews: `TRAZUM_ADMINS`, `TRAZUM_ALLOWED_USERS`, GitHub collaborators, platform and database users | Access granted once and never reviewed is the most common SOC 2 exception | SOC 2 CC6.2, CC6.3; ISO 27001 5.18 |
 | Security log retention, alerting and review: how long the platform keeps standard output, who looks, and what pages someone | TRZ-13 writes the lines; keeping and watching them is the operator's | SOC 2 CC7.2, CC7.3; ISO 27001 8.15, 8.16 |
 | An incident response plan, and one tabletop exercise a year | SECURITY.md says how to report; nothing says what happens next | SOC 2 CC7.3 to CC7.5; ISO 27001 5.24 to 5.28 |

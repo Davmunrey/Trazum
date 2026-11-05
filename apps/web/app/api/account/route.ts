@@ -58,7 +58,7 @@ export async function DELETE(request: Request): Promise<Response> {
   }
 
   const store = await getStore();
-  const user = await currentUser(request, store, new Date(), config.secure);
+  const user = await currentUser(request, store, new Date(), config);
   // 401 and not 404: this is the one route where telling an unauthenticated
   // caller "there is nothing here" and telling them "you are not signed in"
   // are the same sentence, and the honest one is shorter.
@@ -135,7 +135,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const store = await getStore();
   const now = new Date();
-  const user = await currentUser(request, store, now, config.secure);
+  const user = await currentUser(request, store, now, config);
   if (!user) {
     securityEvent('account.exported', 'failure', { reason: 'not_signed_in', route });
     return jsonError('sign in to export your account', 401);

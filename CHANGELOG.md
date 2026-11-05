@@ -96,6 +96,22 @@ merged commit with no entry is a change only `git log` remembers.
   analysis and one browser scenario do not establish, and how to reproduce it.
   `SECURITY.md` links it.
 
+### Changed
+
+- **A web session now ends after a day without use, as well as thirty days
+  after sign-in.** Until now a session lasted thirty days however long it sat
+  unused, the most OWASP ASVS 4.0.3 V3.3.2 accepts at level 1. Each request
+  moves its end one idle window on, never past the lifetime, and writes at
+  most once every five minutes rather than on every request. Both are
+  configurable: `TRAZUM_SESSION_IDLE_MINUTES` (5 to the lifetime, default
+  1440) and `TRAZUM_SESSION_MAX_HOURS` (1 to 720, default 720); `12` and `30`
+  are ASVS level 2. A value out of range turns sign-in off and names the
+  variable, rather than running on the default. No migration: the session's
+  existing end column now holds the idle end. **Every session issued before
+  this change ends at its next use,** because how long it sat unused was never
+  recorded; signing in again is one click. Lowering either setting later ends
+  the sessions it no longer allows, the same way.
+
 ## 2.7.7 — 2026-11-05
 
 ### Fixed

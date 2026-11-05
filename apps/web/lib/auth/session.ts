@@ -1,10 +1,8 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
 import type { SessionRecord, Store, UserRecord } from '../store/types';
+import { DEFAULT_SESSION_POLICY, type SessionPolicy } from './config';
 import { parseCookies, serializeCookie } from './cookies';
-
-/** How long a sign-in lasts. Absolute, not sliding: 30 days from issue. */
-export const SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 /** How long the browser has to come back from the provider with a code. */
 export const OAUTH_STATE_TTL_SECONDS = 10 * 60;
@@ -74,20 +72,33 @@ export interface IssuedSession {
   setCookie: string;
 }
 
-export function issueSession(userId: string, now: Date, secure: boolean): IssuedSession {
+/**
+ * A new session, its row and its cookie.
+ *
+ * The row ends one idle window from now, or at the end of its lifetime if that
+ * is sooner; every request that finds it pushes the end out again, up to the
+ * lifetime (see `renewal`). The cookie lasts the whole lifetime, because the
+ * browser cannot know when the session was last used and the server can.
+ */
+export function issueSession(
+  userId: string,
+  now: Date,
+  secure: boolean,
+  policy: SessionPolicy = DEFAULT_SESSION_POLICY,
+): IssuedSession {
   const token = mintToken();
   const record: SessionRecord = {
     tokenHash: hashToken(token),
     userId,
     createdAt: now,
-    expiresAt: new Date(now.getTime() + SESSION_TTL_SECONDS * 1000),
+    expiresAt: new Date(now.getTime() + Math.min(policy.idleSeconds, policy.maxSeconds) * 1000),
   };
 
   return {
     token,
     record,
     setCookie: serializeCookie(sessionCookieName(secure), token, {
-      maxAge: SESSION_TTL_SECONDS,
+      maxAge: policy.maxSeconds,
       secure,
       httpOnly: true,
       // Lax and not Strict: the sign-in returns here as a top-level navigation
@@ -127,22 +138,95 @@ export function tokenFromRequest(request: Request, secure: boolean): string | nu
 }
 
 /**
+ * How far the stored end of a session may lag behind the true one before a
+ * request writes it again: a tenth of the idle window, and never more than
+ * five minutes.
+ *
+ * Without it every authenticated request would be a write. With it a session
+ * in use is written at most once every five minutes, and the price is paid in
+ * the safe direction: a session can end up to this much *earlier* than its
+ * idle window says, never later.
+ */
+export function refreshStepMs(policy: SessionPolicy): number {
+  return Math.min(policy.idleSeconds * 100, 5 * 60 * 1000);
+}
+
+export type Renewal =
+  | { kind: 'end' }
+  | { kind: 'keep' }
+  | { kind: 'refresh'; expiresAt: Date };
+
+/**
+ * What a request that found `session` at `now` does to it.
+ *
+ * - **end** when the lifetime is over, counted from the sign-in under today's
+ *   policy, so lowering `TRAZUM_SESSION_MAX_HOURS` ends the sessions it now
+ *   forbids at their next use.
+ * - **end** when the stored end is further away than one idle window from now.
+ *   No row this code writes can be, so the row was written under a longer
+ *   window: a session from before idle timeouts existed, or one issued before
+ *   the operator shortened the window. How long it then sat unused is not
+ *   recorded anywhere, so it is not given the benefit of the doubt; its owner
+ *   signs in again. One refresh step of slack keeps a few seconds of clock
+ *   difference between two instances from ending a session that is fine.
+ * - **refresh** when the end has fallen behind by a refresh step or more.
+ * - **keep** otherwise.
+ *
+ * Pure, so every branch is tested without a store or a clock.
+ */
+export function renewal(session: SessionRecord, now: Date, policy: SessionPolicy): Renewal {
+  const cap = session.createdAt.getTime() + policy.maxSeconds * 1000;
+  if (cap <= now.getTime()) return { kind: 'end' };
+
+  const idleMs = policy.idleSeconds * 1000;
+  const step = refreshStepMs(policy);
+  if (session.expiresAt.getTime() - now.getTime() > idleMs + step) return { kind: 'end' };
+
+  const next = Math.min(now.getTime() + idleMs, cap);
+  if (Math.abs(next - session.expiresAt.getTime()) < step) return { kind: 'keep' };
+  return { kind: 'refresh', expiresAt: new Date(next) };
+}
+
+/**
  * Who is making this request, or `null`.
  *
  * The only function anything else should use to answer that question. It is
  * deliberately not cached and deliberately hits the store every time: a session
  * that was revoked a second ago must stop working a second ago, and every
  * shortcut around this lookup is a way for it not to.
+ *
+ * It is also where a session is kept alive. Finding one counts as using it, so
+ * its end moves one idle window on, never past its lifetime (`renewal`). A
+ * refresh that fails is swallowed: the session ends a little sooner than it
+ * would have, which is the safe direction, and a read must not become a 500
+ * because a write did not land.
+ *
+ * Takes the deployment's configuration rather than a bare `secure` flag so the
+ * session policy cannot be left out at a call site: every caller already holds
+ * an enabled `authConfig()`, which carries both.
  */
 export async function currentUser(
   request: Request,
   store: Store,
   now: Date,
-  secure: boolean,
+  config: { secure: boolean; session: SessionPolicy },
 ): Promise<UserRecord | null> {
-  const token = tokenFromRequest(request, secure);
+  const token = tokenFromRequest(request, config.secure);
   if (!token) return null;
 
-  const found = await store.findSession(hashToken(token), now);
-  return found?.user ?? null;
+  const hash = hashToken(token);
+  const found = await store.findSession(hash, now);
+  if (!found) return null;
+
+  const next = renewal(found.session, now, config.session);
+  if (next.kind === 'end') {
+    // The answer is null whether or not the delete lands: the row is dead by
+    // policy, and the next request reaches the same verdict.
+    await store.deleteSession(hash).catch(() => {});
+    return null;
+  }
+  if (next.kind === 'refresh') {
+    await store.touchSession(hash, next.expiresAt, now).catch(() => false);
+  }
+  return found.user;
 }

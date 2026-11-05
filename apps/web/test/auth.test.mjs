@@ -211,11 +211,17 @@ describe('session tokens', () => {
     assert.ok(!/Secure/.test(plain.setCookie));
   });
 
-  it('sets an absolute expiry thirty days out and hashes what it stores', () => {
+  it('ends a new session one idle window out, keeps the cookie for its lifetime, and hashes what it stores', () => {
     const now = new Date('2026-08-09T00:00:00Z');
     const issued = session.issueSession('user-1', now, true);
 
-    assert.equal(issued.record.expiresAt.getTime() - now.getTime(), 30 * 24 * 60 * 60 * 1000);
+    // A day without use ends it; the cookie lasts the thirty-day lifetime,
+    // because only the server knows when the session was last used.
+    assert.equal(issued.record.expiresAt.getTime() - now.getTime(), 24 * 60 * 60 * 1000);
+    assert.match(issued.setCookie, new RegExp(`Max-Age=${30 * 24 * 60 * 60};`));
+    const short = session.issueSession('user-1', now, true, { maxSeconds: 12 * 3600, idleSeconds: 30 * 60 });
+    assert.equal(short.record.expiresAt.getTime() - now.getTime(), 30 * 60 * 1000);
+    assert.match(short.setCookie, new RegExp(`Max-Age=${12 * 3600};`));
     assert.equal(issued.record.tokenHash, session.hashToken(issued.token));
     assert.ok(!issued.record.tokenHash.includes(issued.token));
     // The cookie carries the token; the record must not.
