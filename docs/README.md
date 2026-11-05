@@ -36,7 +36,10 @@ Then, if you want to know whether to trust the numbers:
   control, [every ASVS level 2 requirement](compliance/asvs-l2.md) and where
   Trazum stands on it, and what only the owner can do. It opens by saying
   Trazum is not certified, and a test keeps every other page from saying
-  otherwise.
+  otherwise. Beside it, the [threat model](compliance/threat-model.md) with
+  the risk behind every limit the server sets, the [secure coding
+  checklist](compliance/secure-coding.md) and the [procedure for rotating each
+  secret](compliance/secret-rotation.md), each held to the code by a test.
 - **[Audited from the outside](audit-rea-2026-11.md)**: what REA, a reverse
   engineering tool that has never seen this source, found reading the npm
   packages as npm serves them and the production page while a marked log was

@@ -87,6 +87,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **A threat model, a secure coding checklist and a procedure for rotating
+  each secret** (OWASP ASVS 4.0.3 1.1.5, 1.1.7, 1.6.3, 11.1.5), in
+  `docs/compliance/`. The threat model covers what a hosted Trazum is worth
+  attacking for, who would try, where the boundaries run, twenty threats each
+  with what answers it, what is accepted and why, and a table of every limit
+  the server sets with its value and the risk that chose it. The checklist
+  gives each rule for a route, a page, the packages and the workflows the test
+  that holds it. The rotation page says, for the GitHub client secret, the
+  database URL and each workflow secret, what depends on it, what breaks while
+  it changes and how to tell it worked. `apps/web/test/threat-model.test.mjs`
+  keeps them true: a limit added or changed without its row, a variable the
+  app reads or a secret a workflow reads that the rotation page does not
+  cover, a checklist item nothing holds, or a path that is gone, each fails
+  the build. Thirteen faults planted in the code and the documents were each
+  caught. They are drafts for the owner to approve.
 - **A method an API route does not serve is refused and recorded.** Next
   answered a method a route does not export with a 405 of its own, before any
   of the app's code ran, so nothing recorded it, and a cross-origin preflight

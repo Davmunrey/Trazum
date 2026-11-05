@@ -34,7 +34,7 @@ gap is listed in the pack, and the summary below matches the rows.
 
 | Chapter | Requirements | Met | Partial | Gap | Owner | N/A |
 | --- | --- | --- | --- | --- | --- | --- |
-| V1 Architecture, design and threat modelling | 38 | 20 | 14 | 0 | 3 | 1 |
+| V1 Architecture, design and threat modelling | 38 | 23 | 12 | 0 | 2 | 1 |
 | V2 Authentication | 53 | 3 | 1 | 0 | 2 | 47 |
 | V3 Session management | 18 | 14 | 1 | 0 | 0 | 3 |
 | V4 Access control | 9 | 7 | 0 | 0 | 1 | 1 |
@@ -44,11 +44,11 @@ gap is listed in the pack, and the summary below matches the rows.
 | V8 Data protection | 15 | 6 | 6 | 0 | 1 | 2 |
 | V9 Communication | 7 | 4 | 0 | 0 | 3 | 0 |
 | V10 Malicious code | 5 | 2 | 1 | 0 | 1 | 1 |
-| V11 Business logic | 8 | 3 | 3 | 0 | 1 | 1 |
+| V11 Business logic | 8 | 4 | 2 | 0 | 1 | 1 |
 | V12 Files and resources | 15 | 5 | 0 | 0 | 0 | 10 |
 | V13 API and web services | 13 | 8 | 1 | 0 | 0 | 4 |
 | V14 Configuration | 23 | 18 | 3 | 0 | 0 | 2 |
-| **Total** | **259** | **124** | **30** | **0** | **16** | **89** |
+| **Total** | **259** | **128** | **27** | **0** | **15** | **89** |
 
 Most of V2 is not applicable for one reason: Trazum has no passwords. Signing
 in is delegated to GitHub, so the password, its storage, its recovery and any
@@ -59,12 +59,12 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | ID | Requirement | Status | Evidence, or why |
 | --- | --- | --- | --- |
 | 1.1.1 | A secure development lifecycle covers every stage | Partial | Every change is a pull request with tests, CodeQL, dependency review and signed releases (`.github/workflows/ci.yml`, `.github/workflows/security.yml`, `.github/workflows/release.yml`). A written lifecycle policy is the owner's. |
-| 1.1.2 | Threat modelling for every design change | Owner | No threat model is kept per change. The pull request template asks what a change refuses to do, which is a part of one, not the whole. |
+| 1.1.2 | Threat modelling for every design change | Partial | The threat model is kept in the repository (`docs/compliance/threat-model.md`), and a change that adds or alters a limit fails CI until the model says so (`apps/web/test/threat-model.test.mjs`); the pull request template asks what a change refuses to do (`.github/PULL_REQUEST_TEMPLATE.md`). Modelling every design change is a practice the owner's policy sets. |
 | 1.1.3 | Features carry their security constraints | Partial | The pull request template asks for what the change refuses and the guard planted to prove it (`.github/PULL_REQUEST_TEMPLATE.md`); there are no user stories to attach constraints to. |
 | 1.1.4 | Trust boundaries, components and data flows documented | Met | The system in scope, its components and subservice organisations (`docs/compliance/README.md`); every item of data and where it goes (`docs/accounts.md`). |
-| 1.1.5 | Architecture and remote services analysed for security | Partial | Components and remote services are listed (`docs/compliance/README.md`) and the independent review covered them; no standalone security analysis document exists. |
+| 1.1.5 | Architecture and remote services analysed for security | Met | The threat model analyses the hosted app: what is worth protecting, who would act against it, every boundary and connected service (GitHub, the database, model endpoints, npm) and each threat with what answers it (`docs/compliance/threat-model.md`); its limits, paths and claims are held to the code (`apps/web/test/threat-model.test.mjs`). |
 | 1.1.6 | Security controls centralised and reused | Met | One function answers who is asking (`apps/web/lib/auth/session.ts`), one guard every library route starts with (`apps/web/lib/prompts/api.ts`), one limiter, one security log (`apps/web/lib/security-log.ts`). |
-| 1.1.7 | Secure coding guidance available to developers | Partial | `CONTRIBUTING.md`, `SECURITY.md` and the pull request checklist; no dedicated secure coding checklist. |
+| 1.1.7 | Secure coding guidance available to developers | Met | A secure coding checklist for routes, pages, the packages and workflows, each item naming the test that holds it (`docs/compliance/secure-coding.md`); `CONTRIBUTING.md` and `SECURITY.md` for the reasoning. |
 | 1.2.1 | Components run under low-privilege accounts | Met | The container runs as the unprivileged `node` user (`Dockerfile`). |
 | 1.2.2 | Component communications authenticated with least privilege | Partial | The database connection is authenticated and its certificate verified (`apps/web/lib/store/index.ts`). The app connects as the owner of its tables; a role limited to reading and writing them is the operator's to create. |
 | 1.2.3 | One vetted authentication mechanism, logged | Met | GitHub OAuth only (`apps/web/lib/auth/github.ts`), and every sign-in decision is logged (`apps/web/lib/security-log.ts`). |
@@ -76,9 +76,9 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 1.5.2 | No serialisation to untrusted clients beyond plain data | Met | JSON only, parsed into plain values and validated field by field (`apps/web/app/api/prompts/route.ts`). |
 | 1.5.3 | Input validated on a trusted layer | Met | In the route handlers, never only in the browser (`apps/web/app/api/prompts/route.ts`, `apps/web/lib/shares/api.ts`). |
 | 1.5.4 | Output encoded by the interpreter it is meant for | Met | React renders text as text (`apps/web/app/c/[token]/page.tsx`); SQL values are bound, never concatenated (`apps/web/lib/store/postgres.ts`). |
-| 1.6.1 | Key management policy and lifecycle | Owner | Trazum holds two secrets, the GitHub client secret and the database URL; their lifecycle is the operator's policy. |
+| 1.6.1 | Key management policy and lifecycle | Owner | Trazum holds two secrets, the GitHub client secret and the database URL, and the procedure to replace each is written (`docs/compliance/secret-rotation.md`); how often, and the vault behind them, are the operator's policy. |
 | 1.6.2 | Key material held in a vault or behind an API | Partial | Secrets are read from the environment at runtime and never committed (`apps/web/lib/auth/config.ts`); which vault backs that environment is the operator's. |
-| 1.6.3 | Keys and passwords replaceable | Partial | Both secrets are replaced by changing the environment, and nothing at rest is encrypted under them, so nothing needs re-encrypting (`apps/web/lib/auth/config.ts`). The rotation procedure is not written down. |
+| 1.6.3 | Keys and passwords replaceable | Met | Both secrets are replaced by changing the environment, and nothing at rest is encrypted under them, so nothing needs re-encrypting (`apps/web/lib/auth/config.ts`). The procedure for each, and for the workflows' secrets, says what breaks and how to tell it worked (`docs/compliance/secret-rotation.md`). |
 | 1.6.4 | Client-side secrets never protect sensitive data | Met | The browser holds no secret. A provider key a visitor pastes is their own, sent with that one request and never stored (`apps/web/app/api/optimize/route.ts`). |
 | 1.7.1 | A common logging format | Met | One JSON line shape for every security event (`apps/web/lib/security-log.ts`). |
 | 1.7.2 | Logs shipped to a remote system for analysis | Owner | Lines go to standard output, which the platform collects; forwarding them to analysis and alerting is the operator's. |
@@ -312,7 +312,7 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 11.1.2 | Flows at realistic human speed | N/A | No multi-step business transaction exists whose speed matters. |
 | 11.1.3 | Per-user limits on business actions | Met | Per-account ceilings: 200 prompts, 500 versions each, 100 share links (`apps/web/lib/store/prompts.ts`, `apps/web/lib/store/shares.ts`). |
 | 11.1.4 | Anti-automation against excessive calls | Partial | Every route is rate-limited and every input bounded (`apps/web/lib/shared-limit.ts`); keyed on the address, so an attacker with many addresses gets a budget per address. |
-| 11.1.5 | Limits derived from identified business risks | Partial | Each limit states the risk it answers beside its number (`apps/web/lib/auth/routes.ts`, `apps/web/lib/store/prompts.ts`); there is no threat model to derive them from. |
+| 11.1.5 | Limits derived from identified business risks | Met | Every limit the server sets has a row in the threat model with its value and the risk that chose it (`docs/compliance/threat-model.md`); a limit added or changed without its row fails the build (`apps/web/test/threat-model.test.mjs`). |
 | 11.1.6 | No race conditions on sensitive operations | Met | Account deletion, rate counts and session refreshes are single statements (`apps/web/lib/store/postgres.ts`). Every count that decides a write (the per-account ceilings, the next version number) runs in one transaction after locking the account or prompt row (`apps/web/lib/store/transaction.ts`), and the contract fires six saves at once at each ceiling on a real PostgreSQL (`apps/web/test/store-contract.test.mjs`). |
 | 11.1.7 | Unusual business activity monitored | Partial | Refusals are logged with reasons (`apps/web/lib/security-log.ts`); watching them is the operator's. |
 | 11.1.8 | Configurable alerting on automated attacks | Owner | Alerting runs on the platform's logs. |
