@@ -148,10 +148,13 @@ export interface Store {
   /**
    * Delete a user and everything that belongs to them.
    *
-   * Immediate and irreversible. In Postgres the work is done by the foreign
-   * keys: `trazum_sessions`, `trazum_prompts` and `trazum_shares` all reference
-   * `trazum_users (id) on delete cascade`, and `trazum_prompt_versions`
-   * cascades from `trazum_prompts`. The memory driver has no such machinery and
+   * Immediate and irreversible. In Postgres most of the work is done by the
+   * foreign keys: `trazum_sessions`, `trazum_prompts` and `trazum_shares` all
+   * reference `trazum_users (id) on delete cascade`, and
+   * `trazum_prompt_versions` cascades from `trazum_prompts`. The versions the
+   * account wrote are deleted explicitly first, because `author_id` has no
+   * `on delete` and Postgres checks it before that cascade arrives; see
+   * `postgresStore.deleteUser`. The memory driver has no such machinery and
    * walks the same graph by hand, which is why the test for this runs against
    * both drivers rather than the one that is convenient.
    *

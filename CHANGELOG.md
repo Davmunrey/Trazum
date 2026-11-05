@@ -13,6 +13,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **Deleting an account failed on Postgres for anybody who had saved a
+  prompt.** A prompt version names its author with `author_id references
+  trazum_users (id)` and no `on delete`, and Postgres checked that reference
+  before the cascade through `trazum_prompts` reached the versions. Every
+  deployment with a database answered *Delete account* with a 500 for every
+  account with a library. The memory driver deletes by hand and never showed
+  it. The versions an account wrote are now deleted in the same statement as
+  the account; no migration is needed.
+- **Share links on Postgres replayed default settings instead of their
+  author's.** The driver passed `JSON.stringify(settings)` into a `jsonb`
+  column, postgres.js serialised it a second time, and the share page read
+  `settings.level` off a string. The object is now passed as it is, and rows
+  written the old way are read correctly, so existing links recover without a
+  migration.
 - **The accounts guide said account deletion did not exist,** in its list of
   what is not covered, months after it shipped. Corrected, and the guide now
   documents the export and the security log.
@@ -26,6 +40,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The web store's contract, run against a real PostgreSQL in CI.**
+  `apps/web/test/store-contract.test.mjs` checks users, sessions and their
+  expiry, prompts and versions, share links, the admin census and account
+  deletion on the memory driver always, and on PostgreSQL when
+  `TRAZUM_TEST_DATABASE_URL` names an empty database, after applying every
+  migration in `db/`. CI starts the runner's own PostgreSQL, so no container
+  image is pulled, and fails if the database is missing rather than skipping.
+  It found both fixes above on its first run; each was proven by reverting it
+  and watching the contract fail.
 - **A compliance readiness pack.** `docs/compliance/` says first that Trazum
   is not certified against SOC 2, ISO 27001 or any other standard, then
   prepares for an audit: what SOC 2, ISO 27001, OWASP ASVS and CASA each
