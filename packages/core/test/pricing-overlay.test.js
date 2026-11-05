@@ -447,6 +447,23 @@ describe('cache and batch rates in an overlay', () => {
       },
     });
 
+  it('takes a geography multiplier, so a copied catalogue row is still a valid overlay row', () => {
+    const withGeo = (geo) => JSON.stringify({
+      lastReviewed: '2026-08-14',
+      models: {
+        'acme-fast-1': {
+          displayName: 'Acme Fast 1', inputPerMTok: 2, outputPerMTok: 8, contextWindow: 200_000,
+          cacheMinTokens: 1024, tier: 'sonnet', capability: 'mid', inferenceGeoMultipliers: geo,
+        },
+      },
+    });
+    const model = catalogueFromOverlay(withGeo({ us: 1.1 })).byId.get('acme-fast-1');
+    assert.deepEqual(model.inferenceGeoMultipliers, { us: 1.1 });
+    assert.throws(() => catalogueFromOverlay(withGeo({ us: 0 })), /inferenceGeoMultipliers\.us/);
+    assert.throws(() => catalogueFromOverlay(withGeo({ eu: 1.2 })), /unknown key "models\.acme-fast-1\.inferenceGeoMultipliers\.eu"/);
+    assert.throws(() => catalogueFromOverlay(withGeo(1.1)), /must be an object/);
+  });
+
   it('lets an added model say what its cache writes actually cost', () => {
     const catalogue = catalogueFromOverlay(
       overlay({ cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null }),
