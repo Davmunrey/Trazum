@@ -93,15 +93,17 @@ describe('a Responses API usage object', () => {
 });
 
 describe('GPT-5.6 and later, as OpenAI publishes them', () => {
-  // id: [input, cached, write, output] short, then long; batch is half of each.
+  // id: [input, cached, 30m write, output, 12h write] short, then long; batch is half of each.
+  // pricing.md's Standard table, read 2026-11-05: the 12h write column is new since 2026-10-11.
   const PUBLISHED = {
-    'gpt-6-astra': [[10, 1, 12.5, 50], [20, 2, 25, 75]],
-    'gpt-6.1-sol': [[2, 0.1, 2.5, 10], [4, 0.2, 5, 15]],
-    'gpt-6-sol': [[2, 0.2, 2.5, 10], [4, 0.4, 5, 15]],
-    'gpt-6-luna': [[0.1, 0.01, 0.125, 0.5], [0.2, 0.02, 0.25, 0.75]],
-    'gpt-5.6-sol': [[4, 0.4, 5, 20], [8, 0.8, 10, 30]],
-    'gpt-5.6-terra': [[2, 0.2, 2.5, 12], [4, 0.4, 5, 18]],
-    'gpt-5.6-luna': [[0.2, 0.02, 0.25, 1.2], [0.4, 0.04, 0.5, 1.8]],
+    'gpt-6-astra': [[10, 1, 12.5, 50, 25], [20, 2, 25, 75, 50]],
+    'gpt-6.1-sol': [[2, 0.1, 2.5, 10, 5], [4, 0.2, 5, 15, 10]],
+    'gpt-6.1-terra': [[1, 0.05, 1.25, 5, 2.5], [2, 0.1, 2.5, 7.5, 5]],
+    'gpt-6-sol': [[2, 0.2, 2.5, 10, 5], [4, 0.4, 5, 15, 10]],
+    'gpt-6-luna': [[0.1, 0.01, 0.125, 0.5, 0.25], [0.2, 0.02, 0.25, 0.75, 0.5]],
+    'gpt-5.6-sol': [[4, 0.4, 5, 20, 10], [8, 0.8, 10, 30, 20]],
+    'gpt-5.6-terra': [[2, 0.2, 2.5, 12, 5], [4, 0.4, 5, 18, 10]],
+    'gpt-5.6-luna': [[0.2, 0.02, 0.25, 1.2, 0.5], [0.4, 0.04, 0.5, 1.8, 1]],
   };
   const at = new Date('2026-10-05T12:00:00Z');
 
@@ -110,7 +112,7 @@ describe('GPT-5.6 and later, as OpenAI publishes them', () => {
       const model = BUNDLED_CATALOGUE.byId.get(id);
       assert.ok(model, `${id} is not in the catalogue`);
       const m = multipliersFor(model, at);
-      for (const [band, size, [input, cached, write, output]] of [
+      for (const [band, size, [input, cached, write, output, write12h]] of [
         ['short', 272_000, short],
         ['long', 272_001, long],
       ]) {
@@ -118,12 +120,14 @@ describe('GPT-5.6 and later, as OpenAI publishes them', () => {
         close(rates.inputPerMTok, input, `${id} ${band} input`);
         close(rates.outputPerMTok, output, `${id} ${band} output`);
         close(rates.inputPerMTok * m.cacheRead, cached, `${id} ${band} cached input`);
-        close(rates.inputPerMTok * m.cacheWrite5m, write, `${id} ${band} cache write`);
+        close(rates.inputPerMTok * m.cacheWrite5m, write, `${id} ${band} 30-minute cache write`);
+        close(rates.inputPerMTok * m.cacheWrite1h, write12h, `${id} ${band} 12-hour cache write`);
         close(rates.outputPerMTok * m.batch, output / 2, `${id} ${band} batch output`);
       }
       assert.equal(model.contextWindow, 1_050_000);
       assert.equal(model.cacheMinTokens, 1024);
-      assert.deepEqual(model.cacheTtl, { writeMs: 30 * 60_000, longerMs: null });
+      // A 30-minute entry by default, and a 12-hour one for sale in the Responses API.
+      assert.deepEqual(model.cacheTtl, { writeMs: 30 * 60_000, longerMs: 12 * 60 * 60_000 });
     });
   }
 
@@ -165,16 +169,16 @@ describe('a cache entry that lives thirty minutes', () => {
     const openai = bill(session('gpt-6-sol', 10)).cacheTtlFit[0];
     assert.equal(openai.verdict, 'fits', 'a 30-minute entry was judged against five minutes');
     assert.equal(openai.entryTtlMs, 30 * 60_000);
-    assert.equal(openai.longerTtlMs, null);
+    assert.equal(openai.longerTtlMs, 12 * 60 * 60_000);
     const anthropic = bill(session('claude-sonnet-5-5', 10)).cacheTtlFit[0];
     assert.equal(anthropic.verdict, 'expires-before-reuse');
     assert.equal(anthropic.longerTtlMs, 60 * 60_000);
   });
 
-  it('and expires on a forty-five minute one, with no longer entry to suggest', () => {
+  it('and expires on a forty-five minute one, naming the 12-hour entry OpenAI now sells', () => {
     const fit = bill(session('gpt-6-sol', 45)).cacheTtlFit[0];
     assert.equal(fit.verdict, 'expires-before-reuse');
-    assert.equal(fit.longerTtlMs, null);
+    assert.equal(fit.longerTtlMs, 12 * 60 * 60_000);
   });
 });
 

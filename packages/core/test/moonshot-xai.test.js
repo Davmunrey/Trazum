@@ -47,15 +47,19 @@ const bill = (lines, on) =>
 const NOW = new Date('2026-10-05T12:00:00Z');
 
 describe('Kimi, as Moonshot publishes it', () => {
-  // id: [input, cache hit, output, batch input, batch output, context]; batch null where not offered.
+  // id: [input, cache hit, output, batch input, batch output, context, offered]; batch null where not offered.
+  // Re-read 2026-11-05: K3.1 Pro is new, K3 gained batch at 60%, and the K2 series is closed to new
+  // accounts and retires in December, so it is priced and no longer offered.
   const PUBLISHED = {
-    'kimi-k3': [3, 0.3, 15, null, null, 1_048_576],
-    'kimi-k2.7-code': [0.95, 0.19, 4, 0.57, 2.4, 262_144],
-    'kimi-k2.7-code-highspeed': [1.9, 0.38, 8, null, null, 262_144],
-    'kimi-k2.6': [0.95, 0.16, 4, 0.57, 2.4, 262_144],
+    'kimi-k3.1-pro': [2, 0.2, 10, 1.2, 6, 1_048_576, true],
+    'kimi-k3.1-pro-highspeed': [4, 0.2, 20, null, null, 1_048_576, true],
+    'kimi-k3': [3, 0.3, 15, 1.8, 9, 1_048_576, true],
+    'kimi-k2.7-code': [0.95, 0.19, 4, 0.57, 2.4, 262_144, false],
+    'kimi-k2.7-code-highspeed': [1.9, 0.38, 8, null, null, 262_144, false],
+    'kimi-k2.6': [0.95, 0.16, 4, 0.57, 2.4, 262_144, false],
   };
 
-  for (const [id, [input, hit, output, batchIn, batchOut, context]] of Object.entries(PUBLISHED)) {
+  for (const [id, [input, hit, output, batchIn, batchOut, context, offered]] of Object.entries(PUBLISHED)) {
     it(`${id}: input, cache hit, output, batch and window`, () => {
       const m = model(id);
       const rates = effectivePricing(m, NOW, { inputTokens: 10_000 });
@@ -72,7 +76,7 @@ describe('Kimi, as Moonshot publishes it', () => {
       assert.equal(m.contextWindow, context);
       assert.equal(m.cacheMinTokens, null, 'a minimum the page does not publish');
       assert.equal(m.tiers, undefined, 'Kimi prices by token, not by prompt length');
-      assert.ok(isOffered(m));
+      assert.equal(isOffered(m), offered, `${id} offered: ${isOffered(m)}`);
     });
   }
 

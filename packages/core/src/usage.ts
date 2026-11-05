@@ -185,6 +185,12 @@ export interface UsageRecord {
    * opt-in that every response names.
    */
   speed?: string;
+  /**
+   * Set when an OpenAI-shaped line split its cache writes by lifetime and the
+   * parts did not add up to the total. The lifetime is then unknown even on a
+   * model whose unsplit writes are known to be the short kind.
+   */
+  writeSplitContradicted?: true;
 }
 
 /** What a set of calls cost, split by where the money went. */
@@ -775,6 +781,19 @@ export function parseUsageLine(line: string): UsageRecord | null {
     typeof detailsRaw === 'object' && detailsRaw !== null ? (detailsRaw as Record<string, unknown>) : null;
   const openAiCached = details ? readCount(details.cached_tokens) : ({ kind: 'absent' } as Count);
   const openAiWrite = details ? readCount(details.cache_write_tokens) : ({ kind: 'absent' } as Count);
+  /*
+   * The same writes split by lifetime, in the Responses API since the
+   * 12-hour entry: `ttl_30m_tokens` at 1.25x input and `ttl_12h_tokens` at
+   * 2.5x, which "sum to cache_write_tokens" and are "both returned, including
+   * when one is zero" (OpenAI's prompt-caching guide). So a write with no
+   * split was a 30-minute one: Chat Completions, or a log from before the
+   * 12-hour entry existed. Read as one, a 12-hour write cost half its price.
+   */
+  const openAiSplitRaw = details?.cache_write_tokens_details;
+  const openAiSplit =
+    typeof openAiSplitRaw === 'object' && openAiSplitRaw !== null ? (openAiSplitRaw as Record<string, unknown>) : null;
+  const openAiWrite30m = openAiSplit ? readCount(openAiSplit.ttl_30m_tokens) : ({ kind: 'absent' } as Count);
+  const openAiWrite12h = openAiSplit ? readCount(openAiSplit.ttl_12h_tokens) : ({ kind: 'absent' } as Count);
 
   /**
    * Anthropic splits cache writes by time-to-live, and the two cost different
@@ -840,6 +859,8 @@ export function parseUsageLine(line: string): UsageRecord | null {
     cacheWrite: readCount(usage.cache_creation_input_tokens, usage.cacheWriteTokens),
     openAiCached,
     openAiWrite,
+    openAiWrite30m,
+    openAiWrite12h,
     geminiCached,
     geminiThoughts,
     geminiToolPrompt,
@@ -870,6 +891,12 @@ export function parseUsageLine(line: string): UsageRecord | null {
   const split5m = valueOf(counts.write5m!);
   const split1h = valueOf(counts.write1h!);
   const hasSplit = counts.write5m!.kind === 'ok' || counts.write1h!.kind === 'ok';
+  // OpenAI's lifetimes, taken only when they add up to the writes they split.
+  const openAiSplitGiven = counts.openAiWrite30m!.kind === 'ok' || counts.openAiWrite12h!.kind === 'ok';
+  const openAiSplitAgrees =
+    counts.openAiWrite30m!.kind === 'ok' && counts.openAiWrite12h!.kind === 'ok'
+      && valueOf(counts.openAiWrite30m!) + valueOf(counts.openAiWrite12h!) === openAiWritten;
+  const openAiLong = openAiSplitAgrees ? valueOf(counts.openAiWrite12h!) : 0;
 
   return {
     model,
@@ -880,10 +907,20 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * `writeTtlKnown` says which, so the report can admit that a rate was assumed
      * rather than quietly choosing the cheaper one.
      */
-    cacheWrite5mTokens: (hasSplit ? split5m : flatWrite) + openAiWritten,
-    cacheWrite1hTokens: hasSplit ? split1h : 0,
-    // `cache_write_tokens` names no TTL either; see the note in `profileUsage`.
-    writeTtlKnown: hasSplit || (flatWrite === 0 && openAiWritten === 0),
+    /*
+     * The short and the long write, whatever each provider calls them:
+     * Anthropic's 5-minute and 1-hour entries, OpenAI's 30-minute and
+     * 12-hour ones. Priced by the model's `cacheWrite5m` and `cacheWrite1h`.
+     */
+    cacheWrite5mTokens: (hasSplit ? split5m : flatWrite) + openAiWritten - openAiLong,
+    cacheWrite1hTokens: (hasSplit ? split1h : 0) + openAiLong,
+    /*
+     * A split states the lifetime. A `cache_write_tokens` with none does not
+     * by itself: Kimi uses the same field and sells two entries at two prices.
+     * On OpenAI's own models it does (see above), which `profileUsage` decides
+     * by the model, since the line alone cannot say whose API wrote it.
+     */
+    writeTtlKnown: hasSplit || (flatWrite === 0 && (openAiSplitGiven ? openAiSplitAgrees : openAiWritten === 0)),
     outputTokens: valueOf(counts.output!) + valueOf(counts.geminiThoughts!),
     /**
      * Trimmed and internally normalised: any whitespace run becomes one space.
@@ -929,6 +966,7 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * field is priced by it. Absent stays absent, which prices as standard.
      */
     ...(typeof usage.speed === 'string' && usage.speed !== '' ? { speed: usage.speed } : {}),
+    ...(openAiSplitGiven && !openAiSplitAgrees ? { writeSplitContradicted: true as const } : {}),
   };
 }
 
@@ -1238,7 +1276,14 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       if (
         priced !== undefined
         && (cacheTtlOf(priced).longerMs === null
-          || multipliersFor(priced).cacheWrite1h === multipliersFor(priced).cacheWrite5m)
+          || multipliersFor(priced).cacheWrite1h === multipliersFor(priced).cacheWrite5m
+          /*
+           * OpenAI returns the 30-minute and 12-hour split whenever a 12-hour
+           * write is possible, "both fields ... including when one is zero",
+           * so on its models an unsplit write is the 30-minute kind. The
+           * guide's rule, not a guess; Kimi's same field gets no such rule.
+           */
+          || (priced.provider === 'openai' && !record.writeSplitContradicted))
       ) {
         record = { ...record, writeTtlKnown: true };
       }

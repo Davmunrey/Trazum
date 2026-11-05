@@ -97,6 +97,82 @@
       "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
     },
     {
+      "id": "gpt-6.1-terra",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.5",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.5-pro",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.4",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.4-pro",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.4-mini",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.4-nano",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.2",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.2-pro",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5.1",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-5-pro",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-4.1",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-4.1-mini",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-4o",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "gpt-4o-mini",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "o3",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "o3-pro",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "kimi-k3.1-pro",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "kimi-k3.1-pro-highspeed",
+      "because": "added to the catalogue on 2026-11-05 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
       "id": "gemini-3.1-pro-preview",
       "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
     },
