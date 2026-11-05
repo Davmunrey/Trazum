@@ -30,6 +30,11 @@ Then, if you want to know whether to trust the numbers:
 - **[Any input](hardening.md)** — what is promised about input this tool was
   never meant to see, and the seeded fuzz suite in CI that holds each promise:
   never throws, never grows, idempotent, masks intact, money never negative.
+- **[Audited from the outside](audit-rea-2026-11.md)**: what REA, a reverse
+  engineering tool that has never seen this source, found reading the npm
+  packages as npm serves them and the production page while a marked log was
+  pasted into it, every network and process surface with its guard, and what
+  that audit does not establish.
 - **[What is open, what is not](licensing.md)**: the three questions LICENSE
   leaves unanswered: what the licence covers today, what will never move out of
   it, and what it never covered at all. Written while there is one copyright

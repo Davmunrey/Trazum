@@ -878,3 +878,29 @@ describe('an overlay that recedes, and a mode you can still tell is current', ()
     assert.match(block, /outline:\s*2px solid Highlight/);
   });
 });
+
+describe('the share list is asked for only when there is an account to ask about', () => {
+  /**
+   * Found by auditing the production page with REA: every visit fetched
+   * `/api/shares` while the Compare tab mounted, and on a deployment with no
+   * accounts the server could only answer 503 (401 for a signed-out visitor),
+   * which the browser logs as a failed resource on every load. A link belongs
+   * to an account, so without one the control renders nothing and now asks
+   * nothing.
+   */
+  it('returns before the fetch when nobody is signed in, and asks again on sign-in', () => {
+    const code = codeOf('components/ShareControl.tsx');
+    const effect = code.slice(code.indexOf('useEffect(() => {'), code.indexOf('}, [signedIn]);') + 15);
+    assert.ok(effect.includes('}, [signedIn]);'), 'the effect must depend on the sign-in state');
+    const guard = effect.indexOf('if (!signedIn)');
+    const ask = effect.indexOf('refresh()');
+    assert.ok(guard !== -1 && ask !== -1 && guard < ask, 'the sign-in guard must come before the request');
+    assert.match(effect.slice(guard, ask), /return;/);
+  });
+
+  it('is handed the page’s one session answer rather than asking for its own', () => {
+    assert.match(codeOf('components/App.tsx'), /<Comparer[\s\S]*?signedIn=\{signedIn\}[\s\S]*?\/>/);
+    assert.match(codeOf('components/Comparer.tsx'), /<ShareControl[\s\S]*?signedIn=\{signedIn\}/);
+    assert.doesNotMatch(codeOf('components/ShareControl.tsx'), /api\/auth\/session/);
+  });
+});
