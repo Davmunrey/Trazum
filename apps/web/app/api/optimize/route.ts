@@ -31,6 +31,7 @@ import type {
 
 import { getWebMessages } from '../../../lib/i18n';
 import { saysJson } from '../../../lib/request-body';
+import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
 import type { WebMessages } from '../../../lib/i18n';
 import { createRateLimiter } from '../../../lib/rate-limit';
 import { USAGE_FIELDS, parseUsage } from '../../../lib/usage-input';
@@ -242,7 +243,7 @@ function buildProvider(
   return null;
 }
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   if (rateLimited(request, Date.now())) {
     // No body has been read yet, so the header is all we have to go on.
     const t = getWebMessages(localeOf(request));
@@ -258,7 +259,7 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as RequestBody;
   } catch {
-    return badRequest(getWebMessages(localeOf(request)).api.invalidJson);
+    return unreadableBody(badRequest(getWebMessages(localeOf(request)).api.invalidJson));
   }
 
   const locale = localeOf(request, body);
@@ -410,7 +411,7 @@ export async function POST(request: Request) {
 }
 
 /** Metadata the UI needs to render its dropdowns. */
-export async function GET(request: Request) {
+async function handleGet(request: Request) {
   /**
    * The limiter was on `POST` only, so the one route that answered without a
    * body was also the one nothing bounded.
@@ -434,3 +435,6 @@ export async function GET(request: Request) {
     allowedEndpoints: allowedEndpoints(process.env),
   });
 }
+
+export const POST = logsRefusedInput(handlePost);
+export const GET = logsRefusedInput(handleGet);

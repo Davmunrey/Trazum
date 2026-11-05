@@ -12,7 +12,7 @@ import {
 } from '../store/prompts';
 import type { PromptSummary, PromptVersionRecord, PromptWithHistory } from '../store/prompts';
 import type { Store, UserRecord } from '../store/types';
-import { routeOf, securityEvent } from '../security-log';
+import { attributeRequest, routeOf, securityEvent } from '../security-log';
 
 /**
  * Everything the two library routes share: who is asking, what they sent, and
@@ -70,6 +70,7 @@ export async function requireCaller(
     return jsonError('sign in to use the prompt library', 401);
   }
 
+  attributeRequest(request, user.id);
   return { user, store };
 }
 

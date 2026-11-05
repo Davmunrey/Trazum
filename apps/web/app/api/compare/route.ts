@@ -5,6 +5,7 @@ import type { AdvisoryId, Locale, PromptComparison, RuleId, RuleLevel, UsageProf
 
 import { getWebMessages } from '../../../lib/i18n';
 import { saysJson } from '../../../lib/request-body';
+import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
 import { createRateLimiter } from '../../../lib/rate-limit';
 import { USAGE_FIELDS, parseUsage } from '../../../lib/usage-input';
 
@@ -80,7 +81,7 @@ function withTitles(ids: readonly RuleId[], locale: Locale): { id: RuleId; title
   return ids.map((id) => ({ id, title: copy[id].title }));
 }
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   if (rateLimited(request, Date.now())) {
     const t = getWebMessages(localeOf(request));
     return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as RequestBody;
   } catch {
-    return badRequest(getWebMessages(localeOf(request)).api.invalidJson);
+    return unreadableBody(badRequest(getWebMessages(localeOf(request)).api.invalidJson));
   }
 
   const locale = localeOf(request, body);
@@ -162,3 +163,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export const POST = logsRefusedInput(handlePost);

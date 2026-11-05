@@ -5,6 +5,7 @@ import type { Answers, Locale } from '@trazum/core';
 
 import { getWebMessages } from '../../../lib/i18n';
 import { saysJson } from '../../../lib/request-body';
+import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
 import { createRateLimiter } from '../../../lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -48,7 +49,7 @@ function localeOf(request: Request, body?: RequestBody): Locale {
 const positive = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   if (rateLimited(request, Date.now())) {
     const t = getWebMessages(localeOf(request));
     return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as RequestBody;
   } catch {
-    return badRequest(getWebMessages(localeOf(request)).api.invalidJson);
+    return unreadableBody(badRequest(getWebMessages(localeOf(request)).api.invalidJson));
   }
 
   const t = getWebMessages(localeOf(request, body));
@@ -149,3 +150,5 @@ export async function POST(request: Request) {
     })),
   });
 }
+
+export const POST = logsRefusedInput(handlePost);

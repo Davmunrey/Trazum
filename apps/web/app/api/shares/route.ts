@@ -9,7 +9,7 @@ import {
   shareUrl,
 } from '../../../lib/shares/api';
 import { MAX_SHARES_PER_OWNER } from '../../../lib/store/shares';
-import { routeOf, securityEvent } from '../../../lib/security-log';
+import { logsRefusedInput, routeOf, securityEvent, unreadableBody } from '../../../lib/security-log';
 import { saysJson } from '../../../lib/request-body';
 
 export const runtime = 'nodejs';
@@ -29,7 +29,7 @@ export const runtime = 'nodejs';
  * list of tokens.
  */
 
-export async function GET(request: Request): Promise<Response> {
+async function handleGet(request: Request): Promise<Response> {
   const caller = await requireCaller(request, { write: false });
   if (caller instanceof Response) return caller;
 
@@ -48,7 +48,7 @@ export async function GET(request: Request): Promise<Response> {
   });
 }
 
-export async function POST(request: Request): Promise<Response> {
+async function handlePost(request: Request): Promise<Response> {
   const caller = await requireCaller(request, { write: true });
   if (caller instanceof Response) return caller;
 
@@ -61,7 +61,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     body = (await request.json()) as typeof body;
   } catch {
-    return privateJson({ error: 'invalid JSON' }, 400);
+    return unreadableBody(privateJson({ error: 'invalid JSON' }, 400));
   }
 
   const { before, after } = body;
@@ -107,3 +107,6 @@ export async function POST(request: Request): Promise<Response> {
     201,
   );
 }
+
+export const GET = logsRefusedInput(handleGet);
+export const POST = logsRefusedInput(handlePost);

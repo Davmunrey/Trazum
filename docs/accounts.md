@@ -299,7 +299,7 @@ of it.
 | Your session token | Sent to your browser as a cookie. Stored here only as its SHA-256 |
 | Your email address | Never requested. `read:user` does not include it |
 | Your address | Never stored. To count requests across instances, a keyed hash of it (`trazum_rate_limits`) lives for one minute; the key is derived from the GitHub client secret, which the database does not hold |
-| What you sign in, sign out, export, delete, share and revoke | One line per event on the server's standard output, with the account's internal id and never its login, a token, an address or any prompt text (`lib/security-log.ts`). Kept for as long as the operator's platform keeps logs |
+| What you sign in, sign out, export, delete, share and revoke, and any request the app refuses for what it sent | One line per event on the server's standard output, with the account's internal id and never its login, a token, an address or any prompt text (`lib/security-log.ts`). A refused request is recorded by its reason (not JSON, would not parse, a value the route will not take) and never by the answer, which quotes what was sent. Kept for as long as the operator's platform keeps logs |
 
 Trazum cannot act on your GitHub account, because it does not keep the means to.
 
