@@ -2822,9 +2822,18 @@ and non-token charges against the receipt's own batch calls and searches,
 which 2.7.4 had started pricing without telling it, so its remainder had come
 out short by them.
 
+## 2.7.6 — Subagents billed under their project — released
+
+A session's subagents and workflow agents are billed under the project they
+ran for, found from the way Claude Code lays a session out rather than from a
+folder name; the status line counts them; a transcript that mentions
+telemetry is no longer taken for an OTel export; and the files a session keeps
+beside its transcripts are one line, not a hundred and fifty. All of it found
+by running `bill` on this repository's own sessions.
+
 ## Next
 
-**Target: 2.7.6, repeated-task evaluation.**
+**Target: 2.7.7, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,
