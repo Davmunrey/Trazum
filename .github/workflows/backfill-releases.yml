@@ -13,11 +13,31 @@ name: backfill-releases
 # stays asleep. The same tags pushed from a developer machine would start
 # fourteen doomed runs against a registry state that no longer exists.
 #
-# Every release is created with --latest=false: "Latest" must keep pointing at
-# the newest published version, not at whichever archive entry was written last.
+# Every archive release is created with --latest=false: "Latest" must keep
+# pointing at the newest published version, not at whichever archive entry was
+# written last. A single version dispatched with `latest` is the exception, for
+# when that version is the newest one and its release is what went missing.
 
 on:
   workflow_dispatch:
+    # One release instead of the archive list below: for a version whose
+    # packages published and whose tag or release did not (2.7.2, when main
+    # moved while release.yml was running). Leave all three empty for the
+    # archive.
+    inputs:
+      version:
+        description: 'One version to release, e.g. 2.7.2 (empty: the archive list)'
+        required: false
+        default: ''
+      commit:
+        description: 'The merge commit that set that version'
+        required: false
+        default: ''
+      latest:
+        description: 'Mark it Latest (true only for the newest published version)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write
@@ -36,6 +56,9 @@ jobs:
       - name: Create the missing releases
         env:
           GH_TOKEN: ${{ github.token }}
+          ONE_VERSION: ${{ inputs.version }}
+          ONE_COMMIT: ${{ inputs.commit }}
+          ONE_LATEST: ${{ inputs.latest }}
         run: |
           set -uo pipefail
 
@@ -73,6 +96,24 @@ jobs:
           1.24.0|54719c103ba524bb399bb8fe1a43df1530bcaacf|unpublished
           '
 
+          # A single version named at dispatch replaces the archive list. Both
+          # inputs arrive through env, never spliced into the script, and are
+          # checked for the only shapes they can have.
+          latest_flag='--latest=false'
+          if [ -n "$ONE_VERSION" ]; then
+            if ! printf '%s' "$ONE_VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+              || ! printf '%s' "$ONE_COMMIT" | grep -Eq '^[0-9a-f]{40}$'; then
+              echo "version must be X.Y.Z and commit a full 40-character sha"
+              exit 1
+            fi
+            if [ "$(git show "$ONE_COMMIT:package.json" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).version))')" != "$ONE_VERSION" ]; then
+              echo "package.json at $ONE_COMMIT does not say $ONE_VERSION"
+              exit 1
+            fi
+            entries="$ONE_VERSION|$ONE_COMMIT|published"
+            [ "$ONE_LATEST" = "true" ] && latest_flag='--latest=true'
+          fi
+
           # One refusal must not hide whether the other seventeen work: each
           # entry reports its own outcome and the job fails at the end if any
           # failed, with the full per-entry picture in the log.
@@ -108,7 +149,7 @@ jobs:
                 continue
               fi
             fi
-            if out="$(gh release create "$tag" --title "$tag" --notes-file "$notes" --latest=false --verify-tag 2>&1)"; then
+            if out="$(gh release create "$tag" --title "$tag" --notes-file "$notes" "$latest_flag" --verify-tag 2>&1)"; then
               echo "$tag: created"
             else
               echo "$tag: FAILED — $out"

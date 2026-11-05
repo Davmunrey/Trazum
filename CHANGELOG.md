@@ -11,6 +11,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Release mechanics
+
+- **2.7.2 published all four packages and then had no tag and no release
+  page.** The Release run's last step asked the releases API to create the tag
+  on the merge commit, and the API answers 403 to the workflow's token once
+  that commit is no longer main's head: the next pull request had merged while
+  the run was working. The step now pushes the tag over git first, which the
+  token may do, and creates the release on the tag that exists; a re-run finds
+  the tag and goes on. A test fails if `--target` comes back or the release is
+  created before its tag. `backfill-releases` gains `version`, `commit` and
+  `latest` inputs, so one missing release can be created by hand, with the
+  commit checked against the version its `package.json` states; that is how
+  v2.7.2 got its tag. The MCP registry listing was skipped with it and stays
+  at 2.7.1 until the next release lists the newest version.
+
 ### Guarded
 
 - **The weekly price check now reads each provider's lifecycle too.**

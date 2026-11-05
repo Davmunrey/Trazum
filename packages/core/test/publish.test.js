@@ -2233,6 +2233,40 @@ describe('the publish preflight', () => {
     assert.match(release, /if:\s*failure\(\)/, 'nothing explains a failed publish');
     assert.match(release, /E404/, 'the failure note does not name the error it explains');
   });
+
+  it('pushes the release tag over git before creating the release on it', () => {
+    /**
+     * 2.7.2 published all four packages and then failed on its last step:
+     * `gh release create --target` asked the releases API to create the tag,
+     * and the API answered 403 to this token because the next pull request
+     * had merged while the job ran, so the target was no longer main's head.
+     * The packages were on npm with no tag and no release page. The tag now
+     * goes over git first, which the token may do, and the release is created
+     * on a tag that exists. `--target` coming back is this failure coming back.
+     */
+    const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
+    const step = release.split(/^      - /m).find((s) => s.startsWith('name: Publish the GitHub release and the tag (from main)'));
+    assert.ok(step, 'the merge-triggered release step is gone');
+    const run = step.replace(/^\s*#.*$/gm, '');
+    assert.doesNotMatch(run, /--target/, 'the release asks the API to create the tag again');
+    assert.match(run, /--verify-tag/, 'the release does not insist on a tag that already exists');
+    const pushed = run.indexOf('push origin "$GITHUB_SHA:refs/tags/v$version"');
+    const created = run.indexOf('gh release create');
+    assert.ok(pushed !== -1, 'nothing pushes the tag');
+    assert.ok(created !== -1, 'nothing creates the release');
+    assert.ok(pushed < created, 'the release is created before its tag is pushed');
+    // A re-run finds the tag already there and must not fail on it.
+    assert.match(run, /ls-remote --exit-code --tags origin "refs\/tags\/v\$version"/, 'a re-run would try to push an existing tag');
+  });
+
+  it('can backfill one missing release, checked against the commit that set its version', () => {
+    const backfill = readFileSync(join(repoRoot, '.github/workflows/backfill-releases.yml'), 'utf8');
+    for (const input of ['version:', 'commit:', 'latest:']) assert.ok(backfill.includes(input), `no ${input} input`);
+    // Inputs reach the script through env, never spliced into it.
+    assert.doesNotMatch(backfill.replace(/^\s*#.*$/gm, ''), /run:[\s\S]*\$\{\{\s*inputs\./, 'an input is spliced into the script');
+    assert.match(backfill, /ONE_VERSION: \$\{\{ inputs\.version \}\}/);
+    assert.match(backfill, /does not say \$ONE_VERSION/, 'the commit is not checked against the version it claims');
+  });
 });
 
 describe('the changelog has one shape', () => {
