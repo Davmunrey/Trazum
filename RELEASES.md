@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.2**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.3**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,64 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.3 — Every tier the provider names, billed at its own rate
+
+**Adoption, read 2026-11-05:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), 1 GitHub stars, MCP registry latest 2.7.1.
+
+A patch of corrections to what a bill charges, all of the same kind: the
+provider said which tier, speed or geography a call ran at, and Trazum read it
+as standard. **If any of your Claude workspaces pins inference to the US, if
+you use fast mode, or if you bill OpenAI's or Anthropic's usage report or
+`trazum connect`, run it again.**
+
+```bash
+npx -y @trazum/cli@2.7.3 bill
+```
+
+**US-only inference was priced a tenth under its cost.** Anthropic bills
+`inference_geo: "us"` at 1.1x on every token category of Claude 4.6 and later
+(input, output, cache writes and reads), on top of fast mode and Haiku 5.5's
+long band. Every response and every Claude Code transcript line names the
+geography that ran in `usage.inference_geo`, and Trazum dropped it. The
+catalogue now carries the published multiplier on the 13 rows it applies to,
+and `bill`, every converter, the gateway and `from-anthropic` price a US-only
+call at it. A global call, or a log without the field, is unchanged.
+
+**OpenAI's usage report left every Flex and Fast row out of the bill.**
+`from-openai`, `bill` and the web Bill tab refused a row at any tier but
+`default`. A row at Flex, Fast or Ultrafast is now priced from that tier's own
+table, as a logged response naming it is; a tier with no table on that model
+(GPT-4o has no Flex) is still left out and named.
+
+**Anthropic's usage report read fast-mode rows at the standard rate.** A row
+of Opus 5 fast mode ($10/$50) was billed at $5/$25. `from-anthropic` now
+prices it from the model's fast rate, and says when a report was never asked
+its speed or geography.
+
+**`trazum connect` billed every tier as standard.** It asked each usage report
+for the model alone, so batch, fast mode, US-only inference, Flex and Fast all
+arrived as one row per model and day. It now asks for the groupings that change
+a price and prices each row by them; a row no catalogue rate covers is left out
+and named with its token count. A store kept with `connect --store` converges
+across the change: a day stored before and re-pulled after is split, not
+doubled.
+
+**The weekly price check reads the data residency sentence too.** If the
+multiple or the Claude generation it starts at moves on Anthropic's pricing
+page, the scheduled run fails, and a test fails any Claude 4.6 or later model
+added without the multiplier.
+
+**One thing still waits on a person.** 2.7.2 is on npm, but its tag and
+GitHub release page are not: GitHub refused the workflow's token the tag
+because a pull request changing `.github/workflows/` merged while that run was
+publishing. `docs/releasing.md` names the rule and the one command that
+recovers it.
+
+No breaking change. All packages, the plugin and MCP discovery advance
+together to 2.7.3.
 
 ---
 

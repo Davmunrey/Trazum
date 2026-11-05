@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.3 — 2026-11-05
+
 ### Fixed
 
 - **OpenAI's usage report left every Flex and Fast row out of the bill.**

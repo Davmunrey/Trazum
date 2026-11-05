@@ -238,7 +238,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@a7935003d777db77b719edc1a4c5f139c75b82c8  # 2.7.1
+- uses: Davmunrey/Trazum@e369199cb8c7873ee995cfcab4d8c782f20d59b1  # 2.7.2
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -284,7 +284,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@a7935003d777db77b719edc1a4c5f139c75b82c8  # 2.7.1
+  - uses: Davmunrey/Trazum@e369199cb8c7873ee995cfcab4d8c782f20d59b1  # 2.7.2
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -313,7 +313,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@a7935003d777db77b719edc1a4c5f139c75b82c8  # 2.7.1
+- uses: Davmunrey/Trazum@e369199cb8c7873ee995cfcab4d8c782f20d59b1  # 2.7.2
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
