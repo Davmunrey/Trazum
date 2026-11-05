@@ -51,11 +51,21 @@
  * conversion says the question was not asked, because the alternative is a
  * reader assuming it was answered.
  *
- * **A service tier that is not `default`.** The schema does not enumerate
- * the values, so this does not either: any string but `default` is left out,
- * counted, and *named* in the conversion, so the operator sees `flex` or
- * `priority` or whatever the report said rather than a number. Refusing
- * by name is the honest version of not knowing the list.
+ * **A service tier with no table of its own.** OpenAI sells Flex, Fast
+ * (Priority until 2026-07-30) and Ultrafast from tables of their own, and the
+ * catalogue writes each model's row of each one out in `serviceTiers`. A row
+ * at one of those tiers, on a model whose catalogue row has that tier's table,
+ * is carried into the record as `service_tier` and priced from that table,
+ * exactly as a logged response naming the same tier is: the published rate
+ * for the tier that ran, not a multiple of another.
+ *
+ * Anything else is still left out, counted, and *named*: a tier the
+ * catalogue has no table for on that model (GPT-4o has no Flex), and any
+ * value `serviceTierOf` does not know, because the schema does not enumerate
+ * the tiers and so this does not either. Pricing such a row at the standard
+ * rate would put a Flex bill at twice its cost and look right doing it; the
+ * operator sees `flex` or `scale` or whatever the report said, never a
+ * number standing in for it.
  *
  * **Audio and image tokens.** `input_tokens` folds text, audio and image
  * tokens together, and a text rate is not the rate for the other two. A row
@@ -84,6 +94,9 @@
  * absence and no second reading to derive.
  */
 
+import { BUNDLED_CATALOGUE, serviceTierOf } from './pricing.js';
+import type { PricingCatalogue } from './pricing.js';
+
 /** One project, and the label the operator gives it. Matched exactly. */
 export interface ProjectLabel {
   project: string;
@@ -101,6 +114,13 @@ export interface OpenaiUsageRecord {
    * request, which is then a call like any other. See `UsageRecord.requests`.
    */
   requests?: number | null;
+  /**
+   * The report's own tier, as it spelled it, when it is one the catalogue
+   * prices this model from: `parseUsageLine` reads it as a response's
+   * `service_tier` and the call is priced from that tier's table. Absent for
+   * the default tier.
+   */
+  service_tier?: string;
   usage: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -127,10 +147,18 @@ export interface OpenaiUsageConversion {
   batch: number;
   /** Whether any result said whether it was batch at all. */
   batchNamed: boolean;
-  /** Results at a service tier other than `default`, left out. */
+  /**
+   * Results at a service tier other than `default` that no table prices, left
+   * out: a tier the model's catalogue row has no table for, or a value
+   * `serviceTierOf` does not know.
+   */
   nonDefaultTier: number;
   /** The tiers those results named, so the refusal has a name. */
   tiersRefused: string[];
+  /** Results at Flex, Fast or Ultrafast that became records priced from that tier's own table. */
+  serviceTierRows: number;
+  /** The tiers those results named, as the report spelled them. */
+  tiersPriced: string[];
   /** Whether any result named a tier at all. */
   tierNamed: boolean;
   /** Results that carried audio or image tokens and were reduced to text. */
@@ -183,7 +211,16 @@ const NON_TEXT = [
  */
 export function openaiUsageRecords(
   text: string,
-  options: { label?: string; labelByProject?: readonly ProjectLabel[] } = {},
+  options: {
+    label?: string;
+    labelByProject?: readonly ProjectLabel[];
+    /**
+     * Where a tier's table is looked for. The bundled catalogue unless a
+     * caller prices with another; a row whose model this catalogue has no
+     * table for at that tier is refused, never priced at the standard rate.
+     */
+    catalogue?: PricingCatalogue;
+  } = {},
 ): OpenaiUsageConversion {
   const empty: OpenaiUsageConversion = {
     records: [],
@@ -195,6 +232,8 @@ export function openaiUsageRecords(
     batchNamed: false,
     nonDefaultTier: 0,
     tiersRefused: [],
+    serviceTierRows: 0,
+    tiersPriced: [],
     tierNamed: false,
     mixedRows: 0,
     nonTextTokens: 0,
@@ -219,7 +258,9 @@ export function openaiUsageRecords(
 
   const rules = options.labelByProject;
   const records: OpenaiUsageRecord[] = [];
+  const catalogue = options.catalogue ?? BUNDLED_CATALOGUE;
   const tiersRefused = new Set<string>();
+  const tiersPriced = new Set<string>();
   let buckets = 0;
   let rows = 0;
   let requests = 0;
@@ -227,6 +268,7 @@ export function openaiUsageRecords(
   let batch = 0;
   let batchNamed = false;
   let nonDefaultTier = 0;
+  let serviceTierRows = 0;
   let tierNamed = false;
   let mixedRows = 0;
   let nonTextTokens = 0;
@@ -261,12 +303,25 @@ export function openaiUsageRecords(
         }
       }
 
+      let serviceTier: string | undefined;
       if (typeof result.service_tier === 'string') {
         tierNamed = true;
         if (result.service_tier !== 'default') {
-          nonDefaultTier += 1;
-          tiersRefused.add(result.service_tier);
-          continue;
+          /*
+            Priced only from a table that exists for this model at this tier.
+            The response path falls back to the standard rate for a tier with
+            no table, because a response is one call the provider really ran;
+            a report row is the sum of many, and a Flex row priced at the
+            standard rate is twice its cost.
+          */
+          const named = serviceTierOf(result.service_tier);
+          const row = typeof result.model === 'string' ? catalogue.byId.get(result.model) : undefined;
+          if (named === undefined || row?.serviceTiers?.[named] === undefined) {
+            nonDefaultTier += 1;
+            tiersRefused.add(result.service_tier);
+            continue;
+          }
+          serviceTier = result.service_tier;
         }
       }
 
@@ -334,6 +389,7 @@ export function openaiUsageRecords(
         ts,
         ...(label === undefined ? {} : { label }),
         ...requestsField(result.num_model_requests),
+        ...(serviceTier === undefined ? {} : { service_tier: serviceTier }),
         usage: {
           prompt_tokens: prompt,
           completion_tokens: completion,
@@ -348,6 +404,10 @@ export function openaiUsageRecords(
         },
       });
       rows += 1;
+      if (serviceTier !== undefined) {
+        serviceTierRows += 1;
+        tiersPriced.add(serviceTier);
+      }
     }
   }
 
@@ -361,6 +421,8 @@ export function openaiUsageRecords(
     batchNamed,
     nonDefaultTier,
     tiersRefused: [...tiersRefused],
+    serviceTierRows,
+    tiersPriced: [...tiersPriced],
     tierNamed,
     mixedRows,
     nonTextTokens,

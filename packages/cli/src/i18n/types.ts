@@ -735,6 +735,7 @@ export interface CliMessages {
     batchUnknown(): string;
     /** Any tier but default, named rather than counted. */
     nonDefaultTier(count: number, tiers: string): string;
+    serviceTierPriced(count: number, tiers: string): string;
     tierUnknown(): string;
     /** Rows reduced to their text part; audio and image tokens set aside. */
     mixed(rows: number, tokens: number, cacheWrites: number): string;

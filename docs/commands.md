@@ -3016,11 +3016,17 @@ back to prove it does not.
 **Ask for three groupings.** `group_by[]=model`, or a row says nothing about
 what answered and cannot be priced. `group_by[]=batch`, because a batch job is
 billed at a discount and priced from a catalogue rate it overstates the bill
-while looking right. `group_by[]=service_tier`, because the schema does not
-enumerate the tiers and this does not either: any tier but `default` is left
-out and **named** in the summary, so you see `flex` or `priority` rather than
-a count of something unnamed. Without a grouping the run says the question was
-never asked, rather than letting you assume it was answered.
+while looking right. `group_by[]=service_tier`, because Flex, Fast and
+Ultrafast each have a table of their own: a row at one of them, on a model the
+catalogue has that tier's table for, is written with `service_tier` and priced
+from that table (since 2.7.3), exactly as a logged response naming the tier
+would be, and the summary says how many rows were. The schema does not
+enumerate the tiers and this does not either, so a tier with no table on that
+model (GPT-4o has no Flex) or a value Trazum does not know is left out and
+**named** in the summary, so you see `flex` or `scale` rather than a count of
+something unnamed: the standard rate is not its rate. Without a grouping the
+run says the question was never asked, rather than letting you assume it was
+answered.
 
 **Audio and image tokens are never priced at a text rate.** `input_tokens`
 folds text, audio and image together, and the report's own split —
@@ -3944,8 +3950,10 @@ undecided and falls back to the dearest candidate, while a service tier is
 always decided by the response. A tier the row has no table for (GPT-4o has
 no Flex) prices at the standard rate, and so does a value the table has never
 seen. It is read from a logged Chat Completions or Responses object and by the
-gateway, from whole responses and streams; OpenAI's usage report still leaves
-non-default tiers out and names them, as before.
+gateway, from whole responses and streams, and from OpenAI's usage report
+(since 2.7.3), where a row is priced only when its model has that tier's
+table: a report row sums many calls, so one with no table is left out and
+named rather than priced at the standard rate.
 
 A tier and a promotion may not appear on the same model. No provider here does
 both, and a rate composed from two real ones is the first thing

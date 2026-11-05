@@ -2071,7 +2071,9 @@ ${bold('EXAMPLES')}
     batchUnknown: () =>
       'The report never said whether anything was batch, so a batch row and a standard row are indistinguishable here. Everything was read as standard. Add group_by[]=batch if any of this usage is batched.',
     nonDefaultTier: (count, tiers) =>
-      `${count} row(s) were at a service tier a catalogue rate is not the rate for (${tiers}) and are not in the output. The schema does not list the tiers, so they are named rather than guessed at.`,
+      `${count} row(s) were at a service tier Trazum has no table for on that model (${tiers}) and are not in the output. The standard rate is not that tier's rate, and the schema does not list the tiers, so they are named rather than guessed at.`,
+    serviceTierPriced: (count, tiers) =>
+      `${count} row(s) ran at another service tier (${tiers}) and are priced from that tier's own table, as a logged response naming it would be.`,
     tierUnknown: () =>
       'The report never named a service tier. Everything was read as the default tier. Add group_by[]=service_tier if any of this usage runs on another.',
     mixed: (rows, tokens, cacheWrites) =>

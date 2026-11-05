@@ -2101,7 +2101,9 @@ ${bold('EJEMPLOS')}
     batchUnknown: () =>
       'El informe nunca dijo si algo fue batch, así que una fila por lotes y una estándar son indistinguibles aquí. Todo se leyó como estándar. Añade group_by[]=batch si parte de este uso va por lotes.',
     nonDefaultTier: (count, tiers) =>
-      `${count} fila(s) estaban en un tramo de servicio para el que una tarifa de catálogo no es la tarifa (${tiers}) y no están en la salida. El esquema no lista los tramos, así que se nombran en vez de adivinarse.`,
+      `${count} fila(s) estaban en un tramo de servicio para el que Trazum no tiene tabla en ese modelo (${tiers}) y no están en la salida. La tarifa estándar no es la de ese tramo, y el esquema no lista los tramos, así que se nombran en vez de adivinarse.`,
+    serviceTierPriced: (count, tiers) =>
+      `${count} fila(s) corrieron en otro tramo de servicio (${tiers}) y se cobran con la tabla propia de ese tramo, como se cobraría una respuesta registrada que lo nombre.`,
     tierUnknown: () =>
       'El informe no nombró ningún tramo de servicio. Todo se leyó como el tramo por defecto. Añade group_by[]=service_tier si parte de este uso corre en otro.',
     mixed: (rows, tokens, cacheWrites) =>

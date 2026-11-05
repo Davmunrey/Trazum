@@ -4780,6 +4780,9 @@ async function commandFromOpenai(args: Args, t: CliMessages): Promise<void> {
   if (conversion.unnamedModel > 0) console.error(t.fromOpenai.unnamedModel(conversion.unnamedModel));
   if (conversion.batch > 0) console.error(t.fromOpenai.batch(conversion.batch));
   if (!conversion.batchNamed && conversion.rows > 0) console.error(t.fromOpenai.batchUnknown());
+  if (conversion.serviceTierRows > 0) {
+    console.error(t.fromOpenai.serviceTierPriced(conversion.serviceTierRows, conversion.tiersPriced.join(', ')));
+  }
   if (conversion.nonDefaultTier > 0) {
     console.error(t.fromOpenai.nonDefaultTier(conversion.nonDefaultTier, conversion.tiersRefused.join(', ')));
   }

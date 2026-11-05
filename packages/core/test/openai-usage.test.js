@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { looksLikeOpenaiUsage, openaiUsageRecords } from '../dist/openai-usage.js';
-import { parseUsageLine } from '../dist/usage.js';
+import { BUNDLED_CATALOGUE, indexModels } from '../dist/pricing.js';
+import { parseUsageLine, profileUsage } from '../dist/usage.js';
 
 /**
  * OpenAI's own usage report, read as a log.
@@ -205,15 +206,17 @@ describe('what it refuses to price, and says instead', () => {
     assert.equal(conversion.batchNamed, false);
   });
 
-  it('refuses any tier but default, and names the tier it refused', () => {
+  it('refuses a tier no table prices, and names the tier it refused', () => {
     /* The schema does not enumerate the values, so neither does this: a
-       name the reader can see beats a count of something unnamed. */
+       name the reader can see beats a count of something unnamed. GPT-4o
+       mini has a Fast table and no Flex one, and "scale" is no table at all. */
     const conversion = openaiUsageRecords(
-      report([bucket([text({ service_tier: 'flex' }), text({ service_tier: 'priority' }), text()])]),
+      report([bucket([text({ service_tier: 'flex' }), text({ service_tier: 'scale' }), text()])]),
     );
     assert.equal(conversion.records.length, 1);
     assert.equal(conversion.nonDefaultTier, 2);
-    assert.deepEqual(conversion.tiersRefused, ['flex', 'priority']);
+    assert.deepEqual(conversion.tiersRefused, ['flex', 'scale']);
+    assert.equal(conversion.serviceTierRows, 0);
     assert.equal(conversion.tierNamed, true);
 
     const untiered = openaiUsageRecords(report([bucket([text({ service_tier: null })])]));
@@ -235,6 +238,64 @@ describe('what it refuses to price, and says instead', () => {
       assert.equal(conversion.unparseable, 1, `${JSON.stringify(input)} was read as a report`);
       assert.equal(conversion.records.length, 0);
     }
+  });
+});
+
+describe('a service tier with a table of its own', () => {
+  /*
+    OpenAI sells Flex at about half the standard price and Fast at up to
+    twice, each from its own table. A report row at one of them is priced
+    exactly as a logged response naming the same tier, and the test says so
+    by pricing both: the converted record, and the response the same call
+    would have returned.
+  */
+  const one = (model, tier) =>
+    text({ model, service_tier: tier, num_model_requests: 1, input_cache_write_tokens: 0, input_tokens: 900, input_uncached_tokens: 500 });
+  const bill = (lines) => profileUsage(lines, { catalogue: BUNDLED_CATALOGUE }).total.totalUsd;
+  const response = (model, tier) =>
+    JSON.stringify({
+      model,
+      ...(tier === undefined ? {} : { service_tier: tier }),
+      usage: { prompt_tokens: 900, completion_tokens: 500, prompt_tokens_details: { cached_tokens: 400 } },
+    });
+
+  it('carries Flex, Fast and Ultrafast into the record, and prices each from its own table', () => {
+    for (const [model, tier] of [
+      ['gpt-5.4-2026-03-05', 'flex'],
+      ['gpt-5.4-2026-03-05', 'priority'],
+      ['gpt-6.1-sol', 'fast'],
+      ['gpt-6.1-sol', 'ultrafast'],
+      ['gpt-4o-mini-2024-07-18', 'priority'],
+    ]) {
+      const conversion = openaiUsageRecords(report([bucket([one(model, tier)])]));
+      assert.equal(conversion.records.length, 1, `${tier} on ${model} was left out`);
+      assert.equal(conversion.nonDefaultTier, 0);
+      assert.equal(conversion.serviceTierRows, 1);
+      assert.deepEqual(conversion.tiersPriced, [tier]);
+      const [record] = conversion.records;
+      assert.equal(record.service_tier, tier);
+      assert.equal(parseUsageLine(JSON.stringify(record)).serviceTier, tier);
+
+      const converted = bill(JSON.stringify(record));
+      const asResponse = bill(response(model, tier));
+      const standard = bill(response(model, undefined));
+      assert.ok(Math.abs(converted - asResponse) < 1e-12, `${tier} on ${model}: ${converted} against ${asResponse}`);
+      assert.notEqual(converted, standard, `${tier} on ${model} was billed at the standard rate`);
+    }
+  });
+
+  it('writes no tier on a default row, which prices as standard', () => {
+    const conversion = openaiUsageRecords(report([bucket([one('gpt-5.4', 'default')])]));
+    assert.equal(conversion.records[0].service_tier, undefined);
+    assert.equal(conversion.serviceTierRows, 0);
+  });
+
+  it('asks the catalogue it is given, and refuses when that one has no table', () => {
+    const plain = BUNDLED_CATALOGUE.models.map(({ serviceTiers: _serviceTiers, ...row }) => row);
+    const catalogue = { ...BUNDLED_CATALOGUE, models: plain, byId: indexModels(plain) };
+    const conversion = openaiUsageRecords(report([bucket([one('gpt-5.4', 'flex')])]), { catalogue });
+    assert.equal(conversion.records.length, 0, 'a Flex row was priced with no Flex table');
+    assert.deepEqual(conversion.tiersRefused, ['flex']);
   });
 });
 

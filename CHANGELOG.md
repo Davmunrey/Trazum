@@ -11,6 +11,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **OpenAI's usage report left every Flex and Fast row out of the bill.**
+  `from-openai`, `bill` and the web Bill tab refused any row at a service tier
+  but `default`, because until 2.7.2 there was no rate to price it at. There
+  is now: the catalogue carries Flex, Fast and Ultrafast tables for 25 models.
+  A row at one of those tiers, on a model whose row has that tier's table, is
+  carried with `service_tier` and priced from the table exactly as a logged
+  response naming the same tier is. A row whose model has no table for its
+  tier (GPT-4o has no Flex), or a tier value Trazum does not know, is still
+  left out and named, because pricing it at the standard rate would put a
+  Flex bill at twice its cost. `from-openai` now says how many rows were
+  priced at which tier.
+
 ### Release mechanics
 
 - **2.7.2 published all four packages and then had no tag and no release
