@@ -85,6 +85,20 @@ only when the page's one session check found somebody signed in. A test in
 `apps/web/test/ui.test.mjs` holds it, and was proven by removing the guard and
 watching it fail.
 
+## Kept true after the audit
+
+An audit is one day. The web half of it now runs on every pull request:
+`scripts/privacy-probe.mjs` serves the standalone build the Dockerfile ships,
+opens the Bill tab in Chrome, pastes a log with marker strings, reads the bill
+and fails the build if a marker appears in any request, if any request goes to
+another origin, if reading the bill asks the server for anything but the
+page's own code, or if a same-origin request fails or is answered 400 or worse.
+The last rule is the one that would have caught the defect above. The verdict
+is a pure function, `scripts/privacy-probe-judge.mjs`, tested on its own in
+`test/privacy-probe.test.mjs`; the whole probe was proven by planting a
+`fetch` of the pasted log in the Bill tab, which it reported five times over:
+each of the three markers, the request during the read, and its answer.
+
 ## What this audit does not establish
 
 - **Static analysis reads code; it does not run every path.** REA

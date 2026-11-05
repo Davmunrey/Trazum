@@ -167,6 +167,10 @@ nothing should.
   asked; one defect on the web page was fixed. The method, every network and
   process surface with its guard, what the audit does not establish, and how to
   reproduce it are in [docs/audit-rea-2026-11.md](docs/audit-rea-2026-11.md).
+- **On every pull request since then:** the web half of that audit runs in CI
+  as `scripts/privacy-probe.mjs`, against the build the pull request would
+  deploy. A marker leaving the page, a request to another origin, a request
+  while the bill is read, or a failed request fails the build.
 
 ## Repository hardening
 

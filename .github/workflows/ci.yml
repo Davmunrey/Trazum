@@ -115,6 +115,21 @@ jobs:
       - name: Build the web app
         run: npm run build:web
 
+      # A pasted log never leaves the browser, checked in a real browser against
+      # the page this pull request would deploy. The REA audit of November 2026
+      # checked it once, by hand; this checks it on every run. `playwright-core`
+      # is pinned, installed with `--ignore-scripts` outside the workspace, and
+      # drives the runner's own Chrome, so nothing published depends on either.
+      - name: Privacy probe (a pasted log never leaves the browser)
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.58.2
+          cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
+          PORT=3123 HOSTNAME=127.0.0.1 node apps/web/.next/standalone/apps/web/server.js > "$RUNNER_TEMP/web.log" 2>&1 &
+          node scripts/privacy-probe.mjs --url http://127.0.0.1:3123 \
+            --chrome "$(command -v google-chrome || command -v chromium)" \
+            --playwright "$RUNNER_TEMP/pw/node_modules/playwright-core" \
+            || { cat "$RUNNER_TEMP/web.log"; exit 1; }
+
       - name: Stress the packed release in an isolated installation
         run: npm run verify:packages
 

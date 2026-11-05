@@ -23,6 +23,16 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The web audit runs on every pull request.** `scripts/privacy-probe.mjs`
+  serves the standalone web build, pastes a log carrying marker strings into
+  the Bill tab in Chrome, reads the bill, and fails CI if a marker appears in
+  any request, a request goes to another origin, reading the bill asks the
+  server for anything but the page's own code, or a same-origin request fails
+  or is answered 400 or worse. The verdict is a pure function with its own
+  tests; the probe was proven by planting a `fetch` of the pasted log in the
+  Bill tab, which it caught five ways. `playwright-core` is installed at a
+  pinned version with `--ignore-scripts` outside the workspace and drives the
+  runner's Chrome, so nothing published depends on it.
 - **An independent audit with REA, written down.** `docs/audit-rea-2026-11.md`
   records what [REA](https://github.com/morluto/rea) 6.8.0 found reading the
   four 2.7.7 packages as npm serves them and the production web page while a
