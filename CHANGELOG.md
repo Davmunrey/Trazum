@@ -14,17 +14,21 @@ merged commit with no entry is a change only `git log` remembers.
 ### Release mechanics
 
 - **2.7.2 published all four packages and then had no tag and no release
-  page.** The Release run's last step asked the releases API to create the tag
-  on the merge commit, and the API answers 403 to the workflow's token once
-  that commit is no longer main's head: the next pull request had merged while
-  the run was working. The step now pushes the tag over git first, which the
-  token may do, and creates the release on the tag that exists; a re-run finds
-  the tag and goes on. A test fails if `--target` comes back or the release is
-  created before its tag. `backfill-releases` gains `version`, `commit` and
-  `latest` inputs, so one missing release can be created by hand, with the
-  commit checked against the version its `package.json` states; that is how
-  v2.7.2 got its tag. The MCP registry listing was skipped with it and stays
-  at 2.7.1 until the next release lists the newest version.
+  page.** GitHub refuses the workflow's token any ref whose
+  `.github/workflows/` files differ from main's, because GITHUB_TOKEN can
+  never hold the `workflows` permission. A pull request that changed a comment
+  in `ci.yml` merged while the Release run was publishing, so the tag on the
+  release commit was refused; through the releases API that read as a bare
+  HTTP 403. The step now pushes the tag over git, where the refusal names the
+  file, and on refusal prints the one command that recovers: push the tag by
+  hand, and the tag-triggered run creates the release without uploading
+  anything. `docs/releasing.md` adds the rule that prevents it (don't merge a
+  workflow change during a Release run), and `backfill-releases` gains
+  `version`, `commit` and `latest` inputs for a missing release whose commit
+  still matches main's workflows. A first version of this fix blamed the
+  timing alone and was proven wrong by its own backfill run, which GitHub
+  refused for the same reason; v2.7.2's tag needs a person. The MCP registry
+  listing was skipped with it and stays at 2.7.1 until the next release.
 
 ### Guarded
 

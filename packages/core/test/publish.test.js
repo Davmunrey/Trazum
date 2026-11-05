@@ -2238,11 +2238,11 @@ describe('the publish preflight', () => {
     /**
      * 2.7.2 published all four packages and then failed on its last step:
      * `gh release create --target` asked the releases API to create the tag,
-     * and the API answered 403 to this token because the next pull request
-     * had merged while the job ran, so the target was no longer main's head.
-     * The packages were on npm with no tag and no release page. The tag now
-     * goes over git first, which the token may do, and the release is created
-     * on a tag that exists. `--target` coming back is this failure coming back.
+     * and GitHub refused this token (a bare 403) because a pull request that
+     * changed a workflow file had merged while the job ran, and GITHUB_TOKEN
+     * can never create a ref whose workflows differ from main's. Over git the
+     * refusal names the file, and the step prints the command a person runs.
+     * The release is created on a tag that exists, never by the API making one.
      */
     const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
     const step = release.split(/^      - /m).find((s) => s.startsWith('name: Publish the GitHub release and the tag (from main)'));
@@ -2257,6 +2257,8 @@ describe('the publish preflight', () => {
     assert.ok(pushed < created, 'the release is created before its tag is pushed');
     // A re-run finds the tag already there and must not fail on it.
     assert.match(run, /ls-remote --exit-code --tags origin "refs\/tags\/v\$version"/, 'a re-run would try to push an existing tag');
+    // And a refused tag says what to run, since the packages are already out.
+    assert.match(run, /git tag v\$version \$GITHUB_SHA && git push origin v\$version/, 'a refused tag leaves no recovery command');
   });
 
   it('can backfill one missing release, checked against the commit that set its version', () => {

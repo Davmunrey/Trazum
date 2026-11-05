@@ -318,20 +318,28 @@ jobs:
 
       # The same release when the trigger was the merge rather than a tag.
       #
-      # The tag is pushed over git first, and the release is then created on
-      # the tag that exists. `gh release create --target` used to create the
-      # tag itself, and the releases API refuses that to this token (HTTP 403,
-      # "Resource not accessible by integration") once the target is no longer
-      # the head of main: 2.7.2 published all four packages and then failed
-      # here, because the next pull request merged while the job was running.
-      # backfill-releases.yml found the same split in 2026: the API creates a
-      # release on an existing tag, and git accepts the tag from the token.
+      # The tag goes over git first and the release is then created on it.
+      # **What can refuse the tag, and why a person then pushes it.** GitHub
+      # will not let a token without the `workflows` permission create a ref
+      # whose workflow files differ from main's, and GITHUB_TOKEN can never
+      # hold that permission. So if a pull request that touches
+      # `.github/workflows/` merges while this run is publishing, the tag is
+      # refused: 2.7.2 published all four packages and lost its tag and release
+      # that way, to a one-line comment change in ci.yml. Through the releases
+      # API (`gh release create --target`, the old form of this step) the same
+      # refusal read as a bare HTTP 403; over git it names the file, and the
+      # step below says what to run. The packages are already on npm by then,
+      # so the fix is a tag pushed by a person, never a re-run: the tag-triggered
+      # run skips the uploads and creates the release.
+      #
+      # Don't merge a pull request that touches `.github/workflows/` while a
+      # Release run is in progress, and none of this happens.
       #
       # The token reaches git for this one push and nothing else: the checkout
       # keeps no credential, so it is passed as a header on the command line,
       # where Actions masks it. A tag pushed with GITHUB_TOKEN does not
-      # retrigger this workflow, so there is no second run racing this one,
-      # and a tag that already exists (a re-run) is left as it is.
+      # retrigger this workflow, and a tag that already exists (a re-run) is
+      # left as it is.
       - name: Publish the GitHub release and the tag (from main)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.versions.outputs.publish == 'true'
         env:
@@ -342,7 +350,10 @@ jobs:
           node scripts/release-notes.mjs "$version" > /tmp/release-notes.md
           auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
           if ! git -c "http.https://github.com/.extraheader=$auth" ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
-            git -c "http.https://github.com/.extraheader=$auth" push origin "$GITHUB_SHA:refs/tags/v$version"
+            if ! git -c "http.https://github.com/.extraheader=$auth" push origin "$GITHUB_SHA:refs/tags/v$version"; then
+              echo "::error::v$version is on npm and GitHub refused this token its tag, most likely because a pull request changing .github/workflows/ merged while this run was publishing. Push the tag yourself and the tag-triggered run creates the release: git tag v$version $GITHUB_SHA && git push origin v$version"
+              exit 1
+            fi
           fi
           gh release create "v$version" \
             --verify-tag \
