@@ -37,7 +37,8 @@ not a customer result. Generated from the CLI output.*
 
 With no path, `bill` reads the local sessions of **Claude Code, Codex and
 Gemini CLI**, names each folder it reads, and splits the result by agent,
-project and model; `--by day|week|month` adds the period you ask for.
+project and model, with each session's subagents and workflows under the
+project they ran for; `--by day|week|month` adds the period you ask for.
 **On a subscription, this is API-equivalent cost, not what you paid.** Unpriced models are reported as gaps. Local analysis does
 not upload your files.
 
