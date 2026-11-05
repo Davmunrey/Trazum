@@ -3120,6 +3120,17 @@ before it is read, one line per agent folder. With none of them there it
 refuses and names every place it looked. Each location comes from the agent's
 own source, not a guess: see [Codex](codex.md) and [Gemini CLI](gemini-cli.md).
 
+**A Batch API results file is read too** (since 2.7.4). Anthropic's results
+(`{"custom_id", "result": {"type", "message"}}`) and OpenAI's output file
+(`{"custom_id", "response": {"status_code", "body"}}`) each put the model and
+usage one level down, so they had read as nothing at all. Each billed line
+becomes a call at the model's batch rate; an Anthropic result that `errored`,
+was `canceled` or `expired`, which its page says is not billed, and an OpenAI
+line with no 200 response are left out and counted. The generated text, the
+`custom_id` and every id are dropped; an Anthropic result carries no time and
+is counted as undated rather than given one, and an OpenAI body keeps its
+`created_at`.
+
 **Once more than one agent spent money, the statement adds a table by agent**
 above the one by project: each agent's records priced through the same
 catalogue and window as the whole, so the rows are the total split, not a

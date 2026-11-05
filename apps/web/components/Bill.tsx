@@ -34,6 +34,8 @@ import {
   looksLikeOpenaiCost,
   looksLikeOpenaiUsage,
   looksLikeOpenrouterActivity,
+  looksLikeBatchResults,
+  batchResultRecords,
   openaiUsageRecords,
   openrouterActivityRecords,
   looksLikeLiteLlm,
@@ -467,6 +469,10 @@ export function Bill({ t }: { t: WebMessages }) {
         const c = openaiUsageRecords(text);
         for (const record of c.records) parts.push(JSON.stringify(record));
         tally('openai-usage', c.records.length, c.unnamedModel + c.batch + c.nonDefaultTier + c.unsplitRows);
+      } else if (looksLikeBatchResults(text)) {
+        const c = batchResultRecords(text);
+        for (const record of c.records) parts.push(JSON.stringify(record));
+        tally('batch-results', c.records.length, c.unpriceable + c.unparseable);
       } else if (looksLikeOpenrouterActivity(text)) {
         const c = openrouterActivityRecords(text);
         for (const record of c.records) parts.push(JSON.stringify(record));

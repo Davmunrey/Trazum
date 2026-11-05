@@ -242,6 +242,8 @@ export type { AnthropicCostReading, BilledReading, Reconciliation } from './anth
 export { openaiCostReport, looksLikeOpenaiCost } from './openai-cost.js';
 export type { OpenaiCostReading } from './openai-cost.js';
 export { openaiUsageRecords, looksLikeOpenaiUsage } from './openai-usage.js';
+export { batchResultRecords, looksLikeBatchResults } from './batch-results.js';
+export type { BatchResultConversion, BatchResultRecord } from './batch-results.js';
 export { openrouterActivityRecords, looksLikeOpenrouterActivity } from './openrouter-activity.js';
 export type {
   OpenrouterActivityConversion,
