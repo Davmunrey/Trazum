@@ -15,7 +15,8 @@ export const runtime = 'nodejs';
  *
  * The row is deleted before the cookie is cleared. Doing it the other way round
  * leaves a live session in the database whose token the browser has just
- * forgotten: invisible, unrevokable through the UI, and valid for a month.
+ * forgotten: invisible, unrevokable through the UI, and valid until its idle
+ * window runs out.
  *
  * **`?all=1` revokes every session the account has**, which is the thing
  * somebody wants at the moment they realise a laptop is gone. Until now

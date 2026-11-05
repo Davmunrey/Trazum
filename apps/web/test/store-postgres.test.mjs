@@ -168,6 +168,22 @@ describe('the Postgres driver', () => {
     assert.equal(found.user.createdAt.toISOString(), '2024-01-01T00:00:00.000Z');
   });
 
+  it('moves a session\'s end only while the row is still live', async () => {
+    const sql = recorder([[{ token_hash: 'deadbeef' }], []]);
+    const store = postgresStore(sql);
+    const now = new Date('2026-08-09T00:00:00Z');
+    const end = new Date('2026-08-10T00:00:00Z');
+
+    assert.equal(await store.touchSession('deadbeef', end, now), true);
+    const update = flat(sql.queries[0].text);
+    assert.ok(update.startsWith('update trazum_sessions set expires_at = ?'));
+    // Without the second predicate a refresh that raced an expiry would revive
+    // a session that had just ended.
+    assert.ok(update.includes('where token_hash = ? and expires_at > ?'), 'the update can reach a dead row');
+    assert.deepEqual(sql.queries[0].values, [end, 'deadbeef', now]);
+    assert.equal(await store.touchSession('deadbeef', end, now), false, 'no row moved, and it said one did');
+  });
+
   it('deletes one session by hash and all of them by user', async () => {
     const sql = recorder();
     const store = postgresStore(sql);

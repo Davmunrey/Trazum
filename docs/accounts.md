@@ -29,6 +29,8 @@ you want the sign-in to survive a restart.
 | `TRAZUM_ALLOWED_USERS` | one of these two | GitHub logins or numeric ids, comma-separated, who may sign in. Admins are always allowed |
 | `TRAZUM_OPEN_SIGNUP` | one of these two | `1` lets any GitHub account sign in. Anything else is closed |
 | `TRAZUM_ADMINS` | no | Who may see the deployment overview. Empty means nobody, and the page does not exist |
+| `TRAZUM_SESSION_IDLE_MINUTES` | no | Minutes without a request before a session ends. Default `1440` (a day); from `5` to the lifetime |
+| `TRAZUM_SESSION_MAX_HOURS` | no | Hours after sign-in before a session ends, however much it is used. Default `720` (thirty days), the most allowed |
 
 **Sign-in is closed until you say who may use it.** With none of
 `TRAZUM_ALLOWED_USERS`, `TRAZUM_ADMINS` or `TRAZUM_OPEN_SIGNUP=1` set, the
@@ -338,9 +340,31 @@ CSPRNG, meaningless except that a row with their hash exists. Revoking one is a
 **Only the hash is stored.** A dump of `trazum_sessions` is a list of SHA-256
 hashes, not a list of usable cookies.
 
+**A session ends after a day without use, and thirty days after sign-in
+whatever happens.** Two clocks, and whichever runs out first wins. The
+lifetime is what OWASP ASVS 4.0.3 V3.3.2 accepts at level 1, and it is also
+the ceiling: no setting makes a session longer. The idle window is the one
+that matters on a computer somebody walked away from, and a day is a
+judgement: dead by the next morning, while signing in again costs one click
+because GitHub remembers having approved Trazum. For ASVS level 2 set
+`TRAZUM_SESSION_MAX_HOURS=12` and `TRAZUM_SESSION_IDLE_MINUTES=30`.
+
+How it is kept, because the obvious way is a write on every request: the
+session's end is stored, and a request that finds the session moves it one idle
+window on, never past the lifetime. It is rewritten only once it has fallen
+five minutes behind (a tenth of the window, if that is shorter), so a session
+in use costs at most one write every five minutes, and the price is paid in the
+safe direction: a session can end up to five minutes early, never late. A
+stored end further away than one idle window can only have been written under a
+longer window, so that session ends at its next use rather than being trusted:
+how long it sat unused is not known. That is what happens to every session
+issued before idle timeouts existed, and to the sessions a lower setting no
+longer allows.
+
 **Sign-out deletes the row before clearing the cookie.** The other order leaves
 a live session in the database whose token the browser has just forgotten —
-invisible, unrevokable through the UI, and valid for a month.
+invisible, unrevokable through the UI, and valid until its idle window runs
+out: a day, by default.
 
 **`?next=` cannot leave the origin.** Anything that is not a same-origin path is
 replaced with `/`, including `//evil.example`, `/\evil.example` (browsers
@@ -390,8 +414,11 @@ goes wrong.
 - **Security events go to standard output and nowhere else.** How long they
   are kept, who can read them and what raises an alert is the platform's
   configuration, which this repository cannot see or set.
-- **Sessions do not renew.** Thirty days from issue, absolute. On day 31 you
-  sign in again.
+- **The idle window counts requests, not attention.** A tab left open sends
+  nothing, so it keeps no session alive; reloading the page, or a browser
+  restoring its tabs, is a request and does. There is no warning before a
+  session ends: the next request finds it over, and the account menu offers
+  sign-in again.
 - **GitHub is the only provider.** The store keys on `(provider, provider_id)`
   so a second one is additive, but SSO through anything else is not written.
 - **A revoked link is gone, but a copy taken while it was live is not.** This is

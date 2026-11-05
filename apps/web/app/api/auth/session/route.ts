@@ -72,7 +72,7 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const store = await getStore();
-  const user = await currentUser(request, store, new Date(), config.secure);
+  const user = await currentUser(request, store, new Date(), config);
 
   return Response.json(
     {

@@ -123,7 +123,7 @@ export async function GET(request: Request): Promise<Response> {
   const now = new Date();
   const store = await getStore();
   const user = await store.upsertUser(identity, now);
-  const session = issueSession(user.id, now, config.secure);
+  const session = issueSession(user.id, now, config.secure, config.session);
   await store.createSession(session.record);
 
   /**

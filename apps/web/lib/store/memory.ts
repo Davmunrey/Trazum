@@ -84,6 +84,14 @@ export function memoryStore(): Store {
       return { session: { ...session }, user: { ...user } };
     },
 
+    async touchSession(tokenHash: string, expiresAt: Date, now: Date): Promise<boolean> {
+      const session = sessions.get(tokenHash);
+      // `<=`, matching `findSession`: a session ending exactly now has ended.
+      if (!session || session.expiresAt.getTime() <= now.getTime()) return false;
+      session.expiresAt = new Date(expiresAt.getTime());
+      return true;
+    },
+
     async deleteSession(tokenHash: string): Promise<void> {
       sessions.delete(tokenHash);
     },

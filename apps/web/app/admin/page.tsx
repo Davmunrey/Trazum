@@ -49,7 +49,7 @@ export default async function AdminOverview() {
     new Request(config.publicUrl, { headers: { cookie: requestHeaders.get('cookie') ?? '' } }),
     store,
     new Date(),
-    config.secure,
+    config,
   );
   if (!user) notFound();
 

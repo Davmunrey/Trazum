@@ -124,6 +124,27 @@ for (const driver of DRIVERS) {
       assert.equal(await store.findSession(session(user.id, 2).tokenHash, T0), null);
     });
 
+    it('moves a live session\'s end, and never brings a dead one back', async () => {
+      const store = await driver.make();
+      const user = await store.upsertUser(identity(1), T0);
+      await store.createSession(session(user.id, 1, later(DAY)));
+      await store.createSession(session(user.id, 2, later(-1000)));
+
+      // Pushed out: alive past its old end, found with the new one.
+      assert.equal(await store.touchSession(session(user.id, 1).tokenHash, later(3 * DAY), T0), true);
+      const moved = await store.findSession(session(user.id, 1).tokenHash, later(2 * DAY));
+      assert.equal(moved?.session.expiresAt.getTime(), later(3 * DAY).getTime(), 'the new end did not stick');
+
+      // Pulled in, which is what a shorter idle window does at the next use.
+      assert.equal(await store.touchSession(session(user.id, 1).tokenHash, later(2 * DAY + 1000), later(2 * DAY)), true);
+      assert.equal(await store.findSession(session(user.id, 1).tokenHash, later(2 * DAY + 1000)), null);
+
+      // Already over at `now`: refused, and still over.
+      assert.equal(await store.touchSession(session(user.id, 2).tokenHash, later(DAY), T0), false, 'a dead session was revived');
+      assert.equal(await store.findSession(session(user.id, 2).tokenHash, T0), null);
+      assert.equal(await store.touchSession('no-such-hash'.padEnd(64, '0'), later(DAY), T0), false);
+    });
+
     it('keeps every version of a prompt, oldest first by number, and only for its owner', async () => {
       const store = await driver.make();
       const alice = await store.upsertUser(identity(1), T0);
