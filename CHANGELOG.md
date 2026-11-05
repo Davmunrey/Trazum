@@ -40,6 +40,16 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Every OWASP ASVS 4.0.3 level 2 requirement, mapped.**
+  `docs/compliance/asvs-l2.md` takes all 259, V1 to V14, and says where the
+  hosted web app stands on each: 111 met, 40 partly, 3 gaps, 16 for the owner,
+  89 that do not apply (most of V2, because there are no passwords). Each
+  met or partial row names the files that show it. `compliance.test.js` holds
+  the page to the standard's own ID list, checks every cited path exists and
+  every gap is listed as remaining work, and recounts the summary; six faults
+  planted in the page were each caught. The gaps: JSON routes accept any
+  `Content-Type`, and API responses carry no `Content-Disposition`. The
+  requirement text is paraphrased, not copied; the page links the standard.
 - **Sign-in, session and library rate limits counted across instances.**
   They were counted in each server's memory, so a platform running several
   instances multiplied every limit by however many served a caller. With
