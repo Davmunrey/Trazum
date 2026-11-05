@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { anthropicUsageRecords, looksLikeAnthropicUsage } from '../dist/anthropic-usage.js';
-import { parseUsageLine } from '../dist/usage.js';
+import { BUNDLED_CATALOGUE, indexModels } from '../dist/pricing.js';
+import { parseUsageLine, profileUsage } from '../dist/usage.js';
 
 /**
  * The provider's own usage report, read as a log.
@@ -161,6 +162,84 @@ describe('what it refuses to price, and says instead', () => {
       assert.equal(conversion.unparseable, 1, `${JSON.stringify(text)} was read as a report`);
       assert.equal(conversion.records.length, 0);
     }
+  });
+});
+
+describe('fast mode and US-only inference, which the report names', () => {
+  /*
+    Fast mode bills Opus 5 at $10/$50 against $5/$25, and the report says
+    which speed ran once it is grouped by it. A fast row is priced exactly as
+    a logged response carrying usage.speed "fast", and the test says so by
+    pricing both.
+  */
+  const bill = (lines) => profileUsage(lines, { catalogue: BUNDLED_CATALOGUE }).total.totalUsd;
+  const response = (model, speed) =>
+    JSON.stringify({
+      model,
+      timestamp: '2026-09-01T00:00:00Z',
+      usage: {
+        input_tokens: 1500,
+        output_tokens: 500,
+        cache_read_input_tokens: 200,
+        cache_creation: { ephemeral_5m_input_tokens: 500, ephemeral_1h_input_tokens: 1000 },
+        ...(speed === undefined ? {} : { speed }),
+      },
+    });
+
+  it('prices a fast row from the model’s own fast rate', () => {
+    const conversion = anthropicUsageRecords(report([bucket([result({ speed: 'fast' })])]));
+    assert.equal(conversion.records.length, 1);
+    assert.equal(conversion.fastRows, 1);
+    assert.equal(conversion.speedNamed, true);
+    assert.equal(conversion.records[0].usage.speed, 'fast');
+    assert.equal(parseUsageLine(JSON.stringify(conversion.records[0])).speed, 'fast');
+
+    const converted = bill(JSON.stringify(conversion.records[0]));
+    const asResponse = bill(response('claude-opus-5', 'fast'));
+    const standard = bill(response('claude-opus-5', undefined));
+    assert.ok(Math.abs(converted - asResponse) < 1e-12, `${converted} against ${asResponse}`);
+    assert.ok(converted > standard, `a fast row billed ${converted}, not above standard ${standard}`);
+  });
+
+  it('writes no speed on a standard row', () => {
+    const conversion = anthropicUsageRecords(report([bucket([result({ speed: 'standard' })])]));
+    assert.equal(conversion.records[0].usage.speed, undefined);
+    assert.equal(conversion.fastRows, 0);
+    assert.equal(conversion.speedUnknownFastCapable, 0);
+  });
+
+  it('refuses a fast row on a model with no fast rate, and names the model', () => {
+    const conversion = anthropicUsageRecords(
+      report([bucket([result({ speed: 'fast', model: 'claude-sonnet-4-6' }), result({ speed: 'standard' })])]),
+    );
+    assert.equal(conversion.records.length, 1, 'a fast row was priced at the standard rate');
+    assert.equal(conversion.fastUnpriced, 1);
+    assert.deepEqual(conversion.fastUnpricedModels, ['claude-sonnet-4-6']);
+  });
+
+  it('asks the catalogue it is given, and refuses when that one has no fast rate', () => {
+    const plain = BUNDLED_CATALOGUE.models.map(({ tiers: _tiers, ...row }) => row);
+    const catalogue = { ...BUNDLED_CATALOGUE, models: plain, byId: indexModels(plain) };
+    const conversion = anthropicUsageRecords(report([bucket([result({ speed: 'fast' })])]), { catalogue });
+    assert.equal(conversion.records.length, 0);
+    assert.equal(conversion.fastUnpriced, 1);
+  });
+
+  it('says when a model with a fast mode was never asked its speed', () => {
+    const ungrouped = anthropicUsageRecords(
+      report([bucket([result(), result({ model: 'claude-sonnet-4-6' })])]),
+    );
+    assert.equal(ungrouped.speedNamed, false);
+    assert.equal(ungrouped.speedUnknownFastCapable, 1, 'only Opus 5 has a fast mode here');
+    assert.equal(ungrouped.records.length, 2);
+  });
+
+  it('counts US-only rows, priced at the global rate, as a floor', () => {
+    const conversion = anthropicUsageRecords(
+      report([bucket([result({ inference_geo: 'us' }), result({ inference_geo: 'global' }), result({ inference_geo: 'not_available' })])]),
+    );
+    assert.equal(conversion.records.length, 3, 'a US-only row was dropped rather than priced as a floor');
+    assert.equal(conversion.usOnlyRows, 1);
   });
 });
 

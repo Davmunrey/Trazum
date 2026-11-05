@@ -2037,6 +2037,14 @@ ${bold('EXAMPLES')}
       `${count} row(s) were billed at a tier a catalogue rate is not the rate for (batch, priority, flex) and are not in the output. Pricing them from the standard rate would overstate the bill and look right doing it.`,
     tierUnknown: () =>
       'The report never named a service tier, so a batch row and a standard row are indistinguishable here. Everything was read as standard. Add group_by[]=service_tier if any of this usage is batched.',
+    fastPriced: (count) =>
+      `${count} row(s) ran in fast mode and are priced from the model's own fast rate, as a logged response with usage.speed "fast" would be.`,
+    fastUnpriced: (count, models) =>
+      `${count} row(s) ran in fast mode on a model Trazum has no fast rate for (${models}) and are not in the output. The standard rate is well under fast mode's, so pricing them at it would understate the bill.`,
+    speedUnknown: (count) =>
+      `The report never named a speed, and ${count} row(s) are on a model with a fast mode, which bills at a higher rate. They were read as standard. Add group_by[]=speed if any of this usage ran fast.`,
+    usOnly: (count) =>
+      `${count} row(s) ran with inference_geo "us", which bills 1.1x on Claude 4.6 and later. They are priced at the global rate, so their figure is a floor.`,
     webSearch: (count) =>
       `${count} web search request(s) are in this report and in no line of the output: server tools are billed per request, not per token, so no token rate reaches them.`,
     truncated: () =>

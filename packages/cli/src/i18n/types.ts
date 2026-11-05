@@ -709,6 +709,10 @@ export interface CliMessages {
     /** Said when the report never named a tier: the question was not asked. */
     tierUnknown(): string;
     /** Server tools are billed per request, and no token rate reaches them. */
+    fastPriced(count: number): string;
+    fastUnpriced(count: number, models: string): string;
+    speedUnknown(count: number): string;
+    usOnly(count: number): string;
     webSearch(count: number): string;
     /** One page of several: the bill from it is understated. */
     truncated(): string;

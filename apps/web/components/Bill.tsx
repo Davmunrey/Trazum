@@ -462,7 +462,7 @@ export function Bill({ t }: { t: WebMessages }) {
       } else if (looksLikeAnthropicUsage(text)) {
         const c = anthropicUsageRecords(text);
         for (const record of c.records) parts.push(JSON.stringify(record));
-        tally('anthropic-usage', c.records.length, c.unnamedModel + c.nonStandardTier);
+        tally('anthropic-usage', c.records.length, c.unnamedModel + c.nonStandardTier + c.fastUnpriced);
       } else if (looksLikeOpenaiUsage(text)) {
         const c = openaiUsageRecords(text);
         for (const record of c.records) parts.push(JSON.stringify(record));

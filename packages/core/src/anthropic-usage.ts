@@ -53,6 +53,21 @@
  * and counted, the same way an unpriceable line becomes a named gap rather
  * than a guess.
  *
+ * **A fast-mode row on a model with no fast table.** Fast mode bills Opus 5.5
+ * at $8/$40 against $4/$20, and the report says which speed ran in `speed`
+ * once it is grouped by it. A fast row is carried with `usage.speed: "fast"`
+ * and priced from the model's own fast rates, exactly as a logged response
+ * carrying the same field is. A fast row on a model the catalogue has no
+ * fast rate for is left out and named, never priced at the standard rate,
+ * which would put it at well under its cost. A report not grouped by speed
+ * cannot say, so a row on a model that has a fast rate is read as standard
+ * and the conversion says the question was not asked.
+ *
+ * **US-only inference.** `inference_geo: "us"` bills 1.1x on every token
+ * category of Claude 4.6 and later, the pricing page says. The catalogue has
+ * no geography, so such a row is priced at the global rate and counted: its
+ * figure is a floor, named, rather than a multiple composed here.
+ *
  * **Web search requests.** `server_tool_use.web_search_requests` is billed per
  * request, not per token, so no token rate reaches it. Counted and named, so a
  * total that is missing them says so.
@@ -98,6 +113,9 @@
  * `bucket_width=1h` is there for an operator who wants it.
  */
 
+import { BUNDLED_CATALOGUE } from './pricing.js';
+import type { PricingCatalogue } from './pricing.js';
+
 /**
  * One workspace, and the project name the operator gives it.
  *
@@ -129,6 +147,8 @@ export interface AnthropicUsageRecord {
       ephemeral_5m_input_tokens: number;
       ephemeral_1h_input_tokens: number;
     };
+    /** `"fast"` when the report says the row ran in fast mode and the model has a fast rate. */
+    speed?: 'fast';
   };
 }
 
@@ -152,6 +172,24 @@ export interface AnthropicUsageConversion {
    * question was answered that was never asked.
    */
   tierNamed: boolean;
+  /** Results in fast mode that became records priced from the model's fast rate. */
+  fastRows: number;
+  /** Results in fast mode on a model the catalogue has no fast rate for, left out. */
+  fastUnpriced: number;
+  /** The models those results named, so the refusal has a name. */
+  fastUnpricedModels: string[];
+  /** Whether any result named its speed at all. */
+  speedNamed: boolean;
+  /**
+   * Results on a model with a fast rate, in a report that never named a speed.
+   * Read as standard, because nothing on the row says otherwise, and said.
+   */
+  speedUnknownFastCapable: number;
+  /**
+   * Results with `inference_geo: "us"`, priced at the global rate. US-only
+   * inference bills 1.1x on Claude 4.6 and later, so their figure is a floor.
+   */
+  usOnlyRows: number;
   /** Server-side tool calls billed per request, which no token rate prices. */
   webSearchRequests: number;
   /** `has_more`: this is one page and the bill from it is understated. */
@@ -190,7 +228,16 @@ const count = (value: unknown): number =>
  */
 export function anthropicUsageRecords(
   text: string,
-  options: { label?: string; labelByWorkspace?: readonly WorkspaceLabel[] } = {},
+  options: {
+    label?: string;
+    labelByWorkspace?: readonly WorkspaceLabel[];
+    /**
+     * Where a model's fast rate is looked for. The bundled catalogue unless a
+     * caller prices with another; a fast row whose model has no fast rate in
+     * it is refused, never priced at the standard one.
+     */
+    catalogue?: PricingCatalogue;
+  } = {},
 ): AnthropicUsageConversion {
   const empty: AnthropicUsageConversion = {
     records: [],
@@ -199,6 +246,12 @@ export function anthropicUsageRecords(
     unnamedModel: 0,
     nonStandardTier: 0,
     tierNamed: false,
+    fastRows: 0,
+    fastUnpriced: 0,
+    fastUnpricedModels: [],
+    speedNamed: false,
+    speedUnknownFastCapable: 0,
+    usOnlyRows: 0,
     webSearchRequests: 0,
     truncated: false,
     labelledByWorkspace: 0,
@@ -241,7 +294,17 @@ export function anthropicUsageRecords(
         ),
     );
 
+  const catalogue = options.catalogue ?? BUNDLED_CATALOGUE;
+  const hasFastRate = (model: string): boolean =>
+    catalogue.byId.get(model)?.tiers?.some((tier) => tier.when.kind === 'speed' && tier.when.speed === 'fast')
+    ?? false;
   const records: AnthropicUsageRecord[] = [];
+  const fastUnpricedModels = new Set<string>();
+  let fastRows = 0;
+  let fastUnpriced = 0;
+  let speedNamed = false;
+  let speedUnknownFastCapable = 0;
+  let usOnlyRows = 0;
   let labelledByWorkspace = 0;
   let unruledWorkspace = 0;
   let buckets = 0;
@@ -263,6 +326,8 @@ export function anthropicUsageRecords(
       const result = found as {
         model?: unknown;
         service_tier?: unknown;
+        speed?: unknown;
+        inference_geo?: unknown;
         workspace_id?: unknown;
         uncached_input_tokens?: unknown;
         cache_read_input_tokens?: unknown;
@@ -287,6 +352,25 @@ export function anthropicUsageRecords(
       if (typeof result.model !== 'string' || result.model === '') {
         unnamedModel += 1;
         continue;
+      }
+
+      /*
+        Fast mode is a rate of its own, decided by the row: priced from it
+        when the model has one, refused and named when it does not.
+      */
+      let fast = false;
+      if (typeof result.speed === 'string') {
+        speedNamed = true;
+        if (result.speed === 'fast') {
+          if (!hasFastRate(result.model)) {
+            fastUnpriced += 1;
+            fastUnpricedModels.add(result.model);
+            continue;
+          }
+          fast = true;
+        }
+      } else if (hasFastRate(result.model)) {
+        speedUnknownFastCapable += 1;
       }
 
       /*
@@ -332,9 +416,12 @@ export function anthropicUsageRecords(
                 },
               }
             : {}),
+          ...(fast ? { speed: 'fast' as const } : {}),
         },
       });
       rows += 1;
+      if (fast) fastRows += 1;
+      if (result.inference_geo === 'us') usOnlyRows += 1;
     }
   }
 
@@ -345,6 +432,12 @@ export function anthropicUsageRecords(
     unnamedModel,
     nonStandardTier,
     tierNamed,
+    fastRows,
+    fastUnpriced,
+    fastUnpricedModels: [...fastUnpricedModels],
+    speedNamed,
+    speedUnknownFastCapable,
+    usOnlyRows,
     webSearchRequests,
     truncated: report.has_more === true,
     labelledByWorkspace,

@@ -24,6 +24,16 @@ merged commit with no entry is a change only `git log` remembers.
   left out and named, because pricing it at the standard rate would put a
   Flex bill at twice its cost. `from-openai` now says how many rows were
   priced at which tier.
+- **Anthropic's usage report read fast-mode rows at the standard rate.** The
+  report says which speed ran when it is grouped by `speed`, and
+  `from-anthropic` ignored the field, so a row of Opus 5 fast mode ($10/$50)
+  was billed at $5/$25. A fast row is now written with `usage.speed: "fast"`
+  and priced from the model's own fast rate, as a logged response carrying
+  the field is; one on a model with no fast rate is left out and named. A
+  report not grouped by speed that holds a model with a fast mode now says so,
+  and the curl in `docs/commands.md` asks for the grouping. Rows that ran with
+  `inference_geo: "us"`, which bills 1.1x on Claude 4.6 and later, are priced
+  at the global rate and counted as a floor.
 
 ### Release mechanics
 
