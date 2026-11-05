@@ -104,6 +104,13 @@ export function memoryStore(): Store {
       }
     },
 
+    async listSessionsForUser(userId: string, now: Date): Promise<SessionRecord[]> {
+      return [...sessions.values()]
+        .filter((session) => session.userId === userId && session.expiresAt.getTime() > now.getTime())
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || (a.tokenHash < b.tokenHash ? -1 : 1))
+        .map((session) => ({ ...session, createdAt: new Date(session.createdAt), expiresAt: new Date(session.expiresAt) }));
+    },
+
     async deleteExpiredSessions(now: Date): Promise<number> {
       let gone = 0;
       for (const [hash, session] of sessions) {

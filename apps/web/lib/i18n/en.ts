@@ -140,6 +140,18 @@ export const en: WebMessages = {
       `This deletes your account, every prompt and version you saved, and every share link you published. Links you already sent to other people will stop working. It cannot be undone.\n\nType ${login} to confirm.`,
     deleteFailed: 'The account was not deleted. Nothing has changed.',
     menuLabel: (login) => `Account: ${login}`,
+    sessions: 'Your sessions',
+    sessionsLoading: 'Loading your sessions…',
+    sessionsFailed: 'Your sessions could not be loaded.',
+    sessionThisDevice: 'This device',
+    sessionStarted: (when) => `Signed in ${when}`,
+    sessionLastActive: (when) => `Last active ${when}`,
+    sessionEndConfirm: (started) =>
+      `End the session that signed in ${started}? Whoever is using it will have to sign in again.`,
+    sessionEnd: (started) => `End the session that signed in ${started}`,
+    sessionEndFailed: 'The session was not ended. Nothing has changed.',
+    reauthConfirm:
+      'To end another session, or all of them, sign in again first: it proves the request comes from you and not only from a copy of your cookie. Continue to GitHub?',
   },
 
   library: {

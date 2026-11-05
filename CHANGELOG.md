@@ -76,6 +76,24 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **See where you are signed in, and end any one session.** *Your sessions*
+  in the account menu lists every live session the account has, with when it
+  started, when it was last used (to within a few minutes) and which one is
+  this device, and selecting another ends it (`GET` and `DELETE
+  /api/auth/sessions`). Ending another session, or all of them with *Sign out
+  everywhere*, now needs a sign-in in the last fifteen minutes; otherwise the
+  menu sends you through GitHub and back first. That is OWASP ASVS 3.3.4's
+  re-authentication, and it means somebody holding only a copy of your cookie
+  cannot sign you out of your other devices. Nothing identifies a device
+  beyond those times: that would mean keeping a user agent or an address, and
+  the app keeps neither. The page holds an id derived from each session's hash,
+  never the token or the hash. Signing in again from a browser now replaces
+  that browser's session instead of leaving the old row in the table until it
+  expired. Tested on both store drivers and a real PostgreSQL; nine planted
+  faults were each caught, among them an id cut from the hash, which the first
+  version of the test let through. ASVS 3.3.4 moves to met (120), and the
+  compliance pack's list of what code can still close now names every partial
+  row a pull request could close, not three of them.
 - **A line for every request the web app refuses for what it sent.** A body
   that does not say it is JSON, one that will not parse, and a value a route
   will not take each write an `input.refused` security line with the reason

@@ -36,7 +36,7 @@ gap is listed in the pack, and the summary below matches the rows.
 | --- | --- | --- | --- | --- | --- | --- |
 | V1 Architecture, design and threat modelling | 38 | 20 | 14 | 0 | 3 | 1 |
 | V2 Authentication | 53 | 3 | 1 | 0 | 2 | 47 |
-| V3 Session management | 18 | 13 | 2 | 0 | 0 | 3 |
+| V3 Session management | 18 | 14 | 1 | 0 | 0 | 3 |
 | V4 Access control | 9 | 7 | 0 | 0 | 1 | 1 |
 | V5 Validation, sanitisation and encoding | 30 | 16 | 1 | 0 | 0 | 13 |
 | V6 Stored cryptography | 13 | 6 | 0 | 0 | 3 | 4 |
@@ -48,7 +48,7 @@ gap is listed in the pack, and the summary below matches the rows.
 | V12 Files and resources | 15 | 5 | 0 | 0 | 0 | 10 |
 | V13 API and web services | 13 | 7 | 2 | 0 | 0 | 4 |
 | V14 Configuration | 23 | 17 | 4 | 0 | 0 | 2 |
-| **Total** | **259** | **119** | **35** | **0** | **16** | **89** |
+| **Total** | **259** | **120** | **34** | **0** | **16** | **89** |
 
 Most of V2 is not applicable for one reason: Trazum has no passwords. Signing
 in is delegated to GitHub, so the password, its storage, its recovery and any
@@ -167,7 +167,7 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 3.3.1 | Sign-out and expiry end the session server-side | Met | The row is deleted before the cookie is cleared (`apps/web/app/api/auth/signout/route.ts`); tested in `apps/web/test/auth-routes.test.mjs`. |
 | 3.3.2 | Periodic re-authentication, in use and when idle | Partial | A lifetime and an idle window, thirty days and a day by default, which is level 1. `TRAZUM_SESSION_MAX_HOURS=12` and `TRAZUM_SESSION_IDLE_MINUTES=30` give level 2's numbers (`apps/web/lib/auth/config.ts`, `apps/web/test/session-lifetime.test.mjs`); choosing them is the owner's. |
 | 3.3.3 | Other sessions can be ended after a password change | N/A | No passwords. *Sign out everywhere* ends every session regardless. |
-| 3.3.4 | Users can see and end their active sessions | Partial | *Sign out everywhere* ends them all (`apps/web/app/api/auth/signout/route.ts`); there is no list of sessions to inspect, and no re-authentication before ending them. |
+| 3.3.4 | Users can see and end their active sessions | Met | *Your sessions* in the account menu lists every live session with when it started and was last used, and ends any one of them (`apps/web/app/api/auth/sessions/route.ts`); ending another session, or all of them (`apps/web/app/api/auth/signout/route.ts`), needs a sign-in in the last fifteen minutes, which is GitHub's credentials entered again. Tested in `apps/web/test/sessions.test.mjs`. |
 | 3.4.1 | Session cookie `Secure` | Met | `apps/web/lib/auth/cookies.ts`, tested in `apps/web/test/auth.test.mjs`. |
 | 3.4.2 | Session cookie `HttpOnly` | Met | `apps/web/lib/auth/cookies.ts`. |
 | 3.4.3 | Session cookie `SameSite` | Met | `SameSite=Lax` (`apps/web/lib/auth/session.ts`). |

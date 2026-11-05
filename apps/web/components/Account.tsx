@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronsUpDown, Download, LogOut, Trash2 } from 'lucide-react';
+import { ChevronsUpDown, Download, LogOut, MonitorSmartphone, Trash2, X } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -9,6 +9,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -40,6 +43,16 @@ export interface SessionResponse {
   ephemeralSessions: boolean;
 }
 
+/** One row of `GET /api/auth/sessions`. */
+interface SessionRow {
+  id: string;
+  startedAt: string;
+  lastActiveAt: string;
+  current: boolean;
+}
+
+type SessionList = { rows: SessionRow[]; endOthersUntil: string | null } | 'loading' | 'failed';
+
 /**
  * The session arrives as a prop; this component does not ask for it.
  *
@@ -64,21 +77,100 @@ export function Account({
   collapsed?: boolean;
 }) {
   const [busy, setBusy] = useState(false);
+  const [sessions, setSessions] = useState<SessionList>('loading');
   const state = session;
 
   if (!state?.enabled) return null;
 
+  /**
+   * Ending another session, or all of them, needs a sign-in in the last
+   * fifteen minutes (OWASP ASVS 3.3.4). Signing in again goes through GitHub
+   * and comes back here, and replaces this browser's session rather than
+   * adding one, so the list it returns to is the same list less nothing.
+   */
+  function signInAgain() {
+    if (!window.confirm(t.account.reauthConfirm)) return;
+    const next = encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.assign(`/api/auth/github?next=${next}`);
+  }
+
   async function signOut(everywhere = false) {
     setBusy(true);
     try {
-      await fetch(`/api/auth/signout${everywhere ? '?all=1' : ''}`, {
+      const response = await fetch(`/api/auth/signout${everywhere ? '?all=1' : ''}`, {
         method: 'POST',
         credentials: 'same-origin',
       });
+      if (everywhere && response.status === 403) {
+        // Nothing was ended: the server wants a recent sign-in first.
+        setBusy(false);
+        signInAgain();
+        return;
+      }
       // A full reload rather than clearing the state locally: signing out has
       // to drop anything the page is holding about the account, and the only
       // way to be sure it did is to stop holding anything.
       window.location.assign('/');
+    } catch {
+      setBusy(false);
+    }
+  }
+
+  async function loadSessions() {
+    setSessions('loading');
+    try {
+      const response = await fetch('/api/auth/sessions', { credentials: 'same-origin' });
+      if (!response.ok) {
+        setSessions('failed');
+        return;
+      }
+      const body = (await response.json()) as { sessions: SessionRow[]; endOthersUntil: string | null };
+      setSessions({ rows: body.sessions, endOthersUntil: body.endOthersUntil });
+    } catch {
+      setSessions('failed');
+    }
+  }
+
+  const when = (iso: string) =>
+    new Intl.DateTimeFormat(t.numberLocale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+
+  /** "5 minutes ago", in the reader's language, to the nearest unit worth saying. */
+  const ago = (iso: string) => {
+    const seconds = (Date.parse(iso) - Date.now()) / 1000;
+    const relative = new Intl.RelativeTimeFormat(t.numberLocale, { numeric: 'auto' });
+    const size = Math.abs(seconds);
+    if (size < 60) return relative.format(0, 'second');
+    if (size < 3600) return relative.format(Math.round(seconds / 60), 'minute');
+    if (size < 2 * 86400) return relative.format(Math.round(seconds / 3600), 'hour');
+    return relative.format(Math.round(seconds / 86400), 'day');
+  };
+
+  async function endSession(row: SessionRow, endOthersUntil: string | null) {
+    // Asked here first, so a stale session is sent to sign in again before
+    // the server has to refuse; the server's refusal is handled below too.
+    if (!endOthersUntil || Date.parse(endOthersUntil) <= Date.now()) {
+      signInAgain();
+      return;
+    }
+    if (!window.confirm(t.account.sessionEndConfirm(when(row.startedAt)))) return;
+    setBusy(true);
+    try {
+      const response = await fetch('/api/auth/sessions', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: row.id }),
+      });
+      setBusy(false);
+      if (response.status === 403) {
+        signInAgain();
+        return;
+      }
+      if (!response.ok) {
+        window.alert(t.account.sessionEndFailed);
+        return;
+      }
+      await loadSessions();
     } catch {
       setBusy(false);
     }
@@ -323,6 +415,58 @@ export function Account({
             </span>
           </span>
         </DropdownMenuItem>
+
+        {/*
+          Every session, to see and end one at a time. Loaded when opened
+          rather than with the page: it is a rarer question than who is signed
+          in, and the answer should be as fresh as the moment it is asked.
+          This device is listed without an action, because ending it is what
+          *Sign out* above already does.
+        */}
+        <DropdownMenuSub
+          onOpenChange={(open) => {
+            if (open) void loadSessions();
+          }}
+        >
+          <DropdownMenuSubTrigger disabled={busy} className="text-muted-foreground focus:text-foreground">
+            <MonitorSmartphone aria-hidden="true" />
+            {t.account.sessions}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-[260px]">
+            {sessions === 'loading' || sessions === 'failed' ? (
+              <div className="px-2 py-1.5 text-[12px] text-muted-foreground" role="status">
+                {sessions === 'loading' ? t.account.sessionsLoading : t.account.sessionsFailed}
+              </div>
+            ) : (
+              sessions.rows.map((row) =>
+                row.current ? (
+                  <div key={row.id} className="flex flex-col gap-0.5 px-2 py-1.5">
+                    <span className="text-[13px] font-medium text-foreground">{t.account.sessionThisDevice}</span>
+                    <span className="text-[12px] text-muted-foreground">{t.account.sessionStarted(when(row.startedAt))}</span>
+                  </div>
+                ) : (
+                  <DropdownMenuItem
+                    key={row.id}
+                    disabled={busy}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      void endSession(row, sessions.endOthersUntil);
+                    }}
+                    aria-label={t.account.sessionEnd(when(row.startedAt))}
+                    title={t.account.sessionEnd(when(row.startedAt))}
+                    className="justify-between text-muted-foreground focus:text-foreground"
+                  >
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="truncate text-[13px] text-foreground">{t.account.sessionStarted(when(row.startedAt))}</span>
+                      <span className="truncate text-[12px]">{t.account.sessionLastActive(ago(row.lastActiveAt))}</span>
+                    </span>
+                    <X aria-hidden="true" />
+                  </DropdownMenuItem>
+                ),
+              )
+            )}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
         <DropdownMenuItem asChild>
           {/*

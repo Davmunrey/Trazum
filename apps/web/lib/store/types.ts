@@ -159,6 +159,12 @@ export interface Store {
   deleteSessionsForUser(userId: string): Promise<void>;
 
   /**
+   * Every live session a user has, newest first: what the account menu lists
+   * so its owner can see where they are signed in and end any of them.
+   */
+  listSessionsForUser(userId: string, now: Date): Promise<SessionRecord[]>;
+
+  /**
    * Drop every session that has expired, and say how many went.
    *
    * `findSession` only reaps the row it was handed, so a session that expires

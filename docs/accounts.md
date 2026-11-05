@@ -303,6 +303,22 @@ of it.
 
 Trazum cannot act on your GitHub account, because it does not keep the means to.
 
+**You can see where you are signed in, and end any of it.** *Your sessions*
+in the account menu lists every live session the account has: when it
+started, when it was last used (to within a few minutes), and which one is
+this device. Selecting another ends it. Nothing tells one device from another
+beyond those times, because telling them apart would mean keeping a browser's
+user agent or its address, and this app keeps neither. *Sign out everywhere*
+ends them all.
+
+Ending another session, or all of them, needs a sign-in in the last fifteen
+minutes. Otherwise the menu asks you to sign in again, which goes through
+GitHub and comes straight back. That is OWASP ASVS 3.3.4's re-authentication,
+and it is what stops somebody holding only a copy of your cookie from signing
+you out of your other devices: their session is older than fifteen minutes and
+cannot become younger. Signing in again from a browser replaces that browser's
+session rather than adding one.
+
 **You can take it with you, and you can remove it.** The account menu's
 *Download my data* returns everything the account holds as one JSON file
 (`GET /api/account`): the profile above, every saved prompt with every version

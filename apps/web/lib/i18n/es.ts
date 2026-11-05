@@ -139,6 +139,18 @@ export const es: WebMessages = {
       `Esto elimina tu cuenta, todos los prompts y versiones que guardaste, y todos los enlaces que publicaste. Los enlaces que ya enviaste a otras personas dejarán de funcionar. No se puede deshacer.\n\nEscribe ${login} para confirmar.`,
     deleteFailed: 'La cuenta no se eliminó. No ha cambiado nada.',
     menuLabel: (login) => `Cuenta: ${login}`,
+    sessions: 'Tus sesiones',
+    sessionsLoading: 'Cargando tus sesiones…',
+    sessionsFailed: 'No se pudieron cargar tus sesiones.',
+    sessionThisDevice: 'Este dispositivo',
+    sessionStarted: (when) => `Iniciada el ${when}`,
+    sessionLastActive: (when) => `Última actividad ${when}`,
+    sessionEndConfirm: (started) =>
+      `¿Cerrar la sesión iniciada el ${started}? Quien la esté usando tendrá que volver a iniciar sesión.`,
+    sessionEnd: (started) => `Cerrar la sesión iniciada el ${started}`,
+    sessionEndFailed: 'La sesión no se cerró. No ha cambiado nada.',
+    reauthConfirm:
+      'Para cerrar otra sesión, o todas, vuelve a iniciar sesión primero: así se comprueba que la petición viene de ti y no solo de una copia de tu cookie. ¿Continuar a GitHub?',
   },
 
   library: {
