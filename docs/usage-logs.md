@@ -213,6 +213,29 @@ Trazum writes OTLP as well: `trazum doctor --otlp-out metrics.json` produces
 OTLP/HTTP JSON for your pipeline to send. Trazum writes the file; it never
 sends anything anywhere.
 
+## Batch API results
+
+You do not need to log a batch: the results file each provider returns is
+already a log Trazum reads.
+
+```bash
+# Anthropic: the results of one message batch, streamed to a file.
+curl "https://api.anthropic.com/v1/messages/batches/$BATCH_ID/results" \
+  -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" > results.jsonl
+npx @trazum/cli bill results.jsonl
+
+# OpenAI: the batch's output file.
+curl "https://api.openai.com/v1/files/$OUTPUT_FILE_ID/content" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" > output.jsonl
+npx @trazum/cli bill output.jsonl
+```
+
+Every billed line is priced at the model's batch rate, half the standard one.
+Results the provider says it did not bill (Anthropic's `errored`, `canceled`
+and `expired`, an OpenAI line without a 200) are counted and left out. Nothing
+but the model, the usage and the end reason crosses: the generated text and
+your `custom_id` stay in your file.
+
 ## Checking a log before you trust it
 
 ```

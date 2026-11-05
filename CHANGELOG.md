@@ -25,6 +25,17 @@ merged commit with no entry is a change only `git log` remembers.
   whose rates no page publishes, and batch on a model with no batch API, are
   still left out and named. A record from any source can say `batch: true`.
 
+### Added
+
+- **`trazum bill` reads a Batch API results file.** Anthropic's results and
+  OpenAI's output file each put the model and usage one level down, so a
+  results file read as nothing. Each billed line is now a call at the model's
+  batch rate. Results the provider's own page says are not billed (Anthropic
+  `errored`, `canceled`, `expired`; an OpenAI line without a 200) are counted
+  and left out. Only the model, the usage and the end reason cross: a test
+  plants a marker in the generated text, the `custom_id` and the error message
+  and searches the output for it. The web Bill tab reads the same files.
+
 ## 2.7.3 — 2026-11-05
 
 ### Fixed

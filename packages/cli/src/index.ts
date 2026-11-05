@@ -140,6 +140,8 @@ import {
   looksLikeLiteLlm,
   looksLikeOpenaiUsage,
   looksLikeOpenrouterActivity,
+  looksLikeBatchResults,
+  batchResultRecords,
   looksLikeOtel,
   openaiCostReport,
   openaiUsageRecords,
@@ -3530,6 +3532,7 @@ type UsageSource =
   | 'langsmith'
   | 'anthropic-usage'
   | 'openai-usage'
+  | 'batch-results'
   | 'openrouter'
   | 'usage-log';
 
@@ -3546,6 +3549,7 @@ function usageSourcesOf(text: string): UsageSource[] {
   if (looksLikeOtel(text)) claims.push('otel');
   if (looksLikeAnthropicUsage(text)) claims.push('anthropic-usage');
   if (looksLikeOpenaiUsage(text)) claims.push('openai-usage');
+  if (looksLikeBatchResults(text)) claims.push('batch-results');
   if (looksLikeOpenrouterActivity(text)) claims.push('openrouter');
   if (looksLikeHelicone(text)) claims.push('helicone');
   if (looksLikeLangsmith(text)) claims.push('langsmith');
@@ -3769,6 +3773,14 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
         const c = openaiUsageRecords(text, withLabel);
         records = c.records;
         leftOut = c.unnamedModel + c.batch + c.nonDefaultTier + c.unsplitRows;
+        break;
+      }
+      case 'batch-results': {
+        /* A provider's Batch API results: every billed line at the batch rate,
+           and the requests the provider says it did not bill left out. */
+        const c = batchResultRecords(text, withLabel);
+        records = c.records;
+        leftOut = c.unpriceable + c.unparseable;
         break;
       }
       case 'openrouter': {
