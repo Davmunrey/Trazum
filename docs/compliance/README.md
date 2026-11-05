@@ -63,6 +63,7 @@ change as this pack:
 | An account could be deleted but not taken away | `GET /api/account` and *Download my data* in the account menu: the whole account as one file, without the session hashes | SOC 2 P5.1, ISO 27001 5.34, ASVS V8.3, GDPR access and portability |
 | No `Permissions-Policy` or `Cross-Origin-Opener-Policy` | Both added to every page, with a test | ASVS V14.4, ISO 27001 8.26 |
 | The accounts guide said account deletion did not exist, after it shipped | Corrected, and the export and the log documented | SOC 2 CC2.3 |
+| The Postgres driver had never run against Postgres. When it did, account deletion failed for anyone with a saved prompt, and share settings were stored as a string | `apps/web/test/store-contract.test.mjs` runs one contract on both drivers, against the runner's PostgreSQL in CI; both bugs fixed without a migration | SOC 2 CC8.1, P4.3; ISO 27001 8.29, 8.10; ASVS V8.3 |
 
 ## What remains, in code
 
@@ -73,9 +74,7 @@ Things a pull request can still do, in the order they matter to an audit:
    what the number is and why.
 2. **A shared rate-limit store.** Limits are counted per server instance today
    (TRZ-08), which stops scripts and not a distributed attacker.
-3. **The Postgres driver in CI against a real Postgres**, which the accounts
-   guide already names as untested.
-4. **The ASVS level 2 rows not yet mapped**, worked through section by section.
+3. **The ASVS level 2 rows not yet mapped**, worked through section by section.
 
 ## What only the owner can do
 

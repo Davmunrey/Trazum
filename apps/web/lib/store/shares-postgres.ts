@@ -25,7 +25,9 @@ function toShare(row: Row): ShareRecord {
     // but a row can also arrive from a migration, a restore or somebody's psql
     // session, and a settings object with a missing field would reach the core
     // as `undefined` and be blamed on the core.
-    settings: row.settings as ShareSettings,
+    // Rows written before the fix above hold the settings as a JSON *string*
+    // inside jsonb, which is what the old write produced; read both.
+    settings: (typeof row.settings === 'string' ? JSON.parse(row.settings) : row.settings) as ShareSettings,
     createdAt: new Date(row.created_at as string),
     expiresAt: row.expires_at ? new Date(row.expires_at as string) : null,
   };
@@ -50,11 +52,16 @@ export function sharesInPostgres(sql: SqlClient): ShareStore {
       `;
       if (Number(count?.total ?? 0) >= MAX_SHARES_PER_OWNER) return null;
 
+      // The object itself, not its JSON: postgres.js serialises a jsonb
+      // parameter on its own, so passing `JSON.stringify(settings)` stored a
+      // JSON *string*, and the share page read `settings.level` off a string.
+      // Every link on a Postgres deployment replayed defaults instead of what
+      // its author saw. Found by `store-contract.test.mjs` against Postgres.
       const rows = await sql<Row>`
         insert into trazum_shares
           (token, owner_id, owner_login, before_text, after_text, settings, created_at, expires_at)
         values (${input.token}, ${input.ownerId}, ${input.ownerLogin}, ${input.beforeText},
-                ${input.afterText}, ${JSON.stringify(input.settings)}::jsonb,
+                ${input.afterText}, ${input.settings as never}::jsonb,
                 ${input.now}, ${input.expiresAt})
         returning token, owner_id, owner_login, before_text, after_text, settings, created_at, expires_at
       `;

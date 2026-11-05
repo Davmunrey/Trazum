@@ -372,12 +372,17 @@ something you did rather than something Trazum did for you.
 Stated because the gap between "tested" and "proven" is where this sort of thing
 goes wrong.
 
-- **The Postgres driver has never been run against Postgres in CI.** Its SQL is
-  checked against a recording tagged template, which catches a mistyped column,
-  a value bound in the wrong position, and a `DELETE` whose predicate is too
-  wide. It cannot catch SQL that Postgres would reject, because nothing in the
-  test suite parses SQL. Applying `001_accounts.sql` to a real database and
-  signing in once is a step a human has to take.
+- **The Postgres driver runs against a real PostgreSQL in CI, since November
+  2026.** `apps/web/test/store-contract.test.mjs` applies every migration in
+  `db/` to an empty database and checks the same contract against it and
+  against the memory driver: users, sessions and their expiry, prompts and
+  versions, share links, the admin census, and account deletion. Its first run
+  found two bugs the recorded-SQL tests could not see, both fixed: deleting an
+  account that had ever saved a prompt failed on a foreign key, and share
+  settings were stored as a JSON string, so a shared link replayed defaults.
+  Neither fix needs a migration. Run it yourself with
+  `TRAZUM_TEST_DATABASE_URL=postgres://… node --test apps/web/test/store-contract.test.mjs`
+  against an empty database; it drops and recreates the `public` schema.
 - **Rate limiting is per instance and per address.** Thirty sign-in attempts a
   minute, counted in the memory of whichever instance served the request. It
   stops a script; it does not stop a botnet, and behind a corporate NAT the

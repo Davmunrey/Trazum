@@ -84,6 +84,23 @@ jobs:
       - name: Tests (core, CLI, MCP, tokenizer, editor extension, web, Action)
         run: npm test
 
+      # The web store's contract against a real Postgres. The recorded-SQL tests
+      # cannot catch SQL that Postgres rejects, and the first run of this found
+      # two such bugs: account deletion failing on a foreign key for anybody with
+      # a saved prompt, and share settings stored as a JSON string. The runner's
+      # own PostgreSQL, installed and stopped by default, so no image is pulled
+      # and nothing unpinned enters the build. The password guards a database
+      # that lives for this step and holds nothing.
+      - name: Web store contract on PostgreSQL
+        env:
+          TRAZUM_TEST_DATABASE_URL: postgres://trazum_ci:trazum_ci@127.0.0.1:5432/trazum_test
+          TRAZUM_REQUIRE_POSTGRES: '1'
+        run: |
+          sudo systemctl start postgresql.service
+          psql --version
+          sudo -u postgres psql -v ON_ERROR_STOP=1 -c "create role trazum_ci login superuser password 'trazum_ci';" -c "create database trazum_test owner trazum_ci;"
+          node --test apps/web/test/store-contract.test.mjs
+
       # This repository takes its own gate. `trazum.config.json` and
       # `trazum.baseline.json` are committed, so a pull request that grows the
       # prompts past the recorded figure fails here — the same way it would in

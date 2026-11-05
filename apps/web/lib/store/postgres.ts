@@ -153,18 +153,33 @@ export function postgresStore(sql: SqlClient): Store {
 
     async deleteUser(userId: string): Promise<boolean> {
       /**
-       * One statement, because the schema already says what goes with it.
+       * One statement, and one rule the schema does not state.
+       *
        * `trazum_sessions`, `trazum_prompts` and `trazum_shares` all declare
        * `references trazum_users (id) on delete cascade`, and
-       * `trazum_prompt_versions` cascades from `trazum_prompts`. Deleting the
-       * rows by hand first would be a second, drifting copy of a rule the
-       * database already enforces.
+       * `trazum_prompt_versions` cascades from `trazum_prompts`. But a version
+       * also names its author, and `author_id references trazum_users (id)`
+       * has no `on delete`. Postgres checks that reference against the user
+       * row before the cascade through `trazum_prompts` has reached the
+       * versions, so deleting anybody who had ever saved a prompt failed with
+       * a foreign key violation: account deletion, on every Postgres
+       * deployment, for every account with a library. The memory driver walks
+       * the graph by hand and never noticed; `store-contract.test.mjs`, run
+       * against a real Postgres, found it the first time it ran.
+       *
+       * So the versions this person wrote go first, in the same statement, and
+       * the user row after them. A data-modifying `with` runs in the same
+       * statement, so the reference check at its end sees both gone, and an
+       * existing database needs no migration for the fix to apply.
        *
        * `returning id` rather than a count: a delete that matched nothing and a
        * delete that matched one row are different answers, and the caller is
        * entitled to know which without a second round trip.
        */
-      const rows = await sql`delete from trazum_users where id = ${userId} returning id`;
+      const rows = await sql`
+        with authored as (delete from trazum_prompt_versions where author_id = ${userId})
+        delete from trazum_users where id = ${userId} returning id
+      `;
       return rows.length > 0;
     },
 
