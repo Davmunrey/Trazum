@@ -183,7 +183,20 @@ export type TierCondition =
    * is `[1, 2, 3]` and not `[1, 4]`: an endpoint convention is the kind of
    * thing two readers disagree about silently.
    */
-  | { kind: 'utc-hours'; hours: number[]; weekdaysOnly: boolean };
+  | { kind: 'utc-hours'; hours: number[]; weekdaysOnly: boolean }
+  /**
+   * The call ran at `speed`, as the response's own `usage.speed` records it.
+   *
+   * Anthropic's fast mode is an opt-in (`speed: "fast"` on the request) billed
+   * at a multiple of the standard rates, and the response says which speed ran,
+   * `"fast"` or `"standard"`. **Absent means standard and is decided**, unlike a
+   * size tier with no token count: fast mode is never on by default, a request
+   * for it that cannot run is refused rather than run slowly, and every response
+   * names its speed, so a log without the field is one that never asked. Pricing
+   * an unrecorded speed at the dearer rate would double every call of a model
+   * for the many logs that predate the field.
+   */
+  | { kind: 'speed'; speed: 'fast' };
 
 /**
  * A rate that applies when its condition holds.

@@ -366,6 +366,7 @@ function describe(body: string, provider: string, modelFromPath: string | null):
   maxOutputTokens: number | null;
   label: string | null;
   session: string | null;
+  speed: string | null;
 } | null {
   let parsed: unknown;
   try {
@@ -431,6 +432,12 @@ function describe(body: string, provider: string, modelFromPath: string | null):
      * recorded, or printed.
      */
     session: metadataField(request, 'trazum_session'),
+    /**
+     * Anthropic's `speed: "fast"`: a setting, not content, and one that bills
+     * the call at a multiple of the standard rates, so the estimate a budget
+     * is judged by has to know it.
+     */
+    speed: typeof request.speed === 'string' && request.speed !== '' ? request.speed : null,
   };
 }
 

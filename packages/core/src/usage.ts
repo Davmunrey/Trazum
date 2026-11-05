@@ -176,6 +176,15 @@ export interface UsageRecord {
    * something of its own should not lose its records to it.
    */
   requests?: number | null;
+  /**
+   * The speed the provider says the call ran at, when the log kept it:
+   * Anthropic's `usage.speed`, `"fast"` or `"standard"`. Fast mode bills the
+   * same tokens at a multiple of the standard rates (`kind: 'speed'` tiers in
+   * the catalogue). Absent on every log that does not record it, and then the
+   * call is priced at the standard rate, because fast mode is an explicit
+   * opt-in that every response names.
+   */
+  speed?: string;
 }
 
 /** What a set of calls cost, split by where the money went. */
@@ -914,6 +923,12 @@ export function parseUsageLine(line: string): UsageRecord | null {
       return reason === 'max_tokens' || reason === 'length' || reason === 'MAX_TOKENS';
     })(),
     ...requestsOf(record.requests),
+    /*
+     * Anthropic's `usage.speed`, "fast" or "standard": fast mode bills the
+     * same tokens at a multiple of the standard rates, so a log that kept the
+     * field is priced by it. Absent stays absent, which prices as standard.
+     */
+    ...(typeof usage.speed === 'string' && usage.speed !== '' ? { speed: usage.speed } : {}),
   };
 }
 

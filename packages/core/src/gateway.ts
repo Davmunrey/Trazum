@@ -89,6 +89,12 @@ export interface GatewayCall {
    * never recorded, printed, or forwarded anywhere by this module.
    */
   session: string | null;
+  /**
+   * The speed the request asked for, when it named one: Anthropic's
+   * `speed: "fast"`, billed at a multiple of the standard rates. A setting,
+   * not content. Absent or null prices the call at the standard rate.
+   */
+  speed?: string | null;
 }
 
 /** Where the budget stands, as the gateway was told at the last refresh. */
@@ -210,6 +216,9 @@ export interface GatewayOptions {
   waivers?: readonly WaiveEntry[];
 }
 
+const speedOf = (call: GatewayCall): { speed?: string } =>
+  typeof call.speed === 'string' && call.speed !== '' ? { speed: call.speed } : {};
+
 /** What this call costs at a model's rates, or null when it cannot be priced. */
 function priceCall(
   model: ModelPricing | undefined,
@@ -218,8 +227,8 @@ function priceCall(
 ): number | null {
   if (model === undefined || call.inputTokens === null || !Number.isFinite(call.inputTokens) || call.inputTokens < 0 ||
       call.maxOutputTokens === null || !Number.isFinite(call.maxOutputTokens) || call.maxOutputTokens < 0) return null;
-  // The call's own prompt decides a model priced by prompt length.
-  const rates = effectivePricing(model, on, { inputTokens: call.inputTokens });
+  // The call's own prompt decides a model priced by prompt length, and its speed one priced by speed.
+  const rates = effectivePricing(model, on, { inputTokens: call.inputTokens, ...speedOf(call) });
   const output = call.maxOutputTokens;
   return (call.inputTokens / 1_000_000) * rates.inputPerMTok + (output / 1_000_000) * rates.outputPerMTok;
 }
@@ -239,7 +248,7 @@ function alternativesFor(
   const mine = priceCall(model, call, on);
   if (mine === null) return [];
   const out: GatewayAlternative[] = [];
-  const size = call.inputTokens === null ? {} : { inputTokens: call.inputTokens };
+  const size = { ...(call.inputTokens === null ? {} : { inputTokens: call.inputTokens }), ...speedOf(call) };
   const here = effectivePricing(model, on, size);
 
   for (const candidate of catalogue.byId.values()) {
@@ -490,6 +499,8 @@ export interface GatewayUsage {
   /** Present only when the provider reports the cache-write TTL split. */
   cacheWrite5mTokens?: number;
   cacheWrite1hTokens?: number;
+  /** Anthropic's `usage.speed`, when the response named it: fast mode bills at a multiple. */
+  speed?: string;
 }
 
 function cacheWriteBreakdown(usage: Record<string, unknown>): Partial<GatewayUsage> {
@@ -627,6 +638,7 @@ export function streamingUsageReader(
           // emitted so far and therefore near zero. Taken anyway so a stream
           // that ends before any delta still reports what it reported.
           usage.outputTokens = num(start.output_tokens);
+          if (typeof start.speed === 'string' && start.speed !== '') usage.speed = start.speed;
           seen = true;
         }
       }
@@ -643,6 +655,7 @@ export function streamingUsageReader(
         // Cumulative, so the last one wins rather than accumulating.
         if (typeof d.output_tokens === 'number') usage.outputTokens = num(d.output_tokens);
         if (typeof d.input_tokens === 'number') usage.inputTokens = num(d.input_tokens);
+        if (typeof d.speed === 'string' && d.speed !== '') usage.speed = d.speed;
         seen = true;
       }
       return;
@@ -740,6 +753,7 @@ export function usageFromResponse(
       cacheReadTokens: num(u.cache_read_input_tokens),
       cacheWriteTokens: num(u.cache_creation_input_tokens),
       ...cacheWriteBreakdown(u),
+      ...(typeof u.speed === 'string' && u.speed !== '' ? { speed: u.speed } : {}),
     };
   }
   if (shape === 'openai') {

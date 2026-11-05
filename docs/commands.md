@@ -3916,6 +3916,17 @@ tiers is untouched, and `pricing-tiers.test.js` refuses a tier cheaper than its
 own base: the fallback for an undecided condition is the dearest candidate, so a
 tier below the base would turn the ceiling into a floor.
 
+**Speed is the one condition that is never a ceiling.** Anthropic's fast mode
+(`speed: "fast"` on the request) bills Opus 5.5 at $8/$40 and Opus 5 and Opus
+4.8 at $10/$50, with the caching multipliers on top, and every response records
+which speed ran in `usage.speed`. A tier `{ kind: 'speed', speed: 'fast' }`
+applies when a call's `usage.speed` is `"fast"`, read from a Claude Code
+transcript, a logged API response or the gateway. A call whose log has no speed
+is priced at the standard rate and counts as decided: fast mode is an explicit
+opt-in that is refused rather than run slowly, so a log without the field never
+asked for it, and pricing every unrecorded call at the fast rate would double
+the bill of every log older than the field.
+
 A tier and a promotion may not appear on the same model. No provider here does
 both, and a rate composed from two real ones is the first thing
 [the doctrine](doctrine.md) rules out.
