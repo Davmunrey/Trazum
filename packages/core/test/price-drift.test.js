@@ -17,6 +17,7 @@ import {
   readAnthropicLifecycle,
   readOpenAi,
   readOpenAiModelPage,
+  readWebSearch,
   render,
 } from '../../../scripts/price-drift.mjs';
 
@@ -35,10 +36,13 @@ const NOW = new Date('2026-11-05T12:00:00Z');
 
 const anthropicPage = ({
   opus41Output = '$75 / MTok', withFast = true, withBatch = true, residency = '1.1x', residencySince = '4.6', withResidency = true,
+  webSearch = '$10', withWebSearch = true,
 } = {}) => `
 # Pricing
 ${withResidency ? `
 For Claude ${residencySince} and later models, using \`inference_geo: "us"\` applies a ${residency} pricing multiplier. \`inference_geo: "global"\` (default) uses standard pricing.
+` : ''}${withWebSearch ? `
+Web search is available on the Claude API for **${webSearch} USD per 1,000 searches**, plus standard token costs for search-generated content.
 ` : ''}
 ## Model pricing
 
@@ -215,7 +219,7 @@ describe('Anthropic', () => {
     assert.equal(unread.length, 2);
     assert.match(unread.map((finding) => finding.detail).join('\n'), /batch table/);
     assert.match(unread.map((finding) => finding.detail).join('\n'), /fast-mode table/);
-    assert.equal(kinds(anthropicFindings('# Pricing\n\nNothing here.\n'), 'unread').length, 4);
+    assert.equal(kinds(anthropicFindings('# Pricing\n\nNothing here.\n'), 'unread').length, 5);
   });
 
   it('reads the data residency sentence, and finds the catalogue agrees with it', () => {
@@ -239,6 +243,28 @@ describe('Anthropic', () => {
     assert.match(earlier[0].detail, /the catalogue has no multiplier/);
     const later = kinds(anthropicFindings(anthropicPage({ residencySince: '5.0' })), 'drift').map((finding) => finding.model);
     assert.deepEqual(later.sort(), ['claude-opus-4-6', 'claude-opus-4-7', 'claude-opus-4-8', 'claude-sonnet-4-6']);
+  });
+
+  it('reads the web search fee, and finds every Claude row carries it', () => {
+    assert.equal(readAnthropic(anthropicPage()).webSearch, 10);
+    assert.equal(readWebSearch('Web search is available on the Claude API for **$10 USD per 1,000 searches**.'), 10);
+    assert.deepEqual(kinds(anthropicFindings(anthropicPage()), 'drift'), []);
+  });
+
+  it('reports a changed web search fee as drift on every Claude row', () => {
+    const raised = kinds(anthropicFindings(anthropicPage({ webSearch: '$12' })), 'drift');
+    const claude = core.MODELS.filter((model) => model.provider === 'anthropic').length;
+    assert.equal(raised.length, claude);
+    assert.ok(raised.every((finding) => /^web search: the page bills \$12 per 1,000 searches, the catalogue has \$10$/.test(finding.detail)));
+  });
+
+  it('says it read nothing when the web search sentence is gone or contradicts itself', () => {
+    const gone = kinds(anthropicFindings(anthropicPage({ withWebSearch: false })), 'unread');
+    assert.deepEqual(gone.map((finding) => finding.detail), [
+      'the web search price ("Web search is available on the Claude API for $N USD per 1,000 searches") is not on the page',
+    ]);
+    const twice = anthropicPage() + '\nWeb search is available on the Claude API for $15 USD per 1,000 searches.\n';
+    assert.match(kinds(anthropicFindings(twice), 'unread')[0].detail, /web search price more than one way: \$10, \$15 per 1,000/);
   });
 
   it('says it read nothing when the residency sentence is gone or contradicts itself', () => {

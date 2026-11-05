@@ -11,7 +11,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **A call that searched the web was billed as if it had searched for
+  nothing.** Anthropic charges $10 per 1,000 web searches on top of the tokens,
+  on every model, and every response counts them in
+  `usage.server_tool_use.web_search_requests`. Trazum read the tokens and
+  dropped the count: the Claude Code reader rebuilt each line's usage without
+  it, and `from-anthropic` named the searches and priced none of them. Every
+  Claude row now carries the fee (`webSearchPerThousandUsd`, from the pricing
+  page and the web search tool's page, read 2026-11-05) and a call is billed
+  for its searches, from a logged response, a Claude Code transcript, a batch's
+  results file, `from-anthropic` and `trazum connect`. The fee is flat: the
+  tool's page says a search through the Batches API is "priced the same", and
+  US-only inference and fast mode are stated for token categories.
+  Searches on a model whose row publishes no fee are counted, named, and left
+  out of the total.
+
+### Added
+
+- **Web search is its own part of every bill.** `webSearchRequests`,
+  `webSearchUsd` and `webSearchUnpricedRequests` in a breakdown; a "Web search"
+  row in the terminal, Markdown, MCP and web Bill tab tables; a line on stderr
+  after `bill` and `receipt` saying how many searches the total holds and what
+  they came to. A receipt line carries `webSearchRequests` and
+  `money.webSearchUsd`, so its five money parts still add to its total, and a
+  receipt has the gap `unpriced-web-search`. The CSV appends
+  `web_search_requests` and `web_search_usd` after `total_usd`, so the first
+  twelve columns keep their places. `trazum connect` stores the count with each
+  record (`webSearch`), and a store written before reads as no searches.
+- **A pricing overlay can state a per-search fee** in
+  `webSearchPerThousandUsd`, refused unless it is a positive number.
+- **`price-drift.mjs` reads the web search sentence** off Anthropic's pricing
+  page every week and compares it with every Claude row.
 
 ## 2.7.4 — 2026-11-05
 

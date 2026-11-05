@@ -221,7 +221,44 @@ export function readAnthropic(markdown) {
   if (!sawFast) unread.push('the fast-mode table (under a "Fast mode" heading) is not on the page');
   const residency = readResidency(markdown);
   if (typeof residency === 'string') unread.push(residency);
-  return { rows: [...rows.values()], unread, ...(typeof residency === 'object' ? { residency } : {}) };
+  const webSearch = readWebSearch(markdown);
+  if (typeof webSearch === 'string') unread.push(webSearch);
+  return {
+    rows: [...rows.values()],
+    unread,
+    ...(typeof residency === 'object' ? { residency } : {}),
+    ...(typeof webSearch === 'number' ? { webSearch } : {}),
+  };
+}
+
+/**
+ * The web search fee, in dollars per 1,000 searches. The page states it in
+ * prose ("Web search is available on the Claude API for **$10 USD per 1,000
+ * searches**"), under the tool's own heading and again for Managed Agents, so
+ * every statement is read and they have to agree.
+ */
+export function readWebSearch(markdown) {
+  const text = markdown.replace(/\s+/g, ' ').replace(/\*\*/g, '');
+  const stated = [
+    ...text.matchAll(/Web search is available on the Claude API for \$(\d+(?:\.\d+)?) USD per 1,000 searches/gi),
+  ].map(([, fee]) => Number(fee));
+  if (stated.length === 0) {
+    return 'the web search price ("Web search is available on the Claude API for $N USD per 1,000 searches") is not on the page';
+  }
+  if (stated.some((fee) => fee !== stated[0])) {
+    return `the page states the web search price more than one way: ${stated.map((fee) => `$${fee}`).join(', ')} per 1,000`;
+  }
+  return stated[0];
+}
+
+/** The catalogue's per-search fee on every Claude row against the page's. */
+function compareWebSearch(fee, models) {
+  return models
+    .filter((model) => model.webSearchPerThousandUsd !== fee)
+    .map((model) => ({
+      provider: 'anthropic', kind: 'drift', model: model.id,
+      detail: `web search: the page bills $${fee} per 1,000 searches, the catalogue ${model.webSearchPerThousandUsd === undefined ? 'has no per-search fee' : `has $${model.webSearchPerThousandUsd}`}`,
+    }));
 }
 
 /**
@@ -504,6 +541,7 @@ export function compare(provider, page, core, now = new Date(), deliberately = D
     if (!seen.has(model.id)) findings.push({ provider, kind: 'note', model: model.id, detail: 'priced here and not listed on the page (retired, renamed or limited availability?)' });
   }
   if (provider === 'anthropic' && page.residency !== undefined) findings.push(...compareResidency(page.residency, models));
+  if (provider === 'anthropic' && page.webSearch !== undefined) findings.push(...compareWebSearch(page.webSearch, models));
   return { findings, compared: seen.size };
 }
 

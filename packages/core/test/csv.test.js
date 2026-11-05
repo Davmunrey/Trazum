@@ -39,14 +39,38 @@ describe('the profile as CSV', () => {
     // Largest bill first: batch at $3.00 outranks chat at $2.00.
     assert.match(rows[1], /^batch,claude-opus-5,1,600000,0,0,0,3\.000000,/);
     assert.match(rows[2], /^chat,claude-opus-5,2,400000,0,0,0,2\.000000,/);
-    assert.match(rows[1], /,3\.000000$/);
+    // total_usd, then the two web search columns, appended so the first twelve keep their places.
+    assert.match(rows[1], /,3\.000000,0,0\.000000$/);
+  });
+
+  it('keeps the first twelve columns where they were, and appends the web search pair', () => {
+    assert.deepEqual(PROFILE_CSV_COLUMNS.slice(0, 12), [
+      'label', 'model', 'calls', 'input_tokens', 'cache_read_tokens', 'cache_write_tokens', 'output_tokens',
+      'input_usd', 'cache_read_usd', 'cache_write_usd', 'output_usd', 'total_usd',
+    ]);
+    assert.deepEqual(PROFILE_CSV_COLUMNS.slice(12), ['web_search_requests', 'web_search_usd']);
+  });
+
+  it('puts searches in their own columns, and in total_usd', () => {
+    // $1.00 of input and 100 searches at $10 per 1,000: $1.00 more.
+    const rows = rowsOf(csvOf([{
+      model: 'claude-opus-5', label: 'research',
+      usage: { input_tokens: 200_000, output_tokens: 0, server_tool_use: { web_search_requests: 100 } },
+    }]));
+    const at = (name) => PROFILE_CSV_COLUMNS.indexOf(name);
+    const cells = rows[1].split(',');
+    assert.equal(cells[at('input_usd')], '1.000000');
+    assert.equal(cells[at('web_search_requests')], '100');
+    assert.equal(cells[at('web_search_usd')], '1.000000');
+    assert.equal(cells[at('total_usd')], '2.000000');
   });
 
   it('has no total row — a total in a data file gets summed with the data', () => {
     const csv = csvOf([call('chat'), call('batch')]);
     assert.doesNotMatch(csv.toLowerCase(), /total,|,total\b/);
     const dataRows = rowsOf(csv).slice(1);
-    const sum = dataRows.reduce((acc, row) => acc + Number(row.split(',').pop()), 0);
+    const total = PROFILE_CSV_COLUMNS.indexOf('total_usd');
+    const sum = dataRows.reduce((acc, row) => acc + Number(row.split(',')[total]), 0);
     // The file sums to the bill exactly once.
     assert.ok(Math.abs(sum - 2) < 1e-9, String(sum));
   });
@@ -58,7 +82,8 @@ describe('the profile as CSV', () => {
     const unpriced = rows.find((row) => row.includes('ft:acme-internal'));
     assert.ok(unpriced, 'the unpriced model vanished from the file');
     // Tokens present, dollars empty: "0" there would claim the calls were free.
-    assert.match(unpriced, /,900000,0,0,100,,,,,$/);
+    // The search count is a count, so it is there (zero); its dollars are empty like the rest.
+    assert.match(unpriced, /,900000,0,0,100,,,,,,0,$/);
   });
 
   it('quotes a label that would otherwise break the row', () => {

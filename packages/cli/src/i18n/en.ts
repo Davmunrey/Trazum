@@ -1946,6 +1946,10 @@ ${bold('EXAMPLES')}
       'The log carries no clock, so the receipt is unbounded in time and states that rather than inventing a period.',
     undatedExcluded: (calls) =>
       `${count(calls)} ${calls === 1 ? 'call carries' : 'calls carry'} no timestamp and cannot be placed in this period, so ${calls === 1 ? 'it is' : 'they are'} not in this bill: the total is a floor on the period.`,
+    webSearch: (requests, usd) =>
+      `${count(requests)} web ${requests === 1 ? 'search' : 'searches'}, billed per search on top of the tokens: ${usd} of the total.`,
+    unpricedWebSearch: (requests, models) =>
+      `${count(requests)} web ${requests === 1 ? 'search' : 'searches'} on ${models}, whose price list publishes no per-search fee: left out of the total, which is a floor on ${requests === 1 ? 'it' : 'them'}.`,
     nothingToBill: () => 'Nothing in this log could be priced, so the receipt has no lines.',
   },
 
@@ -2052,7 +2056,9 @@ ${bold('EXAMPLES')}
     geoUnknown: (count) =>
       `The report never named an inference geography, and ${count} row(s) are on a model that bills US-only inference at 1.1x. They were read as global. Add group_by[]=inference_geo if any workspace pins inference to the US.`,
     webSearch: (count) =>
-      `${count} web search request(s) are in this report and in no line of the output: server tools are billed per request, not per token, so no token rate reaches them.`,
+      `${count} web search(es) ride on their rows and are billed per search, $10 per 1,000 on Claude, on top of the tokens.`,
+    webSearchLeftOut: (count) =>
+      `${count} web search(es) were on rows left out above, so they are in no bill either.`,
     truncated: () =>
       'The report says has_more: true. This is one page of several and a bill built from it is understated. Follow next_page until has_more is false, and convert each page.',
     unparseable: () =>
@@ -2790,6 +2796,9 @@ ${bold('EXAMPLES')}
     partCacheRead: () => 'Cache reads',
     partCacheWrite: () => 'Cache writes',
     partOutput: () => 'Output',
+    partWebSearch: () => 'Web search',
+    partSearches: (name, usd, pct, searches) =>
+      `${name.padEnd(13)}${usd.padStart(11)}  ${pct.padStart(5)}   ${plural(searches, 'search', 'searches')}`,
     byLabelHeading: () => 'By label',
     byModelHeading: () => 'By model',
     row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls})`,

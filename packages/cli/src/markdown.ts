@@ -968,6 +968,12 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
     // Catalogue text, not user data: no escaping into a code cell needed.
     lines.push(`| ${name} | ${formatUsd(usd)} | ${pct(share)} | ${n(tokens)} |`);
   }
+  // Billed per search, not per token, so its count is not in the tokens column.
+  if (report.total.webSearchRequests > 0) {
+    lines.push(
+      `| ${t.profile.partWebSearch()} (${n(report.total.webSearchRequests)}) | ${formatUsd(report.total.webSearchUsd)} | ${pct(shares.webSearch)} | — |`,
+    );
+  }
   lines.push('');
 
   /**

@@ -446,6 +446,8 @@ export interface WebMessages {
     partCacheRead: string;
     partCacheWrite: string;
     partOutput: string;
+    /** Web searches, billed per search: the tokens column holds no count for it. */
+    partWebSearch: (searches: string) => string;
     spendColumn: string;
     shareColumn: string;
     tokensColumn: string;

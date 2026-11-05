@@ -523,7 +523,17 @@ export interface GatewayUsage {
   serviceTier?: string;
   /** Anthropic's `usage.inference_geo`, the geography that ran: "us" bills 1.1x on Claude 4.6 and later. */
   inferenceGeo?: string;
+  /** Anthropic's `usage.server_tool_use.web_search_requests`: each search bills $10 per 1,000 on top. */
+  webSearchRequests?: number;
 }
+
+/** The searches a usage object counts, when it counts a readable number of them. */
+const webSearchesIn = (usage: Record<string, unknown>): number | undefined => {
+  const tools = usage.server_tool_use;
+  if (typeof tools !== 'object' || tools === null) return undefined;
+  const searches = (tools as Record<string, unknown>).web_search_requests;
+  return typeof searches === 'number' && Number.isFinite(searches) && searches >= 0 ? searches : undefined;
+};
 
 /**
  * OpenAI's cache writes, inside `prompt_tokens` like its cached reads.
@@ -693,6 +703,8 @@ export function streamingUsageReader(
           usage.outputTokens = num(start.output_tokens);
           if (typeof start.speed === 'string' && start.speed !== '') usage.speed = start.speed;
           if (typeof start.inference_geo === 'string' && start.inference_geo !== '') usage.inferenceGeo = start.inference_geo;
+          const searches = webSearchesIn(start);
+          if (searches !== undefined) usage.webSearchRequests = searches;
           seen = true;
         }
       }
@@ -711,6 +723,9 @@ export function streamingUsageReader(
         if (typeof d.input_tokens === 'number') usage.inputTokens = num(d.input_tokens);
         if (typeof d.speed === 'string' && d.speed !== '') usage.speed = d.speed;
         if (typeof d.inference_geo === 'string' && d.inference_geo !== '') usage.inferenceGeo = d.inference_geo;
+        // Cumulative like the output count: the last delta's searches are the call's.
+        const searches = webSearchesIn(d);
+        if (searches !== undefined) usage.webSearchRequests = searches;
         seen = true;
       }
       return;
@@ -814,6 +829,7 @@ export function usageFromResponse(
       ...cacheWriteBreakdown(u),
       ...(typeof u.speed === 'string' && u.speed !== '' ? { speed: u.speed } : {}),
       ...(typeof u.inference_geo === 'string' && u.inference_geo !== '' ? { inferenceGeo: u.inference_geo } : {}),
+      ...(webSearchesIn(u) === undefined ? {} : { webSearchRequests: webSearchesIn(u) }),
     };
   }
   if (shape === 'openai') {

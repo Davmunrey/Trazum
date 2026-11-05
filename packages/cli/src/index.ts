@@ -3518,7 +3518,18 @@ function printReceiptSummary(document: ReceiptDocument, t: CliMessages): void {
         t.profile.tierCeiling(gap.calls, gap.models.join(', '), formatUsd(gap.ceilingUsd), formatUsd(gap.floorUsd)),
       );
     }
+    if (gap.kind === 'unpriced-web-search') {
+      console.error(t.receipt.unpricedWebSearch(gap.requests, gap.models.join(', ')));
+    }
   }
+  /*
+   * Priced searches are not a gap: they are in the total. Said once anyway,
+   * because a per-search fee is a line nobody expects on a token bill, and a
+   * total that grew by it with nothing on screen reads as a pricing error.
+   */
+  const searches = document.lines.reduce((sum, line) => sum + line.webSearchRequests, 0);
+  const searchUsd = document.lines.reduce((sum, line) => sum + line.money.webSearchUsd, 0);
+  if (searches > 0) console.error(t.receipt.webSearch(searches, formatUsd(searchUsd)));
 }
 
 /** The shapes `bill` can tell apart from a file's own text. */
@@ -4753,6 +4764,7 @@ async function commandFromAnthropic(args: Args, t: CliMessages): Promise<void> {
     console.error(t.fromAnthropic.geoUnknown(conversion.geoUnknownMultiplied));
   }
   if (conversion.webSearchRequests > 0) console.error(t.fromAnthropic.webSearch(conversion.webSearchRequests));
+  if (conversion.webSearchLeftOut > 0) console.error(t.fromAnthropic.webSearchLeftOut(conversion.webSearchLeftOut));
   if (conversion.labelledByWorkspace > 0) {
     console.error(t.fromAnthropic.labelledByWorkspace(conversion.labelledByWorkspace));
   }
@@ -11890,6 +11902,12 @@ async function commandProfile(
   // as a row somebody forgot, and "you are not caching at all" is a finding.
   for (const [name, usd, share, tokens] of parts) {
     console.log(`  ${bar(share)}  ${t.profile.part(name, formatUsd(usd), pct(share), n(tokens))}`);
+  }
+  // Billed per search, so it counts searches where the rows above count tokens.
+  if (report.total.webSearchRequests > 0) {
+    console.log(
+      `  ${bar(shares.webSearch)}  ${t.profile.partSearches(t.profile.partWebSearch(), formatUsd(report.total.webSearchUsd), pct(shares.webSearch), report.total.webSearchRequests)}`,
+    );
   }
 
   /**

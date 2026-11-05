@@ -57,6 +57,11 @@ export interface StoreRecord {
   ttlKnown: boolean;
   output: number;
   /**
+   * Web searches, billed per search on top of the tokens. Absent is none, so
+   * a store written before the field existed reads the same as it did.
+   */
+  webSearch?: number;
+  /**
    * The account's own opaque identifiers — workspace, key, tier — as the
    * provider served them.
    *
@@ -179,6 +184,7 @@ export function recordsFromBuckets(
     write1h: bucket.cacheWrite1hTokens,
     ttlKnown: bucket.writeTtlKnown,
     output: bucket.outputTokens,
+    ...((bucket.webSearchRequests ?? 0) > 0 ? { webSearch: bucket.webSearchRequests } : {}),
     group: bucket.group,
     pulledAtMs,
   }));
@@ -197,6 +203,9 @@ export function bucketsFromRecords(records: readonly StoreRecord[]): UsageBucket
     cacheWrite1hTokens: record.write1h,
     writeTtlKnown: record.ttlKnown,
     outputTokens: record.output,
+    ...(typeof record.webSearch === 'number' && Number.isFinite(record.webSearch) && record.webSearch > 0
+      ? { webSearchRequests: record.webSearch }
+      : {}),
     group: record.group,
   }));
 }

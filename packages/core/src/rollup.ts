@@ -319,6 +319,9 @@ const BREAKDOWN_SUM = [
   'tierCeilingCalls',
   'tierCeilingUsd',
   'tierFloorUsd',
+  'webSearchRequests',
+  'webSearchUsd',
+  'webSearchUnpricedRequests',
 ] as const;
 
 /** Fields whose combination is a maximum, because a sum would invent a call. */

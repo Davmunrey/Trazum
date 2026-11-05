@@ -610,7 +610,10 @@ const PROFILE: ToolDefinition = {
     lines.push(
       `input ${formatUsd(total.inputUsd)} · cache reads ${formatUsd(total.cacheReadUsd)}`
         + ` · cache writes ${formatUsd(total.cacheWriteUsd)}`
-        + ` · output ${formatUsd(total.outputUsd)} (${pct(total.outputUsd / total.totalUsd)})`,
+        + ` · output ${formatUsd(total.outputUsd)} (${pct(total.outputUsd / total.totalUsd)})`
+        + (total.webSearchRequests > 0
+          ? ` · web search ${formatUsd(total.webSearchUsd)} (${count(total.webSearchRequests, 'search')})`
+          : ''),
     );
 
     const name = (label: string): string => (label === UNLABELLED ? '(no label)' : label);

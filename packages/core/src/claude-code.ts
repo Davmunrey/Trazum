@@ -78,6 +78,8 @@ export interface ClaudeCodeRecord {
     speed?: string;
     /** The response's `usage.inference_geo`, kept because US-only inference bills 1.1x on Claude 4.6 and later. */
     inference_geo?: string;
+    /** The searches the call ran, kept because each is billed at $10 per 1,000 on top of the tokens. */
+    server_tool_use?: { web_search_requests: number };
   };
 }
 
@@ -291,6 +293,18 @@ export function claudeCodeRecords(
         ...(typeof usage.inference_geo === 'string' && usage.inference_geo !== ''
           ? { inference_geo: usage.inference_geo }
           : {}),
+        /*
+         * And the searches: Claude Code's web search is the API's server-side
+         * tool, billed at $10 per 1,000 searches on top of the tokens it
+         * reads, and the response counts them in
+         * `usage.server_tool_use.web_search_requests`. Rebuilding the usage
+         * without it billed every searching session as if it had searched
+         * for nothing. Only the count crosses; what was searched for is in
+         * the content, which never does.
+         */
+        ...((asCount(asObject(usage.server_tool_use)?.web_search_requests) ?? 0) > 0
+          ? { server_tool_use: { web_search_requests: asCount(asObject(usage.server_tool_use)?.web_search_requests)! } }
+          : {}),
       },
     };
 
@@ -326,7 +340,8 @@ export function claudeCodeRecords(
         record.usage.input_tokens >= before.input_tokens &&
         record.usage.output_tokens >= before.output_tokens &&
         (record.usage.cache_read_input_tokens ?? 0) >= (before.cache_read_input_tokens ?? 0) &&
-        (record.usage.cache_creation_input_tokens ?? 0) >= (before.cache_creation_input_tokens ?? 0);
+        (record.usage.cache_creation_input_tokens ?? 0) >= (before.cache_creation_input_tokens ?? 0) &&
+        (record.usage.server_tool_use?.web_search_requests ?? 0) >= (before.server_tool_use?.web_search_requests ?? 0);
       if (grewOnly) out.streamed += 1;
       else out.disagreements += 1;
       seenUsage.set(requestId, record.usage);

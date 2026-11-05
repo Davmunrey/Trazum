@@ -1,5 +1,5 @@
 import { cacheTtlOf, effectivePricing, multipliersFor } from './pricing.js';
-import { billedAt, promptSizeOf } from './billing.js';
+import { billedAt, promptSizeOf, webSearchUsdOf } from './billing.js';
 import { createConversationTracker } from './conversation.js';
 import { createOutputShapeTracker } from './output-shape.js';
 import { createInputShapeTracker } from './input-shape.js';
@@ -210,6 +210,14 @@ export interface UsageRecord {
    */
   batch?: true;
   /**
+   * Web searches the call ran, when the log counted any: Anthropic's
+   * `usage.server_tool_use.web_search_requests`, which every Messages
+   * response and every Claude Code log line carries once a search has run.
+   * Billed per search at the row's `webSearchPerThousandUsd`, flat, on top of
+   * the tokens. Absent is none.
+   */
+  webSearchRequests?: number;
+  /**
    * Set when an OpenAI-shaped line split its cache writes by lifetime and the
    * parts did not add up to the total. The lifetime is then unknown even on a
    * model whose unsplit writes are known to be the short kind.
@@ -310,6 +318,23 @@ export interface UsageBreakdown {
   tierCeilingCalls: number;
   tierCeilingUsd: number;
   tierFloorUsd: number;
+  /**
+   * Web searches, and what they cost.
+   *
+   * Billed per search, not per token, so none of the token lines above holds
+   * them: `webSearchUsd` is its own part of `totalUsd`, at each model's
+   * `webSearchPerThousandUsd`. It is flat, the same on the Batch API, in
+   * fast mode and on US-only inference, because the provider says so for
+   * the first and states the other two for tokens only.
+   *
+   * `webSearchUnpricedRequests` are searches counted on a model whose row
+   * publishes no per-search fee. They are left out of `totalUsd` and named,
+   * the same treatment an unknown model gets, rather than billed at a rate
+   * taken from another provider.
+   */
+  webSearchRequests: number;
+  webSearchUsd: number;
+  webSearchUnpricedRequests: number;
 }
 
 /**
@@ -646,6 +671,8 @@ export interface UsageShares {
   cacheRead: number;
   cacheWrite: number;
   output: number;
+  /** Web searches, billed per search. Zero on a bill that ran none. */
+  webSearch: number;
 }
 
 const EMPTY = (): UsageBreakdown => ({
@@ -671,6 +698,9 @@ const EMPTY = (): UsageBreakdown => ({
   tierCeilingCalls: 0,
   tierCeilingUsd: 0,
   tierFloorUsd: 0,
+  webSearchRequests: 0,
+  webSearchUsd: 0,
+  webSearchUnpricedRequests: 0,
 });
 
 /**
@@ -866,6 +896,19 @@ export function parseUsageLine(line: string): UsageRecord | null {
   const geminiThoughts = geminiMeta ? readCount(geminiMeta.thoughtsTokenCount) : ({ kind: 'absent' } as Count);
   const geminiToolPrompt = geminiMeta ? readCount(geminiMeta.toolUsePromptTokenCount) : ({ kind: 'absent' } as Count);
 
+  /**
+   * Anthropic's server tools, counted per use rather than per token:
+   * `usage.server_tool_use.web_search_requests` is the searches this call ran
+   * and was billed for, $10 per 1,000 on top of the tokens. Read under the
+   * same rule as every count here, so a present and unreadable figure rejects
+   * the line instead of becoming a free search.
+   */
+  const serverTools =
+    typeof usage.server_tool_use === 'object' && usage.server_tool_use !== null
+      ? (usage.server_tool_use as Record<string, unknown>)
+      : null;
+  const webSearch = serverTools ? readCount(serverTools.web_search_requests) : ({ kind: 'absent' } as Count);
+
   const counts: Record<string, Count> = {
     input: readCount(
       usage.input_tokens,
@@ -890,6 +933,7 @@ export function parseUsageLine(line: string): UsageRecord | null {
     geminiToolPrompt,
     write5m,
     write1h,
+    webSearch,
   };
 
   // Any field present and unreadable rejects the line. See `readCount`.
@@ -1015,6 +1059,7 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * cannot collide on a flat record.
      */
     ...(record.batch === true || usage.service_tier === 'batch' ? { batch: true as const } : {}),
+    ...(valueOf(webSearch) > 0 ? { webSearchRequests: valueOf(webSearch) } : {}),
     ...(openAiSplitGiven && !openAiSplitAgrees ? { writeSplitContradicted: true as const } : {}),
   };
 }
@@ -1107,6 +1152,7 @@ function countInto(into: UsageBreakdown, record: UsageRecord): void {
     into.stopReasonCalls += 1;
     if (record.truncated) into.truncatedCalls += 1;
   }
+  into.webSearchRequests += record.webSearchRequests ?? 0;
 }
 
 function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalogue, on: Date): boolean {
@@ -1197,8 +1243,17 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
     record.cacheReadTokens + record.cacheWrite5mTokens + record.cacheWrite1hTokens,
     inputPerMTok,
   );
+  /**
+   * Web searches, per search and flat. Read off the row rather than through
+   * `effectivePricing`, which is the token rate with every multiplier the call
+   * earned, and not one of those multipliers reaches a search: the Batch API
+   * prices it "the same", and US-only inference and fast mode scale tokens.
+   */
+  const searches = record.webSearchRequests ?? 0;
+  if (searches > 0 && model.webSearchPerThousandUsd === undefined) into.webSearchUnpricedRequests += searches;
+  into.webSearchUsd += webSearchUsdOf(record, model);
   into.totalUsd =
-    into.inputUsd + into.cacheReadUsd + into.cacheWriteUsd + into.outputUsd;
+    into.inputUsd + into.cacheReadUsd + into.cacheWriteUsd + into.outputUsd + into.webSearchUsd;
   return true;
 }
 
@@ -1646,12 +1701,13 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
  */
 export function sharesOf(breakdown: UsageBreakdown): UsageShares {
   const { totalUsd } = breakdown;
-  if (totalUsd <= 0) return { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 };
+  if (totalUsd <= 0) return { input: 0, cacheRead: 0, cacheWrite: 0, output: 0, webSearch: 0 };
   return {
     input: breakdown.inputUsd / totalUsd,
     cacheRead: breakdown.cacheReadUsd / totalUsd,
     cacheWrite: breakdown.cacheWriteUsd / totalUsd,
     output: breakdown.outputUsd / totalUsd,
+    webSearch: breakdown.webSearchUsd / totalUsd,
   };
 }
 

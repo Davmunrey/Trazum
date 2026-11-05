@@ -622,6 +622,10 @@ export interface CliMessages {
     noClock(): string;
     /** Calls a --since/--until window left out because they carry no timestamp. */
     undatedExcluded(calls: number): string;
+    /** Web searches billed at the provider's per-search fee, inside the total. */
+    webSearch(requests: number, usd: string): string;
+    /** Web searches on models whose row publishes no per-search fee, left out of the total. */
+    unpricedWebSearch(requests: number, models: string): string;
     nothingToBill(): string;
   };
 
@@ -717,6 +721,8 @@ export interface CliMessages {
     usOnlyFloor(count: number): string;
     geoUnknown(count: number): string;
     webSearch(count: number): string;
+    /** Web searches on rows that were left out, so in no bill. */
+    webSearchLeftOut(count: number): string;
     /** One page of several: the bill from it is understated. */
     truncated(): string;
     unparseable(): string;
@@ -1300,6 +1306,10 @@ export interface CliMessages {
     partCacheRead(): string;
     partCacheWrite(): string;
     partOutput(): string;
+    /** Web searches, a part billed per search rather than per token. */
+    partWebSearch(): string;
+    /** The same row as `part`, counting searches where `part` counts tokens. */
+    partSearches(name: string, usd: string, pct: string, searches: number): string;
     byLabelHeading(): string;
     byModelHeading(): string;
     row(name: string, usd: string, pct: string, calls: string): string;

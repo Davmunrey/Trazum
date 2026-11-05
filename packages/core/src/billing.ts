@@ -1,4 +1,5 @@
 import type { PromptSize } from './pricing.js';
+import type { ModelPricing } from './types.js';
 import type { UsageRecord } from './usage.js';
 
 /*
@@ -40,4 +41,18 @@ export function promptSizeOf(record: UsageRecord): PromptSize {
     ...(record.batch === true ? { batch: true } : {}),
   };
   return record.requests === undefined ? { inputTokens: prompt, ...how } : { inputTokensAtMost: prompt, ...how };
+}
+
+/**
+ * What a record's web searches cost: per search, at the row's fee, flat.
+ *
+ * Here beside `billedAt` and `promptSizeOf` for the same reason they are: the
+ * total and every tracker under it price a call, and a finding that costs a
+ * call without its searches disagrees with the bill it sits under. Zero for a
+ * row with no fee, whose searches the total names as unpriced instead.
+ */
+export function webSearchUsdOf(record: UsageRecord, model: ModelPricing): number {
+  const searches = record.webSearchRequests ?? 0;
+  if (searches <= 0 || model.webSearchPerThousandUsd === undefined) return 0;
+  return (searches / 1_000) * model.webSearchPerThousandUsd;
 }

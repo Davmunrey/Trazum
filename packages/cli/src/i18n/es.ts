@@ -1976,6 +1976,10 @@ ${bold('EJEMPLOS')}
       'El log no lleva reloj, así que el recibo no está acotado en el tiempo y lo declara en vez de inventarse un periodo.',
     undatedExcluded: (calls) =>
       `${count(calls)} ${calls === 1 ? 'llamada no trae' : 'llamadas no traen'} marca de tiempo y no se ${calls === 1 ? 'puede' : 'pueden'} situar en este periodo, así que no ${calls === 1 ? 'está' : 'están'} en esta factura: el total es un suelo del periodo.`,
+    webSearch: (requests, usd) =>
+      `${count(requests)} ${requests === 1 ? 'búsqueda web, cobrada' : 'búsquedas web, cobradas'} por búsqueda además de los tokens: ${usd} del total.`,
+    unpricedWebSearch: (requests, models) =>
+      `${count(requests)} ${requests === 1 ? 'búsqueda web' : 'búsquedas web'} en ${models}, cuya lista de precios no publica una tarifa por búsqueda: fuera del total, que es un suelo para ${requests === 1 ? 'ella' : 'ellas'}.`,
     nothingToBill: () => 'Nada de este log se pudo precificar, así que el recibo no tiene líneas.',
   },
 
@@ -2082,7 +2086,9 @@ ${bold('EJEMPLOS')}
     geoUnknown: (count) =>
       `El informe no nombró ninguna geografía de inferencia, y ${count} fila(s) son de un modelo que factura la inferencia solo en EE. UU. a 1,1x. Se leyeron como globales. Añade group_by[]=inference_geo si algún workspace fija la inferencia en EE. UU.`,
     webSearch: (count) =>
-      `${count} petición(es) de búsqueda web están en el informe y en ninguna línea de la salida: las herramientas de servidor se facturan por petición, no por token, así que ninguna tarifa por token llega a ellas.`,
+      `${count} búsqueda(s) web van con sus filas y se cobran por búsqueda, $10 por cada 1.000 en Claude, además de los tokens.`,
+    webSearchLeftOut: (count) =>
+      `${count} búsqueda(s) web estaban en filas que quedaron fuera arriba, así que tampoco están en ninguna factura.`,
     truncated: () =>
       'El informe dice has_more: true. Esto es una página de varias y una factura hecha con ella se queda corta. Sigue next_page hasta que has_more sea false, y convierte cada página.',
     unparseable: () =>
@@ -2821,6 +2827,9 @@ ${bold('EJEMPLOS')}
     partCacheRead: () => 'Lecturas caché',
     partCacheWrite: () => 'Escrituras caché',
     partOutput: () => 'Salida',
+    partWebSearch: () => 'Búsqueda web',
+    partSearches: (name, usd, pct, searches) =>
+      `${name.padEnd(15)}${usd.padStart(11)}  ${pct.padStart(5)}   ${plural(searches, 'búsqueda')}`,
     byLabelHeading: () => 'Por etiqueta',
     byModelHeading: () => 'Por modelo',
     row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls})`,

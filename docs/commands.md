@@ -2074,7 +2074,8 @@ answering it: a dollar total with no provenance cannot tell a repricing from a
 team whose spend moved.
 
 A receipt is the shape that keeps answering. Every line carries **the money as it
-was actually apportioned** -- input, cache reads, cache writes, output -- and the
+was actually apportioned** -- input, cache reads, cache writes, output, web
+searches -- and the
 catalogue's published rates beside it, with **the date those rates were last read
 off the provider's own page**, per provider, because looking at a page and
 finding nothing changed is not the same event as not looking.
@@ -2082,7 +2083,7 @@ finding nothing changed is not the same event as not looking.
 | In the receipt | Why |
 | --- | --- |
 | input, output and cache token counts, with the write TTLs kept apart | the arithmetic, and the split is what lets this traffic be repriced against another model |
-| the money split four ways, adding to the line's total | so the figure can be **added up** rather than believed |
+| the money split five ways, adding to the line's total, and the web searches that the fifth part divides by | so the figure can be **added up** rather than believed |
 | model, provider, and the catalogue's published rates | so a repricing can be spotted |
 | that provider's review date | so a repricing reads as a repricing |
 | the label the log carried | so the money can be attributed |
@@ -2112,10 +2113,14 @@ published rate names at all**. A reader multiplying the stated rate by the state
 tokens got a different number from the stated total, with nothing saying which to
 believe.
 
-So the four buckets are the arithmetic and the rates are the provenance. Dividing
+So the buckets are the arithmetic and the rates are the provenance. Dividing
 a bucket by its own token count recovers the rate that was really charged --
 including the cached-read rate, which is the one figure a reader most wants and
-the one no published field carries.
+the one no published field carries. The fifth bucket, `money.webSearchUsd`
+(since 2.7.5), is billed per search rather than per token, so it divides by the
+line's `webSearchRequests` instead, and comes to $0.01 a search on Claude.
+Searches on a model whose row publishes no fee are the gap
+`unpriced-web-search`, with their count and the models.
 [`receipt-arithmetic.test.js`](../packages/core/test/receipt-arithmetic.test.js)
 fails if the buckets stop adding up, if money appears in a bucket with no tokens
 in it, or if a cached read ever costs as much as fresh input.
@@ -2987,11 +2992,17 @@ as a logged response carrying the field is. One on a model with no multiplier
 in the catalogue is priced at the global rate and counted as a floor. Without
 the grouping every row is read as global, and the run says so.
 
-**Two more things it counts rather than prices.** Web search requests are
-billed per request, not per token, so no token rate reaches them and the total
-says how many are missing. And `has_more: true` means you asked for one page of
-several: follow `next_page` until it is false, or the bill is understated by
-whatever you did not fetch.
+**Web searches ride on their rows.** A row's
+`server_tool_use.web_search_requests` is billed per search, $10 per 1,000 on
+every Claude model, on top of the tokens. Since 2.7.5 each row carries its
+searches into its record and the bill prices them, at the same fee on a batch,
+fast or US-only row, because the pricing page states those discounts and
+multipliers for tokens. Searches on a row left out for its tier or speed are
+counted and named, since they are then in no bill either.
+
+**And one more thing it counts rather than prices.** `has_more: true` means you
+asked for one page of several: follow `next_page` until it is false, or the
+bill is understated by whatever you did not fetch.
 
 **The label is yours.** The provider knows workspaces, keys and accounts; it
 does not know what you call your projects. The account and the key are read by
@@ -3130,6 +3141,19 @@ line with no 200 response are left out and counted. The generated text, the
 `custom_id` and every id are dropped; an Anthropic result carries no time and
 is counted as undated rather than given one, and an OpenAI body keeps its
 `created_at`.
+
+**A session that searched the web is billed for its searches** (since 2.7.5).
+Claude Code's web search is Anthropic's server-side tool, $10 per 1,000
+searches on top of the tokens it reads, and every transcript line counts them
+in `usage.server_tool_use.web_search_requests`. They were dropped with the rest
+of the usage object's extras, so a session that searched a thousand times came
+out $10 short. Now the count crosses (the query does not), the total includes
+it, the breakdown has a "Web search" row, and stderr says how many searches the
+bill holds and what they came to:
+
+```text
+300 web searches, billed per search on top of the tokens: $3.00 of the total.
+```
 
 **Once more than one agent spent money, the statement adds a table by agent**
 above the one by project: each agent's records priced through the same
@@ -4012,6 +4036,24 @@ price: the multiplier is the page's, never derived here, and a model the page
 does not name keeps its price whatever the log says. `inference-geo.test.js`
 fails a Claude 4.6 or later row that arrives without it, and `price-drift.mjs`
 reads the page's sentence every week.
+
+**A web search is a fee per search, not a token.** Anthropic bills its web
+search tool at $10 per 1,000 searches "plus standard token costs for
+search-generated content", on every model, and counts the searches each call
+ran in `usage.server_tool_use.web_search_requests`. Since 2.7.5 every Claude
+row carries the fee in `webSearchPerThousandUsd` and a call is billed for its
+searches on top of its tokens, read from a logged response, a Claude Code
+transcript, a batch's results file, `from-anthropic` and `trazum connect`.
+The fee is flat: the web search page says a search through the Batches API is
+"priced the same", and US-only inference and fast mode are stated for token
+categories, which a search is not. Web fetch has "no additional charges" and
+carries no fee. The search is its own part of the bill, beside input, cache
+reads, cache writes and output: `webSearchUsd` and `webSearchRequests` in a
+breakdown, a row of its own in every table and in the web Bill tab,
+`money.webSearchUsd` and `webSearchRequests` on every receipt line, and two
+columns appended to the CSV. Searches on a model whose row has no fee are named
+(`webSearchUnpricedRequests`, the receipt gap `unpriced-web-search`) and left
+out of the total. `price-drift.mjs` reads the page's sentence every week.
 
 **A service tier is a table of its own, not a tier.** OpenAI sells Flex at
 about half the standard price, Fast (called Priority until 2026-07-30) at up

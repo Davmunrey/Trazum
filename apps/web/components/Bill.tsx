@@ -1051,11 +1051,15 @@ function Report({
   }
 
   const shares = sharesOf(total);
-  const parts: Array<[string, number, number, number]> = [
+  const parts: Array<[string, number, number, number | null]> = [
     [t.bill.partInput, total.inputUsd, shares.input, total.inputTokens],
     [t.bill.partCacheRead, total.cacheReadUsd, shares.cacheRead, total.cacheReadTokens],
     [t.bill.partCacheWrite, total.cacheWriteUsd, shares.cacheWrite, total.cacheWriteTokens],
     [t.bill.partOutput, total.outputUsd, shares.output, total.outputTokens],
+    // Billed per search, not per token: the count is in the name, and the tokens cell is empty.
+    ...(total.webSearchRequests > 0
+      ? [[t.bill.partWebSearch(n(total.webSearchRequests)), total.webSearchUsd, shares.webSearch, null] as [string, number, number, null]]
+      : []),
   ];
 
   /**
@@ -1392,7 +1396,7 @@ function Report({
                     <td className="py-1 pr-2">{name}</td>
                     <td className="py-1 pr-2 text-right font-mono tabular-nums">{formatUsd(usd)}</td>
                     <td className="py-1 pr-2 text-right tabular-nums">{pct(share)}</td>
-                    <td className="py-1 text-right font-mono tabular-nums">{n(tokens)}</td>
+                    <td className="py-1 text-right font-mono tabular-nums">{tokens === null ? '—' : n(tokens)}</td>
                   </tr>
                 ))}
               </tbody>
