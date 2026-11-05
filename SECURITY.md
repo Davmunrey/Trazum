@@ -158,6 +158,20 @@ nothing should.
 
 ---
 
+## Independent audits
+
+- **November 2026, with [REA](https://github.com/morluto/rea) 6.8.0:** the four
+  npm packages at 2.7.7, as npm serves them, and the production web page,
+  checked from the outside by a tool that has never seen this source. Nothing
+  was found that sends a log, a prompt or a session key anywhere without being
+  asked; one defect on the web page was fixed. The method, every network and
+  process surface with its guard, what the audit does not establish, and how to
+  reproduce it are in [docs/audit-rea-2026-11.md](docs/audit-rea-2026-11.md).
+- **On every pull request since then:** the web half of that audit runs in CI
+  as `scripts/privacy-probe.mjs`, against the build the pull request would
+  deploy. A marker leaving the page, a request to another origin, a request
+  while the bill is read, or a failed request fails the build.
+
 ## Repository hardening
 
 Some of this cannot be committed to a file — it lives in repository settings.

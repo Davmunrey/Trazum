@@ -11,7 +11,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **The web page asked for the share list on every visit, and logged a failed
+  request when there was no account to ask about.** The Compare tab fetched
+  `/api/shares` as it mounted, which a deployment with no accounts can only
+  answer with `503` and a signed-out visitor with `401`; the browser logged
+  either as a failed resource on every load of the production page. A share
+  link belongs to an account, so the tab now asks only when the page's one
+  session check found somebody signed in. Found by the REA audit below.
+
+### Added
+
+- **The web audit runs on every pull request.** `scripts/privacy-probe.mjs`
+  serves the standalone web build, pastes a log carrying marker strings into
+  the Bill tab in Chrome, reads the bill, and fails CI if a marker appears in
+  any request, a request goes to another origin, reading the bill asks the
+  server for anything but the page's own code, or a same-origin request fails
+  or is answered 400 or worse. The verdict is a pure function with its own
+  tests; the probe was proven by planting a `fetch` of the pasted log in the
+  Bill tab, which it caught five ways. `playwright-core` is installed at a
+  pinned version with `--ignore-scripts` outside the workspace and drives the
+  runner's Chrome, so nothing published depends on it.
+- **An independent audit with REA, written down.** `docs/audit-rea-2026-11.md`
+  records what [REA](https://github.com/morluto/rea) 6.8.0 found reading the
+  four 2.7.7 packages as npm serves them and the production web page while a
+  log with marker strings was pasted into it: no marker in any of the 16
+  requests, every request to the page's own origin, and every network and
+  process surface in the packages opt-in and guarded. It says what static
+  analysis and one browser scenario do not establish, and how to reproduce it.
+  `SECURITY.md` links it.
 
 ## 2.7.7 — 2026-11-05
 

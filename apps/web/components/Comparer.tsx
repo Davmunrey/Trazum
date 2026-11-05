@@ -88,10 +88,13 @@ export function Comparer({
   scenario,
   modelName,
   models,
+  signedIn = false,
 }: {
   locale: Locale;
   t: WebMessages;
   scenario: Scenario;
+  /** From the page's one session fetch; sharing needs an account. */
+  signedIn?: boolean;
   /** Display name for the scenario's model, resolved by the page. */
   modelName: string;
   models: readonly { id: string; displayName: string }[];
@@ -480,6 +483,7 @@ export function Comparer({
       */}
       <ShareControl
         t={t}
+        signedIn={signedIn}
         before={before}
         after={after}
         settings={{

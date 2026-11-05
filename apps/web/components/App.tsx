@@ -997,6 +997,7 @@ export function App({
               scenario={scenario}
               modelName={modelName}
               models={models}
+              signedIn={signedIn}
             />
           </TabsContent>
           <TabsContent value="bill" forceMount data-tour="panel-bill" className="data-[state=inactive]:hidden">

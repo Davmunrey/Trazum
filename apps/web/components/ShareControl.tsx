@@ -30,11 +30,22 @@ const TTLS = ['7', '30', '90', 'never'] as const;
 
 export function ShareControl({
   t,
+  signedIn,
   before,
   after,
   settings,
 }: {
   t: WebMessages;
+  /**
+   * Whether the page's one session fetch found somebody signed in.
+   *
+   * A link belongs to an account, so without one there is nothing to list and
+   * nothing to make, and asking anyway was a request the server could only
+   * refuse: a 503 on a deployment with no accounts, a 401 for a visitor who is
+   * signed out. The browser logs either as a failed resource on every visit,
+   * which an audit of the production page with REA found on the first load.
+   */
+  signedIn: boolean;
   before: string;
   after: string;
   /** Exactly what the Compare tab ran, so the link shows what the sharer saw. */
@@ -55,11 +66,16 @@ export function ShareControl({
   }
 
   useEffect(() => {
-    // A 401 leaves `enabled` false and renders nothing, which is the same answer
-    // as "this deployment has no accounts". The reader does not need to know
-    // which; both mean there is no link to make.
+    // Signed out, or no accounts on this deployment: both mean there is no link
+    // to make, so render nothing and ask the server nothing.
+    if (!signedIn) {
+      setEnabled(false);
+      setShares([]);
+      return;
+    }
+    // A refusal still leaves `enabled` false and renders nothing.
     void refresh().catch(() => {});
-  }, []);
+  }, [signedIn]);
 
   if (!enabled) return null;
 
