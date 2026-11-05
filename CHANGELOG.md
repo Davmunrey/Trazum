@@ -11,7 +11,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- **Four retired Claude models are priced**: Claude Opus 4.1, Opus 4, Sonnet 4
+  and Haiku 3.5, from Anthropic's pricing, deprecations, context-windows and
+  prompt-caching pages, read 2026-11-05. They are retired on the Claude API and
+  still served on Google Cloud and Bedrock, and every Claude Code log from
+  before their retirement carries them. Each of those calls read as an unpriced
+  model, so a bill spanning them was low, and an Opus 4.1 session by a lot: it
+  bills at $15/$75, three times Opus 4.5. Opus 4 bills the same, Sonnet 4 at
+  $3/$15 and Haiku 3.5 at $0.80/$4, with the standard cache and batch
+  multipliers, a 200k context window and the cache minimums the caching page
+  gives. They are priced for the logs and never recommended. Claude Sonnet 3.7
+  and Haiku 3 are retired and no longer on the pricing page, so they stay
+  unpriced rather than carry a figure no page publishes.
 
 ## 2.7.1 — 2026-11-05
 

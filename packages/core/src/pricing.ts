@@ -41,10 +41,12 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * which bills Opus 5.5 at $8/$40 and Opus 5 and 4.8 at $10/$50 and which
    * every response records in `usage.speed`, so fast calls had been priced at
    * half their cost; and Claude Sonnet 4.5, deprecated but still served until
-   * 2026-11-30, which read as unpriced. Both are here now. The retired Opus
-   * 4.1, Opus 4, Sonnet 4 and Haiku 3.5 are on the pricing page too and are
-   * not priced here yet: a row needs a context window, which their own pages
-   * would give, and those were not read.
+   * 2026-11-30, which read as unpriced. Both are here now. So are the
+   * retired Opus 4.1, Opus 4, Sonnet 4 and Haiku 3.5, still on the pricing
+   * page and in every log from before their retirement: their own model pages
+   * are gone, and the context-windows page gives each the 200k window every
+   * Claude model outside its 1M list has. Claude Sonnet 3.7 and Haiku 3 are
+   * retired and absent from the pricing page, so they stay unpriced.
    */
   anthropic: '2026-11-05',
   /*
@@ -466,6 +468,53 @@ export const MODELS: ModelPricing[] = [
   },
   {
     /*
+     * Retired on the Claude API on 2026-08-05 (the deprecations page, read
+     * 2026-11-05) and still served on Claude Models on Google Cloud (Google
+     * managed) and on Bedrock. Priced because a year of logs carries it and,
+     * unpriced, every one of those calls read as a gap. The pricing page, read
+     * the same day: $15/$75, writes $18.75 and $30, cache hits $1.50, batch
+     * $7.50/$37.50, which are the default multipliers. Its model page is gone;
+     * the context-windows page gives every Claude model outside its 1M list a
+     * 200k window, and the prompt-caching page a 1,024-token cache minimum.
+     * The dated id is the one the deprecations page names and what a log
+     * carries; no shorter alias is on any page read, so none is declared.
+     */
+    id: 'claude-opus-4-1-20250805',
+    provider: 'anthropic',
+    displayName: 'Claude Opus 4.1',
+    recommendable: false,
+    inputPerMTok: 15,
+    outputPerMTok: 75,
+    contextWindow: 200_000,
+    cacheMinTokens: 1024,
+    capability: 'large',
+    tier: 'opus',
+    notes:
+      'Retired on the Claude API on 2026-08-05; still served on Google Cloud (Google managed) and Bedrock.'
+      + ' Anthropic names Claude Opus 4.8 as the replacement.',
+  },
+  {
+    /*
+     * Retired on the Claude API on 2026-06-15; still served on Claude Models
+     * on Google Cloud (Google managed). The same pages and the same figures as
+     * Opus 4.1 above: $15/$75, 200k context, a 1,024-token cache minimum.
+     */
+    id: 'claude-opus-4-20250514',
+    provider: 'anthropic',
+    displayName: 'Claude Opus 4',
+    recommendable: false,
+    inputPerMTok: 15,
+    outputPerMTok: 75,
+    contextWindow: 200_000,
+    cacheMinTokens: 1024,
+    capability: 'large',
+    tier: 'opus',
+    notes:
+      'Retired on the Claude API on 2026-06-15; still served on Google Cloud (Google managed).'
+      + ' Anthropic names Claude Opus 4.8 as the replacement.',
+  },
+  {
+    /*
      * The pricing page and the Sonnet 5.5 model page, read 2026-10-10. The
      * same $2/$10 as Sonnet 5, with the cache read at $0.10, 0.05x, where
      * Sonnet 5 reads at $0.20. Writes $2.50 and $4; batch $1/$5.
@@ -532,6 +581,30 @@ export const MODELS: ModelPricing[] = [
   },
   {
     /*
+     * Retired on the Claude API on 2026-06-15 (the deprecations page, read
+     * 2026-11-05); still served on Claude Models on Google Cloud (Google
+     * managed) and on Bedrock. The pricing page, read the same day: $3/$15,
+     * writes $3.75 and $6, cache hits $0.30, batch $1.50/$7.50. 200k context
+     * from the context-windows page, a 1,024-token cache minimum from the
+     * prompt-caching page. The pricing page publishes one rate for it and no
+     * long-context band, so every call is priced at that rate.
+     */
+    id: 'claude-sonnet-4-20250514',
+    provider: 'anthropic',
+    displayName: 'Claude Sonnet 4',
+    recommendable: false,
+    inputPerMTok: 3,
+    outputPerMTok: 15,
+    contextWindow: 200_000,
+    cacheMinTokens: 1024,
+    capability: 'mid',
+    tier: 'sonnet',
+    notes:
+      'Retired on the Claude API on 2026-06-15; still served on Google Cloud (Google managed) and Bedrock.'
+      + ' Anthropic names Claude Sonnet 5.5 as the replacement.',
+  },
+  {
+    /*
      * The pricing page, the models overview and the prompt-caching page, read
      * 2026-10-10. Priced by prompt length, per request: $0.10/$0.50 for a
      * prompt up to 100,000 tokens and $0.50/$2.50 over it, where the length
@@ -584,6 +657,29 @@ export const MODELS: ModelPricing[] = [
     capability: 'small',
     tier: 'haiku',
     notes: '200K context window and a 64K output cap, smaller than the rest.',
+  },
+  {
+    /*
+     * Retired on the Claude API on 2026-02-19 (the deprecations page, read
+     * 2026-11-05); still served on Claude Models on Google Cloud (Google
+     * managed). The pricing page, read the same day: $0.80/$4, writes $1 and
+     * $1.60, cache hits $0.08, batch $0.40/$2, the default multipliers. 200k
+     * context from the context-windows page, and the prompt-caching page's
+     * 2,048-token cache minimum.
+     */
+    id: 'claude-3-5-haiku-20241022',
+    provider: 'anthropic',
+    displayName: 'Claude Haiku 3.5',
+    recommendable: false,
+    inputPerMTok: 0.8,
+    outputPerMTok: 4,
+    contextWindow: 200_000,
+    cacheMinTokens: 2048,
+    capability: 'small',
+    tier: 'haiku',
+    notes:
+      'Retired on the Claude API on 2026-02-19; still served on Google Cloud (Google managed).'
+      + ' Anthropic names Claude Haiku 4.5 as the replacement.',
   },
 
   // ------------------------------------------------------------------------
