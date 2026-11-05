@@ -5,6 +5,8 @@ import {
   currentUser,
   safeEqual,
 } from '../../../lib/auth/session';
+import { routeOf, securityEvent } from '../../../lib/security-log';
+import { shareUrl } from '../../../lib/shares/api';
 import { getStore } from '../../../lib/store';
 
 export const runtime = 'nodejs';
@@ -35,6 +37,7 @@ export async function DELETE(request: Request): Promise<Response> {
   if (!config.enabled) return authDisabled(config);
 
   if (!sameOrigin(request, config)) {
+    securityEvent('account.deleted', 'failure', { reason: 'cross_origin', route: routeOf(request) });
     return jsonError('cross-origin account deletion refused', 403);
   }
 
@@ -50,6 +53,7 @@ export async function DELETE(request: Request): Promise<Response> {
    * spend.
    */
   if (authRateLimited(request, Date.now())) {
+    securityEvent('account.deleted', 'failure', { reason: 'rate_limited', route: routeOf(request) });
     return jsonError('too many requests, try again in a minute', 429);
   }
 
@@ -58,7 +62,10 @@ export async function DELETE(request: Request): Promise<Response> {
   // 401 and not 404: this is the one route where telling an unauthenticated
   // caller "there is nothing here" and telling them "you are not signed in"
   // are the same sentence, and the honest one is shorter.
-  if (!user) return jsonError('sign in to delete your account', 401);
+  if (!user) {
+    securityEvent('account.deleted', 'failure', { reason: 'not_signed_in', route: routeOf(request) });
+    return jsonError('sign in to delete your account', 401);
+  }
 
   let confirm: unknown;
   try {
@@ -80,6 +87,8 @@ export async function DELETE(request: Request): Promise<Response> {
   }
 
   await store.deleteUser(user.id);
+  // The id is all that is left of the account, and it points at nothing now.
+  securityEvent('account.deleted', 'success', { userId: user.id, route: routeOf(request) });
 
   // The cookies are cleared whatever the store said. A browser still holding a
   // session cookie for a row that no longer exists is a browser that will look
@@ -92,4 +101,107 @@ export async function DELETE(request: Request): Promise<Response> {
   // this app told somebody how much of their data it had been holding at the
   // exact moment they stopped being able to check.
   return new Response(null, { status: 204, headers });
+}
+
+
+/**
+ * `GET /api/account` — everything this account holds, as one file.
+ *
+ * The other half of `DELETE`: a person can take their data with them as well
+ * as remove it. Written for the compliance readiness pack, because every
+ * framework it maps to asks for both (OWASP ASVS V8.3, SOC 2 P5 and P6, the
+ * GDPR's rights of access and portability), and this app could only do one.
+ *
+ * **What is in it:** the account as the app stores it (provider, provider id,
+ * login, name, avatar, when it was created), every saved prompt with every
+ * version and note, and every share link that is still live with the text it
+ * publishes. **What is not:** sessions, because only a hash of each token is
+ * stored and it opens nothing, and expired share links, which no longer exist
+ * as far as anyone can see.
+ *
+ * Signed-in only, rate-limited like the other account routes, never cached,
+ * and offered as a download. A `GET` needs no same-origin check: another site
+ * can send one, but without CORS it can never read the answer.
+ */
+export async function GET(request: Request): Promise<Response> {
+  const config = authConfig();
+  if (!config.enabled) return authDisabled(config);
+  const route = routeOf(request);
+
+  if (authRateLimited(request, Date.now())) {
+    securityEvent('account.exported', 'failure', { reason: 'rate_limited', route });
+    return jsonError('too many requests, try again in a minute', 429);
+  }
+
+  const store = await getStore();
+  const now = new Date();
+  const user = await currentUser(request, store, now, config.secure);
+  if (!user) {
+    securityEvent('account.exported', 'failure', { reason: 'not_signed_in', route });
+    return jsonError('sign in to export your account', 401);
+  }
+
+  const prompts = [];
+  for (const summary of await store.prompts.listPrompts(user.id)) {
+    const prompt = await store.prompts.getPrompt(summary.id, user.id);
+    if (!prompt) continue;
+    prompts.push({
+      id: prompt.id,
+      name: prompt.name,
+      createdAt: prompt.createdAt.toISOString(),
+      updatedAt: prompt.updatedAt.toISOString(),
+      // Oldest first: an export reads as the history it is, whatever order the library shows.
+      versions: [...prompt.versions].sort((a, b) => a.version - b.version).map((version) => ({
+        version: version.version,
+        text: version.text,
+        note: version.note,
+        createdAt: version.createdAt.toISOString(),
+      })),
+    });
+  }
+
+  const shares = [];
+  for (const summary of await store.shares.listShares(user.id, now)) {
+    const share = await store.shares.findShare(summary.token, now);
+    if (!share || share.ownerId !== user.id) continue;
+    shares.push({
+      url: shareUrl(config.publicUrl, share.token),
+      before: share.beforeText,
+      after: share.afterText,
+      settings: share.settings,
+      createdAt: share.createdAt.toISOString(),
+      expiresAt: share.expiresAt?.toISOString() ?? null,
+    });
+  }
+
+  const body = {
+    format: 'trazum-account-export',
+    version: 1,
+    exportedAt: now.toISOString(),
+    account: {
+      provider: user.provider,
+      providerId: user.providerId,
+      login: user.login,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt.toISOString(),
+    },
+    prompts,
+    shares,
+    notIncluded: [
+      'sessions: only a hash of each session token is stored, and it opens nothing',
+      'expired share links: they no longer exist for anyone',
+    ],
+  };
+
+  securityEvent('account.exported', 'success', { userId: user.id, route }, now);
+  const day = now.toISOString().slice(0, 10);
+  return new Response(`${JSON.stringify(body, null, 2)}\n`, {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'content-disposition': `attachment; filename="trazum-account-${day}.json"`,
+      'cache-control': 'private, no-store',
+    },
+  });
 }

@@ -9,6 +9,7 @@ import {
   shareUrl,
 } from '../../../lib/shares/api';
 import { MAX_SHARES_PER_OWNER } from '../../../lib/store/shares';
+import { routeOf, securityEvent } from '../../../lib/security-log';
 
 export const runtime = 'nodejs';
 
@@ -91,6 +92,8 @@ export async function POST(request: Request): Promise<Response> {
       409,
     );
   }
+  // A publication: who made it is recorded, the link is not, since the token is the capability.
+  securityEvent('share.created', 'success', { userId: caller.user.id, route: routeOf(request) }, now);
 
   return privateJson(
     {

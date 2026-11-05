@@ -1,5 +1,6 @@
 import { privateJson, requireCaller } from '../../../../lib/prompts/api';
 import { isShareToken } from '../../../../lib/shares/api';
+import { securityEvent } from '../../../../lib/security-log';
 
 export const runtime = 'nodejs';
 
@@ -26,7 +27,12 @@ export async function DELETE(
   if (!isShareToken(token)) return privateJson({ error: 'no such link' }, 404);
 
   const revoked = await caller.store.shares.revokeShare(token, caller.user.id);
-  if (!revoked) return privateJson({ error: 'no such link' }, 404);
+  // The route is recorded without the token: the path carries the capability.
+  if (!revoked) {
+    securityEvent('share.revoked', 'failure', { userId: caller.user.id, reason: 'not_owner', route: '/api/shares/:token' });
+    return privateJson({ error: 'no such link' }, 404);
+  }
+  securityEvent('share.revoked', 'success', { userId: caller.user.id, route: '/api/shares/:token' });
 
   return new Response(null, { status: 204, headers: { 'cache-control': 'private, no-store' } });
 }

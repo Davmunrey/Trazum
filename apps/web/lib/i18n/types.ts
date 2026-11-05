@@ -132,6 +132,7 @@ export interface WebMessages {
     ephemeral: string;
     ephemeralHint: string;
     /** Irreversible, and the copy says what goes rather than implying it. */
+    exportData: string;
     deleteAccount: string;
     deleteConfirm(login: string): string;
     deleteFailed: string;

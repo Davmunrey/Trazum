@@ -158,6 +158,14 @@ nothing should.
 
 ---
 
+## Compliance readiness
+
+Trazum is not certified against SOC 2, ISO 27001 or any other standard.
+[docs/compliance/](docs/compliance/README.md) is the preparation for an audit:
+the system in scope, 23 controls with their evidence and their SOC 2, ISO
+27001 and OWASP ASVS references, and the organisational work that only an
+owner can do.
+
 ## Independent audits
 
 - **November 2026, with [REA](https://github.com/morluto/rea) 6.8.0:** the four

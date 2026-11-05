@@ -3,6 +3,7 @@ import { adminList, adminSource } from '../../../../lib/admin/config';
 import { buildOverview } from '../../../../lib/admin/overview';
 import { privateJson, requireCaller } from '../../../../lib/prompts/api';
 import { CENSUS_LIMIT } from '../../../../lib/store/prompts';
+import { routeOf, securityEvent } from '../../../../lib/security-log';
 
 export const runtime = 'nodejs';
 
@@ -36,7 +37,11 @@ export async function GET(request: Request): Promise<Response> {
 
   const list = adminList();
   const source = adminSource(caller.user, list);
-  if (!source) return privateJson(NOT_FOUND, 404);
+  if (!source) {
+    securityEvent('admin.access', 'failure', { userId: caller.user.id, reason: 'not_admin', route: routeOf(request) });
+    return privateJson(NOT_FOUND, 404);
+  }
+  securityEvent('admin.access', 'success', { userId: caller.user.id, route: routeOf(request) });
 
   const census = await caller.store.admin.census(CENSUS_LIMIT);
   const overview = buildOverview(census);

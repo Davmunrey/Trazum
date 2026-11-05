@@ -93,10 +93,43 @@ const HSTS = {
  * braces on the wire and a real difference to anyone running the app on a name
  * that resolves.
  */
+/**
+ * The browser features this app never uses, switched off for it and for
+ * anything it might ever embed.
+ *
+ * A page that cannot reach the camera cannot be made to, whatever script ends
+ * up running in it, which is the same reasoning as `connect-src`: the
+ * narrowest grant that still runs the app. Only features every Chromium
+ * release recognises are named, because an unknown one is logged as an error
+ * on every load, and the privacy probe rightly treats a noisy console as a
+ * defect. The clipboard is not on the list: the app writes to it, from a
+ * click, on its own origin, which the default already allows.
+ *
+ * Added for the compliance readiness pack (ASVS V14.4, ISO 27001 8.26).
+ */
+const PERMISSIONS_POLICY = {
+  key: 'permissions-policy',
+  value: ['camera', 'microphone', 'geolocation', 'payment', 'usb', 'accelerometer', 'gyroscope', 'magnetometer']
+    .map((feature) => `${feature}=()`)
+    .join(', '),
+};
+
+/**
+ * No other window keeps a handle on this one.
+ *
+ * Without it, a page that opened Trazum (or that Trazum opened) shares a
+ * browsing context group with it and can navigate it or probe it through
+ * `window.opener`. Sign-in is a full-page redirect to GitHub and back, not a
+ * popup, so nothing here needs the handle.
+ */
+const OPENER_POLICY = { key: 'cross-origin-opener-policy', value: 'same-origin' };
+
 const BASELINE = [
   { key: 'x-frame-options', value: 'DENY' },
   { key: 'x-content-type-options', value: 'nosniff' },
   { key: 'referrer-policy', value: 'no-referrer' },
+  PERMISSIONS_POLICY,
+  OPENER_POLICY,
   ...(process.env.NODE_ENV === 'production' ? [HSTS] : []),
 ];
 
