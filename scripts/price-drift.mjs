@@ -72,6 +72,8 @@ export const DELIBERATELY_UNPRICED = {
     'gpt-6-rosalind': 'trusted-access programme only, and no model page to read a context window from',
     'gpt-rosalind-research': 'trusted-access programme only, and no model page to read a context window from',
     'gpt-rosalind-discovery': 'trusted-access programme only, and no model page to read a context window from',
+    // On the "Specialized models" table; its model page returned 404 the same day.
+    'gpt-5-search-api': 'no model page to read a context window from',
   },
   anthropic: {},
 };
@@ -219,7 +221,27 @@ export function readOpenAi(markdown) {
     && (column(header, 'Short context input') > 0 || (column(header, 'Input') > 0 && column(header, 'Cached input') > 0));
   let standard = 0;
   let batch = 0;
+  let specialized = false;
   for (const table of markdownTables(markdown)) {
+    /*
+     * "Specialized models": a Category column before Model, the Codex, ChatGPT
+     * and search models among embeddings and moderation. The first such table
+     * is the standard one (a "Fast" one with the same header follows). Rows
+     * without an output price are not chat models and are skipped.
+     */
+    const specialModel = column(table.header, 'Model');
+    if (!specialized && column(table.header, 'Category') === 0 && specialModel === 1
+      && column(table.header, 'Input') > 1 && column(table.header, 'Cached input') > 1) {
+      specialized = true;
+      const at = { input: column(table.header, 'Input'), output: column(table.header, 'Output'), hit: column(table.header, 'Cached input') };
+      for (const cells of table.rows) {
+        const output = dollars(cells[at.output] ?? '');
+        if (output === undefined) continue;
+        standard += 1;
+        Object.assign(row(plainName(cells[specialModel])), { input: dollars(cells[at.input]), output, hit: dollars(cells[at.hit]) });
+      }
+      continue;
+    }
     const kind = /^standard pricing data$/i.test(table.heading) ? 'standard' : /^batch$/i.test(table.heading) ? 'batch' : undefined;
     if (kind === undefined || !textTable(table.header)) continue;
     const { header } = table;
@@ -264,6 +286,7 @@ export function readOpenAi(markdown) {
   const unread = [];
   if (standard === 0) unread.push('no text-token table under a "Standard pricing data" heading');
   if (batch === 0) unread.push('no text-token table under a "Batch" heading');
+  if (!specialized) unread.push('no "Specialized models" table (Category, Model, Input, Output, Cached input)');
   return { rows: [...rows.values()], unread };
 }
 

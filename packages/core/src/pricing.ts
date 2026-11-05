@@ -284,6 +284,10 @@ const OPENAI_EARLIER_LONG_NOTE =
   + OPENAI_EARLIER_NOTE;
 const OPENAI_EARLIER_NO_CACHE_NOTE = 'OpenAI publishes no cached-input price for this model, so caching is not priced.';
 const OPENAI_DEPRECATED_SUFFIX = ' Deprecated by OpenAI: priced for the logs that hold it, never recommended.';
+const OPENAI_SHUT_DOWN_SUFFIX = ' Shut down by OpenAI: priced for the logs that hold it, never recommended.';
+const OPENAI_CODEX_NOTE =
+  'Caching is automatic; a write costs what input costs. Responses API only, and no batch. OpenAI says the minimum for'
+  + ' models before GPT-5.6 varies by request settings, so 1,024 here is the nearest published floor.';
 
 const OPENAI_GPT5_NOTE =
   'Caching is automatic, with no cache_control to set. OpenAI says the minimum for models before GPT-5.6 varies by'
@@ -1289,6 +1293,141 @@ export const MODELS: ModelPricing[] = [
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_EARLIER_NO_CACHE_NOTE + OPENAI_DEPRECATED_SUFFIX,
+  },
+  // ------------------------------------------------------------------------
+  // The Codex models and chat-latest. Codex CLI sessions name these, and none
+  // was priced, so every such call read as unpriced. Each from its own model
+  // page (developers.openai.com/api/docs/models/<id>.md), read 2026-11-05,
+  // and gpt-5.3-codex and chat-latest also from the pricing page's
+  // "Specialized models" table. Every page says Batch is "Not supported", so
+  // none has a batch price. gpt-5.3-codex is deprecated and the rest of the
+  // Codex line is shut down; all are priced for the logs that hold them and
+  // never recommended. chat-latest is served and not recommended either: it
+  // points at whatever model ChatGPT uses, so a recommendation would not name
+  // a fixed model. Cache reads are 0.1x everywhere but codex-mini-latest,
+  // whose page gives $0.375 on $1.50, 0.25x. gpt-5-search-api is on the
+  // pricing page too and its model page returns 404, so it has no context
+  // window and is left unpriced (see scripts/price-drift.mjs).
+  // ------------------------------------------------------------------------
+  {
+    id: 'gpt-5.3-codex',
+    provider: 'openai',
+    displayName: 'GPT-5.3-Codex',
+    recommendable: false,
+    inputPerMTok: 1.75,
+    outputPerMTok: 14,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CODEX_NOTE + ' At most 272,000 input tokens.' + OPENAI_DEPRECATED_SUFFIX,
+  },
+  {
+    id: 'gpt-5.2-codex',
+    provider: 'openai',
+    displayName: 'GPT-5.2-Codex',
+    recommendable: false,
+    inputPerMTok: 1.75,
+    outputPerMTok: 14,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CODEX_NOTE + ' At most 272,000 input tokens.' + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'gpt-5.1-codex',
+    provider: 'openai',
+    displayName: 'GPT-5.1-Codex',
+    recommendable: false,
+    inputPerMTok: 1.25,
+    outputPerMTok: 10,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CODEX_NOTE + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'gpt-5.1-codex-max',
+    provider: 'openai',
+    displayName: 'GPT-5.1-Codex-Max',
+    recommendable: false,
+    inputPerMTok: 1.25,
+    outputPerMTok: 10,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CODEX_NOTE + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'gpt-5.1-codex-mini',
+    provider: 'openai',
+    displayName: 'GPT-5.1-Codex Mini',
+    recommendable: false,
+    inputPerMTok: 0.25,
+    outputPerMTok: 2,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: OPENAI_CODEX_NOTE + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'gpt-5-codex',
+    provider: 'openai',
+    displayName: 'GPT-5-Codex',
+    recommendable: false,
+    inputPerMTok: 1.25,
+    outputPerMTok: 10,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CODEX_NOTE + ' At most 272,000 input tokens.' + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'codex-mini-latest',
+    provider: 'openai',
+    displayName: 'codex-mini-latest',
+    recommendable: false,
+    inputPerMTok: 1.5,
+    outputPerMTok: 6,
+    contextWindow: 200_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: OPENAI_CODEX_NOTE + ' A cache read costs 0.25x input.' + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'chat-latest',
+    provider: 'openai',
+    displayName: 'Chat Latest',
+    recommendable: false,
+    inputPerMTok: 5,
+    outputPerMTok: 30,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'large',
+    tier: 'opus',
+    notes: 'Points at the model ChatGPT currently uses, so it is priced and never recommended. Caching is automatic; a write costs what input costs. At most 272,000 input tokens, and no batch.',
   },
 
   // ------------------------------------------------------------------------

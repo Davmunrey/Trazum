@@ -59,7 +59,7 @@ ${withFast ? `
 | Claude Haiku 5.5 (for prompts over 100,000 tokens) | $0.25 / MTok | $1.25 / MTok |
 ` : ''}`;
 
-const openAiPage = ({ astraLongOutput = '$75.00', gpt4oCached = '$1.25' } = {}) => `
+const openAiPage = ({ astraLongOutput = '$75.00', gpt4oCached = '$1.25', codexInput = '$1.75' } = {}) => `
 # Pricing
 
 Flagship models
@@ -91,6 +91,27 @@ Flagship models
 | Model | Input | Output | Cached input |
 | --- | --- | --- | --- |
 | gpt-4o | $99.00 | $99.00 | $99.00 |
+
+Specialized models
+
+Standard
+
+### Grouped Pricing Table data
+
+| Category | Model | Input | Output | Cached input |
+| --- | --- | --- | --- | --- |
+| ChatGPT | chat-latest | $5.00 | $30.00 | $0.50 |
+| Codex | gpt-5.3-codex | ${codexInput} | $14.00 | $0.175 |
+| Embedding | text-embedding-3-small | $0.02 | - | - |
+| Moderation | omni-moderation-latest | Free | - | - |
+
+Fast
+
+### Grouped Pricing Table data
+
+| Category | Model | Input | Output | Cached input |
+| --- | --- | --- | --- | --- |
+| Codex | gpt-5.3-codex | $3.50 | $28.00 | $0.35 |
 
 Cyber models
 
@@ -200,8 +221,18 @@ describe('OpenAI', () => {
     assert.match(cyber.detail, /left unpriced on purpose: Daybreak/);
   });
 
-  it('says it read nothing when there is no standard or batch table', () => {
-    assert.equal(kinds(openAiFindings('# Pricing\n'), 'unread').length, 2);
+  it('reads the Codex and ChatGPT rows of the specialized table, its standard half only', () => {
+    const rows = readOpenAi(openAiPage()).rows;
+    assert.deepEqual(rows.find((row) => row.name === 'gpt-5.3-codex')?.rates, { input: 1.75, output: 14, hit: 0.175 });
+    assert.ok(!rows.some((row) => row.name.startsWith('text-embedding') || row.name.startsWith('omni-moderation')), 'an embedding or moderation row was read as a chat model');
+    const drift = kinds(openAiFindings(openAiPage({ codexInput: '$2.00' })), 'drift');
+    assert.deepEqual(drift.map((finding) => [finding.model, finding.detail]), [
+      ['gpt-5.3-codex', 'input: the page says $2, the catalogue prices $1.75'],
+    ]);
+  });
+
+  it('says it read nothing when there is no standard, batch or specialized table', () => {
+    assert.equal(kinds(openAiFindings('# Pricing\n'), 'unread').length, 3);
   });
 });
 

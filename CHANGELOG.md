@@ -32,13 +32,27 @@ merged commit with no entry is a change only `git log` remembers.
   model page, read 2026-11-05. It needs Daybreak programme approval, so it is
   never recommended. The price-drift check below found it on its first run.
 
+- **Codex sessions on the Codex models are billed.** Codex CLI names
+  gpt-5.3-codex, and before it gpt-5.2-codex, gpt-5.1-codex and its Max and
+  Mini variants, gpt-5-codex and codex-mini-latest; none was priced, so every
+  such call in a Codex bill read as unpriced. Each is now priced from its own
+  model page, read 2026-11-05: $1.75/$14 for 5.3 and 5.2, $1.25/$10 for 5.1,
+  5.1 Max and 5, $0.25/$2 for 5.1 Mini, $1.50/$6 for codex-mini-latest (whose
+  cache read is 0.25x, not 0.1x), no batch for any. chat-latest ($5/$30) is
+  priced too. gpt-5.3-codex is deprecated and the rest are shut down, so all
+  are priced for the logs and never recommended; chat-latest is not
+  recommended because it moves with ChatGPT. gpt-5-search-api is on the
+  pricing page with no model page, so it stays unpriced, recorded in the
+  drift check with that reason.
+
 ### Guarded
 
 - **A weekly check that the catalogue still agrees with the pricing pages.**
   `scripts/price-drift.mjs` reads Anthropic's and OpenAI's pricing pages in
   their Markdown form and compares every published figure with the catalogue:
   input, output, cache hits, both cache writes, batch, the long-prompt bands
-  and fast mode, 48 models in all. A changed price, a model the catalogue
+  and fast mode, 50 models in all, including the "Specialized models" table
+  where the Codex and ChatGPT models are priced. A changed price, a model the catalogue
   lacks, or a page whose tables moved is a finding and fails the scheduled CI
   run; on pull requests it is reported in the job summary. Freshness says how
   long ago a provider was read; this says whether its page has changed since.
