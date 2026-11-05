@@ -2788,9 +2788,21 @@ OpenAI deprecated, are no longer recommended. `scripts/price-drift.mjs` reads
 Anthropic's and OpenAI's pricing pages every week and fails the scheduled run on
 a changed price, a missing model or a page it can no longer read.
 
+## 2.7.3 — Every tier the provider names, billed at its own rate — released
+
+A patch of corrections of one kind: the provider named the tier, speed or
+geography a call ran at, and Trazum read it as standard. US-only inference on
+Claude 4.6 and later is priced at the published 1.1x from every door: Claude
+Code transcripts, logged responses, the gateway and the usage report. OpenAI's
+usage report prices Flex, Fast and Ultrafast rows from their own tables, and
+Anthropic's prices fast-mode rows from the model's fast rate. `trazum connect`
+asks both reports for the groupings that change a price and prices by them,
+with a store that converges across the change rather than doubling a day. The
+weekly price check reads the data residency sentence too.
+
 ## Next
 
-**Target: 2.7.3, repeated-task evaluation.**
+**Target: 2.7.4, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,
