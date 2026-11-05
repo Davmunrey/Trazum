@@ -23,6 +23,19 @@ merged commit with no entry is a change only `git log` remembers.
   `gpt-4o-2024-05-13` is shut down and was priced differently, so it is not
   folded into GPT-4o.
 - **GPT-6.1 Terra**: $1/$5, cache read 5% of input, the same 272K band.
+- **Kimi K3.1 Pro** ($2/$10, cache read $0.20, writes $2 and $4) and its
+  high-speed variant ($4/$20). Kimi K3 gains its batch price (60%), which
+  the batch page now lists. The K2 series is closed to accounts registered
+  from 2026-11-01 and retires by the end of December, so it is priced and no
+  longer recommended. Kimi's Markdown pages now ship their price tables
+  empty; the figures were read from the HTML page's compiled tables.
+- **The November price review.** Anthropic, OpenAI, DeepSeek, Moonshot, xAI
+  and Mistral were re-read from their own pages on 2026-11-05; every price
+  already in the catalogue matched, and each provider's review date moves.
+  **Google could not be re-read**: its Gemini API docs, pricing included,
+  now live on aistudio.google.com, which this environment does not reach.
+  Its date stays at 2026-10-10 rather than move without a read, so the CLI
+  will warn about Google prices from 2026-11-25 until someone reads them.
 
 ### Fixed
 

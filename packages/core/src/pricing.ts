@@ -96,8 +96,14 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * and added nothing. Kimi K3, K2.7 Code (and its high-speed variant) and
    * K2.6 are priced now. `kimi-k2` was discontinued on 2026-05-25 by the
    * provider's own notice, so it stays priced and is no longer recommended.
+   *
+   * Re-read 2026-11-05 from the HTML page's compiled tables, the Markdown
+   * form now serving them empty. Every price matched; K3.1 Pro and its
+   * high-speed variant are added, K3 gains its 60% batch price, and the K2
+   * series, closed to new accounts and retiring in December, is no longer
+   * recommended.
    */
-  moonshot: '2026-10-11',
+  moonshot: '2026-11-05',
   /*
    * api-docs.deepseek.com/quick_start/pricing read 2026-10-10, and the
    * 2026-09-10 announcement (api-docs.deepseek.com/news/news260910) read
@@ -105,8 +111,13 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * Sept 10, 2026." V4 Flash was retired that day and its id now bills at
    * the new deepseek-flash price, so the old price lives in its `history`.
    * V4 Pro matched the page unchanged.
+   *
+   * Re-read 2026-11-05: every price, the peak window (01:00-04:00 and
+   * 06:00-10:00 UTC, Monday to Friday, Chinese public holidays off-peak in
+   * full) and the cache-hit prices matched. The Flash version behind
+   * `deepseek-flash` is now named DeepSeek-V4.1-Flash-1017, at the same price.
    */
-  deepseek: '2026-10-10',
+  deepseek: '2026-11-05',
   /*
    * docs.x.ai/developers/models, each model's page and the 2026-05-15
    * retirement notice, read 2026-10-11 in their Markdown form. Grok 4.7, 4.6,
@@ -114,8 +125,11 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * request pays once its prompt reaches 200k tokens, which per-request
    * pricing can now express. `grok-4` was retired on 2026-05-15 and its calls
    * have billed at Grok 4.3's prices since, so it carries both periods.
+   *
+   * Re-read 2026-11-05 (docs.x.ai/developers/models.md): every model, price,
+   * cached price, 200k threshold and context window matched. Nothing new.
    */
-  xai: '2026-10-11',
+  xai: '2026-11-05',
   /*
    * `mistral.ai/pricing`, read 2026-08-28 — by a human, because the page
    * renders its table in the browser and serves a fetch only an FAQ example
@@ -136,8 +150,13 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * price as carrying the cache discount. This table said Mistral had no
    * prompt caching at all. docs.mistral.ai, where a minimum or a mechanism
    * would be, is not reachable from here, so neither is claimed.
+   *
+   * Re-read 2026-11-05 from the same three model cards' `data-prices` and
+   * mistral.ai/cloud/inference: Large 2512 at $0.50/$1.50, Medium 3.5 at
+   * $1.50/$7.50 and Small 2603 at $0.15/$0.60 matched, as did the 90% cached
+   * input discount. docs.mistral.ai is still not reachable from here.
    */
-  mistral: '2026-10-11',
+  mistral: '2026-11-05',
 });
 
 /**
@@ -1301,7 +1320,55 @@ export const MODELS: ModelPricing[] = [
    * $0.30. The K2 series bills no write, and reads at its own hit price. Batch
    * is 60% of standard on K2.7 Code and K2.6 and not offered on K3 or the
    * high-speed K2.7. No cache minimum is published for any of them.
+   *
+   * Re-read 2026-11-05. The Markdown form now ships the price tables empty
+   * (`<tbody />`); the figures are in the HTML page's compiled table rows,
+   * read there. Every existing price matched. Three changes: Kimi K3.1 Pro
+   * and its high-speed variant are new; the batch page now lists K3 and K3.1
+   * Pro at 60% ("billed at 60% of the standard price"), so K3 has a batch
+   * price; and the K2 series is closed to accounts registered from 2026-11-01
+   * and retires "by the end of December 2026", so it is no longer recommended.
    */
+  {
+    /*
+     * $2/$10, cached input $0.20, cache writes $2.00 for 5 minutes and $4.00
+     * for an hour; batch 60%; 1,048,576 context, as every K3-series model.
+     */
+    id: 'kimi-k3.1-pro',
+    provider: 'moonshot',
+    displayName: 'Kimi K3.1 Pro',
+    inputPerMTok: 2,
+    outputPerMTok: 10,
+    contextWindow: 1_048_576,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 2, batch: 0.6 },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes:
+      'Cache writes are billed as their own line: 1x input for a 5-minute entry, 2x for an hour.'
+      + ` ${NO_PUBLISHED_CACHE_MINIMUM}`,
+  },
+  {
+    /*
+     * $4/$20, cached input $0.20 (5% of its input), writes $4.00 and $8.00.
+     * Not on the batch page's list, so no batch price.
+     */
+    id: 'kimi-k3.1-pro-highspeed',
+    provider: 'moonshot',
+    displayName: 'Kimi K3.1 Pro (high speed)',
+    inputPerMTok: 4,
+    outputPerMTok: 20,
+    contextWindow: 1_048_576,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.05, cacheWrite5m: 1, cacheWrite1h: 2, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes:
+      'Cache writes are billed as their own line: 1x input for a 5-minute entry, 2x for an hour.'
+      + ` No batch API for this model. ${NO_PUBLISHED_CACHE_MINIMUM}`,
+  },
   {
     id: 'kimi-k3',
     provider: 'moonshot',
@@ -1311,17 +1378,19 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_048_576,
     cacheMinTokens: null,
     caching: 'automatic',
-    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 2, batch: null },
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 2, batch: 0.6 },
     capability: 'frontier',
     tier: 'frontier',
     notes:
       'Cache writes are billed as their own line: 1x input for a 5-minute entry, 2x for an hour.'
-      + ` No batch API for this model. ${NO_PUBLISHED_CACHE_MINIMUM}`,
+      + ` Batch at 60% since the batch page listed it (read 2026-11-05). ${NO_PUBLISHED_CACHE_MINIMUM}`,
   },
   {
     id: 'kimi-k2.7-code',
     provider: 'moonshot',
     displayName: 'Kimi K2.7 Code',
+    // Closed to accounts registered from 2026-11-01; the K2 series retires by the end of December 2026.
+    recommendable: false,
     inputPerMTok: 0.95,
     outputPerMTok: 4,
     contextWindow: 262_144,
@@ -1337,6 +1406,8 @@ export const MODELS: ModelPricing[] = [
     id: 'kimi-k2.7-code-highspeed',
     provider: 'moonshot',
     displayName: 'Kimi K2.7 Code (high speed)',
+    // Closed to accounts registered from 2026-11-01; the K2 series retires by the end of December 2026.
+    recommendable: false,
     inputPerMTok: 1.9,
     outputPerMTok: 8,
     contextWindow: 262_144,
@@ -1352,6 +1423,8 @@ export const MODELS: ModelPricing[] = [
     id: 'kimi-k2.6',
     provider: 'moonshot',
     displayName: 'Kimi K2.6',
+    // Closed to accounts registered from 2026-11-01; the K2 series retires by the end of December 2026.
+    recommendable: false,
     inputPerMTok: 0.95,
     outputPerMTok: 4,
     contextWindow: 262_144,
