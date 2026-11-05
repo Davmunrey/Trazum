@@ -102,6 +102,11 @@ const HOSTS = {
   // version. Public counters, no credential, never a prompt.
   'https://api.npmjs.org': 'public data, no credential',
   'https://registry.modelcontextprotocol.io': 'public data, no credential',
+  // Read weekly by `scripts/price-drift.mjs`: Anthropic's and OpenAI's pricing
+  // pages in their Markdown form, compared with the catalogue. Public pages,
+  // fetched with no credential, never a prompt.
+  'https://platform.claude.com': 'public data, no credential',
+  'https://developers.openai.com': 'public data, no credential',
 
   // The JSON Schema dialect identifier inside every schema `trazum schema`
   // prints. An identifier by the spec, never fetched: nothing in this

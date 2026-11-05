@@ -41,10 +41,12 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * which bills Opus 5.5 at $8/$40 and Opus 5 and 4.8 at $10/$50 and which
    * every response records in `usage.speed`, so fast calls had been priced at
    * half their cost; and Claude Sonnet 4.5, deprecated but still served until
-   * 2026-11-30, which read as unpriced. Both are here now. The retired Opus
-   * 4.1, Opus 4, Sonnet 4 and Haiku 3.5 are on the pricing page too and are
-   * not priced here yet: a row needs a context window, which their own pages
-   * would give, and those were not read.
+   * 2026-11-30, which read as unpriced. Both are here now. So are the
+   * retired Opus 4.1, Opus 4, Sonnet 4 and Haiku 3.5, still on the pricing
+   * page and in every log from before their retirement: their own model pages
+   * are gone, and the context-windows page gives each the 200k window every
+   * Claude model outside its 1M list has. Claude Sonnet 3.7 and Haiku 3 are
+   * retired and absent from the pricing page, so they stay unpriced.
    */
   anthropic: '2026-11-05',
   /*
@@ -282,6 +284,10 @@ const OPENAI_EARLIER_LONG_NOTE =
   + OPENAI_EARLIER_NOTE;
 const OPENAI_EARLIER_NO_CACHE_NOTE = 'OpenAI publishes no cached-input price for this model, so caching is not priced.';
 const OPENAI_DEPRECATED_SUFFIX = ' Deprecated by OpenAI: priced for the logs that hold it, never recommended.';
+const OPENAI_SHUT_DOWN_SUFFIX = ' Shut down by OpenAI: priced for the logs that hold it, never recommended.';
+const OPENAI_CODEX_NOTE =
+  'Caching is automatic; a write costs what input costs. Responses API only, and no batch. OpenAI says the minimum for'
+  + ' models before GPT-5.6 varies by request settings, so 1,024 here is the nearest published floor.';
 
 const OPENAI_GPT5_NOTE =
   'Caching is automatic, with no cache_control to set. OpenAI says the minimum for models before GPT-5.6 varies by'
@@ -466,6 +472,53 @@ export const MODELS: ModelPricing[] = [
   },
   {
     /*
+     * Retired on the Claude API on 2026-08-05 (the deprecations page, read
+     * 2026-11-05) and still served on Claude Models on Google Cloud (Google
+     * managed) and on Bedrock. Priced because a year of logs carries it and,
+     * unpriced, every one of those calls read as a gap. The pricing page, read
+     * the same day: $15/$75, writes $18.75 and $30, cache hits $1.50, batch
+     * $7.50/$37.50, which are the default multipliers. Its model page is gone;
+     * the context-windows page gives every Claude model outside its 1M list a
+     * 200k window, and the prompt-caching page a 1,024-token cache minimum.
+     * The dated id is the one the deprecations page names and what a log
+     * carries; no shorter alias is on any page read, so none is declared.
+     */
+    id: 'claude-opus-4-1-20250805',
+    provider: 'anthropic',
+    displayName: 'Claude Opus 4.1',
+    recommendable: false,
+    inputPerMTok: 15,
+    outputPerMTok: 75,
+    contextWindow: 200_000,
+    cacheMinTokens: 1024,
+    capability: 'large',
+    tier: 'opus',
+    notes:
+      'Retired on the Claude API on 2026-08-05; still served on Google Cloud (Google managed) and Bedrock.'
+      + ' Anthropic names Claude Opus 4.8 as the replacement.',
+  },
+  {
+    /*
+     * Retired on the Claude API on 2026-06-15; still served on Claude Models
+     * on Google Cloud (Google managed). The same pages and the same figures as
+     * Opus 4.1 above: $15/$75, 200k context, a 1,024-token cache minimum.
+     */
+    id: 'claude-opus-4-20250514',
+    provider: 'anthropic',
+    displayName: 'Claude Opus 4',
+    recommendable: false,
+    inputPerMTok: 15,
+    outputPerMTok: 75,
+    contextWindow: 200_000,
+    cacheMinTokens: 1024,
+    capability: 'large',
+    tier: 'opus',
+    notes:
+      'Retired on the Claude API on 2026-06-15; still served on Google Cloud (Google managed).'
+      + ' Anthropic names Claude Opus 4.8 as the replacement.',
+  },
+  {
+    /*
      * The pricing page and the Sonnet 5.5 model page, read 2026-10-10. The
      * same $2/$10 as Sonnet 5, with the cache read at $0.10, 0.05x, where
      * Sonnet 5 reads at $0.20. Writes $2.50 and $4; batch $1/$5.
@@ -532,6 +585,30 @@ export const MODELS: ModelPricing[] = [
   },
   {
     /*
+     * Retired on the Claude API on 2026-06-15 (the deprecations page, read
+     * 2026-11-05); still served on Claude Models on Google Cloud (Google
+     * managed) and on Bedrock. The pricing page, read the same day: $3/$15,
+     * writes $3.75 and $6, cache hits $0.30, batch $1.50/$7.50. 200k context
+     * from the context-windows page, a 1,024-token cache minimum from the
+     * prompt-caching page. The pricing page publishes one rate for it and no
+     * long-context band, so every call is priced at that rate.
+     */
+    id: 'claude-sonnet-4-20250514',
+    provider: 'anthropic',
+    displayName: 'Claude Sonnet 4',
+    recommendable: false,
+    inputPerMTok: 3,
+    outputPerMTok: 15,
+    contextWindow: 200_000,
+    cacheMinTokens: 1024,
+    capability: 'mid',
+    tier: 'sonnet',
+    notes:
+      'Retired on the Claude API on 2026-06-15; still served on Google Cloud (Google managed) and Bedrock.'
+      + ' Anthropic names Claude Sonnet 5.5 as the replacement.',
+  },
+  {
+    /*
      * The pricing page, the models overview and the prompt-caching page, read
      * 2026-10-10. Priced by prompt length, per request: $0.10/$0.50 for a
      * prompt up to 100,000 tokens and $0.50/$2.50 over it, where the length
@@ -584,6 +661,29 @@ export const MODELS: ModelPricing[] = [
     capability: 'small',
     tier: 'haiku',
     notes: '200K context window and a 64K output cap, smaller than the rest.',
+  },
+  {
+    /*
+     * Retired on the Claude API on 2026-02-19 (the deprecations page, read
+     * 2026-11-05); still served on Claude Models on Google Cloud (Google
+     * managed). The pricing page, read the same day: $0.80/$4, writes $1 and
+     * $1.60, cache hits $0.08, batch $0.40/$2, the default multipliers. 200k
+     * context from the context-windows page, and the prompt-caching page's
+     * 2,048-token cache minimum.
+     */
+    id: 'claude-3-5-haiku-20241022',
+    provider: 'anthropic',
+    displayName: 'Claude Haiku 3.5',
+    recommendable: false,
+    inputPerMTok: 0.8,
+    outputPerMTok: 4,
+    contextWindow: 200_000,
+    cacheMinTokens: 2048,
+    capability: 'small',
+    tier: 'haiku',
+    notes:
+      'Retired on the Claude API on 2026-02-19; still served on Google Cloud (Google managed).'
+      + ' Anthropic names Claude Haiku 4.5 as the replacement.',
   },
 
   // ------------------------------------------------------------------------
@@ -748,7 +848,21 @@ export const MODELS: ModelPricing[] = [
     notes: OPENAI_CURRENT_NOTE,
   },
   {
+    /*
+     * Its model page, read 2026-11-05: "The `gpt-5.6` alias routes requests
+     * to GPT-5.6 Sol", so a log that names the alias is this model; and
+     * "$4 per million input tokens and $20 per million output tokens, a 20%
+     * reduction in input pricing and a 33% reduction in output pricing ...
+     * promotional pricing is available until November 30, 2026". The price
+     * after the promotion is not published as a figure, and deriving one
+     * from two rounded percentages would be a price nobody quoted, so the row
+     * carries what the page charges today. When the page changes,
+     * `scripts/price-drift.mjs` reports it on the next weekly run; until a
+     * person reads the new figure, a call after 2026-11-30 may be priced low,
+     * and the note says so to anyone reading the row.
+     */
     id: 'gpt-5.6-sol',
+    aliases: ['gpt-5.6'],
     provider: 'openai',
     displayName: 'GPT-5.6 Sol',
     inputPerMTok: 4,
@@ -768,7 +882,9 @@ export const MODELS: ModelPricing[] = [
     ],
     capability: 'large',
     tier: 'opus',
-    notes: OPENAI_CURRENT_NOTE,
+    notes:
+      OPENAI_CURRENT_NOTE
+      + ' $4/$20 is promotional until 2026-11-30, and OpenAI has not published the price after it as a figure.',
   },
   {
     id: 'gpt-5.6-terra',
@@ -815,6 +931,39 @@ export const MODELS: ModelPricing[] = [
     capability: 'small',
     tier: 'haiku',
     notes: OPENAI_CURRENT_NOTE,
+  },
+  {
+    /*
+     * The pricing page's "Cyber models" table and the model's own page
+     * (developers.openai.com/api/docs/models/gpt-5.6-cyber.md), read
+     * 2026-11-05: $12.50/$75, cached input $1.25, the 30-minute write $15.625
+     * and the 12-hour one $31.25, the same 0.1x, 1.25x and 2.5x as the rest of
+     * GPT-5.6. A 400,000-token context window with at most 272,000 input
+     * tokens, so the long-prompt band the model page mentions can never be
+     * reached and none is modelled; the pricing page lists none either. The
+     * Batch endpoint is "Not supported", so there is no batch price.
+     *
+     * Found by `scripts/price-drift.mjs` on its first run, as a model on the
+     * pricing page that read as unpriced. It needs Daybreak programme
+     * approval, so it is priced for the logs of people who have it and never
+     * recommended to anyone else.
+     */
+    id: 'gpt-5.6-cyber',
+    provider: 'openai',
+    displayName: 'GPT-5.6 Cyber',
+    recommendable: false,
+    inputPerMTok: 12.5,
+    outputPerMTok: 75,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1.25, cacheWrite1h: 2.5, batch: null },
+    cacheTtl: OPENAI_CACHE_TTL,
+    capability: 'large',
+    tier: 'opus',
+    notes:
+      'Needs approval through the Daybreak programme. At most 272,000 input tokens, Responses API only, no batch.'
+      + ' Cache writes cost 1.25x input for the default 30-minute entry and 2.5x for a 12-hour one.',
   },
 
   // ------------------------------------------------------------------------
@@ -1160,6 +1309,141 @@ export const MODELS: ModelPricing[] = [
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_EARLIER_NO_CACHE_NOTE + OPENAI_DEPRECATED_SUFFIX,
+  },
+  // ------------------------------------------------------------------------
+  // The Codex models and chat-latest. Codex CLI sessions name these, and none
+  // was priced, so every such call read as unpriced. Each from its own model
+  // page (developers.openai.com/api/docs/models/<id>.md), read 2026-11-05,
+  // and gpt-5.3-codex and chat-latest also from the pricing page's
+  // "Specialized models" table. Every page says Batch is "Not supported", so
+  // none has a batch price. gpt-5.3-codex is deprecated and the rest of the
+  // Codex line is shut down; all are priced for the logs that hold them and
+  // never recommended. chat-latest is served and not recommended either: it
+  // points at whatever model ChatGPT uses, so a recommendation would not name
+  // a fixed model. Cache reads are 0.1x everywhere but codex-mini-latest,
+  // whose page gives $0.375 on $1.50, 0.25x. gpt-5-search-api is on the
+  // pricing page too and its model page returns 404, so it has no context
+  // window and is left unpriced (see scripts/price-drift.mjs).
+  // ------------------------------------------------------------------------
+  {
+    id: 'gpt-5.3-codex',
+    provider: 'openai',
+    displayName: 'GPT-5.3-Codex',
+    recommendable: false,
+    inputPerMTok: 1.75,
+    outputPerMTok: 14,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CODEX_NOTE + ' At most 272,000 input tokens.' + OPENAI_DEPRECATED_SUFFIX,
+  },
+  {
+    id: 'gpt-5.2-codex',
+    provider: 'openai',
+    displayName: 'GPT-5.2-Codex',
+    recommendable: false,
+    inputPerMTok: 1.75,
+    outputPerMTok: 14,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CODEX_NOTE + ' At most 272,000 input tokens.' + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'gpt-5.1-codex',
+    provider: 'openai',
+    displayName: 'GPT-5.1-Codex',
+    recommendable: false,
+    inputPerMTok: 1.25,
+    outputPerMTok: 10,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CODEX_NOTE + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'gpt-5.1-codex-max',
+    provider: 'openai',
+    displayName: 'GPT-5.1-Codex-Max',
+    recommendable: false,
+    inputPerMTok: 1.25,
+    outputPerMTok: 10,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CODEX_NOTE + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'gpt-5.1-codex-mini',
+    provider: 'openai',
+    displayName: 'GPT-5.1-Codex Mini',
+    recommendable: false,
+    inputPerMTok: 0.25,
+    outputPerMTok: 2,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: OPENAI_CODEX_NOTE + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'gpt-5-codex',
+    provider: 'openai',
+    displayName: 'GPT-5-Codex',
+    recommendable: false,
+    inputPerMTok: 1.25,
+    outputPerMTok: 10,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: OPENAI_CODEX_NOTE + ' At most 272,000 input tokens.' + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'codex-mini-latest',
+    provider: 'openai',
+    displayName: 'codex-mini-latest',
+    recommendable: false,
+    inputPerMTok: 1.5,
+    outputPerMTok: 6,
+    contextWindow: 200_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: OPENAI_CODEX_NOTE + ' A cache read costs 0.25x input.' + OPENAI_SHUT_DOWN_SUFFIX,
+  },
+  {
+    id: 'chat-latest',
+    provider: 'openai',
+    displayName: 'Chat Latest',
+    recommendable: false,
+    inputPerMTok: 5,
+    outputPerMTok: 30,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'large',
+    tier: 'opus',
+    notes: 'Points at the model ChatGPT currently uses, so it is priced and never recommended. Caching is automatic; a write costs what input costs. At most 272,000 input tokens, and no batch.',
   },
 
   // ------------------------------------------------------------------------

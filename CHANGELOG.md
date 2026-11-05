@@ -11,7 +11,70 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- **Four retired Claude models are priced**: Claude Opus 4.1, Opus 4, Sonnet 4
+  and Haiku 3.5, from Anthropic's pricing, deprecations, context-windows and
+  prompt-caching pages, read 2026-11-05. They are retired on the Claude API and
+  still served on Google Cloud and Bedrock, and every Claude Code log from
+  before their retirement carries them. Each of those calls read as an unpriced
+  model, so a bill spanning them was low, and an Opus 4.1 session by a lot: it
+  bills at $15/$75, three times Opus 4.5. Opus 4 bills the same, Sonnet 4 at
+  $3/$15 and Haiku 3.5 at $0.80/$4, with the standard cache and batch
+  multipliers, a 200k context window and the cache minimums the caching page
+  gives. They are priced for the logs and never recommended. Claude Sonnet 3.7
+  and Haiku 3 are retired and no longer on the pricing page, so they stay
+  unpriced rather than carry a figure no page publishes.
+
+- **GPT-5.6 Cyber is priced**: $12.50/$75, cached input $1.25, the 30-minute
+  write $15.625 and the 12-hour one $31.25, a 400,000-token window with at
+  most 272,000 input tokens, and no batch, from the pricing page and its own
+  model page, read 2026-11-05. It needs Daybreak programme approval, so it is
+  never recommended. The price-drift check below found it on its first run.
+
+- **Codex sessions on the Codex models are billed.** Codex CLI names
+  gpt-5.3-codex, and before it gpt-5.2-codex, gpt-5.1-codex and its Max and
+  Mini variants, gpt-5-codex and codex-mini-latest; none was priced, so every
+  such call in a Codex bill read as unpriced. Each is now priced from its own
+  model page, read 2026-11-05: $1.75/$14 for 5.3 and 5.2, $1.25/$10 for 5.1,
+  5.1 Max and 5, $0.25/$2 for 5.1 Mini, $1.50/$6 for codex-mini-latest (whose
+  cache read is 0.25x, not 0.1x), no batch for any. chat-latest ($5/$30) is
+  priced too. gpt-5.3-codex is deprecated and the rest are shut down, so all
+  are priced for the logs and never recommended; chat-latest is not
+  recommended because it moves with ChatGPT. gpt-5-search-api is on the
+  pricing page with no model page, so it stays unpriced, recorded in the
+  drift check with that reason.
+
+- **`gpt-5.6` is priced as GPT-5.6 Sol.** Its model page says the alias
+  routes there, and a log that names the alias read as unpriced.
+
+### Honest gaps, stated
+
+- **GPT-5.6 Sol's $4/$20 is promotional until 2026-11-30**, its page says,
+  as "a 20% reduction in input pricing and a 33% reduction in output
+  pricing". The price after it is not published as a figure, and one derived
+  from two rounded percentages would be a price nobody quoted, so the
+  catalogue keeps today's and the row's note says so. If the page changes on
+  1 December, the weekly price-drift check reports it; until a person reads
+  the new figure, GPT-5.6 Sol calls after 30 November may be priced low.
+
+### Guarded
+
+- **A weekly check that the catalogue still agrees with the pricing pages.**
+  `scripts/price-drift.mjs` reads Anthropic's and OpenAI's pricing pages in
+  their Markdown form and compares every published figure with the catalogue:
+  input, output, cache hits, both cache writes, batch, the long-prompt bands
+  and fast mode, 50 models in all, including the "Specialized models" table
+  where the Codex and ChatGPT models are priced. A changed price, a model the catalogue
+  lacks, or a page whose tables moved is a finding and fails the scheduled CI
+  run; on pull requests it is printed in the step's log. Freshness says how
+  long ago a provider was read; this says whether its page has changed since.
+  Three of the corrections in 2.7.1 were prices already published for weeks.
+  It never writes a price. GPT-5.5 Cyber and the three Rosalind models are on
+  OpenAI's page and left unpriced on purpose, with the reason in the script:
+  each is behind an approval programme and has no model page to give a context
+  window. Google, DeepSeek, Moonshot, xAI and Mistral publish no page a script
+  reads reliably and stay with a person.
 
 ## 2.7.1 — 2026-11-05
 
