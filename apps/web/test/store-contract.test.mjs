@@ -145,6 +145,26 @@ for (const driver of DRIVERS) {
       assert.equal(await store.touchSession('no-such-hash'.padEnd(64, '0'), later(DAY), T0), false);
     });
 
+    it('counts each bucket and window on its own, atomically, and sweeps the windows that ended', async () => {
+      const store = await driver.make();
+      const w0 = T0;
+      const w1 = later(60_000);
+      const end = (start) => new Date(start.getTime() + 60_000);
+
+      // Twenty at once on one bucket: an atomic count hands out 1 to 20, each once.
+      const counts = await Promise.all(Array.from({ length: 20 }, () => store.limits.hit('auth:a', w0, end(w0))));
+      assert.deepEqual([...counts].sort((x, y) => x - y), Array.from({ length: 20 }, (_, i) => i + 1), 'two requests got the same count');
+
+      assert.equal(await store.limits.hit('auth:b', w0, end(w0)), 1, 'buckets share a count');
+      assert.equal(await store.limits.hit('session:a', w0, end(w0)), 1, 'limits share a count');
+      assert.equal(await store.limits.hit('auth:a', w1, end(w1)), 1, 'a new window kept the old count');
+
+      // The first window has ended at w1; the second has not.
+      assert.equal(await store.limits.sweep(w1), 3);
+      assert.equal(await store.limits.sweep(w1), 0);
+      assert.equal(await store.limits.hit('auth:a', w1, end(w1)), 2, 'the sweep took a live window');
+    });
+
     it('keeps every version of a prompt, oldest first by number, and only for its owner', async () => {
       const store = await driver.make();
       const alice = await store.upsertUser(identity(1), T0);
@@ -252,3 +272,28 @@ describe('Postgres rows written before the settings fix', { skip: PG_URL ? false
     assert.deepEqual((await store.shares.findShare('legacy-token', T0)).settings, { level: 'aggressive' });
   });
 });
+
+describe('rate limits shared through a real PostgreSQL', { skip: PG_URL ? false : 'needs TRAZUM_TEST_DATABASE_URL' }, () => {
+  it('refuses two instances together, and the table never holds the address', async () => {
+    const store = await freshPostgres();
+    const { createSharedRateLimiter } = await import('../lib/shared-limit.ts');
+    const warnings = [];
+    const deps = { store: async () => store, secret: () => 'github-client-secret', warn: (m) => warnings.push(m) };
+    const a = createSharedRateLimiter('auth', { windowMs: 60_000, max: 30 }, deps);
+    const b = createSharedRateLimiter('auth', { windowMs: 60_000, max: 30 }, deps);
+    const request = () => new Request('https://trazum.example/api/auth/github', { headers: { 'x-forwarded-for': '203.0.113.7' } });
+
+    const now = T0.getTime();
+    let refused = 0;
+    for (let i = 0; i < 20; i += 1) if (await a(request(), now + i)) refused += 1;
+    for (let i = 0; i < 20; i += 1) if (await b(request(), now + 20 + i)) refused += 1;
+    assert.equal(refused, 10, 'each instance counted alone');
+    assert.deepEqual(warnings, [], 'the shared count fell back');
+
+    const rows = await pg`select bucket, hits from trazum_rate_limits`;
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].hits, 40);
+    assert.ok(!rows[0].bucket.includes('203.0.113.7'), 'the address reached the database');
+  });
+});
+

@@ -64,7 +64,7 @@ export async function GET(request: Request): Promise<Response> {
    * because a cached identity is somebody else's identity served to a stranger,
    * and a cached 429 is the same mistake with a smaller blast radius.
    */
-  if (sessionRateLimited(request, Date.now())) {
+  if (await sessionRateLimited(request, Date.now())) {
     return Response.json(
       { error: 'too many requests, try again in a minute' },
       { status: 429, headers: { 'cache-control': 'private, no-store' } },

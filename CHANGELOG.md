@@ -40,6 +40,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Sign-in, session and library rate limits counted across instances.**
+  They were counted in each server's memory, so a platform running several
+  instances multiplied every limit by however many served a caller. With
+  accounts and a database they are now counted in `trazum_rate_limits`
+  (migration `004_rate_limits.sql`, embedded in `n0-app.json` too) in one
+  atomic statement per request, by the clock's minute. The table never holds
+  an address: the bucket is an HMAC of it under a key derived with HKDF from
+  the GitHub client secret, which the database does not hold, and each row
+  lives one window. The instance's own limiter still runs first, so once one
+  instance alone is over the limit its further requests cost no database
+  write, and it stands alone if the table is missing or the database
+  unreachable, which the log says once. The
+  anonymous tool routes stay per instance on purpose: they protect that
+  instance's CPU.
 - **The web store's contract, run against a real PostgreSQL in CI.**
   `apps/web/test/store-contract.test.mjs` checks users, sessions and their
   expiry, prompts and versions, share links, the admin census and account

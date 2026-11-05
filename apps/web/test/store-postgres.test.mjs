@@ -196,6 +196,34 @@ describe('the Postgres driver', () => {
     assert.deepEqual(sql.queries[1].values, [ROW.id]);
   });
 
+  it('counts a request in one atomic statement, binding every value', async () => {
+    const sql = recorder([[{ hits: 3 }]]);
+    const start = new Date('2026-11-05T12:00:00Z');
+    const end = new Date('2026-11-05T12:01:00Z');
+    assert.equal(await postgresStore(sql).limits.hit('auth:abc', start, end), 3);
+
+    const upsert = flat(sql.queries[0].text);
+    // A select followed by an update would lose the very races a shared count
+    // exists to catch; the increment has to be the conflict branch of the insert.
+    assert.ok(upsert.startsWith('insert into trazum_rate_limits'));
+    assert.ok(upsert.includes('on conflict (bucket, window_start) do update set hits = trazum_rate_limits.hits + 1'));
+    assert.ok(upsert.includes('returning hits'));
+    assert.deepEqual(sql.queries[0].values, ['auth:abc', start, end]);
+  });
+
+  it('refuses to report a count the database did not return', async () => {
+    const sql = recorder([[]]);
+    await assert.rejects(() => postgresStore(sql).limits.hit('auth:abc', new Date(), new Date()), /no count/);
+  });
+
+  it('sweeps only the windows that have ended', async () => {
+    const sql = recorder([[{ bucket: 'a' }, { bucket: 'b' }]]);
+    const now = new Date('2026-11-05T12:00:00Z');
+    assert.equal(await postgresStore(sql).limits.sweep(now), 2);
+    assert.ok(flat(sql.queries[0].text).includes('delete from trazum_rate_limits where expires_at <= ?'));
+    assert.deepEqual(sql.queries[0].values, [now]);
+  });
+
   it('does not claim to be ephemeral', () => {
     assert.equal(postgresStore(recorder()).ephemeral, false);
     assert.equal(postgresStore(recorder()).kind, 'postgres');
@@ -257,5 +285,30 @@ describe('the schema the driver expects', () => {
     for (const statement of statements) {
       assert.match(statement, /if not exists/i);
     }
+  });
+});
+
+describe('the rate-limit table', () => {
+  const schema = readFileSync(new URL('../db/004_rate_limits.sql', import.meta.url), 'utf8')
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('--'))
+    .join('\n');
+
+  it('has a column for every value the driver binds, keyed on bucket and window', () => {
+    for (const column of ['bucket', 'window_start', 'expires_at', 'hits']) {
+      assert.ok(flat(schema).includes(column), column);
+    }
+    assert.ok(flat(schema).includes('primary key (bucket, window_start)'), 'the upsert needs this exact conflict target');
+  });
+
+  it('enables row level security without forcing it, like every other table', () => {
+    assert.ok(flat(schema).includes('alter table trazum_rate_limits enable row level security'));
+    assert.ok(!flat(schema).includes('force row level security'));
+  });
+
+  it('can be applied twice', () => {
+    const statements = schema.split(';').filter((s) => /create (table|index)/i.test(s));
+    assert.equal(statements.length, 2);
+    for (const statement of statements) assert.match(statement, /if not exists/i);
   });
 });

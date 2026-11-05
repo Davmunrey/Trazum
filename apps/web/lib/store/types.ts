@@ -18,6 +18,7 @@
  *    is what makes it testable without waiting a month.
  */
 
+import type { LimitStore } from './limits';
 import type { AdminStore, PromptStore } from './prompts';
 import type { ShareStore } from './shares';
 
@@ -102,6 +103,15 @@ export interface Store {
    * that variable is empty by default.
    */
   readonly admin: AdminStore;
+
+  /**
+   * Request counters shared by every instance of the deployment.
+   *
+   * Its own namespace because it holds nothing about anybody: an opaque bucket
+   * and a number, for one window. See `lib/store/limits.ts`, and
+   * `lib/shared-limit.ts` for the one caller and why only some limits use it.
+   */
+  readonly limits: LimitStore;
 
   /**
    * True when everything in here dies with the process.

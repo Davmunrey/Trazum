@@ -38,7 +38,7 @@ tool does on their machines.
 | --- | --- | --- | --- |
 | Web front end | Next.js pages; reads pasted logs in the browser | The browser | Nothing server-side |
 | API routes | Sign-in, prompt library, share links, account export and deletion, admin overview | The operator's platform (Vercel, or the container in `Dockerfile`) | Nothing between requests |
-| Database | Postgres when `TRAZUM_DATABASE_URL` is set; memory otherwise | The operator's database provider | Users, hashed sessions, prompts and versions, share links ([what exactly](../accounts.md#what-it-does-with-your-data)) |
+| Database | Postgres when `TRAZUM_DATABASE_URL` is set; memory otherwise | The operator's database provider | Users, hashed sessions, prompts and versions, share links, one-minute request counters keyed by an HMAC of the caller's address ([what exactly](../accounts.md#what-it-does-with-your-data)) |
 | Identity | GitHub OAuth, scope `read:user` | GitHub | The GitHub account; Trazum never stores GitHub's token |
 | Logs | Security events on standard output | The operator's platform | Internal ids and event codes only ([TRZ-13](controls.md)) |
 
@@ -66,14 +66,13 @@ after it:
 | The accounts guide said account deletion did not exist, after it shipped | Corrected, and the export and the log documented | SOC 2 CC2.3 |
 | The Postgres driver had never run against Postgres. When it did, account deletion failed for anyone with a saved prompt, and share settings were stored as a string | `apps/web/test/store-contract.test.mjs` runs one contract on both drivers, against the runner's PostgreSQL in CI; both bugs fixed without a migration | SOC 2 CC8.1, P4.3; ISO 27001 8.29, 8.10; ASVS V8.3 |
 | A session lasted thirty days however long it sat unused | An idle window on top of the lifetime: a day and thirty days by default, configurable down to ASVS level 2's thirty minutes and twelve hours; a request moves the end on, never past the lifetime, and writes at most every five minutes; sessions from before the change end at their next use. `apps/web/lib/auth/session.ts`, `apps/web/test/session-lifetime.test.mjs` | SOC 2 CC6.1; ISO 27001 8.5; ASVS V3.3.2 |
+| The sign-in, session and library limits were counted by each server instance alone, so a platform running several instances multiplied them | Counted in `trazum_rate_limits` across instances when the deployment has accounts and a database, keyed by an HMAC of the address under a key the database does not hold; falls back to the instance's own count if the table is missing or unreachable. `apps/web/lib/shared-limit.ts`, `apps/web/test/shared-limit.test.mjs` | SOC 2 CC6.6; ISO 27001 8.26; ASVS V11.1 |
 
 ## What remains, in code
 
 Things a pull request can still do, in the order they matter to an audit:
 
-1. **A shared rate-limit store.** Limits are counted per server instance today
-   (TRZ-08), which stops scripts and not a distributed attacker.
-2. **The ASVS level 2 rows not yet mapped**, worked through section by section.
+1. **The ASVS level 2 rows not yet mapped**, worked through section by section.
 
 ## What only the owner can do
 

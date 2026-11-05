@@ -1,4 +1,4 @@
-import { createRateLimiter } from '../rate-limit';
+import { createSharedRateLimiter } from '../shared-limit';
 import type { AuthConfig, AuthEnabled } from './config';
 
 /**
@@ -25,7 +25,7 @@ import type { AuthConfig, AuthEnabled } from './config';
  * script hammering the callback and spending our GitHub quota, and thirty a
  * minute per address bounds that perfectly well.
  */
-export const authRateLimited = createRateLimiter({ windowMs: 60_000, max: 30 });
+export const authRateLimited = createSharedRateLimiter('auth', { windowMs: 60_000, max: 30 });
 
 /**
  * A separate budget for `GET /api/auth/session`, and separate on purpose.
@@ -47,7 +47,7 @@ export const authRateLimited = createRateLimiter({ windowMs: 60_000, max: 30 });
  * bound is a distributed attacker, which `rate-limit.ts` already states in its
  * own terms. Guessing a token is not among the risks: they are 256 bits.
  */
-export const sessionRateLimited = createRateLimiter({ windowMs: 60_000, max: 60 });
+export const sessionRateLimited = createSharedRateLimiter('session', { windowMs: 60_000, max: 60 });
 
 export function jsonError(message: string, status: number, headers?: HeadersInit): Response {
   return Response.json({ error: message }, { status, headers });
