@@ -238,6 +238,41 @@ asserts no workflow reaches for one.
 
 ## Cutting a release
 
+**Most of it is one command** (since 2.7.0):
+
+```bash
+git fetch --tags
+node scripts/prepare-release.mjs 2.7.0 --dry-run   # what would change
+node scripts/prepare-release.mjs 2.7.0             # change it
+```
+
+It moves every version that has to move in lockstep (the root, the six
+workspaces, each workspace's `@trazum/core` pin, the lockfile,
+`packages/mcp/server.json`, the plugin manifest and the MCP handshake),
+turns `Unreleased` into the version's heading in `CHANGELOG.md`, moves the
+"on npm at" line at the top of `RELEASES.md`, and moves the
+Action pin in every document to the **newest tag that exists**. Every
+replacement is counted, and a count that differs from what a file is known to
+hold stops the run before anything is written, so a manifest added later is a
+refusal, not a version left behind. What it leaves for you is prose and
+prices, and it prints that list at the end. `node scripts/prepare-release.mjs
+--pin-only` moves the pin on its own.
+
+The pin rule is what removes the follow-up PR: the docs-pin guard allows one
+release of lag, and the newest existing tag is always within one of the
+release being cut, so a pin moved in every release PR never falls out of the
+guard. Before this, the pin moved in a separate PR after each release, and
+when two releases went by without it, the guard held every open pull request
+red for three weeks.
+
+**Between releases, the weekly scheduled CI run** calls
+`node scripts/freshness.mjs`, which fails when a provider's price review is
+past the 45-day line or the pin is two releases behind, and reports unreleased
+commits. On pull requests the same report goes to the job summary without
+failing, so a stale price review never blocks unrelated work.
+
+The steps below are what the script does and what it leaves, in order.
+
 **Which number first.** Since 1.50.1 the version carries the narrative: a
 chapter of the arc in progress is a **patch**, and the **minor** is spent only
 on the release that lands the arc's thesis. A pricing correction is also a
@@ -266,8 +301,8 @@ including what it costs a reader pinning with a tilde, is in
    the MCP registry hosts metadata rather than artefacts, so a stale version
    there advertises a server that is no longer the one on npm, and a stranger
    is the one who finds out.
-4. **Update the README's action pin** to the release commit, with the new version
-   in the trailing comment. `security.test.js` asks git what version *that commit*
+4. **Move the action pin** (the script does this) to the newest existing
+   release commit, with its version in the trailing comment. `security.test.js` asks git what version *that commit*
    declares and fails if the label disagrees — so the pin can only be advanced
    once the commit it names exists, which is after the merge rather than in it.
 5. **Nothing to drop any more.** The "not published yet" notes are gone, and
