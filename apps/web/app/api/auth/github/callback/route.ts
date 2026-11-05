@@ -3,7 +3,7 @@ import { authConfig } from '../../../../../lib/auth/config';
 import { parseCookies, serializeCookie } from '../../../../../lib/auth/cookies';
 import { exchangeCode, fetchIdentity, stateMatches, unpackState } from '../../../../../lib/auth/github';
 import { authDisabled, authRateLimited, jsonError, redirect } from '../../../../../lib/auth/routes';
-import { issueSession, stateCookieName } from '../../../../../lib/auth/session';
+import { hashToken, issueSession, stateCookieName, tokenFromRequest } from '../../../../../lib/auth/session';
 import { routeOf, securityEvent } from '../../../../../lib/security-log';
 import { getStore } from '../../../../../lib/store';
 
@@ -125,6 +125,20 @@ export async function GET(request: Request): Promise<Response> {
   const user = await store.upsertUser(identity, now);
   const session = issueSession(user.id, now, config.secure, config.session);
   await store.createSession(session.record);
+
+  /**
+   * A sign-in from a browser that was already signed in replaces its session.
+   *
+   * The new cookie overwrites the old one, so the old row could never be
+   * presented again: before this it sat in the table, listed among the
+   * account's sessions with nothing able to use it, until its idle window ran
+   * out. Signing in again is also how somebody proves a recent sign-in before
+   * ending their other sessions (`signedInRecently`), so without this every
+   * such proof would add a dead session to the list it was meant to tidy.
+   * Whoever the old session belonged to, it is unreachable now.
+   */
+  const previous = tokenFromRequest(request, config.secure);
+  if (previous) await store.deleteSession(hashToken(previous)).catch(() => {});
 
   /**
    * And take the dead rows out on the way past.

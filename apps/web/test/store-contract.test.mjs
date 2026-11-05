@@ -129,6 +129,27 @@ for (const driver of DRIVERS) {
       assert.equal(await store.findSession(session(user.id, 2).tokenHash, T0), null);
     });
 
+    it('lists one account\'s live sessions, newest first, and nobody else\'s', async () => {
+      const store = await driver.make();
+      const me = await store.upsertUser(identity(1), T0);
+      const other = await store.upsertUser(identity(2), T0);
+      const at = (n, createdAt, expiresAt = later(30 * DAY)) => ({ ...session(me.id, n, expiresAt), createdAt });
+      await store.createSession(at(1, T0));
+      await store.createSession(at(2, later(DAY)));
+      await store.createSession(at(3, later(-DAY), later(-1000))); // over
+      await store.createSession(session(other.id, 9));
+
+      const listed = await store.listSessionsForUser(me.id, T0);
+      assert.deepEqual(
+        listed.map((row) => row.tokenHash),
+        [at(2, T0).tokenHash, at(1, T0).tokenHash],
+        'newest first, live only, this account only',
+      );
+      assert.ok(listed.every((row) => row.userId === me.id && row.createdAt instanceof Date && row.expiresAt instanceof Date));
+      assert.equal(listed[0].createdAt.getTime(), later(DAY).getTime());
+      assert.deepEqual(await store.listSessionsForUser('00000000-0000-4000-8000-000000000000', T0), []);
+    });
+
     it('moves a live session\'s end, and never brings a dead one back', async () => {
       const store = await driver.make();
       const user = await store.upsertUser(identity(1), T0);

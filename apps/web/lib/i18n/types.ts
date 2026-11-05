@@ -138,6 +138,22 @@ export interface WebMessages {
     deleteFailed: string;
     /** Names the account menu's trigger, which collapses to a bare avatar. */
     menuLabel(login: string): string;
+    /** Every session the account has, to see and end one at a time. */
+    sessions: string;
+    sessionsLoading: string;
+    sessionsFailed: string;
+    /** Marks the session the page is using. */
+    sessionThisDevice: string;
+    /** `when` is a date and time already formatted for the locale. */
+    sessionStarted(when: string): string;
+    /** `when` is a relative time already formatted for the locale. */
+    sessionLastActive(when: string): string;
+    sessionEndConfirm(started: string): string;
+    /** Names the action on a session's row, for a screen reader and a tooltip. */
+    sessionEnd(started: string): string;
+    sessionEndFailed: string;
+    /** Ending another session, or all of them, needs a sign-in within fifteen minutes. */
+    reauthConfirm: string;
   };
 
   /** The saved-prompts tab. Rendered only for a signed-in reader. */

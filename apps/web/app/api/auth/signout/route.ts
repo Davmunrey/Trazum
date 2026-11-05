@@ -1,6 +1,6 @@
 import { authConfig } from '../../../../lib/auth/config';
 import { authDisabled, jsonError, sameOrigin } from '../../../../lib/auth/routes';
-import { clearSessionCookies, hashToken, tokenFromRequest } from '../../../../lib/auth/session';
+import { clearSessionCookies, hashToken, signedInRecently, tokenFromRequest } from '../../../../lib/auth/session';
 import { routeOf, securityEvent } from '../../../../lib/security-log';
 import { getStore } from '../../../../lib/store';
 
@@ -27,6 +27,14 @@ export const runtime = 'nodejs';
  *
  * Opt-in rather than the default, because the common case is one person leaving
  * one shared machine and they should not lose their phone with it.
+ *
+ * **And it needs a recent sign-in** (OWASP ASVS 4.0.3 3.3.4): a session
+ * started in the last fifteen minutes, which is GitHub's credentials entered
+ * again. Otherwise it answers 403 with `reauth: true`, ends nothing, and the
+ * page sends its owner through sign-in first. Whoever holds only a stolen
+ * cookie holds an older session than that, so they cannot sign the owner out
+ * of every device; the owner, back from GitHub, can sign them out. Ending
+ * just this session needs nothing.
  */
 export async function POST(request: Request): Promise<Response> {
   const config = authConfig();
@@ -52,7 +60,15 @@ export async function POST(request: Request): Promise<Response> {
 
     // Resolved either way now, so the record can say whose session ended; the
     // lookup is one indexed read by token hash.
-    const found = await store.findSession(hash, new Date());
+    const now = new Date();
+    const found = await store.findSession(hash, now);
+    if (everywhere && found && !signedInRecently(found.session, now)) {
+      securityEvent('auth.sign_out', 'failure', { userId: found.user.id, reason: 'reauth_required', route: routeOf(request) });
+      return Response.json(
+        { error: 'sign in again to sign out everywhere', reauth: true },
+        { status: 403, headers: { 'cache-control': 'private, no-store' } },
+      );
+    }
     if (everywhere && found) await store.deleteSessionsForUser(found.user.id);
     // Also the fallback when `all` was asked for and the token resolved to
     // nothing: deleting a hash that is not there costs nothing, and the

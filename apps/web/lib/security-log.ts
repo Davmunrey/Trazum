@@ -60,7 +60,9 @@ export type SecurityReason =
   | 'not_owner'
   | 'not_json'
   | 'invalid_json'
-  | 'invalid_input';
+  | 'invalid_input'
+  | 'reauth_required'
+  | 'not_found';
 
 export interface SecurityLine {
   type: 'security';

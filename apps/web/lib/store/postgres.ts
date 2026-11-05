@@ -194,6 +194,22 @@ export function postgresStore(sql: SqlClient): Store {
       await sql`delete from trazum_sessions where user_id = ${userId}`;
     },
 
+    async listSessionsForUser(userId: string, now: Date): Promise<SessionRecord[]> {
+      // `trazum_sessions_user_id_idx`, added with the table, serves the lookup.
+      const rows = await sql`
+        select token_hash, user_id, created_at, expires_at
+        from trazum_sessions
+        where user_id = ${userId} and expires_at > ${now}
+        order by created_at desc, token_hash
+      `;
+      return rows.map((row) => ({
+        tokenHash: String(row.token_hash),
+        userId: String(row.user_id),
+        createdAt: new Date(row.created_at as string),
+        expiresAt: new Date(row.expires_at as string),
+      }));
+    },
+
     async deleteExpiredSessions(now: Date): Promise<number> {
       // One indexed range delete: `trazum_sessions_expires_at_idx` already
       // exists for exactly this shape, added with the table in

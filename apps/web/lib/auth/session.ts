@@ -211,6 +211,19 @@ export async function currentUser(
   now: Date,
   config: { secure: boolean; session: SessionPolicy },
 ): Promise<UserRecord | null> {
+  return (await currentSession(request, store, now, config))?.user ?? null;
+}
+
+/**
+ * `currentUser`, with the session it was found by: what a route needs when it
+ * acts on sessions themselves rather than on what an account owns.
+ */
+export async function currentSession(
+  request: Request,
+  store: Store,
+  now: Date,
+  config: { secure: boolean; session: SessionPolicy },
+): Promise<{ user: UserRecord; session: SessionRecord } | null> {
   const token = tokenFromRequest(request, config.secure);
   if (!token) return null;
 
@@ -226,7 +239,54 @@ export async function currentUser(
     return null;
   }
   if (next.kind === 'refresh') {
-    await store.touchSession(hash, next.expiresAt, now).catch(() => false);
+    const moved = await store.touchSession(hash, next.expiresAt, now).catch(() => false);
+    if (moved) return { user: found.user, session: { ...found.session, expiresAt: next.expiresAt } };
   }
-  return found.user;
+  return found;
+}
+
+// ---------------------------------------------------------------------------
+// Seeing and ending your own sessions (OWASP ASVS 4.0.3 3.3.4)
+// ---------------------------------------------------------------------------
+
+/**
+ * How long a sign-in counts as credentials just entered.
+ *
+ * ASVS 3.3.4 asks that ending other sessions, or all of them, follows
+ * entering credentials again. Sign-in here is GitHub's, so "again" is a fresh
+ * round trip through it: a session started in the last fifteen minutes. A
+ * stolen cookie is older than that, and on its own it cannot become younger,
+ * so whoever holds only a cookie cannot sign its owner out of anywhere.
+ */
+export const REAUTH_WINDOW_MS = 15 * 60 * 1000;
+
+/** Whether `session` was started recently enough to end other sessions. */
+export function signedInRecently(session: SessionRecord, now: Date): boolean {
+  const age = now.getTime() - session.createdAt.getTime();
+  return age >= 0 && age < REAUTH_WINDOW_MS;
+}
+
+/**
+ * The name a page may hold for a session.
+ *
+ * Derived from the token's hash under a label of its own, so it is stable for
+ * the session's life and reveals neither the token nor the hash the table is
+ * keyed by. Sixteen bytes: unique among one account's sessions by a margin
+ * nobody will meet.
+ */
+export function publicSessionId(tokenHash: string): string {
+  return createHash('sha256').update(`trazum session id\u0000${tokenHash}`).digest('hex').slice(0, 32);
+}
+
+/**
+ * When a session was last used, as well as the table can say.
+ *
+ * Its end is one idle window after its last refresh, so the window back from
+ * the end is that refresh: late by at most one refresh step (five minutes),
+ * and early when the lifetime caps the end. Never before the sign-in, never
+ * after now.
+ */
+export function lastActiveAt(session: SessionRecord, policy: SessionPolicy, now: Date): Date {
+  const back = session.expiresAt.getTime() - policy.idleSeconds * 1000;
+  return new Date(Math.min(now.getTime(), Math.max(session.createdAt.getTime(), back)));
 }
