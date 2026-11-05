@@ -10718,7 +10718,7 @@ function reportConversationHistory(report: UsageProfileReport, t: CliMessages): 
       const label = growth.label === UNLABELLED ? t.profile.unlabelled() : growth.label;
       console.log();
       console.log(
-        `  ${c.bold(wrap(t.profile.historyGrowth(label, growth.modelName, n(Math.round(growth.minTurnTokens)), n(Math.round(growth.maxTurnTokens)), n(growth.longestSession)), 74, '  '))}`,
+        `  ${c.bold(wrap(t.profile.historyGrowth(label, growth.modelName, n(Math.round(growth.minTurnTokens)), n(Math.round(growth.maxTurnTokens)), n(growth.longestSession), growth.sessions), 74, '  '))}`,
       );
       console.log(
         `  ${c.dim(wrap(t.profile.historyCeiling(formatUsd(growth.growthUsd), pct(growth.shareOfBill), formatUsd(growth.flatUsd), formatUsd(growth.inputUsd)), 74, '  '))}`,

@@ -654,7 +654,7 @@ describe('profile_usage', () => {
     ].join('\n');
     const small = bodyOf(await client.call('profile_usage', { log: few }));
     assert.doesNotMatch(small, /the median costs/);
-    assert.match(small, /2 conversations in this log; the most expensive cost \$8\.00/);
+    assert.match(small, /2 sessions in this log, subagents included; the most expensive cost \$8\.00/);
     assert.ok(!small.includes('"a"') && !small.includes('"b"'), 'a session key reached the output');
   });
 

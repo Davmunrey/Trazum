@@ -661,9 +661,12 @@ export const es: WebMessages = {
       'Nada que comparar: todas las llamadas con precio de este registro ya están en ese modelo, '
       + 'o son demasiado grandes para su ventana de contexto.',
     historyHeading: 'Qué cuesta reenviar la conversación',
-    historyGrowth: (label, model, first, last, turns) =>
-      `${label} en ${model}: la entrada va de ${first} tokens en el turno más pequeño a ${last} `
-      + `en el más grande, en conversaciones de hasta ${turns} turnos.`,
+    historyGrowth: (label, model, first, last, turns, conversations) =>
+      conversations > 1
+        ? `${label} en ${model}: en ${conversations.toLocaleString('es-ES')} conversaciones, el turno más pequeño `
+          + `tiene de media ${first} tokens y el más grande ${last}, en conversaciones de hasta ${turns} turnos.`
+        : `${label} en ${model}: la entrada va de ${first} tokens en el turno más pequeño a ${last} `
+          + `en el más grande, en ${turns} turnos.`,
     historyCeiling: (usd, pct, flat, spent) =>
       `Si cada turno hubiera tenido el tamaño del más pequeño, esa entrada habría costado `
       + `${flat} en vez de ${spent}, así que como mucho ${usd} de esta factura es crecimiento `
@@ -875,17 +878,17 @@ export const es: WebMessages = {
         stopReason: 'Un campo que el registro dejó de grabar no es un hallazgo arreglado. Se callaron con él: las respuestas cortadas en max_tokens y los reintentos facturados después.',
       })[field] ?? '',
     sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
-      `${label} en ${model}: en ${sessions} conversaciones, la mediana cuesta ${median} a lo `
+      `${label} en ${model}: en ${sessions} sesiones, la mediana cuesta ${median} a lo `
       + `largo de ${medianTurns} turnos, el 95% queda por debajo de ${p95} y la más cara fue `
-      + `${max}. Recuentos facturados exactos por conversación; una que empezó antes de este `
-      + 'registro o sigue después solo cuenta por los turnos aquí registrados.',
+      + `${max}. Recuentos facturados exactos por sesión con sus subagentes; una que empezó antes `
+      + 'de este registro o sigue después solo cuenta por los turnos aquí registrados.',
     sessionCostTail: (ratio) =>
-      `El percentil 95 es ${ratio}x la mediana: casi todas las conversaciones son baratas y unas `
+      `El percentil 95 es ${ratio}x la mediana: casi todas las sesiones son baratas y unas `
       + 'pocas no, y esa es una cola que una cuota puede cazar, no una carga cara de manera uniforme.',
     sessionSpendOnly: (sessions, max) =>
-      `${sessions} conversaci${sessions === 1 ? 'ón' : 'ones'} en este registro; la más cara costó `
-      + `${max}. Demasiado pocas por carga para un percentil: un máximo es un hecho con cualquier `
-      + 'recuento, y es la cifra que juzga un presupuesto por conversación.',
+      `${sessions} ${sessions === 1 ? 'sesión' : 'sesiones'} en este registro, subagentes incluidos; `
+      + `la más cara costó ${max}. Demasiado pocas por carga para un percentil: un máximo es un `
+      + 'hecho con cualquier recuento, y es la cifra que juzga un presupuesto por sesión.',
     byLabelHeading: 'Por etiqueta',
     byModelHeading: 'Por modelo',
     priceUnknown: 'Sin precio',

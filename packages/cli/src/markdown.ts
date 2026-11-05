@@ -1281,7 +1281,7 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
 
   for (const growth of report.conversations.slice(0, 3)) {
     lines.push(
-      `- ${mdText(t.profile.historyGrowth(showLabel(growth.label), growth.modelName, n(Math.round(growth.minTurnTokens)), n(Math.round(growth.maxTurnTokens)), n(growth.longestSession)))} ${mdText(t.profile.historyCeiling(formatUsd(growth.growthUsd), pct(growth.shareOfBill), formatUsd(growth.flatUsd), formatUsd(growth.inputUsd)))}`,
+      `- ${mdText(t.profile.historyGrowth(showLabel(growth.label), growth.modelName, n(Math.round(growth.minTurnTokens)), n(Math.round(growth.maxTurnTokens)), n(growth.longestSession), growth.sessions))} ${mdText(t.profile.historyCeiling(formatUsd(growth.growthUsd), pct(growth.shareOfBill), formatUsd(growth.flatUsd), formatUsd(growth.inputUsd)))}`,
     );
   }
   if (report.conversations.length > 0) lines.push('');

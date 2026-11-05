@@ -88,7 +88,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 - [Is the cheaper model good enough: `trazum route`](#is-the-cheaper-model-good-enough-trazum-route)
 - [Did the caching actually pay for itself?](#did-the-caching-actually-pay-for-itself)
 - [Does the TTL fit how fast the turns come?](#does-the-ttl-fit-how-fast-the-turns-come)
-- [What one conversation costs](#what-one-conversation-costs)
+- [What one session costs](#what-one-session-costs)
 - [Conversations that never came back](#conversations-that-never-came-back)
 - [What this log cannot answer yet](#what-this-log-cannot-answer-yet)
 - [The bill as a CI gate](#the-bill-as-a-ci-gate)
@@ -2627,7 +2627,10 @@ branch names do not cross it, and the suite plants one of each in a fixture
 and greps the whole output to hold that. One API call is written as one line
 per content block — on a real project, 25,490 lines collapsed to 16,079
 calls, so counting lines would overbill by a third — and calls captured while
-still streaming keep their final line's counts. Everything collapsed or
+still streaming keep their final line's counts. The lines of a call are
+matched by its request id, or by the response's message id when a transcript
+records no request id, as every Claude Fable 5.1 line in this repository's
+own transcripts did. Everything collapsed or
 passed over is said on stderr, never silently. `--label <name>` stamps one
 workload; `--label-from-project` uses each transcript's project directory
 name, which the config's `labels` block can map to something readable.
@@ -3661,10 +3664,10 @@ turnaround does not fit; twenty is the shape background work has, and
 background work is what the Batch API halves. Trazum names the lever and stops
 — whether a workload can wait is a decision counts cannot make.
 
-### What one conversation costs
+### What one session costs
 
 ```
-  chat on Claude Opus 5: across 4,812 conversations, the median one costs $0.0200
+  chat on Claude Opus 5: across 4,812 sessions, the median one costs $0.0200
   over 6 turns, 95% come in under $1.80, and the most expensive was $46.10.
 ```
 
@@ -3675,6 +3678,11 @@ conversation costs; the **p95** is what a quota has to survive. A mean is
 refused: one runaway agent loop drags it up and hides the ordinary case. A p95
 past ten times the median is called out as a tail worth catching, and a p95
 beside the median gets the opposite advice, because there is no tail to hunt.
+
+A session here is the whole session: an agent's subagents share its session
+id, and what they cost is part of what the session cost, so they are counted
+in it. The findings that read a conversation turn by turn, such as growth and
+retries, follow each subagent on its own instead (`thread` on the record).
 
 Session keys group turns and never appear in any figure, here or anywhere.
 

@@ -561,7 +561,7 @@ export interface WebMessages {
     whatIfUnpriced(calls: number, models: string): string;
     whatIfNothingToMove: string;
     historyHeading: string;
-    historyGrowth(label: string, model: string, first: string, last: string, turns: string): string;
+    historyGrowth(label: string, model: string, first: string, last: string, turns: string, conversations: number): string;
     historyCeiling(usd: string, pct: string, flat: string, spent: string): string;
     historyNoSessions: string;
     /**

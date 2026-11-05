@@ -2280,7 +2280,7 @@ ${bold('EXAMPLES')}
     collapsed: (lines) => `${lines} extra line(s) of already-counted calls collapsed: one API call is written as one line per content block, and counting each line would overbill.`,
     streamed: (count) => `${count} call(s) were written while still streaming; the final line's counts stood.`,
     disagreements: (count) => `${count} call(s) had lines that disagreed beyond streaming growth: a count shrank, or another field changed. The last line stood, but that is a finding: worth a look at the transcript.`,
-    noRequestId: (count) => `${count} call(s) carried no request id, so nothing could be collapsed against them; each is priced as recorded.`,
+    noRequestId: (count) => `${count} call(s) carried neither a request id nor a message id, so nothing could be collapsed against them; each is priced as recorded.`,
     synthetic: (count) => `${count} turn(s) Claude Code wrote itself (model "<synthetic>") are not in the output: no provider ever billed them, so they are not calls.`,
     labelled: () => 'Labelled by project folder. Pass --no-label-from-project to leave the label off, or --label <name> to set one.',
     skipped: (other, unparseable, withoutUsage) => `Passed over: ${other} non-assistant line(s) (the transcript's other business), ${unparseable} unparseable, ${withoutUsage} assistant line(s) without usage.`,
@@ -2847,8 +2847,10 @@ ${bold('EXAMPLES')}
     leverPromptCeiling: (usd, pct) =>
       `For comparison: shortening the prompt text can touch ${usd} at the very most, ${pct} of this bill, and only if you deleted every input token. The real figure is far below that, because most of those tokens are retrieved context, conversation history and tool results that no prompt file contains.`,
     historyHeading: () => 'What re-sending the conversation costs',
-    historyGrowth: (label, model, first, last, turns) =>
-      `${label} on ${model}: input ranges from ${first} tokens on the smallest turn to ${last} on the largest, over conversations of up to ${turns} turns.`,
+    historyGrowth: (label, model, first, last, turns, conversations) =>
+      conversations > 1
+        ? `${label} on ${model}: across ${count(conversations)} conversations, the smallest turn averages ${first} tokens and the largest ${last}, over conversations of up to ${turns} turns.`
+        : `${label} on ${model}: input ranges from ${first} tokens on the smallest turn to ${last} on the largest, over ${turns} turns.`,
     historyCeiling: (usd, pct, flat, spent) =>
       `If every turn had been the size of its smallest one, that input would have cost ${flat} instead of ${spent}, so at most ${usd} of this bill is conversation growth (${pct}). It is a ceiling and not a saving: some of that is the user's own new messages, which nothing can truncate away, and this reads counts rather than content so it cannot tell the two apart. What moves it is capping the history you replay, or summarising it.`,
     truncatedWaste: (calls, usd, pct) =>
@@ -2992,7 +2994,7 @@ ${bold('EXAMPLES')}
     floorUndated: (calls) =>
       `${count(calls)} ${calls === 1 ? 'call carries' : 'calls carry'} no timestamp and fell outside the window`,
     sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
-      `${label} on ${model}: across ${sessions} conversations, the median one costs ${median} over ${medianTurns} turns, 95% come in under ${p95}, and the most expensive was ${max}. Exact billed counts, per conversation: the figure a per-seat price or a quota is set from. A conversation that started before this log or continues after it is counted only for the turns recorded here.`,
+      `${label} on ${model}: across ${sessions} sessions, the median one costs ${median} over ${medianTurns} turns, 95% come in under ${p95}, and the most expensive was ${max}. Exact billed counts, per session with its subagents: the figure a per-seat price or a quota is set from. A session that started before this log or continues after it is counted only for the turns recorded here.`,
     labelBudgetOk: (label, usd, max) => `Within budget: ${label} spent ${usd} against ${max}.`,
     labelBudgetFailed: (label, usd, max) =>
       `FAILED, ${label} spent ${usd} against its budget of ${max} in trazum.config.json.`,
@@ -3151,9 +3153,9 @@ ${bold('EXAMPLES')}
     noLogsInDirectory: (directory, extensions) =>
       `No usage logs in "${directory}". Looked for files ending in ${extensions}. A directory with nothing readable in it is an error rather than an empty report, which would read as "you spent nothing".`,
     sessionCostTail: (ratio) =>
-      `The 95th percentile is ${ratio}x the median there: most conversations are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
+      `The 95th percentile is ${ratio}x the median there: most sessions are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
     sessionSpendOnly: (sessions, max) =>
-      `${sessions} ${sessions === '1' ? 'conversation' : 'conversations'} in this log; the most expensive cost ${max}. Too few per workload for a percentile: a maximum is a fact at any count, and it is the figure --max-session-usd judges.`,
+      `${sessions} ${sessions === '1' ? 'session' : 'sessions'} in this log, subagents included; the most expensive cost ${max}. Too few per workload for a percentile: a maximum is a fact at any count, and it is the figure --max-session-usd judges.`,
     waiveActive: (gate, reason, until, daysLeft) =>
       `WAIVED: the ${gate} failure above is on the record and silenced until ${until} (${daysLeft} days left): "${reason}". The bill still counts it; only the exit code is quiet, and the day the waiver expires this gate fails again.`,
     waiveExpired: (gate, until, reason) =>

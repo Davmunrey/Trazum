@@ -6,8 +6,8 @@
  * `cache_creation` TTL split that settles whether caching paid off. This
  * module turns that transcript into usage-log records **without reading
  * what was said**: the conversion touches `message.model`, `message.usage`,
- * `timestamp`, `sessionId` and `requestId`, and nothing else survives into
- * the output — no message text, no `cwd`, no `gitBranch`, held by a test
+ * `message.id`, `timestamp`, `sessionId` and `requestId`, and nothing else
+ * survives into the output — no message text, no `cwd`, no `gitBranch`, held by a test
  * that plants a secret in each and greps the whole output for it.
  *
  * **One API call is written as several lines.** A multi-block response
@@ -15,7 +15,12 @@
  * session this was designed against, 25,490 assistant lines collapsed to
  * 16,079 distinct `requestId`s, so a line-by-line conversion overbills by a
  * third. Records are deduplicated by `requestId`, keeping the **last**
- * line's usage — the call's final state. Two ways the lines of one call
+ * line's usage — the call's final state. A line with no `requestId` is keyed
+ * by the response's own `message.id` instead: on this repository's own
+ * transcripts every Claude Fable 5.1 line came without a `requestId`, 289
+ * lines for 124 responses, and each was billed as a call of its own, which
+ * put that model's spend at more than twice what it was. Where both are
+ * present they pair one to one, measured on 5,774 calls. Two ways the lines of one call
  * differ, measured on real transcripts and told apart on purpose: counts
  * that only ever grow are a response written while still streaming (the
  * norm — 311 of them across one real project's 195 transcripts), counted
@@ -57,6 +62,19 @@ export interface ClaudeCodeRecord {
   model: string;
   ts: string;
   session: string;
+  /**
+   * The thread of the session this call ran in, when it was not the main one:
+   * a subagent's `agentId`, from a line Claude Code marks `isSidechain`.
+   *
+   * A subagent shares its session's `sessionId`, and it is a conversation of
+   * its own, with its own context and its own cache prefix. Grouped with the
+   * main thread, the findings that read a conversation turn by turn mixed the
+   * two: on this repository's own transcripts the main thread's smallest
+   * prompt is 110,262 tokens and a subagent's is 58,190, and the growth
+   * ceiling was drawn from the second. Absent on the main thread. An opaque
+   * id like the session's, grouped by and never printed.
+   */
+  thread?: string;
   label?: string;
   /**
    * What the provider said ended the turn, when the transcript recorded it.
@@ -87,7 +105,10 @@ export interface ClaudeCodeConversion {
   records: ClaudeCodeRecord[];
   /** Extra lines of already-seen requests, collapsed — not spend. */
   collapsed: number;
-  /** Assistant lines carrying usage but no requestId: kept, and counted. */
+  /**
+   * Assistant lines carrying usage and neither a `requestId` nor a
+   * `message.id`: nothing can collapse them, so each is kept, and counted.
+   */
   noRequestId: number;
   /** Lines of the transcript's other business: user turns, attachments, system. */
   otherLines: number;
@@ -192,9 +213,13 @@ export function claudeCodeRecords(
     synthetic: 0,
     resume: { line: 0, records: 0 },
   };
-  /** requestId → index into out.records, so a later line can replace the usage. */
+  /**
+   * The call's key → index into out.records, so a later line can replace the
+   * usage. The key is the `requestId`, or the `message.id` when the line has
+   * none, prefixed so the two can never collide.
+   */
   const byRequest = new Map<string, number>();
-  /** requestId → the usage currently standing, to classify a change when one arrives. */
+  /** The call's key → the usage currently standing, to classify a change when one arrives. */
   const seenUsage = new Map<string, ClaudeCodeRecord['usage']>();
 
   const lines = text.split('\n');
@@ -242,6 +267,10 @@ export function claudeCodeRecords(
       model,
       ts: typeof entry.timestamp === 'string' ? entry.timestamp : '',
       session: typeof entry.sessionId === 'string' ? entry.sessionId : '',
+      /* A sidechain with no agent id is still not the main thread: one thread for all of them. */
+      ...(entry.isSidechain === true
+        ? { thread: typeof entry.agentId === 'string' && entry.agentId !== '' ? entry.agentId : 'sidechain' }
+        : {}),
       ...(typeof stopReason === 'string' && stopReason !== '' ? { stop_reason: stopReason } : {}),
       /*
         The directory's own rule first, then the flat label. A `--label` given
@@ -308,8 +337,13 @@ export function claudeCodeRecords(
       },
     };
 
-    const requestId = typeof entry.requestId === 'string' ? entry.requestId : null;
-    if (requestId === null) {
+    const callKey =
+      typeof entry.requestId === 'string' && entry.requestId !== ''
+        ? `request:${entry.requestId}`
+        : message !== null && typeof message.id === 'string' && message.id !== ''
+          ? `message:${message.id}`
+          : null;
+    if (callKey === null) {
       // Nothing keys this line, so nothing can ever revise it: it is settled
       // the moment it is read, and the resume point moves past it.
       out.noRequestId += 1;
@@ -317,12 +351,12 @@ export function claudeCodeRecords(
       out.resume = { line: index + 1, records: out.records.length };
       continue;
     }
-    const standing = byRequest.get(requestId);
+    const standing = byRequest.get(callKey);
     if (standing === undefined) {
       // A call begins. Everything before it is settled; this call is not,
       // because the next line of the transcript may still revise it.
-      byRequest.set(requestId, out.records.length);
-      seenUsage.set(requestId, record.usage);
+      byRequest.set(callKey, out.records.length);
+      seenUsage.set(callKey, record.usage);
       out.resume = { line: index, records: out.records.length };
       out.records.push(record);
       continue;
@@ -334,7 +368,7 @@ export function claudeCodeRecords(
     // without alarm; anything else is a genuine disagreement, counted as
     // the finding it is. Either way the last line stands.
     out.collapsed += 1;
-    const before = seenUsage.get(requestId)!;
+    const before = seenUsage.get(callKey)!;
     if (JSON.stringify(before) !== JSON.stringify(record.usage)) {
       const grewOnly =
         record.usage.input_tokens >= before.input_tokens &&
@@ -344,7 +378,7 @@ export function claudeCodeRecords(
         (record.usage.server_tool_use?.web_search_requests ?? 0) >= (before.server_tool_use?.web_search_requests ?? 0);
       if (grewOnly) out.streamed += 1;
       else out.disagreements += 1;
-      seenUsage.set(requestId, record.usage);
+      seenUsage.set(callKey, record.usage);
     }
     out.records[standing] = { ...record };
   }

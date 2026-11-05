@@ -11,7 +11,48 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **A Claude Code call with no `requestId` was billed once per line.**
+  Claude Code writes a response as one line per content block, and the
+  reader collapsed those lines by `requestId`. A line without one was kept as
+  a call of its own. On this repository's own transcripts every Claude Fable
+  5.1 line came without a `requestId`: 289 lines for 124 responses, billed at
+  $47.82 where the calls cost $18.46. The lines are now keyed by the
+  response's `message.id` when there is no `requestId`; where both are present
+  they pair one to one, measured on 5,774 calls. The $29.36 difference is
+  also what the "same request, sent again" finding had flagged on that model:
+  it was this. `noRequestId` now counts only the lines that carry neither id.
+- **A session's subagents were read as turns of the main conversation.**
+  Claude Code gives a subagent its session's `sessionId`, and the subagent
+  keeps a context and a cache prefix of its own. The findings that follow a
+  conversation turn by turn grouped by session alone, so the main thread and
+  its subagents were one conversation to them. The growth ceiling took its
+  floor from whichever thread had the smallest prompt: on this repository's
+  own transcripts, measured on 2026-11-05, the main thread's smallest Opus 5.5
+  prompt is 110,262 tokens and a subagent's 58,190, and the ceiling came out
+  at $412.48 where the threads support $366.74. A subagent's call seconds after a truncated main-thread
+  answer read as a retry of it, and repeats, the cache TTL fit and the cache
+  writes never read back paired calls across threads the same way. A call
+  now carries a `thread`, which `bill` and `from-claude-code` take from a
+  sidechain's `agentId`, and those findings group by session and thread.
+  What a session costs, and the per-session budget, still count the whole
+  session, subagents included.
+
+### Changed
+
+- **The growth sentence says when its figures are averages.** Across several
+  conversations the smallest and largest turn are means over conversations,
+  and the sentence read as if they were one conversation's extremes. It now
+  says "across N conversations, the smallest turn averages X tokens and the
+  largest Y", and keeps the old wording for a single conversation.
+- **What a session costs is said per session.** The median, p95 and maximum
+  per session, and the count beside `--max-session-usd`, said
+  "conversations" for what was always a whole session. With a subagent now a
+  conversation of its own, the same log could read "1 conversation" in one
+  line and "across 31 conversations" in the next. Those sentences now say
+  "sessions", and that subagents are counted in them, on the CLI, the web Bill
+  tab and the MCP report.
 
 ## 2.7.6 — 2026-11-05
 

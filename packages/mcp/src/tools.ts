@@ -822,11 +822,11 @@ const PROFILE: ToolDefinition = {
      */
     for (const shape of report.sessionCosts.slice(0, 3)) {
       lines.push(
-        `${name(shape.label)} on ${shape.modelName}: across ${shape.sessions} conversations the`
+        `${name(shape.label)} on ${shape.modelName}: across ${shape.sessions} sessions the`
           + ` median costs ${formatUsd(shape.medianUsd)} over ${shape.medianTurns} turns, 95% come`
           + ` in under ${formatUsd(shape.p95Usd)}, the dearest was ${formatUsd(shape.maxUsd)}.`
-          + ' Exact billed counts per conversation; one that started before this log or continues'
-          + ' after it counts only for the turns recorded here.',
+          + ' Exact billed counts per session with its subagents; one that started before this log'
+          + ' or continues after it counts only for the turns recorded here.',
       );
       if (shape.medianUsd > 0 && shape.p95Usd > 10 * shape.medianUsd) {
         lines.push(
@@ -842,10 +842,11 @@ const PROFILE: ToolDefinition = {
      */
     if (report.sessionCosts.length === 0 && report.sessionSpend !== null) {
       lines.push(
-        `${report.sessionSpend.sessions} conversation${report.sessionSpend.sessions === 1 ? '' : 's'}`
-          + ` in this log; the most expensive cost ${formatUsd(report.sessionSpend.maxUsd)}. Too few`
-          + ' per workload for a percentile — a maximum is a fact at any count, and it is the figure'
-          + ' a per-conversation budget (--max-session-usd) judges.',
+        `${report.sessionSpend.sessions} session${report.sessionSpend.sessions === 1 ? '' : 's'}`
+          + ` in this log, subagents included; the most expensive cost`
+          + ` ${formatUsd(report.sessionSpend.maxUsd)}. Too few per workload for a percentile — a`
+          + ' maximum is a fact at any count, and it is the figure a per-session budget'
+          + ' (--max-session-usd) judges.',
       );
     }
 

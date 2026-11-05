@@ -1423,7 +1423,7 @@ export interface CliMessages {
      * history, and a total shows the sum and not the shape.
      */
     historyHeading(): string;
-    historyGrowth(label: string, model: string, first: string, last: string, turns: string): string;
+    historyGrowth(label: string, model: string, first: string, last: string, turns: string, conversations: number): string;
     /** A ceiling, and it says so — part of the growth is the user's own messages. */
     historyCeiling(usd: string, pct: string, flat: string, spent: string): string;
     /** No session field in the log, so the question cannot be asked. */
