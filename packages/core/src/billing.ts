@@ -33,6 +33,9 @@ export function billedAt(record: UsageRecord, on: Date): Date {
 export function promptSizeOf(record: UsageRecord): PromptSize {
   const prompt =
     record.inputTokens + record.cacheReadTokens + record.cacheWrite5mTokens + record.cacheWrite1hTokens;
-  const speed = record.speed === undefined ? {} : { speed: record.speed };
-  return record.requests === undefined ? { inputTokens: prompt, ...speed } : { inputTokensAtMost: prompt, ...speed };
+  const how = {
+    ...(record.speed === undefined ? {} : { speed: record.speed }),
+    ...(record.serviceTier === undefined ? {} : { serviceTier: record.serviceTier }),
+  };
+  return record.requests === undefined ? { inputTokens: prompt, ...how } : { inputTokensAtMost: prompt, ...how };
 }

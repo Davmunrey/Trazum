@@ -59,7 +59,7 @@ ${withFast ? `
 | Claude Haiku 5.5 (for prompts over 100,000 tokens) | $0.25 / MTok | $1.25 / MTok |
 ` : ''}`;
 
-const openAiPage = ({ astraLongOutput = '$75.00', gpt4oCached = '$1.25', codexInput = '$1.75' } = {}) => `
+const openAiPage = ({ astraLongOutput = '$75.00', gpt4oCached = '$1.25', codexInput = '$1.75', astraFlexInput = '$5.00' } = {}) => `
 # Pricing
 
 Flagship models
@@ -88,9 +88,25 @@ Flagship models
 
 #### Flex
 
+| Model | Short context input | Short context output | Short context cached input | Short context 30m write | Short context 12h write | Long context input | Long context output | Long context cached input | Long context 30m write | Long context 12h write |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| gpt-6-astra | ${astraFlexInput} | $25.00 | $0.50 | $6.25 | $12.50 | $10.00 | $37.50 | $1.00 | $12.50 | $25.00 |
+
 | Model | Input | Output | Cached input |
 | --- | --- | --- | --- |
-| gpt-4o | $99.00 | $99.00 | $99.00 |
+| gpt-5.4-mini | $0.375 | $2.25 | $0.0375 |
+
+### Fast pricing data
+
+| Model | Input | Output | Cached input |
+| --- | --- | --- | --- |
+| gpt-4o | $4.25 | $17.00 | $2.125 |
+
+### Ultrafast pricing data
+
+| Model | Short context input | Short context output | Short context cached input | Short context 30m write | Short context 12h write | Long context input | Long context output | Long context cached input | Long context 30m write | Long context 12h write |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| gpt-6.1-sol | $12.00 | $60.00 | $0.60 | $15.00 | $30.00 | $24.00 | $90.00 | $1.20 | $30.00 | $60.00 |
 
 Specialized models
 
@@ -195,9 +211,9 @@ describe('Anthropic', () => {
 });
 
 describe('OpenAI', () => {
-  it('compares the short band, the long band, the cache and batch, and ignores Flex', () => {
+  it('compares the short band, the long band, the cache, batch and each service tier', () => {
     const findings = openAiFindings(openAiPage());
-    assert.deepEqual(kinds(findings, 'drift'), [], 'the page agrees with the catalogue and Flex is not standard pricing');
+    assert.deepEqual(kinds(findings, 'drift'), [], 'the page agrees with the catalogue, service tiers included');
     assert.deepEqual(kinds(findings, 'unread'), []);
   });
 
@@ -231,8 +247,22 @@ describe('OpenAI', () => {
     ]);
   });
 
-  it('says it read nothing when there is no standard, batch or specialized table', () => {
-    assert.equal(kinds(openAiFindings('# Pricing\n'), 'unread').length, 3);
+  it('reads the Flex, Fast and Ultrafast tables as service tiers and reports a changed one', () => {
+    const drift = kinds(openAiFindings(openAiPage({ astraFlexInput: '$5.50' })), 'drift');
+    assert.deepEqual(drift.map((finding) => [finding.model, finding.detail]), [
+      ['gpt-6-astra', 'flex input: the page says $5.5, the catalogue prices $5'],
+    ]);
+  });
+
+  it('treats a cent-rounded figure as agreeing and anything further off as drift', () => {
+    const rounded = openAiPage().replace('| gpt-5.4-mini | $0.375 | $2.25 | $0.0375 |', '| gpt-5.4-mini | $0.375 | $2.25 | $0.04 |');
+    assert.deepEqual(kinds(openAiFindings(rounded), 'drift'), [], '$0.04 is $0.0375 to the cent');
+    const off = openAiPage().replace('| gpt-5.4-mini | $0.375 | $2.25 | $0.0375 |', '| gpt-5.4-mini | $0.40 | $2.25 | $0.0375 |');
+    assert.deepEqual(kinds(openAiFindings(off), 'drift').map((finding) => finding.detail), ['flex input: the page says $0.4, the catalogue prices $0.375']);
+  });
+
+  it('says it read nothing when a standard, batch, specialized or service-tier table is gone', () => {
+    assert.equal(kinds(openAiFindings('# Pricing\n'), 'unread').length, 6);
   });
 });
 

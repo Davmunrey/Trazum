@@ -104,6 +104,8 @@ export class GatewaySpend {
       },
       // Fast mode bills at a multiple of standard; the response said which ran.
       ...(usage.speed === undefined ? {} : { speed: usage.speed }),
+      // So does OpenAI's service tier, each priced from its own table.
+      ...(usage.serviceTier === undefined ? {} : { service_tier: usage.serviceTier }),
     }));
     const index = record === null ? null : indexUsage([record], { catalogue: this.catalogue, on: new Date(now) });
     if (index === null || index.unpriced > 0 || index.dayUsd === null) {

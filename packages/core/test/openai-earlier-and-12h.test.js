@@ -130,7 +130,7 @@ describe('the earlier OpenAI models, priced from their own pages', () => {
   });
 
   it('never recommends a model its page marks deprecated', () => {
-    for (const id of ['gpt-5.4-nano', 'gpt-5.1', 'gpt-5-pro', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o3', 'o3-pro']) {
+    for (const id of ['gpt-5.4-nano', 'gpt-5.1', 'gpt-5-pro', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'gpt-4o-mini', 'o3', 'o3-pro', 'gpt-5', 'gpt-5-mini', 'gpt-5-nano']) {
       assert.equal(isOffered(BUNDLED_CATALOGUE.byId.get(id)), false, `${id} is offered`);
     }
     for (const id of ['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'gpt-5.2']) {

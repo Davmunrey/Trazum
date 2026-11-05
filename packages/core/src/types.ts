@@ -222,6 +222,22 @@ export interface PricingTier {
   outputPerMTok: number;
 }
 
+/**
+ * A provider's service tier other than its standard one, as a response names it
+ * after normalising: OpenAI's `service_tier` of `"flex"`, `"fast"` or
+ * `"priority"` (the same tier, under its name before 2026-07-30), and
+ * `"ultrafast"`. See `ModelPricing.serviceTiers`.
+ */
+export type ServiceTier = 'flex' | 'fast' | 'ultrafast';
+
+/** The rates one service tier charges, with its own conditional bands. */
+export interface ServiceTierRates {
+  inputPerMTok: number;
+  outputPerMTok: number;
+  /** The tier's own long-prompt band, when its table publishes one. */
+  tiers?: PricingTier[];
+}
+
 /** One published price this model carried until an instant. See `ModelPricing.history`. */
 export interface PricePeriod {
   /** ISO 8601 instant, exclusive: a call at exactly this instant is priced by what came after. */
@@ -357,6 +373,29 @@ export interface ModelPricing {
    * earliest period stands for it, and the row's note says so.
    */
   history?: PricePeriod[];
+  /**
+   * What the same tokens cost at another of the provider's service tiers.
+   *
+   * OpenAI sells three besides its standard one, chosen per request with
+   * `service_tier` and named again in the response: Flex at about half the
+   * price, Fast (called Priority until 2026-07-30) at up to twice, and
+   * Ultrafast on two models at six times. Each is a separate table on the
+   * pricing page, with its own long-prompt band, and the rates are not one
+   * multiple of the standard ones (GPT-4o's Fast is 1.7x, GPT-5.2's 2x), so
+   * each is written out per model as the page prints it.
+   *
+   * Kept apart from `tiers` on purpose. A tier is a condition on the call that
+   * may be undecided, so it is never below the base, and Flex is. A service
+   * tier is decided by the response that names it, and replaces the base and
+   * its tiers whole: Flex on a long prompt is Flex's own long band, never a
+   * composite of two tables. The cache and batch ratios stay the row's, which
+   * is what the page's own figures show (Flex's cached input is a tenth of
+   * Flex's input wherever the standard one is a tenth).
+   *
+   * A response naming a tier this row has no sheet for is priced at the
+   * standard rate: the page publishes nothing else for it.
+   */
+  serviceTiers?: Partial<Record<ServiceTier, ServiceTierRates>>;
   /**
    * Other ids that bill at exactly this rate.
    *

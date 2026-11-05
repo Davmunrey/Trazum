@@ -95,6 +95,12 @@ export interface GatewayCall {
    * not content. Absent or null prices the call at the standard rate.
    */
   speed?: string | null;
+  /**
+   * The service tier the request asked for, when it named one: OpenAI's
+   * `service_tier`, `"flex"` at about half the standard rate, `"priority"` or
+   * `"fast"` at up to twice, `"ultrafast"`. A setting, not content.
+   */
+  serviceTier?: string | null;
 }
 
 /** Where the budget stands, as the gateway was told at the last refresh. */
@@ -216,8 +222,11 @@ export interface GatewayOptions {
   waivers?: readonly WaiveEntry[];
 }
 
-const speedOf = (call: GatewayCall): { speed?: string } =>
-  typeof call.speed === 'string' && call.speed !== '' ? { speed: call.speed } : {};
+/** How the call asked to be run, where that changes its price: speed and service tier. */
+const speedOf = (call: GatewayCall): { speed?: string; serviceTier?: string } => ({
+  ...(typeof call.speed === 'string' && call.speed !== '' ? { speed: call.speed } : {}),
+  ...(typeof call.serviceTier === 'string' && call.serviceTier !== '' ? { serviceTier: call.serviceTier } : {}),
+});
 
 /** What this call costs at a model's rates, or null when it cannot be priced. */
 function priceCall(
@@ -501,6 +510,8 @@ export interface GatewayUsage {
   cacheWrite1hTokens?: number;
   /** Anthropic's `usage.speed`, when the response named it: fast mode bills at a multiple. */
   speed?: string;
+  /** OpenAI's `service_tier`, the tier that actually answered: each has its own table. */
+  serviceTier?: string;
 }
 
 /**
@@ -693,6 +704,8 @@ export function streamingUsageReader(
     }
 
     if (shape === 'openai') {
+      // Every chunk names the tier that answered; the last one before usage is as good as any.
+      if (typeof doc.service_tier === 'string' && doc.service_tier !== '') usage.serviceTier = doc.service_tier;
       const u = doc.usage;
       if (typeof u !== 'object' || u === null) return;
       const o = u as Record<string, unknown>;
@@ -806,6 +819,12 @@ export function usageFromResponse(
       cacheReadTokens: cached,
       // GPT-5.6 and later bill writes above input; taken out of the prompt the same way.
       ...openAiWrites(details),
+      // The tier that answered, which is not always the one asked for: a Fast
+      // request downgraded under load says "default" and is billed as such.
+      ...(typeof (body as { service_tier?: unknown }).service_tier === 'string'
+        && (body as { service_tier: string }).service_tier !== ''
+        ? { serviceTier: (body as { service_tier: string }).service_tier }
+        : {}),
     };
   }
   if (shape === 'google') {

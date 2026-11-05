@@ -186,6 +186,14 @@ export interface UsageRecord {
    */
   speed?: string;
   /**
+   * The service tier the provider says answered, when the log kept it:
+   * OpenAI's top-level `service_tier`, `"flex"`, `"priority"` or `"fast"`,
+   * `"ultrafast"`, or `"default"`. Flex bills about half the standard rate
+   * and Fast up to twice, from tables of their own (`serviceTiers` in the
+   * catalogue). Absent, or `"default"`, is the standard rate.
+   */
+  serviceTier?: string;
+  /**
    * Set when an OpenAI-shaped line split its cache writes by lifetime and the
    * parts did not add up to the total. The lifetime is then unknown even on a
    * model whose unsplit writes are known to be the short kind.
@@ -966,6 +974,15 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * field is priced by it. Absent stays absent, which prices as standard.
      */
     ...(typeof usage.speed === 'string' && usage.speed !== '' ? { speed: usage.speed } : {}),
+    /*
+     * OpenAI's `service_tier`, which a Chat Completions or Responses object
+     * carries at the top level beside `usage`, and names the tier that
+     * actually ran: a Fast request downgraded under load says "default" and
+     * is billed at the standard rate. Priced from that tier's own table.
+     */
+    ...(typeof record.service_tier === 'string' && record.service_tier !== ''
+      ? { serviceTier: record.service_tier }
+      : {}),
     ...(openAiSplitGiven && !openAiSplitAgrees ? { writeSplitContradicted: true as const } : {}),
   };
 }
