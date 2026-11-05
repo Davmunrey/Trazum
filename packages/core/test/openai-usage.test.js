@@ -193,11 +193,27 @@ describe('what it refuses to price, and says instead', () => {
     assert.equal(conversion.unnamedModel, 1);
   });
 
-  it('refuses a batch row, which is billed at a discount no catalogue rate is', () => {
-    const conversion = openaiUsageRecords(report([bucket([text({ batch: true }), text()])]));
-    assert.equal(conversion.records.length, 1, 'a batch row was priced from a standard rate');
-    assert.equal(conversion.batch, 1);
+  it('prices a batch row at the row’s batch ratio, half the standard rate', () => {
+    const conversion = openaiUsageRecords(
+      report([bucket([text({ batch: true, num_model_requests: 1 }), text({ num_model_requests: 1 })])]),
+    );
+    assert.equal(conversion.records.length, 2);
+    assert.equal(conversion.batch, 0);
+    assert.equal(conversion.batchRows, 1);
     assert.equal(conversion.batchNamed, true);
+    assert.equal(conversion.records[0].batch, true);
+    assert.equal(parseUsageLine(JSON.stringify(conversion.records[0])).batch, true);
+    const bill = (record) => profileUsage(JSON.stringify(record), { catalogue: BUNDLED_CATALOGUE }).total.totalUsd;
+    const [batch, standard] = conversion.records.map(bill);
+    assert.ok(Math.abs(batch - standard / 2) < 1e-12, `batch ${batch} is not half of standard ${standard}`);
+  });
+
+  it('refuses a batch row on a model with no batch rate', () => {
+    const plain = BUNDLED_CATALOGUE.models.map((row) => ({ ...row, multipliers: { ...(row.multipliers ?? {}), batch: null } }));
+    const catalogue = { ...BUNDLED_CATALOGUE, models: plain, byId: indexModels(plain) };
+    const conversion = openaiUsageRecords(report([bucket([text({ batch: true }), text()])]), { catalogue });
+    assert.equal(conversion.records.length, 1, 'a batch row was priced with no batch rate');
+    assert.equal(conversion.batch, 1);
   });
 
   it('says when the report never said whether anything was batch', () => {

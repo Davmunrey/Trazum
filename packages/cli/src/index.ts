@@ -4723,6 +4723,7 @@ async function commandFromAnthropic(args: Args, t: CliMessages): Promise<void> {
      acts in: what was read, then what was left out, then what to ask for. */
   console.error(t.fromAnthropic.summary(conversion.buckets, conversion.rows));
   if (conversion.unnamedModel > 0) console.error(t.fromAnthropic.unnamedModel(conversion.unnamedModel));
+  if (conversion.batchRows > 0) console.error(t.fromAnthropic.batchPriced(conversion.batchRows));
   if (conversion.nonStandardTier > 0) {
     console.error(t.fromAnthropic.nonStandardTier(conversion.nonStandardTier));
   }
@@ -4790,6 +4791,7 @@ async function commandFromOpenai(args: Args, t: CliMessages): Promise<void> {
      was left out and why, what to ask the endpoint for next time. */
   console.error(t.fromOpenai.summary(conversion.buckets, conversion.rows, conversion.requests));
   if (conversion.unnamedModel > 0) console.error(t.fromOpenai.unnamedModel(conversion.unnamedModel));
+  if (conversion.batchRows > 0) console.error(t.fromOpenai.batchPriced(conversion.batchRows));
   if (conversion.batch > 0) console.error(t.fromOpenai.batch(conversion.batch));
   if (!conversion.batchNamed && conversion.rows > 0) console.error(t.fromOpenai.batchUnknown());
   if (conversion.serviceTierRows > 0) {

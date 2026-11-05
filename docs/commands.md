@@ -674,10 +674,11 @@ inference geography, and the OpenAI pull by model, batch and service tier.
 A row in fast mode is priced at the model's fast rate, a US-only row at the
 1.1x Claude 4.6 and later bill, and an OpenAI Flex, Fast or Ultrafast row from
 that tier's own table, exactly as `bill` prices the same calls from a log. A
-row no catalogue rate is the rate for (Anthropic batch or priority, OpenAI
-batch, a tier with no table on that model, fast mode on a model without a
-fast rate) is left out and named with its model, tier and token count, never
-priced at the standard rate. Before, every pull was grouped by model alone,
+batch row, from either provider, is priced at the model's batch rate (half the
+standard one) since 2.7.4. A row no catalogue rate is the rate for (Anthropic
+priority or flex, a tier with no table on that model, fast mode or batch on a
+model without that rate) is left out and named with its model, tier and token
+count, never priced at the standard rate. Before, every pull was grouped by model alone,
 so all of those were summed into one row and billed as standard.
 
 **A partial pull is a partial pull.** A rate limit, a page cap or an expired
@@ -2958,10 +2959,13 @@ network.
 
 **Ask for both groupings.** `group_by[]=model` because a row without a model
 says nothing about what answered and nothing can price it. `group_by[]=service_tier`
-because batch is billed at a discount: a batch row priced from a catalogue
-rate overstates a bill by half and looks entirely right doing it. Rows at any
-tier but standard are **left out and counted**, the same way an unpriceable
-line becomes a named gap rather than a guess. Without the grouping the command
+because batch is billed at a discount: a batch row priced from the standard
+rate overstates a bill by half and looks entirely right doing it. Since 2.7.4 a
+batch row is written with `usage.service_tier: "batch"` and priced at the
+model's batch rate, the one the pricing page publishes as its own table and
+`price-drift.mjs` checks weekly. Rows at any other tier but standard (priority,
+flex) are **left out and counted**, the same way an unpriceable line becomes a
+named gap rather than a guess: no page here publishes their rates. Without the grouping the command
 says so and reads everything as standard, because the alternative is you
 assuming a question was answered that was never asked.
 
@@ -3050,8 +3054,11 @@ back to prove it does not.
 
 **Ask for three groupings.** `group_by[]=model`, or a row says nothing about
 what answered and cannot be priced. `group_by[]=batch`, because a batch job is
-billed at a discount and priced from a catalogue rate it overstates the bill
-while looking right. `group_by[]=service_tier`, because Flex, Fast and
+billed at a discount and priced from the standard rate it overstates the bill
+while looking right: since 2.7.4 a batch row is written with `batch: true` and
+priced at the model's batch rate, half the standard one, as the batch table on
+the pricing page has it; a batch row on a model with no batch rate is left out
+and counted. `group_by[]=service_tier`, because Flex, Fast and
 Ultrafast each have a table of their own: a row at one of them, on a model the
 catalogue has that tier's table for, is written with `service_tier` and priced
 from that table (since 2.7.3), exactly as a logged response naming the tier
@@ -3967,6 +3974,18 @@ is priced at the standard rate and counts as decided: fast mode is an explicit
 opt-in that is refused rather than run slowly, so a log without the field never
 asked for it, and pricing every unrecorded call at the fast rate would double
 the bill of every log older than the field.
+
+**A batch call is billed at the model's batch rate.** Both providers sell the
+Batch API at half the standard price, on input and output alike, with the
+cache multipliers on top of the batch input rate and, on a long prompt, the
+long band's own batch columns. Anthropic's response says so in
+`usage.service_tier: "batch"`; a converted usage report row says `batch: true`.
+Since 2.7.4 either is priced at the row's batch ratio, the same
+`multipliers.batch` the batch advisory quotes and `price-drift.mjs` checks
+against each provider's batch table every week. `"standard"`, `"priority"` and
+a log without the field keep the standard price, and a model with no batch API
+(`batch: null`) cannot have run one, so it keeps its standard price whatever
+the log says.
 
 **A geography is a published multiplier, applied last.** Anthropic bills US-only
 inference (`inference_geo: "us"` on the request, or a workspace's default

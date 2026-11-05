@@ -44,6 +44,7 @@ const result = (over = {}) => ({
 });
 
 const report = (data, over = {}) => JSON.stringify({ data, has_more: false, next_page: null, ...over });
+const billOf = (lines) => profileUsage(lines, { catalogue: BUNDLED_CATALOGUE }).total.totalUsd;
 
 describe('the usage report becomes records every door already prices', () => {
   it('carries the counts across under the names the parser reads', () => {
@@ -113,18 +114,33 @@ describe('what it refuses to price, and says instead', () => {
     assert.equal(conversion.unnamedModel, 1);
   });
 
-  it('refuses a tier a catalogue rate is not the rate for', () => {
+  it('refuses a tier no published rate here prices', () => {
     /*
-      The one that would be worst to get wrong. Batch is billed at a discount;
-      pricing it from the standard rate overstates the bill by half and looks
-      entirely right doing it, which is this product's own definition of the
-      unforgivable failure.
+      Priority and flex are billed on terms the pricing page does not publish,
+      so pricing them from the standard rate would be a guess in a direction
+      nobody can check. Left out, and counted.
     */
-    for (const tier of ['batch', 'priority', 'flex', 'flex_discount', 'priority_on_demand']) {
+    for (const tier of ['priority', 'flex', 'flex_discount', 'priority_on_demand']) {
       const conversion = anthropicUsageRecords(report([bucket([result({ service_tier: tier })])]));
       assert.equal(conversion.records.length, 0, `${tier} was priced from a standard rate`);
       assert.equal(conversion.nonStandardTier, 1);
     }
+  });
+
+  it('prices a batch row at the row’s batch ratio, half the standard rate', () => {
+    /*
+      The one that would be worst to get wrong. Pricing a batch row from the
+      standard rate overstates it by half; the batch ratio is the one the
+      pricing page publishes as its own table and price-drift checks weekly.
+    */
+    const conversion = anthropicUsageRecords(report([bucket([result({ service_tier: 'batch' }), result()])]));
+    assert.equal(conversion.records.length, 2);
+    assert.equal(conversion.batchRows, 1);
+    assert.equal(conversion.nonStandardTier, 0);
+    assert.equal(conversion.records[0].usage.service_tier, 'batch');
+    assert.equal(parseUsageLine(JSON.stringify(conversion.records[0])).batch, true);
+    const [batch, standard] = conversion.records.map((record) => billOf(JSON.stringify(record)));
+    assert.ok(Math.abs(batch - standard / 2) < 1e-12, `batch ${batch} is not half of standard ${standard}`);
   });
 
   it('says when the report never named a tier at all', () => {

@@ -706,6 +706,7 @@ export interface CliMessages {
     unnamedModel(count: number): string;
     /** Batch and priority are not billed at a catalogue rate. */
     nonStandardTier(count: number): string;
+    batchPriced(count: number): string;
     /** Said when the report never named a tier: the question was not asked. */
     tierUnknown(): string;
     /** Server tools are billed per request, and no token rate reaches them. */
@@ -737,6 +738,7 @@ export interface CliMessages {
     unnamedModel(count: number): string;
     /** batch: true rows are billed at a discount no catalogue rate is. */
     batch(count: number): string;
+    batchPriced(count: number): string;
     /** The report never said whether anything was batch. */
     batchUnknown(): string;
     /** Any tier but default, named rather than counted. */

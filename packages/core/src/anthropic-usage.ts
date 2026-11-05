@@ -118,7 +118,7 @@
  * `bucket_width=1h` is there for an operator who wants it.
  */
 
-import { BUNDLED_CATALOGUE } from './pricing.js';
+import { BUNDLED_CATALOGUE, multipliersFor } from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 
 /**
@@ -156,6 +156,8 @@ export interface AnthropicUsageRecord {
     speed?: 'fast';
     /** `"us"` when the report says the row ran with US-only inference. */
     inference_geo?: 'us';
+    /** `"batch"` when the row ran on the Batch API: billed at the row's batch ratio. */
+    service_tier?: 'batch';
   };
 }
 
@@ -167,8 +169,13 @@ export interface AnthropicUsageConversion {
   rows: number;
   /** Results with `model: null`, which nothing can price. */
   unnamedModel: number;
-  /** Results at a tier a standard rate would misprice. */
+  /**
+   * Results at a tier no rate here prices, left out: priority, flex, or batch
+   * on a model with no batch rate.
+   */
   nonStandardTier: number;
+  /** Results on the Batch API that became records priced at the row's batch ratio. */
+  batchRows: number;
   /**
    * Whether any result named its tier at all.
    *
@@ -261,6 +268,7 @@ export function anthropicUsageRecords(
     rows: 0,
     unnamedModel: 0,
     nonStandardTier: 0,
+    batchRows: 0,
     tierNamed: false,
     fastRows: 0,
     fastUnpriced: 0,
@@ -335,6 +343,7 @@ export function anthropicUsageRecords(
   let rows = 0;
   let unnamedModel = 0;
   let nonStandardTier = 0;
+  let batchRows = 0;
   let tierNamed = false;
   let webSearchRequests = 0;
 
@@ -363,11 +372,24 @@ export function anthropicUsageRecords(
       const tool = result.server_tool_use as { web_search_requests?: unknown } | undefined;
       webSearchRequests += count(tool?.web_search_requests);
 
+      let batchRow = false;
       if (typeof result.service_tier === 'string') {
         tierNamed = true;
-        /* Standard is the tier a catalogue rate is the rate for. Everything
-           else is billed on other terms and is left out rather than mispriced. */
-        if (result.service_tier !== 'standard') {
+        /*
+          Standard is the row's own rate, and batch is the row's batch ratio,
+          half of it, which the pricing page publishes as its own table and
+          `price-drift.mjs` checks weekly. Everything else (priority, flex) is
+          billed on terms no page here publishes, and is left out rather than
+          mispriced. A batch row on a model with no batch rate is left out too.
+        */
+        if (result.service_tier === 'batch') {
+          const row = typeof result.model === 'string' ? catalogue.byId.get(result.model) : undefined;
+          if (row === undefined || multipliersFor(row).batch === null) {
+            nonStandardTier += 1;
+            continue;
+          }
+          batchRow = true;
+        } else if (result.service_tier !== 'standard') {
           nonStandardTier += 1;
           continue;
         }
@@ -451,9 +473,11 @@ export function anthropicUsageRecords(
             : {}),
           ...(fast ? { speed: 'fast' as const } : {}),
           ...(usOnly ? { inference_geo: 'us' as const } : {}),
+          ...(batchRow ? { service_tier: 'batch' as const } : {}),
         },
       });
       rows += 1;
+      if (batchRow) batchRows += 1;
       if (fast) fastRows += 1;
       if (usOnly) {
         if (hasUsMultiplier(result.model)) usOnlyRows += 1;
@@ -468,6 +492,7 @@ export function anthropicUsageRecords(
     rows,
     unnamedModel,
     nonStandardTier,
+    batchRows,
     tierNamed,
     fastRows,
     fastUnpriced,
