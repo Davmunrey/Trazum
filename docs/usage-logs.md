@@ -76,6 +76,19 @@ directly:
 cache verdict possible. A log without them is not a log with no caching — and
 Trazum says so instead of reporting a hit rate of zero.
 
+**Keep `speed` and `inference_geo` inside `usage`.** The response names both,
+and both change the bill. `"speed": "fast"` is fast mode, which bills Opus 5.5
+at $8/$40 against $4/$20 and Opus 5 and Opus 4.8 at $10/$50 against $5/$25.
+`"inference_geo": "us"` is US-only inference, which bills every token category
+at 1.1x on Claude 4.6 and later; `"global"` and `"not_available"` are the
+standard price. A line without either is priced at the standard, global rate,
+so a US-only workload logged without the field reads a tenth under its cost.
+Claude Code's own transcripts keep both:
+
+```jsonl
+{"timestamp":"2026-11-01T09:14:22Z","model":"claude-opus-4-6","label":"support-rag","usage":{"input_tokens":1840,"output_tokens":412,"cache_read_input_tokens":18600,"speed":"standard","inference_geo":"us"}}
+```
+
 **Without a log at all:** `trazum connect anthropic` pulls the Admin API's
 usage report, which serves token sums per bucket. It carries no request count,
 so every per-call finding is reported as unavailable rather than computed from

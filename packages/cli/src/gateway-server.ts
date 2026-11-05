@@ -368,6 +368,7 @@ function describe(body: string, provider: string, modelFromPath: string | null):
   session: string | null;
   speed: string | null;
   serviceTier: string | null;
+  inferenceGeo: string | null;
 } | null {
   let parsed: unknown;
   try {
@@ -439,6 +440,13 @@ function describe(body: string, provider: string, modelFromPath: string | null):
      * is judged by has to know it.
      */
     speed: typeof request.speed === 'string' && request.speed !== '' ? request.speed : null,
+    /**
+     * Anthropic's `inference_geo: "us"`: a setting, not content, and one that
+     * bills the call at 1.1x on Claude 4.6 and later, so the estimate a budget
+     * is judged by has to know it. The response says which geography ran.
+     */
+    inferenceGeo:
+      typeof request.inference_geo === 'string' && request.inference_geo !== '' ? request.inference_geo : null,
     /**
      * OpenAI's `service_tier`: Flex bills about half the standard rate and
      * Fast up to twice, so the estimate a budget is judged by has to know it.

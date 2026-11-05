@@ -2044,7 +2044,11 @@ ${bold('EXAMPLES')}
     speedUnknown: (count) =>
       `The report never named a speed, and ${count} row(s) are on a model with a fast mode, which bills at a higher rate. They were read as standard. Add group_by[]=speed if any of this usage ran fast.`,
     usOnly: (count) =>
-      `${count} row(s) ran with inference_geo "us", which bills 1.1x on Claude 4.6 and later. They are priced at the global rate, so their figure is a floor.`,
+      `${count} row(s) ran with inference_geo "us" and are priced at the published 1.1x that US-only inference bills on Claude 4.6 and later.`,
+    usOnlyFloor: (count) =>
+      `${count} row(s) ran with inference_geo "us" on a model Trazum has no US-only multiplier for. They are priced at the global rate, so their figure is a floor.`,
+    geoUnknown: (count) =>
+      `The report never named an inference geography, and ${count} row(s) are on a model that bills US-only inference at 1.1x. They were read as global. Add group_by[]=inference_geo if any workspace pins inference to the US.`,
     webSearch: (count) =>
       `${count} web search request(s) are in this report and in no line of the output: server tools are billed per request, not per token, so no token rate reaches them.`,
     truncated: () =>

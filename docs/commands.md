@@ -2922,7 +2922,8 @@ laptop nobody instrumented are not among them.
 # Your own shell, your own admin credential. Trazum never sees it.
 curl "https://api.anthropic.com/v1/organizations/usage_report/messages?\
 starting_at=2026-09-01T00:00:00Z&ending_at=2026-10-01T00:00:00Z&\
-bucket_width=1d&group_by[]=model&group_by[]=service_tier&group_by[]=speed" \
+bucket_width=1d&group_by[]=model&group_by[]=service_tier&group_by[]=speed&\
+group_by[]=inference_geo" \
   -H "anthropic-version: 2023-06-01" \
   -H "x-api-key: $ANTHROPIC_ADMIN_KEY" > usage.json
 
@@ -2957,11 +2958,14 @@ the catalogue has no fast rate for is left out and named, because the standard
 rate is well under its cost. Without the grouping a row on a model that has a
 fast mode is read as standard, and the run says so.
 
-**US-only inference is a floor, and said.** With `group_by[]=inference_geo`, a
+**And `group_by[]=inference_geo`, if a workspace pins inference to the US.** A
 row whose `inference_geo` is `"us"` ran with US-only inference, which the
-pricing page bills at 1.1x on every token category of Claude 4.6 and later. The
-catalogue holds no geography, so such a row is priced at the global rate and
-counted: its figure is a floor, named, rather than a multiple composed here.
+pricing page bills at 1.1x on every token category of Claude 4.6 and later.
+Since 2.7.3 such a row is written with `usage.inference_geo: "us"` and priced at
+that multiplier, which the catalogue carries on each of those models, exactly
+as a logged response carrying the field is. One on a model with no multiplier
+in the catalogue is priced at the global rate and counted as a floor. Without
+the grouping every row is read as global, and the run says so.
 
 **Two more things it counts rather than prices.** Web search requests are
 billed per request, not per token, so no token rate reaches them and the total
@@ -3947,6 +3951,21 @@ is priced at the standard rate and counts as decided: fast mode is an explicit
 opt-in that is refused rather than run slowly, so a log without the field never
 asked for it, and pricing every unrecorded call at the fast rate would double
 the bill of every log older than the field.
+
+**A geography is a published multiplier, applied last.** Anthropic bills US-only
+inference (`inference_geo: "us"` on the request, or a workspace's default
+geography) at 1.1x on every token category of Claude 4.6 and later: input,
+output, cache writes and cache reads, on top of fast mode and Haiku 5.5's long
+band, as its pricing page says. Every response, and every line of a Claude
+Code transcript, records which geography ran in `usage.inference_geo`. Since
+2.7.3 the catalogue carries the multiplier on each of those models, in
+`inferenceGeoMultipliers`, and a call whose log says `"us"` is priced at it,
+read from a transcript, a logged response, the gateway or `from-anthropic`.
+`"global"`, `"not_available"` and a log without the field are the row's own
+price: the multiplier is the page's, never derived here, and a model the page
+does not name keeps its price whatever the log says. `inference-geo.test.js`
+fails a Claude 4.6 or later row that arrives without it, and `price-drift.mjs`
+reads the page's sentence every week.
 
 **A service tier is a table of its own, not a tier.** OpenAI sells Flex at
 about half the standard price, Fast (called Priority until 2026-07-30) at up

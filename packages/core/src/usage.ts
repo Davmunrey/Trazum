@@ -194,6 +194,14 @@ export interface UsageRecord {
    */
   serviceTier?: string;
   /**
+   * The geography the provider says the call ran in, when the log kept it:
+   * Anthropic's `usage.inference_geo`, `"us"`, `"global"` or
+   * `"not_available"`. US-only inference bills 1.1x on Claude 4.6 and later
+   * (`inferenceGeoMultipliers` in the catalogue). Absent, global and
+   * not-available are the row's own price.
+   */
+  inferenceGeo?: string;
+  /**
    * Set when an OpenAI-shaped line split its cache writes by lifetime and the
    * parts did not add up to the total. The lifetime is then unknown even on a
    * model whose unsplit writes are known to be the short kind.
@@ -982,6 +990,14 @@ export function parseUsageLine(line: string): UsageRecord | null {
      */
     ...(typeof record.service_tier === 'string' && record.service_tier !== ''
       ? { serviceTier: record.service_tier }
+      : {}),
+    /*
+     * Anthropic's `usage.inference_geo`, which every Messages response and
+     * every Claude Code log line carries: "us" bills 1.1x on Claude 4.6 and
+     * later, "global" and "not_available" do not.
+     */
+    ...(typeof usage.inference_geo === 'string' && usage.inference_geo !== ''
+      ? { inferenceGeo: usage.inference_geo }
       : {}),
     ...(openAiSplitGiven && !openAiSplitAgrees ? { writeSplitContradicted: true as const } : {}),
   };

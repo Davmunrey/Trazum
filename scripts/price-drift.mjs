@@ -219,7 +219,64 @@ export function readAnthropic(markdown) {
   if (!sawModels) unread.push('the model pricing table (a "Base input tokens" column) is not on the page');
   if (!sawBatch) unread.push('the batch table (a "Batch input" column) is not on the page');
   if (!sawFast) unread.push('the fast-mode table (under a "Fast mode" heading) is not on the page');
-  return { rows: [...rows.values()], unread };
+  const residency = readResidency(markdown);
+  if (typeof residency === 'string') unread.push(residency);
+  return { rows: [...rows.values()], unread, ...(typeof residency === 'object' ? { residency } : {}) };
+}
+
+/**
+ * The data residency sentence: from which Claude generation US-only inference
+ * costs more, and by what multiple. The page states it in prose, twice ("For
+ * Claude 4.6 and later models, using `inference_geo: "us"` applies a 1.1x
+ * pricing multiplier", and again under "Data residency pricing"), so every
+ * statement is read and they have to agree.
+ */
+function readResidency(markdown) {
+  const text = markdown.replace(/\s+/g, ' ');
+  const pattern = /For Claude (\d+)\.(\d+) and later models,[^.]*?\b(\d+(?:\.\d+)?)x (?:pricing )?multiplier/gi;
+  const stated = [...text.matchAll(pattern)].map(([, major, minor, factor]) => ({
+    since: Number(major) * 100 + Number(minor),
+    sinceName: `${major}.${minor}`,
+    multiplier: Number(factor),
+  }));
+  if (stated.length === 0) return 'the data residency sentence ("For Claude N and later models ... a N.Nx multiplier") is not on the page';
+  const [first] = stated;
+  if (stated.some((one) => one.since !== first.since || one.multiplier !== first.multiplier)) {
+    return `the page states the data residency multiplier more than one way: ${stated.map((one) => `${one.multiplier}x from Claude ${one.sinceName}`).join(', ')}`;
+  }
+  return first;
+}
+
+/** The Claude generation an Anthropic id names, as a comparable number (4.6 is 406), or null. */
+export function claudeGeneration(id) {
+  const named = /^claude-(?:opus|sonnet|haiku|fable|mythos)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?$/.exec(id);
+  if (named !== null) return Number(named[1]) * 100 + Number(named[2] ?? 0);
+  const old = /^claude-(\d+)-(\d+)-/.exec(id);
+  if (old !== null) return Number(old[1]) * 100 + Number(old[2]);
+  return null;
+}
+
+/** The catalogue's US-only multipliers against the page's sentence. */
+function compareResidency(residency, models) {
+  const findings = [];
+  for (const model of models) {
+    const generation = claudeGeneration(model.id);
+    const us = model.inferenceGeoMultipliers?.us;
+    if (generation === null) {
+      findings.push({ provider: 'anthropic', kind: 'note', model: model.id, detail: 'no Claude generation in the id, so its data residency multiplier was not checked' });
+    } else if (generation >= residency.since && us !== residency.multiplier) {
+      findings.push({
+        provider: 'anthropic', kind: 'drift', model: model.id,
+        detail: `US-only inference: the page bills Claude ${residency.sinceName} and later at ${residency.multiplier}x, the catalogue ${us === undefined ? 'has no multiplier' : `has ${us}x`}`,
+      });
+    } else if (generation < residency.since && us !== undefined) {
+      findings.push({
+        provider: 'anthropic', kind: 'drift', model: model.id,
+        detail: `US-only inference: the page bills only Claude ${residency.sinceName} and later at ${residency.multiplier}x, the catalogue has ${us}x on this earlier model`,
+      });
+    }
+  }
+  return findings;
 }
 
 /**
@@ -446,6 +503,7 @@ export function compare(provider, page, core, now = new Date(), deliberately = D
   for (const model of models) {
     if (!seen.has(model.id)) findings.push({ provider, kind: 'note', model: model.id, detail: 'priced here and not listed on the page (retired, renamed or limited availability?)' });
   }
+  if (provider === 'anthropic' && page.residency !== undefined) findings.push(...compareResidency(page.residency, models));
   return { findings, compared: seen.size };
 }
 

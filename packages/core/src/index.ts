@@ -444,6 +444,7 @@ export {
   multipliersFor,
   isOffered,
   serviceTierOf,
+  inferenceGeoOf,
 } from './pricing.js';
 export type { PricingCatalogue, PromptSize } from './pricing.js';
 export type { CachingMode, Capability, CostMultipliers } from './types.js';

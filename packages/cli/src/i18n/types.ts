@@ -713,6 +713,8 @@ export interface CliMessages {
     fastUnpriced(count: number, models: string): string;
     speedUnknown(count: number): string;
     usOnly(count: number): string;
+    usOnlyFloor(count: number): string;
+    geoUnknown(count: number): string;
     webSearch(count: number): string;
     /** One page of several: the bill from it is understated. */
     truncated(): string;

@@ -39,7 +39,7 @@ const report = (results) =>
     next_page: null,
   });
 
-it('from-anthropic prices a fast row, names a fast row it cannot price, and a US-only floor', (t) => {
+it('from-anthropic prices a fast row and a US-only row, and names a fast row it cannot price', (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'trazum-anthropic-speed-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const path = join(dir, 'usage.json');
@@ -59,7 +59,8 @@ it('from-anthropic prices a fast row, names a fast row it cannot price, and a US
   assert.deepEqual(records.map((record) => record.usage.speed), ['fast', undefined]);
   assert.match(converted.stderr, /1 row\(s\) ran in fast mode and are priced from the model's own fast rate/);
   assert.match(converted.stderr, /1 row\(s\) ran in fast mode on a model Trazum has no fast rate for \(claude-sonnet-4-6\)/);
-  assert.match(converted.stderr, /1 row\(s\) ran with inference_geo "us"/);
+  assert.match(converted.stderr, /1 row\(s\) ran with inference_geo "us" and are priced at the published 1\.1x/);
+  assert.deepEqual(records.map((record) => record.usage.inference_geo), ['us', undefined]);
   assert.doesNotMatch(converted.stderr, /never named a speed/);
 });
 

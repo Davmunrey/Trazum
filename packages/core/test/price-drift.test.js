@@ -9,6 +9,7 @@ import {
   LIFECYCLE_PAGES,
   compare,
   compareLifecycle,
+  claudeGeneration,
   dollars,
   markdownTables,
   plainName,
@@ -32,9 +33,13 @@ import {
 
 const NOW = new Date('2026-11-05T12:00:00Z');
 
-const anthropicPage = ({ opus41Output = '$75 / MTok', withFast = true, withBatch = true } = {}) => `
+const anthropicPage = ({
+  opus41Output = '$75 / MTok', withFast = true, withBatch = true, residency = '1.1x', residencySince = '4.6', withResidency = true,
+} = {}) => `
 # Pricing
-
+${withResidency ? `
+For Claude ${residencySince} and later models, using \`inference_geo: "us"\` applies a ${residency} pricing multiplier. \`inference_geo: "global"\` (default) uses standard pricing.
+` : ''}
 ## Model pricing
 
 | Model | Base input tokens | 5m cache writes | 1h cache writes | Cache hits and refreshes | Output tokens |
@@ -210,7 +215,37 @@ describe('Anthropic', () => {
     assert.equal(unread.length, 2);
     assert.match(unread.map((finding) => finding.detail).join('\n'), /batch table/);
     assert.match(unread.map((finding) => finding.detail).join('\n'), /fast-mode table/);
-    assert.equal(kinds(anthropicFindings('# Pricing\n\nNothing here.\n'), 'unread').length, 3);
+    assert.equal(kinds(anthropicFindings('# Pricing\n\nNothing here.\n'), 'unread').length, 4);
+  });
+
+  it('reads the data residency sentence, and finds the catalogue agrees with it', () => {
+    const page = readAnthropic(anthropicPage());
+    assert.deepEqual(page.residency, { since: 406, sinceName: '4.6', multiplier: 1.1 });
+    assert.deepEqual(kinds(anthropicFindings(anthropicPage()), 'drift'), []);
+    assert.equal(claudeGeneration('claude-opus-4-6'), 406);
+    assert.equal(claudeGeneration('claude-fable-5-1'), 501);
+    assert.equal(claudeGeneration('claude-opus-4-20250514'), 400);
+    assert.equal(claudeGeneration('claude-opus-4-1-20250805'), 401);
+    assert.equal(claudeGeneration('claude-3-5-haiku-20241022'), 305);
+    assert.equal(claudeGeneration('gpt-6'), null);
+  });
+
+  it('reports a changed multiplier, or a moved line, as drift on every row it touches', () => {
+    const raised = kinds(anthropicFindings(anthropicPage({ residency: '1.2x' })), 'drift');
+    assert.ok(raised.length >= 13, `only ${raised.length} rows reported`);
+    assert.ok(raised.every((finding) => /the page bills Claude 4\.6 and later at 1\.2x, the catalogue has 1\.1x/.test(finding.detail)));
+    const earlier = kinds(anthropicFindings(anthropicPage({ residencySince: '4.5' })), 'drift');
+    assert.deepEqual(earlier.map((finding) => finding.model), ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-haiku-4-5']);
+    assert.match(earlier[0].detail, /the catalogue has no multiplier/);
+    const later = kinds(anthropicFindings(anthropicPage({ residencySince: '5.0' })), 'drift').map((finding) => finding.model);
+    assert.deepEqual(later.sort(), ['claude-opus-4-6', 'claude-opus-4-7', 'claude-opus-4-8', 'claude-sonnet-4-6']);
+  });
+
+  it('says it read nothing when the residency sentence is gone or contradicts itself', () => {
+    const gone = kinds(anthropicFindings(anthropicPage({ withResidency: false })), 'unread');
+    assert.deepEqual(gone.map((finding) => finding.detail), ['the data residency sentence ("For Claude N and later models ... a N.Nx multiplier") is not on the page']);
+    const twice = anthropicPage() + '\nFor Claude 4.6 and later models, specifying US-only inference incurs a 1.2x multiplier on all token pricing categories.\n';
+    assert.match(kinds(anthropicFindings(twice), 'unread')[0].detail, /more than one way: 1\.1x from Claude 4\.6, 1\.2x from Claude 4\.6/);
   });
 });
 

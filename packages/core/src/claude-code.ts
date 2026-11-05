@@ -76,6 +76,8 @@ export interface ClaudeCodeRecord {
     cache_creation?: { ephemeral_5m_input_tokens?: number; ephemeral_1h_input_tokens?: number };
     /** The response's `usage.speed`, kept because fast mode bills at a multiple of standard. */
     speed?: string;
+    /** The response's `usage.inference_geo`, kept because US-only inference bills 1.1x on Claude 4.6 and later. */
+    inference_geo?: string;
   };
 }
 
@@ -280,6 +282,15 @@ export function claudeCodeRecords(
          * priced every fast call at the standard rate: half its cost.
          */
         ...(typeof usage.speed === 'string' && usage.speed !== '' ? { speed: usage.speed } : {}),
+        /*
+         * And the geography that ran: US-only inference bills 1.1x on Claude
+         * 4.6 and later, on every token category. Every Claude Code line
+         * carries it, "global" or "not_available" unless the workspace pins
+         * "us"; dropping it priced every US-only call at a tenth under its cost.
+         */
+        ...(typeof usage.inference_geo === 'string' && usage.inference_geo !== ''
+          ? { inference_geo: usage.inference_geo }
+          : {}),
       },
     };
 

@@ -2074,7 +2074,11 @@ ${bold('EJEMPLOS')}
     speedUnknown: (count) =>
       `El informe no nombró ninguna velocidad, y ${count} fila(s) son de un modelo con modo rápido, que se factura más caro. Se leyeron como estándar. Añade group_by[]=speed si parte de este uso corrió en modo rápido.`,
     usOnly: (count) =>
-      `${count} fila(s) corrieron con inference_geo "us", que se factura a 1,1x en Claude 4.6 y posteriores. Se cobran a la tarifa global, así que su cifra es un suelo.`,
+      `${count} fila(s) corrieron con inference_geo "us" y se cobran al 1,1x publicado que la inferencia solo en EE. UU. factura en Claude 4.6 y posteriores.`,
+    usOnlyFloor: (count) =>
+      `${count} fila(s) corrieron con inference_geo "us" en un modelo para el que Trazum no tiene multiplicador de EE. UU. Se cobran a la tarifa global, así que su cifra es un suelo.`,
+    geoUnknown: (count) =>
+      `El informe no nombró ninguna geografía de inferencia, y ${count} fila(s) son de un modelo que factura la inferencia solo en EE. UU. a 1,1x. Se leyeron como globales. Añade group_by[]=inference_geo si algún workspace fija la inferencia en EE. UU.`,
     webSearch: (count) =>
       `${count} petición(es) de búsqueda web están en el informe y en ninguna línea de la salida: las herramientas de servidor se facturan por petición, no por token, así que ninguna tarifa por token llega a ellas.`,
     truncated: () =>
