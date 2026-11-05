@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.0 — 2026-11-05
+
 ### Added
 
 - **One bill across your coding agents.** `trazum bill` with no path now
@@ -36,13 +40,17 @@ merged commit with no entry is a change only `git log` remembers.
 - **`trazum --help` starts with the bill.** The first screen says what Trazum
   is in one line and opens with a START HERE block: `trazum bill`,
   `trazum bill <log|dir>` and `trazum bill --by month`. The full usage
-  follows unchanged.
+  follows unchanged. The npm description and keywords of `@trazum/cli`, and
+  the Claude Code plugin and marketplace card, name all three agents and lead
+  with the bill.
 - **Releases prepare themselves.** `node scripts/prepare-release.mjs <version>`
   moves every lockstep version, the changelog heading, the release notes'
   "on npm at" line and the Action pin (to the newest existing tag, which the
   docs-pin guard always accepts) in one counted, refuse-don't-guess step;
   `--dry-run` writes nothing. The pin no longer needs a follow-up PR after
-  each release.
+  each release. The lockfile is edited entry by entry as JSON, never as
+  text: a text replacement would have moved jiti, a dependency that sat at
+  2.7.0 the day this release was cut.
 - **The repository checks itself weekly.** CI runs on a Monday schedule as
   well as on pushes, and `node scripts/freshness.mjs` reports price-review
   ages, the Action pin's lag and unreleased commits. Overdue items fail only

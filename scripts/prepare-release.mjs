@@ -33,7 +33,9 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// PREPARE_RELEASE_ROOT points the script at a copy of the repository: the tests
+// run it there for real, so a write that moves the wrong thing is caught.
+const ROOT = process.env.PREPARE_RELEASE_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const pinOnly = args.includes('--pin-only');
@@ -94,12 +96,43 @@ if (!pinOnly) {
   }
   replace('packages/mcp/server.json', version(current), version(next), 2);
   replace('packages/mcp/src/index.ts', `version: '${current}'`, `version: '${next}'`, 1);
-  // The root, the six workspaces and the root's own entry; the four workspaces that pin core.
-  const lock = read('package-lock.json');
-  const lockVersions = lock.split(version(current)).length - 1;
-  if (lockVersions < 7) throw new Error(`package-lock.json holds ${version(current)} ${lockVersions} time(s); at least 7 expected.`);
-  replace('package-lock.json', version(current), version(next), lockVersions);
-  replace('package-lock.json', core(current), core(next), 4);
+  /*
+    The lockfile is edited as JSON, entry by entry, never as text. A text
+    replacement also moves any third-party package that happens to share the
+    version: jiti sat at 2.7.0 on the day 2.7.0 was cut, so the next release
+    would have rewritten a dependency nobody asked to change. npm writes the
+    file as two-space JSON with a final newline, so the round trip is exact; a
+    file that does not round-trip is refused rather than reformatted.
+  */
+  const lockText = read('package-lock.json');
+  const lock = JSON.parse(lockText);
+  if (`${JSON.stringify(lock, null, 2)}\n` !== lockText) {
+    throw new Error('package-lock.json is not in the layout npm writes (two-space JSON, final newline); run npm install, then try again.');
+  }
+  if (lock.version !== current) throw new Error(`package-lock.json is at ${lock.version}, not ${current}.`);
+  lock.version = next;
+  let lockVersions = 1;
+  let lockPins = 0;
+  for (const [key, entry] of Object.entries(lock.packages ?? {})) {
+    // The root's own entry and each workspace; never node_modules, never nested.
+    if (key !== '' && !/^(packages|apps)\/[^/]+$/.test(key)) continue;
+    if (entry.version !== current) throw new Error(`package-lock.json: ${key === '' ? 'the root entry' : key} is at ${entry.version}, not ${current}.`);
+    entry.version = next;
+    lockVersions += 1;
+    if (entry.dependencies?.['@trazum/core'] !== undefined) {
+      if (entry.dependencies['@trazum/core'] !== current) {
+        throw new Error(`package-lock.json: ${key} pins @trazum/core ${entry.dependencies['@trazum/core']}, not ${current}.`);
+      }
+      entry.dependencies['@trazum/core'] = next;
+      lockPins += 1;
+    }
+  }
+  // The root twice and six workspaces; the four workspaces that pin core.
+  if (lockVersions !== 8 || lockPins !== 4) {
+    throw new Error(`package-lock.json: ${lockVersions} version(s) and ${lockPins} @trazum/core pin(s) found, 8 and 4 expected. The layout changed; update scripts/prepare-release.mjs rather than cutting a release with a version left behind.`);
+  }
+  edits.set('package-lock.json', `${JSON.stringify(lock, null, 2)}\n`);
+  touched.push(`package-lock.json (${lockVersions}x version, ${lockPins}x @trazum/core, entry by entry)`);
 
   // The changelog: Unreleased becomes the version, and a fresh Unreleased opens above it.
   const changelog = read('CHANGELOG.md');

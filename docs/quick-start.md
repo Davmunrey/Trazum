@@ -8,13 +8,15 @@ runs locally and requires no provider key.
 
 ## 1. Get a first result
 
-Already using Claude Code?
+Already using Claude Code, Codex or Gemini CLI?
 
 ```bash
 npx @trazum/cli bill
 ```
 
-This reads its local transcripts. The amount is API-equivalent cost, **not
+This reads their local sessions, names each folder before reading it, and
+splits the cost by agent, project and model. Add `--by week` (or `day`,
+`month`) for a table by period. The amount is API-equivalent cost, **not
 your subscription invoice**. Unknown models remain named pricing gaps.
 
 Have an export instead?
@@ -62,7 +64,9 @@ For a normalized usage log (use your own path):
 npx @trazum/cli plan ./usage.jsonl -o plan.json
 ```
 
-If you started with Claude Code transcripts, convert them first:
+If you started with agent sessions, convert them first. Claude Code is shown;
+Codex and Gemini CLI have [`from-codex`](commands.md#codex-sessions-trazum-from-codex)
+and [`from-gemini-cli`](gemini-cli.md):
 
 ```bash
 npx @trazum/cli from-claude-code ~/.claude/projects --label-from-project -o usage.jsonl

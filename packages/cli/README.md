@@ -15,8 +15,10 @@ Requires Node.js 20 or newer. No global install or provider key needed;
 npx @trazum/cli bill
 ```
 
-With no path, reads local Claude Code transcripts and groups costs by project
-and model. **Subscription sessions are priced at API-equivalent rates, not
+With no path, reads the local sessions of **Claude Code, Codex and Gemini
+CLI**, names each folder before reading it, and groups costs by agent, project
+and model; `--by day|week|month` adds the period you ask for.
+**Subscription sessions are priced at API-equivalent rates, not
 presented as your subscription invoice.** Unknown models remain pricing gaps.
 Local analysis does not upload your files.
 
