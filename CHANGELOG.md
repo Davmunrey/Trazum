@@ -31,6 +31,12 @@ merged commit with no entry is a change only `git log` remembers.
   (GPT-4o has no Flex) prices at the standard rate, and OpenAI's usage report
   still leaves non-default tiers out and names them.
 
+- **GPT-5, GPT-5 mini and GPT-5 nano were still recommended, and are
+  deprecated.** Each model page, read 2026-11-05, opens with "Status:
+  Deprecated", and the catalogue still offered all three as cheaper
+  alternatives, nano as the cheapest OpenAI model there is. They are priced
+  for the logs that hold them and no longer recommended.
+
 ### Added
 
 - **Four retired Claude models are priced**: Claude Opus 4.1, Opus 4, Sonnet 4

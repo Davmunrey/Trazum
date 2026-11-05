@@ -1013,11 +1013,16 @@ export const MODELS: ModelPricing[] = [
   },
 
   // ------------------------------------------------------------------------
+  // GPT-5, mini and nano. Each model page, read 2026-11-05, opens with
+  // "Status: Deprecated", and the catalogue still offered all three as
+  // cheaper alternatives, nano as the cheapest OpenAI model there is. Priced
+  // for the logs that hold them; never recommended.
   {
     id: 'gpt-5',
     aliases: ['gpt-5-2025-08-07'],
     provider: 'openai',
     displayName: 'GPT-5',
+    recommendable: false,
     inputPerMTok: 1.25,
     outputPerMTok: 10,
     contextWindow: 400_000,
@@ -1030,13 +1035,14 @@ export const MODELS: ModelPricing[] = [
     },
     capability: 'frontier',
     tier: 'frontier',
-    notes: OPENAI_GPT5_NOTE,
+    notes: OPENAI_GPT5_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
     id: 'gpt-5-mini',
     aliases: ['gpt-5-mini-2025-08-07'],
     provider: 'openai',
     displayName: 'GPT-5 mini',
+    recommendable: false,
     inputPerMTok: 0.25,
     outputPerMTok: 2,
     contextWindow: 400_000,
@@ -1049,13 +1055,14 @@ export const MODELS: ModelPricing[] = [
     },
     capability: 'mid',
     tier: 'sonnet',
-    notes: OPENAI_GPT5_NOTE,
+    notes: OPENAI_GPT5_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
     id: 'gpt-5-nano',
     aliases: ['gpt-5-nano-2025-08-07'],
     provider: 'openai',
     displayName: 'GPT-5 nano',
+    recommendable: false,
     inputPerMTok: 0.05,
     outputPerMTok: 0.4,
     contextWindow: 400_000,
@@ -1067,7 +1074,7 @@ export const MODELS: ModelPricing[] = [
     },
     capability: 'small',
     tier: 'haiku',
-    notes: OPENAI_GPT5_NOTE,
+    notes: OPENAI_GPT5_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
 
   // ------------------------------------------------------------------------
