@@ -443,6 +443,7 @@ export {
   cheapestOfTierIn,
   multipliersFor,
   isOffered,
+  serviceTierOf,
 } from './pricing.js';
 export type { PricingCatalogue, PromptSize } from './pricing.js';
 export type { CachingMode, Capability, CostMultipliers } from './types.js';

@@ -1,4 +1,4 @@
-import type { ModelPricing, PricingTier, TierCondition } from './types.js';
+import type { ModelPricing, PricingTier, ServiceTier, TierCondition } from './types.js';
 
 /**
  * Model and pricing catalogue (USD per million tokens).
@@ -270,6 +270,18 @@ const NO_PUBLISHED_CACHE_MINIMUM =
  * catalogue's short and long write, whatever each provider's durations.
  */
 const OPENAI_CACHE_TTL = Object.freeze({ writeMs: 30 * 60_000, longerMs: 12 * 60 * 60_000 });
+
+/**
+ * OpenAI's service-tier tables, read from developers.openai.com/api/docs/pricing.md
+ * on 2026-11-05: the Flex, Fast and Ultrafast tables beside the Standard one,
+ * each model's row as printed, and its "Long context" columns where the table
+ * publishes them ("Short context: <=272K input tokens. Long context: >272K").
+ * A row whose long columns read "-" gets no long band here: GPT-5.5 and 5.4 in
+ * Fast, GPT-5.5 pro in Flex. See `ModelPricing.serviceTiers`.
+ */
+const openAiLongBand = (inputPerMTok: number, outputPerMTok: number): PricingTier[] => [
+  { id: 'over-272k', when: { kind: 'input-tokens-above', tokens: 272_000 }, inputPerMTok, outputPerMTok },
+];
 
 const OPENAI_CURRENT_NOTE =
   'Priced per request by prompt length: over 272,000 input tokens, 2x input and cache and 1.5x output for'
@@ -745,6 +757,11 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 75,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 5, outputPerMTok: 25, tiers: openAiLongBand(10, 37.5) },
+      fast: { inputPerMTok: 20, outputPerMTok: 100, tiers: openAiLongBand(40, 150) },
+      ultrafast: { inputPerMTok: 60, outputPerMTok: 300, tiers: openAiLongBand(120, 450) },
+    },
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_CURRENT_NOTE,
@@ -768,6 +785,11 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 15,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 1, outputPerMTok: 5, tiers: openAiLongBand(2, 7.5) },
+      fast: { inputPerMTok: 4, outputPerMTok: 20, tiers: openAiLongBand(8, 30) },
+      ultrafast: { inputPerMTok: 12, outputPerMTok: 60, tiers: openAiLongBand(24, 90) },
+    },
     capability: 'large',
     tier: 'opus',
     notes: OPENAI_CURRENT_NOTE,
@@ -797,6 +819,10 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 7.5,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 0.5, outputPerMTok: 2.5, tiers: openAiLongBand(1, 3.75) },
+      fast: { inputPerMTok: 2, outputPerMTok: 10, tiers: openAiLongBand(4, 15) },
+    },
     capability: 'mid',
     tier: 'sonnet',
     notes: OPENAI_CURRENT_NOTE,
@@ -820,6 +846,10 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 15,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 1, outputPerMTok: 5, tiers: openAiLongBand(2, 7.5) },
+      fast: { inputPerMTok: 4, outputPerMTok: 20, tiers: openAiLongBand(8, 30) },
+    },
     capability: 'large',
     tier: 'opus',
     notes: OPENAI_CURRENT_NOTE,
@@ -843,6 +873,10 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 0.75,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 0.05, outputPerMTok: 0.25, tiers: openAiLongBand(0.1, 0.375) },
+      fast: { inputPerMTok: 0.2, outputPerMTok: 1, tiers: openAiLongBand(0.4, 1.5) },
+    },
     capability: 'small',
     tier: 'haiku',
     notes: OPENAI_CURRENT_NOTE,
@@ -880,6 +914,10 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 30,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 2, outputPerMTok: 10, tiers: openAiLongBand(4, 15) },
+      fast: { inputPerMTok: 8, outputPerMTok: 40, tiers: openAiLongBand(16, 60) },
+    },
     capability: 'large',
     tier: 'opus',
     notes:
@@ -905,6 +943,10 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 18,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 1, outputPerMTok: 6, tiers: openAiLongBand(2, 9) },
+      fast: { inputPerMTok: 4, outputPerMTok: 24, tiers: openAiLongBand(8, 36) },
+    },
     capability: 'mid',
     tier: 'sonnet',
     notes: OPENAI_CURRENT_NOTE,
@@ -928,6 +970,10 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 1.8,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 0.1, outputPerMTok: 0.6, tiers: openAiLongBand(0.2, 0.9) },
+      fast: { inputPerMTok: 0.4, outputPerMTok: 2.4, tiers: openAiLongBand(0.8, 3.6) },
+    },
     capability: 'small',
     tier: 'haiku',
     notes: OPENAI_CURRENT_NOTE,
@@ -978,6 +1024,10 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      flex: { inputPerMTok: 0.625, outputPerMTok: 5 },
+      fast: { inputPerMTok: 2.5, outputPerMTok: 20 },
+    },
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_GPT5_NOTE,
@@ -993,6 +1043,10 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      flex: { inputPerMTok: 0.125, outputPerMTok: 1 },
+      fast: { inputPerMTok: 0.45, outputPerMTok: 3.6 },
+    },
     capability: 'mid',
     tier: 'sonnet',
     notes: OPENAI_GPT5_NOTE,
@@ -1008,6 +1062,9 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      flex: { inputPerMTok: 0.025, outputPerMTok: 0.2 },
+    },
     capability: 'small',
     tier: 'haiku',
     notes: OPENAI_GPT5_NOTE,
@@ -1048,6 +1105,10 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 45,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 2.5, outputPerMTok: 15, tiers: openAiLongBand(5, 22.5) },
+      fast: { inputPerMTok: 12.5, outputPerMTok: 75 },
+    },
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_EARLIER_LONG_NOTE,
@@ -1071,6 +1132,9 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 270,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 15, outputPerMTok: 90 },
+    },
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_EARLIER_LONG_NOTE,
@@ -1094,6 +1158,10 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 22.5,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 1.25, outputPerMTok: 7.5, tiers: openAiLongBand(2.5, 11.25) },
+      fast: { inputPerMTok: 5, outputPerMTok: 30 },
+    },
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_EARLIER_LONG_NOTE,
@@ -1117,6 +1185,9 @@ export const MODELS: ModelPricing[] = [
         outputPerMTok: 270,
       },
     ],
+    serviceTiers: {
+      flex: { inputPerMTok: 15, outputPerMTok: 90, tiers: openAiLongBand(30, 135) },
+    },
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_EARLIER_LONG_NOTE,
@@ -1132,6 +1203,10 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      flex: { inputPerMTok: 0.375, outputPerMTok: 2.25 },
+      fast: { inputPerMTok: 1.5, outputPerMTok: 9 },
+    },
     capability: 'mid',
     tier: 'sonnet',
     notes: OPENAI_EARLIER_NOTE,
@@ -1148,6 +1223,9 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      flex: { inputPerMTok: 0.1, outputPerMTok: 0.625 },
+    },
     capability: 'small',
     tier: 'haiku',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
@@ -1163,6 +1241,10 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      flex: { inputPerMTok: 0.875, outputPerMTok: 7 },
+      fast: { inputPerMTok: 3.5, outputPerMTok: 28 },
+    },
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_EARLIER_NOTE,
@@ -1194,6 +1276,10 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      flex: { inputPerMTok: 0.625, outputPerMTok: 5 },
+      fast: { inputPerMTok: 2.5, outputPerMTok: 20 },
+    },
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
@@ -1226,6 +1312,9 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      fast: { inputPerMTok: 3.5, outputPerMTok: 14 },
+    },
     capability: 'large',
     tier: 'opus',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
@@ -1242,6 +1331,9 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      fast: { inputPerMTok: 0.7, outputPerMTok: 2.8 },
+    },
     capability: 'mid',
     tier: 'sonnet',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
@@ -1258,6 +1350,9 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.5, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      fast: { inputPerMTok: 4.25, outputPerMTok: 17 },
+    },
     capability: 'large',
     tier: 'opus',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
@@ -1274,6 +1369,9 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.5, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      fast: { inputPerMTok: 0.25, outputPerMTok: 1 },
+    },
     capability: 'small',
     tier: 'haiku',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
@@ -1290,6 +1388,10 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    serviceTiers: {
+      flex: { inputPerMTok: 1, outputPerMTok: 4 },
+      fast: { inputPerMTok: 3.5, outputPerMTok: 14 },
+    },
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
@@ -1336,6 +1438,8 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    // The pricing page's specialized "Fast" table: $3.50/$28, cached $0.35.
+    serviceTiers: { fast: { inputPerMTok: 3.5, outputPerMTok: 28 } },
     capability: 'frontier',
     tier: 'frontier',
     notes: OPENAI_CODEX_NOTE + ' At most 272,000 input tokens.' + OPENAI_DEPRECATED_SUFFIX,
@@ -2326,6 +2430,8 @@ interface Rates {
      */
     floor?: { inputPerMTok: number; outputPerMTok: number };
   } | null;
+  /** The service tier whose table priced the call, when it was not the standard one. */
+  serviceTier?: ServiceTier;
 }
 
 /**
@@ -2348,6 +2454,61 @@ export interface PromptSize {
   inputTokensAtMost?: number;
   /** The response's `usage.speed`, when the log kept it: `"fast"` or `"standard"`. */
   speed?: string;
+  /**
+   * The response's `service_tier`, when the log kept it: OpenAI's `"flex"`,
+   * `"priority"` or `"fast"`, `"ultrafast"`, or `"default"`. Normalised by
+   * `serviceTierOf`; anything else prices at the standard rate.
+   */
+  serviceTier?: string;
+}
+
+/**
+ * A response's `service_tier` as the tier whose table prices it, or
+ * `undefined` for the standard one.
+ *
+ * OpenAI renamed Priority processing to Fast mode on 2026-07-30, and its guide
+ * says "for GPT-5.6 and earlier models, the response returns `priority`
+ * whether the request specifies `priority` or `fast`", so both spellings are
+ * the Fast table. `"default"` is the standard tier, and is also what a Fast
+ * request downgraded under the ramp-rate limit returns, "and charge standard
+ * rates". `"auto"` and `"scale"`, or a value this table has never seen, are
+ * priced at the standard rate rather than guessed into another tier.
+ */
+export function serviceTierOf(value: unknown): ServiceTier | undefined {
+  if (typeof value !== 'string') return undefined;
+  const tier = value.trim().toLowerCase();
+  if (tier === 'flex') return 'flex';
+  if (tier === 'fast' || tier === 'priority') return 'fast';
+  if (tier === 'ultrafast') return 'ultrafast';
+  return undefined;
+}
+
+/**
+ * The row as one service tier prices it: that tier's rates and long band, the
+ * row's own cache and batch ratios. Built once per row and tier.
+ */
+const serviceTierMemo = new WeakMap<ModelPricing, Map<ServiceTier, ModelPricing>>();
+
+function serviceTierRow(model: ModelPricing, tier: ServiceTier): ModelPricing | undefined {
+  const sheet = model.serviceTiers?.[tier];
+  if (sheet === undefined) return undefined;
+  let rows = serviceTierMemo.get(model);
+  if (rows === undefined) {
+    rows = new Map();
+    serviceTierMemo.set(model, rows);
+  }
+  let row = rows.get(tier);
+  if (row === undefined) {
+    const { history: _history, promo: _promo, tiers: _tiers, serviceTiers: _serviceTiers, ...rest } = model;
+    row = Object.freeze({
+      ...rest,
+      inputPerMTok: sheet.inputPerMTok,
+      outputPerMTok: sheet.outputPerMTok,
+      ...(sheet.tiers !== undefined ? { tiers: sheet.tiers } : {}),
+    });
+    rows.set(tier, row);
+  }
+  return row;
 }
 
 const pricingMemo = new WeakMap<
@@ -2368,7 +2529,8 @@ function pricedAt(model: ModelPricing, on: Date): ModelPricing {
   let periods = periodMemo.get(model);
   if (periods === undefined) {
     periods = history.map((period) => {
-      const { history: _history, promo: _promo, tiers: _tiers, multipliers: _multipliers, ...rest } = model;
+      // A period's own price only: the service tiers below are today's tables.
+      const { history: _history, promo: _promo, tiers: _tiers, multipliers: _multipliers, serviceTiers: _serviceTiers, ...rest } = model;
       const row: ModelPricing = Object.freeze({
         ...rest,
         inputPerMTok: period.inputPerMTok,
@@ -2464,6 +2626,18 @@ export function effectivePricing(
   if (model.history !== undefined) {
     const period = pricedAt(model, on);
     if (period !== model) return effectivePricing(period, on, context);
+  }
+  /*
+   * A response that names another service tier is priced by that tier's own
+   * table, long band included, and by nothing composed out of two.
+   */
+  if (context.serviceTier !== undefined && model.serviceTiers !== undefined) {
+    const named = serviceTierOf(context.serviceTier);
+    const row = named === undefined ? undefined : serviceTierRow(model, named);
+    if (row !== undefined) {
+      const { serviceTier: _serviceTier, ...size } = context;
+      return { ...effectivePricing(row, on, size), serviceTier: named };
+    }
   }
   const memo = pricingMemo.get(model) ?? cache(model);
 

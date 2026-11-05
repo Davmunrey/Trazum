@@ -11,6 +11,26 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **OpenAI's Flex calls were billed at twice their cost, and Fast calls at
+  half or less.** OpenAI sells Flex at about half the standard price, Fast
+  (Priority until 2026-07-30) at up to twice and Ultrafast at six times, each
+  from its own table on the pricing page, read 2026-11-05. The response names
+  the tier that ran in its top-level `service_tier`, and Trazum ignored it, so
+  every such call was priced at the standard rate. Now a logged Chat
+  Completions or Responses object and the gateway, whole or streamed, keep the
+  field, and the call is priced from that tier's table, long-context band
+  included, for the twenty-five OpenAI models the tables list. `"priority"`
+  is read as Fast, as OpenAI's guide says GPT-5.6 and earlier return it, and
+  `"default"`, which a Fast request downgraded under load also returns, is the
+  standard rate. The gateway judges a budget by the tier the request asks for.
+  **If you use Flex or Fast and bill logged responses, run the bill again.**
+  The rates are written out per model because they are no single multiple:
+  GPT-4o's Fast is 1.7x, GPT-5.2's 2x. A tier a model has no table for
+  (GPT-4o has no Flex) prices at the standard rate, and OpenAI's usage report
+  still leaves non-default tiers out and names them.
+
 ### Added
 
 - **Four retired Claude models are priced**: Claude Opus 4.1, Opus 4, Sonnet 4
@@ -65,7 +85,9 @@ merged commit with no entry is a change only `git log` remembers.
   their Markdown form and compares every published figure with the catalogue:
   input, output, cache hits, both cache writes, batch, the long-prompt bands
   and fast mode, 50 models in all, including the "Specialized models" table
-  where the Codex and ChatGPT models are priced. A changed price, a model the catalogue
+  where the Codex and ChatGPT models are priced, and the Flex, Fast and
+  Ultrafast tables. A figure the page rounds to the cent agrees when it is
+  within half a cent; "$0.40" against $0.375 is drift. A changed price, a model the catalogue
   lacks, or a page whose tables moved is a finding and fails the scheduled CI
   run; on pull requests it is printed in the step's log. Freshness says how
   long ago a provider was read; this says whether its page has changed since.

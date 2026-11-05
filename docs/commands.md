@@ -3927,6 +3927,26 @@ opt-in that is refused rather than run slowly, so a log without the field never
 asked for it, and pricing every unrecorded call at the fast rate would double
 the bill of every log older than the field.
 
+**A service tier is a table of its own, not a tier.** OpenAI sells Flex at
+about half the standard price, Fast (called Priority until 2026-07-30) at up
+to twice, and Ultrafast on GPT-6 Astra and GPT-6.1 Sol at six times, each in
+its own table on the pricing page with its own long-context columns. The
+request asks with `service_tier`, and the response's top-level `service_tier`
+names the tier that actually ran: `"flex"`, `"priority"` (what GPT-5.6 and
+earlier return for a Fast request), `"fast"`, `"ultrafast"`, or `"default"`,
+which is also what a Fast request downgraded under load returns, billed at the
+standard rate. The catalogue writes each model's row of each table out in
+`serviceTiers`, because the rates are no single multiple (GPT-4o's Fast is
+1.7x, GPT-5.2's 2x), and a call is priced from the table its response names,
+long band included, with the row's own cache and batch ratios. Flex is below
+the standard base, which is why it is not a `tiers` entry: a tier may be
+undecided and falls back to the dearest candidate, while a service tier is
+always decided by the response. A tier the row has no table for (GPT-4o has
+no Flex) prices at the standard rate, and so does a value the table has never
+seen. It is read from a logged Chat Completions or Responses object and by the
+gateway, from whole responses and streams; OpenAI's usage report still leaves
+non-default tiers out and names them, as before.
+
 A tier and a promotion may not appear on the same model. No provider here does
 both, and a rate composed from two real ones is the first thing
 [the doctrine](doctrine.md) rules out.

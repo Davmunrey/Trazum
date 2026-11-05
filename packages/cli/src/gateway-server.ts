@@ -367,6 +367,7 @@ function describe(body: string, provider: string, modelFromPath: string | null):
   label: string | null;
   session: string | null;
   speed: string | null;
+  serviceTier: string | null;
 } | null {
   let parsed: unknown;
   try {
@@ -438,6 +439,12 @@ function describe(body: string, provider: string, modelFromPath: string | null):
      * is judged by has to know it.
      */
     speed: typeof request.speed === 'string' && request.speed !== '' ? request.speed : null,
+    /**
+     * OpenAI's `service_tier`: Flex bills about half the standard rate and
+     * Fast up to twice, so the estimate a budget is judged by has to know it.
+     * The response says which tier ran, and the spend is recorded from that.
+     */
+    serviceTier: typeof request.service_tier === 'string' && request.service_tier !== '' ? request.service_tier : null,
   };
 }
 

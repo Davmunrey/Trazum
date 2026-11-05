@@ -227,15 +227,18 @@ export function readAnthropic(markdown) {
  */
 export function readOpenAi(markdown) {
   const rows = new Map();
-  const row = (name) => {
-    if (!rows.has(name)) rows.set(name, { name, band: 'base', rates: {} });
-    return rows.get(name).rates;
+  const row = (name, band = 'base') => {
+    const key = `${name}\u0000${band}`;
+    if (!rows.has(key)) rows.set(key, { name, band, rates: {} });
+    return rows.get(key).rates;
   };
   const textTable = (header) => column(header, 'Model') === 0
     && (column(header, 'Short context input') > 0 || (column(header, 'Input') > 0 && column(header, 'Cached input') > 0));
   let standard = 0;
   let batch = 0;
   let specialized = false;
+  let specializedFast = false;
+  const serviceTiers = { flex: 0, fast: 0, ultrafast: 0 };
   for (const table of markdownTables(markdown)) {
     /*
      * "Specialized models": a Category column before Model, the Codex, ChatGPT
@@ -244,19 +247,32 @@ export function readOpenAi(markdown) {
      * without an output price are not chat models and are skipped.
      */
     const specialModel = column(table.header, 'Model');
-    if (!specialized && column(table.header, 'Category') === 0 && specialModel === 1
+    if ((!specialized || !specializedFast) && column(table.header, 'Category') === 0 && specialModel === 1
       && column(table.header, 'Input') > 1 && column(table.header, 'Cached input') > 1) {
+      // The first is the standard table; the second, same header, is Fast's.
+      const band = specialized ? 'service:fast' : 'base';
+      if (specialized) specializedFast = true;
       specialized = true;
       const at = { input: column(table.header, 'Input'), output: column(table.header, 'Output'), hit: column(table.header, 'Cached input') };
       for (const cells of table.rows) {
         const output = dollars(cells[at.output] ?? '');
         if (output === undefined) continue;
-        standard += 1;
-        Object.assign(row(plainName(cells[specialModel])), { input: dollars(cells[at.input]), output, hit: dollars(cells[at.hit]) });
+        if (band === 'base') standard += 1;
+        Object.assign(row(plainName(cells[specialModel]), band), { input: dollars(cells[at.input]), output, hit: dollars(cells[at.hit]) });
       }
       continue;
     }
-    const kind = /^standard pricing data$/i.test(table.heading) ? 'standard' : /^batch$/i.test(table.heading) ? 'batch' : undefined;
+    /*
+     * The service tiers: Flex under a "Flex" heading inside the batch section,
+     * Fast and Ultrafast under their own "... pricing data" headings. Each is
+     * read as a band of its own and compared with the row's `serviceTiers`.
+     */
+    const tier = /^flex$/i.test(table.heading) ? 'flex'
+      : /^fast pricing data$/i.test(table.heading) ? 'fast'
+        : /^ultrafast pricing data$/i.test(table.heading) ? 'ultrafast' : undefined;
+    const kind = /^standard pricing data$/i.test(table.heading) ? 'standard'
+      : /^batch$/i.test(table.heading) ? 'batch'
+        : tier !== undefined ? 'service' : undefined;
     if (kind === undefined || !textTable(table.header)) continue;
     const { header } = table;
     const pick = (...names) => column(header, ...names);
@@ -272,10 +288,11 @@ export function readOpenAi(markdown) {
     };
     for (const cells of table.rows) {
       const name = plainName(cells[0]).replace(/\s*\(.*\)\s*$/, '').trim();
-      const rates = row(name);
+      const rates = row(name, kind === 'service' ? `service:${tier}` : 'base');
       const read = (index) => (index > 0 ? dollars(cells[index]) : undefined);
-      if (kind === 'standard') {
-        standard += 1;
+      if (kind === 'standard' || kind === 'service') {
+        if (kind === 'standard') standard += 1;
+        else serviceTiers[tier] += 1;
         Object.assign(rates, {
           input: read(at.input),
           output: read(at.output),
@@ -301,10 +318,24 @@ export function readOpenAi(markdown) {
   if (standard === 0) unread.push('no text-token table under a "Standard pricing data" heading');
   if (batch === 0) unread.push('no text-token table under a "Batch" heading');
   if (!specialized) unread.push('no "Specialized models" table (Category, Model, Input, Output, Cached input)');
+  for (const [tier, count] of Object.entries(serviceTiers)) {
+    if (count === 0) unread.push(`no text-token table for the ${tier} service tier`);
+  }
   return { rows: [...rows.values()], unread };
 }
 
-const same = (a, b) => Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a), Math.abs(b));
+/**
+ * Whether a published figure and the catalogue's agree. The page prints some
+ * derived rates rounded to the cent (Flex GPT-5.4's cached input is "$0.13",
+ * a tenth of $1.25), so a whole-cent figure within half a cent of the
+ * catalogue's agrees; anything further off is drift. "$0.40" against $0.375
+ * is drift: the tolerance is the rounding, never a decimal place.
+ */
+const same = (published, priced) => {
+  if (Math.abs(published - priced) <= 1e-9 * Math.max(1, Math.abs(published), Math.abs(priced))) return true;
+  const wholeCents = Math.abs(published * 100 - Math.round(published * 100)) < 1e-6;
+  return wholeCents && Math.abs(published - priced) <= 0.005 + 1e-9;
+};
 const money = (value) => `$${Number(value.toFixed(6))}`;
 
 /** The prompt size that lands a request in a model's long band, if it has one. */
@@ -355,6 +386,26 @@ export function compare(provider, page, core, now = new Date(), deliberately = D
       const fastApplied = fast.tier?.applied === 'fast';
       check('fast input', rates.input, fastApplied ? fast.inputPerMTok : undefined);
       check('fast output', rates.output, fastApplied ? fast.outputPerMTok : undefined);
+      continue;
+    }
+    if (band.startsWith('service:')) {
+      const tier = band.slice('service:'.length);
+      const short = core.effectivePricing(model, now, { inputTokens: 1000, serviceTier: tier });
+      if (short.serviceTier !== tier) {
+        findings.push({ provider, kind: 'drift', model: model.id, detail: `${tier}: the page publishes ${money(rates.input ?? 0)}/${money(rates.output ?? 0)}, the catalogue has no ${tier} rates` });
+        continue;
+      }
+      check(`${tier} input`, rates.input, short.inputPerMTok);
+      check(`${tier} output`, rates.output, short.outputPerMTok);
+      check(`${tier} cache hit`, rates.hit, cached(short.inputPerMTok));
+      check(`${tier} 30-minute write`, rates.write5m, short.inputPerMTok * m.cacheWrite5m);
+      check(`${tier} 12-hour write`, rates.write1h, short.inputPerMTok * m.cacheWrite1h);
+      if (rates.longInput !== undefined || rates.longOutput !== undefined) {
+        const lengthy = core.effectivePricing(model, now, { inputTokens: longBand(model) ?? 272_001, serviceTier: tier });
+        check(`${tier} long-context input`, rates.longInput, lengthy.inputPerMTok);
+        check(`${tier} long-context output`, rates.longOutput, lengthy.outputPerMTok);
+        check(`${tier} long-context cache hit`, rates.longHit, cached(lengthy.inputPerMTok));
+      }
       continue;
     }
     const long = longBand(model);
