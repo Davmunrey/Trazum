@@ -214,3 +214,59 @@ describe('the route a line records', () => {
     assert.doesNotThrow(() => mod.log.securityEvent('auth.sign_in', 'success'));
   });
 });
+
+describe('the last-resort error line', () => {
+  /**
+   * What `instrumentation.ts` writes for an error nothing caught. Planted in
+   * the error and the request: everything a message from a parser or a driver
+   * could quote, and everything a URL or a header could carry.
+   */
+  const SHARE_TOKEN = 'Abcdefghijklmnopqrstuvwxyz0123456789_-ABCDE';
+  const planted = () => {
+    const error = new Error(`Unexpected token in JSON at position 4: "${SECRETS.prompt}" for ${SECRETS.login}`);
+    error.digest = '2834617703';
+    error.stack = `Error: ${SECRETS.prompt}\n    at ${SECRETS.githubToken}`;
+    return error;
+  };
+  const request = {
+    path: `/c/${SHARE_TOKEN}?code=${SECRETS.code}`,
+    method: 'GET',
+    headers: { cookie: `__Host-trazum_session=${SECRETS.githubToken}`, 'x-forwarded-for': SECRETS.ip },
+  };
+
+  it('records the route pattern, the method, the kind and the digest the error page shows', () => {
+    mod.log.unhandledError(planted(), request, { routePath: '/c/[token]', routeType: 'render' }, new Date('2026-11-05T12:00:00Z'));
+    assert.deepEqual(parsed(), [
+      { type: 'error', at: '2026-11-05T12:00:00.000Z', route: '/c/[token]', method: 'GET', kind: 'render', digest: '2834617703' },
+    ]);
+  });
+
+  it('writes nothing from the message, the stack, the path or the headers', () => {
+    mod.log.unhandledError(planted(), request, { routePath: '/c/[token]', routeType: 'render' });
+    const written = lines.join('\n');
+    for (const value of [...Object.values(SECRETS), SHARE_TOKEN, 'Unexpected token']) {
+      assert.ok(!written.includes(value), `the error line carries ${value}`);
+    }
+  });
+
+  it('writes "unknown" for anything that is not the shape the framework promised', () => {
+    const odd = Object.assign(new Error('x'), { digest: `${SECRETS.prompt} with spaces` });
+    mod.log.unhandledError(odd, { method: 'get; drop' }, { routePath: `/c/${SHARE_TOKEN}?code=${SECRETS.code}`, routeType: 'telepathy' });
+    mod.log.unhandledError('a thrown string', {}, {});
+    const [first, second] = parsed();
+    assert.deepEqual(
+      { route: first.route, method: first.method, kind: first.kind, digest: first.digest },
+      { route: 'unknown', method: 'unknown', kind: 'unknown', digest: undefined },
+    );
+    assert.equal(second.route, 'unknown');
+    assert.ok(!lines.join('\n').includes(SECRETS.prompt));
+  });
+
+  it('is what instrumentation.ts calls', async () => {
+    const { onRequestError } = await import('../instrumentation.ts');
+    onRequestError(planted(), request, { routePath: '/api/prompts/[id]', routeType: 'route' });
+    assert.equal(parsed()[0].route, '/api/prompts/[id]');
+    assert.equal(parsed()[0].digest, '2834617703');
+  });
+});
+
