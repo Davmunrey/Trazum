@@ -2831,9 +2831,20 @@ telemetry is no longer taken for an OTel export; and the files a session keeps
 beside its transcripts are one line, not a hundred and fifty. All of it found
 by running `bill` on this repository's own sessions.
 
+## 2.7.7 — Each call counted once, each subagent read on its own — released
+
+Two corrections found by profiling this repository's own sessions again. A
+Claude Code call written without a `requestId` is matched by its response's
+message id, where each of its lines had been billed as a call: Claude Fable 5.1
+went from $47.82 to the $18.46 its 124 calls cost. And a session's subagents
+are conversations of their own for the findings that follow a conversation
+turn by turn, through an optional `thread` field, while what a session costs
+still counts them; the growth ceiling on this repository fell from $412.48 to
+$366.74. The growth and session-cost sentences say which one they mean.
+
 ## Next
 
-**Target: 2.7.7, repeated-task evaluation.**
+**Target: 2.7.8, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,

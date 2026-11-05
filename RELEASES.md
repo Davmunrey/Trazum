@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.6**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.7**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,51 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.7 — Each call counted once, each subagent read on its own
+
+**Adoption, read 2026-11-05:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.6.
+
+Found by profiling this repository's own Claude Code sessions again. **If
+`from-claude-code` ever told you calls "carried no request id", or you use
+subagents, run it again.**
+
+```bash
+npx -y @trazum/cli@2.7.7 bill
+```
+
+**A Claude Code call with no request id was billed once per line.** Claude
+Code writes a response as one line per content block, and a line with no
+`requestId` was kept as a call of its own. Every Claude Fable 5.1 line in this
+repository's transcripts came that way: 289 lines for 124 responses, $47.82
+billed where the calls cost $18.46. A call's lines are now matched by the
+response's own message id when the request id is missing. The $29.36 the bill
+dropped is the same figure the "same request, sent again" finding had flagged
+on that model: it was this.
+
+**A session's subagents were read as turns of the main conversation.** A
+subagent shares its session's id and keeps a context and a cache prefix of its
+own. The findings that follow a conversation turn by turn (how its input
+grows, repeats, retries after a truncated answer, the cache TTL fit, cache
+writes never read back) grouped by session alone, so a subagent's smaller
+prompts set the floor for the main thread's growth: $412.48 of growth where the
+threads support $366.74, on this repository's transcripts. Each subagent is now
+a conversation of its own there, through a new optional `thread` field that
+`bill` and `from-claude-code` fill from Claude Code's `agentId`. What a session
+costs, and `--max-session-usd`, still count the whole session.
+
+**And the sentences say which one they mean.** The growth line says when its
+figures are averages across conversations, and the session-cost lines say
+"sessions, subagents included" where they had said "conversations" for what
+was always a whole session.
+
+**Still waiting on a person:** 2.7.2's tag and GitHub release, as 2.7.3 said.
+
+No breaking change. `thread` is a new optional field on a usage-log record and
+in its published schema. All packages, the plugin and MCP discovery advance
+together to 2.7.7.
 
 ---
 
