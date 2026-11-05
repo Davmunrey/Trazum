@@ -1,6 +1,7 @@
 import { MAX_SHARES_PER_OWNER } from './shares';
 import type { ShareRecord, ShareSettings, ShareStore, ShareSummary } from './shares';
 import { sharePreview } from './shares-memory';
+import { inTransaction } from './transaction';
 import type { SqlClient } from './postgres';
 
 /**
@@ -36,39 +37,49 @@ function toShare(row: Row): ShareRecord {
 export function sharesInPostgres(sql: SqlClient): ShareStore {
   return {
     async createShare(input): Promise<ShareRecord | null> {
-      /*
-        This owner's expired links go first. They counted toward the limit
-        while opening nothing, so an owner whose hundred links had all lapsed
-        could never make another, and their prompt text stayed in this table
-        for as long as the table did. Expired is absent everywhere else here;
-        now it is absent from the count and from the disk too.
-      */
-      await sql`
-        delete from trazum_shares
-        where owner_id = ${input.ownerId} and expires_at is not null and expires_at <= ${input.now}
-      `;
-      const [count] = await sql<Row>`
-        select count(*) as total from trazum_shares where owner_id = ${input.ownerId}
-      `;
-      if (Number(count?.total ?? 0) >= MAX_SHARES_PER_OWNER) return null;
+      // One transaction, the account's row locked first, for the same reason
+      // as `createPrompt`: two links made at once must not both pass the
+      // ceiling because each counted before the other wrote.
+      return inTransaction(sql, async (tx) => {
+        const owner = await tx<Row>`
+          select id from trazum_users where id = ${input.ownerId} for no key update
+        `;
+        if (!owner[0]) return null;
 
-      // The object itself, not its JSON: postgres.js serialises a jsonb
-      // parameter on its own, so passing `JSON.stringify(settings)` stored a
-      // JSON *string*, and the share page read `settings.level` off a string.
-      // Every link on a Postgres deployment replayed defaults instead of what
-      // its author saw. Found by `store-contract.test.mjs` against Postgres.
-      const rows = await sql<Row>`
-        insert into trazum_shares
-          (token, owner_id, owner_login, before_text, after_text, settings, created_at, expires_at)
-        values (${input.token}, ${input.ownerId}, ${input.ownerLogin}, ${input.beforeText},
-                ${input.afterText}, ${input.settings as never}::jsonb,
-                ${input.now}, ${input.expiresAt})
-        returning token, owner_id, owner_login, before_text, after_text, settings, created_at, expires_at
-      `;
+        /*
+          This owner's expired links go first. They counted toward the limit
+          while opening nothing, so an owner whose hundred links had all lapsed
+          could never make another, and their prompt text stayed in this table
+          for as long as the table did. Expired is absent everywhere else here;
+          now it is absent from the count and from the disk too.
+        */
+        await tx`
+          delete from trazum_shares
+          where owner_id = ${input.ownerId} and expires_at is not null and expires_at <= ${input.now}
+        `;
+        const [count] = await tx<Row>`
+          select count(*) as total from trazum_shares where owner_id = ${input.ownerId}
+        `;
+        if (Number(count?.total ?? 0) >= MAX_SHARES_PER_OWNER) return null;
 
-      const row = rows[0];
-      if (!row) throw new Error('trazum: share insert returned no row');
-      return toShare(row);
+        // The object itself, not its JSON: postgres.js serialises a jsonb
+        // parameter on its own, so passing `JSON.stringify(settings)` stored a
+        // JSON *string*, and the share page read `settings.level` off a string.
+        // Every link on a Postgres deployment replayed defaults instead of what
+        // its author saw. Found by `store-contract.test.mjs` against Postgres.
+        const rows = await tx<Row>`
+          insert into trazum_shares
+            (token, owner_id, owner_login, before_text, after_text, settings, created_at, expires_at)
+          values (${input.token}, ${input.ownerId}, ${input.ownerLogin}, ${input.beforeText},
+                  ${input.afterText}, ${input.settings as never}::jsonb,
+                  ${input.now}, ${input.expiresAt})
+          returning token, owner_id, owner_login, before_text, after_text, settings, created_at, expires_at
+        `;
+
+        const row = rows[0];
+        if (!row) throw new Error('trazum: share insert returned no row');
+        return toShare(row);
+      });
     },
 
     async findShare(token: string, now: Date): Promise<ShareRecord | null> {

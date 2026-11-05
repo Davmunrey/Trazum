@@ -11,6 +11,7 @@ import type {
   PromptWithHistory,
 } from './prompts';
 import type { SqlClient } from './postgres';
+import { inTransaction } from './transaction';
 
 /**
  * The prompt library, against any Postgres.
@@ -89,32 +90,44 @@ export function promptsInPostgres(sql: SqlClient): PromptStore {
     },
 
     async createPrompt({ ownerId, name, text, note, now }): Promise<PromptRecord | null> {
-      const [count] = await sql<Row>`
-        select count(*) as total from trazum_prompts where owner_id = ${ownerId}
-      `;
-      if (Number(count?.total ?? 0) >= MAX_PROMPTS_PER_OWNER) return null;
+      // One transaction, the account's row locked first: a second save for the
+      // same account waits here, and its count then sees this one's prompt,
+      // so two saves arriving together cannot both pass the ceiling. The
+      // prompt and its version 1 commit together too, so no prompt is ever
+      // left without text by a failure between them.
+      return inTransaction(sql, async (tx) => {
+        const owner = await tx<Row>`
+          select id from trazum_users where id = ${ownerId} for no key update
+        `;
+        if (!owner[0]) return null;
 
-      const id = randomUUID();
-      // `do nothing` rather than letting the unique constraint throw: a name the
-      // owner already used is an ordinary answer to give a form, not an
-      // exception to catch by matching on a driver's error string.
-      const rows = await sql<Row>`
-        insert into trazum_prompts (id, owner_id, name, created_at, updated_at)
-        values (${id}, ${ownerId}, ${name}, ${now}, ${now})
-        on conflict (owner_id, name) do nothing
-        returning id, owner_id, name, created_at, updated_at
-      `;
+        const [count] = await tx<Row>`
+          select count(*) as total from trazum_prompts where owner_id = ${ownerId}
+        `;
+        if (Number(count?.total ?? 0) >= MAX_PROMPTS_PER_OWNER) return null;
 
-      const row = rows[0];
-      if (!row) return null;
+        const id = randomUUID();
+        // `do nothing` rather than letting the unique constraint throw: a name the
+        // owner already used is an ordinary answer to give a form, not an
+        // exception to catch by matching on a driver's error string.
+        const rows = await tx<Row>`
+          insert into trazum_prompts (id, owner_id, name, created_at, updated_at)
+          values (${id}, ${ownerId}, ${name}, ${now}, ${now})
+          on conflict (owner_id, name) do nothing
+          returning id, owner_id, name, created_at, updated_at
+        `;
 
-      await sql`
-        insert into trazum_prompt_versions
-          (id, prompt_id, version, text, note, author_id, created_at)
-        values (${randomUUID()}, ${id}, 1, ${text}, ${note}, ${ownerId}, ${now})
-      `;
+        const row = rows[0];
+        if (!row) return null;
 
-      return toPrompt(row);
+        await tx`
+          insert into trazum_prompt_versions
+            (id, prompt_id, version, text, note, author_id, created_at)
+          values (${randomUUID()}, ${id}, 1, ${text}, ${note}, ${ownerId}, ${now})
+        `;
+
+        return toPrompt(row);
+      });
     },
 
     async getPrompt(id: string, ownerId: string): Promise<PromptWithHistory | null> {
@@ -139,44 +152,58 @@ export function promptsInPostgres(sql: SqlClient): PromptStore {
     },
 
     async addVersion({ promptId, ownerId, authorId, text, note, now }): Promise<AddVersionResult> {
-      // The owner predicate and the newest version in one statement, so there is
-      // no moment where the code holds a prompt it has not yet proved is theirs.
-      const rows = await sql<Row>`
-        select
-          v.id, v.prompt_id, v.version, v.text, v.note, v.author_id, v.created_at,
-          (select count(*) from trazum_prompt_versions w where w.prompt_id = p.id) as version_count
-        from trazum_prompts p
-        left join lateral (
-          select * from trazum_prompt_versions v
-          where v.prompt_id = p.id
-          order by v.version desc
-          limit 1
-        ) v on true
-        where p.id = ${promptId} and p.owner_id = ${ownerId}
-      `;
+      // One transaction, the prompt's row locked first and only if it is
+      // theirs. A second save of the same prompt waits here; its read of the
+      // newest version, a statement of its own after the wait, sees this one's
+      // version, so the two are numbered 5 and 6 instead of both trying to be
+      // 5, and the version ceiling cannot be passed by saving twice at once.
+      return inTransaction(sql, async (tx) => {
+        const locked = await tx<Row>`
+          select id from trazum_prompts
+          where id = ${promptId} and owner_id = ${ownerId}
+          for no key update
+        `;
+        if (!locked[0]) return { status: 'not-found' } as AddVersionResult;
 
-      const row = rows[0];
-      if (!row) return { status: 'not-found' };
+        // The owner predicate again, so this statement proves ownership on its
+        // own rather than leaning on the lock above.
+        const rows = await tx<Row>`
+          select
+            v.id, v.prompt_id, v.version, v.text, v.note, v.author_id, v.created_at,
+            (select count(*) from trazum_prompt_versions w where w.prompt_id = p.id) as version_count
+          from trazum_prompts p
+          left join lateral (
+            select * from trazum_prompt_versions v
+            where v.prompt_id = p.id
+            order by v.version desc
+            limit 1
+          ) v on true
+          where p.id = ${promptId} and p.owner_id = ${ownerId}
+        `;
 
-      const latest = row.id ? toVersion(row) : null;
-      if (latest && latest.text === text) return { status: 'unchanged', version: latest };
-      if (Number(row.version_count ?? 0) >= MAX_VERSIONS_PER_PROMPT) {
-        return { status: 'too-many-versions' };
-      }
+        const row = rows[0];
+        if (!row) return { status: 'not-found' } as AddVersionResult;
 
-      const next = (latest?.version ?? 0) + 1;
-      const inserted = await sql<Row>`
-        insert into trazum_prompt_versions
-          (id, prompt_id, version, text, note, author_id, created_at)
-        values (${randomUUID()}, ${promptId}, ${next}, ${text}, ${note}, ${authorId}, ${now})
-        returning id, prompt_id, version, text, note, author_id, created_at
-      `;
+        const latest = row.id ? toVersion(row) : null;
+        if (latest && latest.text === text) return { status: 'unchanged', version: latest } as AddVersionResult;
+        if (Number(row.version_count ?? 0) >= MAX_VERSIONS_PER_PROMPT) {
+          return { status: 'too-many-versions' } as AddVersionResult;
+        }
 
-      await sql`update trazum_prompts set updated_at = ${now} where id = ${promptId}`;
+        const next = (latest?.version ?? 0) + 1;
+        const inserted = await tx<Row>`
+          insert into trazum_prompt_versions
+            (id, prompt_id, version, text, note, author_id, created_at)
+          values (${randomUUID()}, ${promptId}, ${next}, ${text}, ${note}, ${authorId}, ${now})
+          returning id, prompt_id, version, text, note, author_id, created_at
+        `;
 
-      const version = inserted[0];
-      if (!version) throw new Error('trazum: version insert returned no row');
-      return { status: 'saved', version: toVersion(version) };
+        await tx`update trazum_prompts set updated_at = ${now} where id = ${promptId}`;
+
+        const version = inserted[0];
+        if (!version) throw new Error('trazum: version insert returned no row');
+        return { status: 'saved', version: toVersion(version) } as AddVersionResult;
+      });
     },
 
     async renamePrompt(id: string, ownerId: string, name: string, now: Date): Promise<boolean> {

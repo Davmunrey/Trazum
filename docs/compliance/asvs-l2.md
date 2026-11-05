@@ -44,11 +44,11 @@ gap is listed in the pack, and the summary below matches the rows.
 | V8 Data protection | 15 | 6 | 6 | 0 | 1 | 2 |
 | V9 Communication | 7 | 4 | 0 | 0 | 3 | 0 |
 | V10 Malicious code | 5 | 2 | 1 | 0 | 1 | 1 |
-| V11 Business logic | 8 | 2 | 4 | 0 | 1 | 1 |
+| V11 Business logic | 8 | 3 | 3 | 0 | 1 | 1 |
 | V12 Files and resources | 15 | 5 | 0 | 0 | 0 | 10 |
 | V13 API and web services | 13 | 7 | 2 | 0 | 0 | 4 |
 | V14 Configuration | 23 | 16 | 5 | 0 | 0 | 2 |
-| **Total** | **259** | **114** | **40** | **0** | **16** | **89** |
+| **Total** | **259** | **115** | **39** | **0** | **16** | **89** |
 
 Most of V2 is not applicable for one reason: Trazum has no passwords. Signing
 in is delegated to GitHub, so the password, its storage, its recovery and any
@@ -313,7 +313,7 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 11.1.3 | Per-user limits on business actions | Met | Per-account ceilings: 200 prompts, 500 versions each, 100 share links (`apps/web/lib/store/prompts.ts`, `apps/web/lib/store/shares.ts`). |
 | 11.1.4 | Anti-automation against excessive calls | Partial | Every route is rate-limited and every input bounded (`apps/web/lib/shared-limit.ts`); keyed on the address, so an attacker with many addresses gets a budget per address. |
 | 11.1.5 | Limits derived from identified business risks | Partial | Each limit states the risk it answers beside its number (`apps/web/lib/auth/routes.ts`, `apps/web/lib/store/prompts.ts`); there is no threat model to derive them from. |
-| 11.1.6 | No race conditions on sensitive operations | Partial | Account deletion, rate counts and session refreshes are single statements (`apps/web/lib/store/postgres.ts`). Two simultaneous saves of one prompt cannot both become the same version, the second fails instead; the per-account ceilings are counted before inserting, so saves in flight together can pass one. |
+| 11.1.6 | No race conditions on sensitive operations | Met | Account deletion, rate counts and session refreshes are single statements (`apps/web/lib/store/postgres.ts`). Every count that decides a write (the per-account ceilings, the next version number) runs in one transaction after locking the account or prompt row (`apps/web/lib/store/transaction.ts`), and the contract fires six saves at once at each ceiling on a real PostgreSQL (`apps/web/test/store-contract.test.mjs`). |
 | 11.1.7 | Unusual business activity monitored | Partial | Refusals are logged with reasons (`apps/web/lib/security-log.ts`); watching them is the operator's. |
 | 11.1.8 | Configurable alerting on automated attacks | Owner | Alerting runs on the platform's logs. |
 

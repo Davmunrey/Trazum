@@ -37,6 +37,12 @@ import type { NewUser, SessionRecord, Store, UserRecord } from './types';
 export interface SqlClient {
   <T = Row>(strings: TemplateStringsArray, ...values: unknown[]): Promise<T[]>;
   end?(): Promise<void>;
+  /**
+   * One transaction: every statement `fn` makes through the client it is
+   * handed commits together, or none does. postgres.js provides it; the
+   * recorders in the tests provide one that runs `fn` in place.
+   */
+  begin?<T>(fn: (sql: SqlClient) => Promise<T>): Promise<T>;
 }
 
 type Row = Record<string, unknown>;

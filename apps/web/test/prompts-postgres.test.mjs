@@ -41,6 +41,12 @@ function recorder(responses = []) {
   };
   sql.end = async () => {};
   sql.queries = queries;
+  // A transaction that runs in place, counted so a test can see one was opened.
+  sql.transactions = 0;
+  sql.begin = async (fn) => {
+    sql.transactions += 1;
+    return fn(sql);
+  };
   return sql;
 }
 
@@ -78,11 +84,13 @@ const VERSION_ROW = {
 async function everyStatement() {
   const sql = recorder([
     [PROMPT_ROW], // listPrompts
+    [{ id: OWNER }], // createPrompt: lock the account
     [{ total: 0 }], // createPrompt: count
     [PROMPT_ROW], // createPrompt: insert
     [], // createPrompt: version insert
     [PROMPT_ROW], // getPrompt: prompt
     [], // getPrompt: versions
+    [{ id: PROMPT }], // addVersion: lock the prompt
     [VERSION_ROW], // addVersion: latest
     [VERSION_ROW], // addVersion: insert
     [], // addVersion: touch updated_at
@@ -147,6 +155,8 @@ describe('every statement binds the owner', () => {
       // compare against yet. Everything else that binds it must be filtering by
       // it — which is the difference between a predicate and a decoration.
       if (text.startsWith('insert into')) continue;
+      // The account lock binds the owner as the users table's own key.
+      if (text.startsWith('select id from trazum_users where id = ? for no key update')) continue;
       assert.ok(
         text.includes('owner_id = ?'),
         `owner is bound but not compared: ${text.slice(0, 90)}`,
@@ -169,7 +179,7 @@ describe('every statement binds the owner', () => {
 
 describe('the driver behaves the way the memory one does', () => {
   it('refuses to create past the limit, without asking the database to insert', async () => {
-    const sql = recorder([[{ total: MAX_PROMPTS_PER_OWNER }]]);
+    const sql = recorder([[{ id: OWNER }], [{ total: MAX_PROMPTS_PER_OWNER }]]);
     const created = await promptsInPostgres(sql).createPrompt({
       ownerId: OWNER,
       name: 'n',
@@ -179,14 +189,14 @@ describe('the driver behaves the way the memory one does', () => {
     });
 
     assert.equal(created, null);
-    assert.equal(sql.queries.length, 1, 'the count, and nothing else');
+    assert.equal(sql.queries.length, 2, 'the lock and the count, and nothing else');
   });
 
   it('answers null for a duplicate name rather than throwing a constraint', async () => {
     // `on conflict do nothing` returns no row. Relying on the constraint to
     // throw would mean matching on a driver's error string to tell "name taken"
     // from "the database fell over".
-    const sql = recorder([[{ total: 0 }], []]);
+    const sql = recorder([[{ id: OWNER }], [{ total: 0 }], []]);
     const created = await promptsInPostgres(sql).createPrompt({
       ownerId: OWNER,
       name: 'taken',
@@ -196,12 +206,12 @@ describe('the driver behaves the way the memory one does', () => {
     });
 
     assert.equal(created, null);
-    assert.ok(flat(sql.queries[1].text).includes('on conflict (owner_id, name) do nothing'));
-    assert.equal(sql.queries.length, 2, 'no version row for a prompt that was not created');
+    assert.ok(flat(sql.queries[2].text).includes('on conflict (owner_id, name) do nothing'));
+    assert.equal(sql.queries.length, 3, 'no version row for a prompt that was not created');
   });
 
   it('writes version 1 with the prompt, so no prompt is ever textless', async () => {
-    const sql = recorder([[{ total: 0 }], [PROMPT_ROW], []]);
+    const sql = recorder([[{ id: OWNER }], [{ total: 0 }], [PROMPT_ROW], []]);
     await promptsInPostgres(sql).createPrompt({
       ownerId: OWNER,
       name: 'n',
@@ -210,14 +220,14 @@ describe('the driver behaves the way the memory one does', () => {
       now: new Date(),
     });
 
-    const insert = sql.queries[2];
+    const insert = sql.queries[3];
     assert.ok(flat(insert.text).startsWith('insert into trazum_prompt_versions'));
     assert.ok(insert.values.includes('first draft'));
     assert.ok(insert.values.includes('why'));
   });
 
   it('reports unchanged without writing anything', async () => {
-    const sql = recorder([[VERSION_ROW]]);
+    const sql = recorder([[{ id: PROMPT }], [VERSION_ROW]]);
     const result = await promptsInPostgres(sql).addVersion({
       promptId: PROMPT,
       ownerId: OWNER,
@@ -228,7 +238,7 @@ describe('the driver behaves the way the memory one does', () => {
     });
 
     assert.equal(result.status, 'unchanged');
-    assert.equal(sql.queries.length, 1, 'the lookup only — nothing was inserted');
+    assert.equal(sql.queries.length, 2, 'the lock and the lookup only — nothing was inserted');
   });
 
   it('reports not-found when the prompt is not theirs, before any write', async () => {
@@ -248,7 +258,7 @@ describe('the driver behaves the way the memory one does', () => {
   });
 
   it('refuses past the version ceiling rather than pruning the oldest', async () => {
-    const sql = recorder([[{ ...VERSION_ROW, version_count: MAX_VERSIONS_PER_PROMPT }]]);
+    const sql = recorder([[{ id: PROMPT }], [{ ...VERSION_ROW, version_count: MAX_VERSIONS_PER_PROMPT }]]);
     const result = await promptsInPostgres(sql).addVersion({
       promptId: PROMPT,
       ownerId: OWNER,
@@ -259,11 +269,11 @@ describe('the driver behaves the way the memory one does', () => {
     });
 
     assert.equal(result.status, 'too-many-versions');
-    assert.equal(sql.queries.length, 1, 'nothing was deleted to make room');
+    assert.equal(sql.queries.length, 2, 'nothing was deleted to make room');
   });
 
   it('numbers the next version one above the newest', async () => {
-    const sql = recorder([[VERSION_ROW], [{ ...VERSION_ROW, version: 3, text: 'a new draft' }], []]);
+    const sql = recorder([[{ id: PROMPT }], [VERSION_ROW], [{ ...VERSION_ROW, version: 3, text: 'a new draft' }], []]);
     const result = await promptsInPostgres(sql).addVersion({
       promptId: PROMPT,
       ownerId: OWNER,
@@ -274,13 +284,14 @@ describe('the driver behaves the way the memory one does', () => {
     });
 
     assert.equal(result.status, 'saved');
-    assert.ok(sql.queries[1].values.includes(3), 'version 2 is followed by version 3');
+    assert.ok(sql.queries[2].values.includes(3), 'version 2 is followed by version 3');
   });
 
   it('starts at 1 when a prompt somehow has no versions', async () => {
     // The left lateral join yields a row with null version columns rather than
     // no row: the prompt exists and is theirs, it just has no history.
     const sql = recorder([
+      [{ id: PROMPT }],
       [{ id: null, prompt_id: null, version: null, version_count: 0 }],
       [{ ...VERSION_ROW, version: 1 }],
       [],
@@ -295,12 +306,12 @@ describe('the driver behaves the way the memory one does', () => {
     });
 
     assert.equal(result.status, 'saved');
-    assert.ok(sql.queries[1].values.includes(1));
+    assert.ok(sql.queries[2].values.includes(1));
   });
 
   it('binds every caller value instead of concatenating it', async () => {
     const hostile = "'; drop table trazum_prompts; --";
-    const sql = recorder([[{ total: 0 }], [PROMPT_ROW], []]);
+    const sql = recorder([[{ id: OWNER }], [{ total: 0 }], [PROMPT_ROW], []]);
     await promptsInPostgres(sql).createPrompt({
       ownerId: OWNER,
       name: hostile,
@@ -334,3 +345,39 @@ describe('the driver behaves the way the memory one does', () => {
     assert.ok(flat(listing.text).includes('order by p.updated_at desc'));
   });
 });
+
+describe('a count that decides a write happens under a lock, in one transaction', () => {
+  it('locks the account before counting its prompts, and writes inside the same transaction', async () => {
+    const sql = recorder([[{ id: OWNER }], [{ total: 0 }], [PROMPT_ROW], []]);
+    await promptsInPostgres(sql).createPrompt({ ownerId: OWNER, name: 'n', text: 't', note: null, now: new Date() });
+    assert.equal(sql.transactions, 1);
+    assert.equal(flat(sql.queries[0].text), 'select id from trazum_users where id = ? for no key update');
+    assert.ok(flat(sql.queries[1].text).startsWith('select count(*)'), 'the count came before the lock');
+  });
+
+  it('locks the prompt, by owner, before reading its newest version', async () => {
+    const sql = recorder([[{ id: PROMPT }], [VERSION_ROW], [VERSION_ROW], []]);
+    await promptsInPostgres(sql).addVersion({ promptId: PROMPT, ownerId: OWNER, authorId: OWNER, text: 'new', note: null, now: new Date() });
+    assert.equal(sql.transactions, 1);
+    assert.ok(flat(sql.queries[0].text).includes('from trazum_prompts where id = ? and owner_id = ? for no key update'));
+    assert.deepEqual(sql.queries[0].values, [PROMPT, OWNER]);
+  });
+
+  it('saves nothing for an account that no longer exists', async () => {
+    const sql = recorder([[]]);
+    const created = await promptsInPostgres(sql).createPrompt({ ownerId: STRANGER, name: 'n', text: 't', note: null, now: new Date() });
+    assert.equal(created, null);
+    assert.equal(sql.queries.length, 1, 'counted or wrote for an account that is gone');
+  });
+
+  it('refuses to run without a transaction rather than run without the lock', async () => {
+    const sql = recorder([[{ id: OWNER }], [{ total: 0 }], [PROMPT_ROW], []]);
+    delete sql.begin;
+    await assert.rejects(
+      () => promptsInPostgres(sql).createPrompt({ ownerId: OWNER, name: 'n', text: 't', note: null, now: new Date() }),
+      /cannot open a transaction/,
+    );
+    assert.equal(sql.queries.length, 0);
+  });
+});
+
