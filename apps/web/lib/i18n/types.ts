@@ -493,6 +493,10 @@ export interface WebMessages {
     shapeSummary(shape: string, files: number, records: number, leftOut: number): string;
     /** A provider's cost report is a bill, not usage, and is named. */
     costReportsDropped(count: number): string;
+    /** Files too large to hold whole, read line by line with their text set aside. */
+    readInParts(count: number): string;
+    /** Files too large to read in a tab even line by line: named, never priced at nothing. */
+    tooLargeToRead(names: string): string;
     routeVerify: string;
     /**
      * The verdict bridge: a `trazum route --json` document dropped into this

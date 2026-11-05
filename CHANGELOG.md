@@ -11,7 +11,43 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **Anthropic fast mode was priced at the standard rate: half its cost.**
+  Fast mode (`speed: "fast"`) bills Claude Opus 5.5 at $8/$40 and Opus 5 and
+  Opus 4.8 at $10/$50, twice their standard rates, and every response records
+  the speed that ran in `usage.speed`. Trazum dropped the field, so a fast
+  call read from a Claude Code transcript, a logged API response or the
+  gateway was billed at the standard rate. The field is now kept end to end
+  and priced by a new `speed` tier condition, with the cache prices on top of
+  the fast rate as Anthropic's page says. A log that does not record a speed
+  is priced as standard and is not marked uncertain: fast mode is an opt-in
+  every response names. The gateway also prices a request that asks for fast
+  mode at the fast rate before sending it, so a budget judges the real cost.
+  Read from platform.claude.com's pricing and fast-mode pages on 2026-11-05.
+- **Claude Sonnet 4.5 was unpriced.** It is deprecated and still served until
+  2026-11-30, so it is in most logs of the past year, and every call to it read
+  as an unpriced model. It is priced now from its own model page ($3/$15,
+  200K context), never recommended. The retired Opus 4.1, Opus 4, Sonnet 4 and
+  Haiku 3.5 are on the same pricing page and are not priced yet: a row also
+  needs a context window, from pages not read today.
+
+- **A usage file past about 512 MB no longer takes the whole bill down.**
+  JavaScript cannot hold a longer string, so reading such a file whole failed
+  with the runtime's "Invalid string length", naming no file, and nothing else
+  was billed either. A Claude Code session that read large files reaches that
+  size: its transcript holds every tool result. Files over 256 MiB are now read
+  line by line with their message text set aside (`slimUsageLine` in
+  `@trazum/core`), which every converter ignores anyway, so the bill is
+  identical: the tests force every file down this path and compare the
+  receipts byte for byte. Gzipped logs that inflate past the line take the same
+  path. A file still too large after that is refused by name, with what to do.
+  The web app's Bill tab had the same ceiling in `File.text()` and now reads
+  such a file the same way, streamed in the browser; a file it still cannot
+  hold is named under the bill rather than failing the tab.
+  Measured on this machine: a 617 MB session billed in 6 s at under 1 GB of
+  memory; 321 MB across 400 sessions, 40,000 calls, in under 4 s. See
+  [docs/usage-logs.md](docs/usage-logs.md#very-large-files).
 
 ## 2.7.0 — 2026-11-05
 

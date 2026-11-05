@@ -561,6 +561,10 @@ export const en: WebMessages = {
       `Read ${files} ${shape} file(s) as ${records} priced record(s), here in your browser${leftOut > 0 ? `; ${leftOut} row(s) left out. Run trazum from-${shape} on the file for the reasons.` : '.'}`,
     costReportsDropped: (count) =>
       `${count} file(s) were a provider's cost report: a bill rather than usage, so not priced here. Set it beside a receipt with trazum reconcile.`,
+    readInParts: (count) =>
+      `${count} file(s) were too large to hold whole, so they were read line by line with their message text set aside. Token counts and models are read as usual.`,
+    tooLargeToRead: (names) =>
+      `Too large to read in this tab, even line by line, and not in the bill above: ${names}. Run trazum bill on it from a terminal, or split it into smaller files.`,
     litellmCacheFlagged: (count) =>
       `${count.toLocaleString('en-US')} row${count === 1 ? '' : 's'} marked as a cache hit. LiteLLM records that as a flag, never as a token split, so the cache figures read "cannot tell" rather than a guessed one.`,
     routeVerify:

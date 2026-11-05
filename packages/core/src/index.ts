@@ -676,6 +676,9 @@ export type { CodexRecord, CodexConversion } from './codex.js';
 export { geminiCliRecords, looksLikeGeminiCliSession } from './gemini-cli.js';
 export type { GeminiCliRecord, GeminiCliConversion } from './gemini-cli.js';
 
+// Usage-log lines with their content set aside, for files too large to hold whole. See slim-line.ts.
+export { SLIM_STRING_CHARS, slimUsageLine } from './slim-line.js';
+
 export { HARNESS_CAPABILITIES, getHarnessCapability } from './harnesses.js';
 export type { HarnessCapability, HarnessCapabilities } from './harnesses.js';
 

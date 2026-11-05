@@ -35,8 +35,18 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * each model's own page, read 2026-10-10. Every existing row matched and
    * five models were added. Claude Haiku 5.5 waited for per-request pricing,
    * because it bills by prompt length, and was added with it on 2026-10-11.
+   *
+   * Re-read 2026-11-05 with the fast-mode, deprecations and prompt-caching
+   * pages. Every existing price matched. Two things were missing: fast mode,
+   * which bills Opus 5.5 at $8/$40 and Opus 5 and 4.8 at $10/$50 and which
+   * every response records in `usage.speed`, so fast calls had been priced at
+   * half their cost; and Claude Sonnet 4.5, deprecated but still served until
+   * 2026-11-30, which read as unpriced. Both are here now. The retired Opus
+   * 4.1, Opus 4, Sonnet 4 and Haiku 3.5 are on the pricing page too and are
+   * not priced here yet: a row needs a context window, which their own pages
+   * would give, and those were not read.
    */
-  anthropic: '2026-10-10',
+  anthropic: '2026-11-05',
   /*
    * developers.openai.com/api/docs/pricing, read 2026-08-31.
    *
@@ -324,9 +334,18 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_000_000,
     cacheMinTokens: 512,
     multipliers: { cacheRead: 0.05, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
+    /*
+     * Fast mode, read 2026-11-05 from platform.claude.com/docs/en/about-claude/
+     * pricing#fast-mode-pricing and build-with-claude/fast-mode: $8/$40 "across
+     * the full context window", with the caching multipliers "on top", which is
+     * how a tier's rate already feeds the cache prices here. The response's
+     * `usage.speed` says which speed ran.
+     */
+    tiers: [{ id: 'fast', when: { kind: 'speed', speed: 'fast' }, inputPerMTok: 8, outputPerMTok: 40 }],
     capability: 'large',
     tier: 'opus',
-    notes: 'Cache hits cost 5% of the input price ($0.20), against 10% on Opus 5 and earlier.',
+    notes: 'Cache hits cost 5% of the input price ($0.20), against 10% on Opus 5 and earlier.'
+      + ' Fast mode (usage.speed "fast") bills $8/$40.',
   },
   {
     id: 'claude-opus-5',
@@ -336,9 +355,11 @@ export const MODELS: ModelPricing[] = [
     outputPerMTok: 25,
     contextWindow: 1_000_000,
     cacheMinTokens: 512,
+    // Fast mode in research preview, $10/$50; same sources as Opus 5.5's.
+    tiers: [{ id: 'fast', when: { kind: 'speed', speed: 'fast' }, inputPerMTok: 10, outputPerMTok: 50 }],
     capability: 'large',
     tier: 'opus',
-    notes: '512-token cache minimum: caches prompts that would miss on Opus 4.6.',
+    notes: '512-token cache minimum: caches prompts that would miss on Opus 4.6. Fast mode bills $10/$50.',
   },
   {
     id: 'claude-opus-4-8',
@@ -348,8 +369,15 @@ export const MODELS: ModelPricing[] = [
     outputPerMTok: 25,
     contextWindow: 1_000_000,
     cacheMinTokens: 1024,
+    /*
+     * Fast mode in research preview, $10/$50; same sources as Opus 5.5's. It is
+     * deprecated on this model and removed on 2026-11-30, after which no
+     * response records it, so the tier only ever prices calls that ran fast.
+     */
+    tiers: [{ id: 'fast', when: { kind: 'speed', speed: 'fast' }, inputPerMTok: 10, outputPerMTok: 50 }],
     capability: 'large',
     tier: 'opus',
+    notes: 'Fast mode bills $10/$50 until it is removed from this model on 2026-11-30.',
   },
   {
     id: 'claude-opus-4-7',
@@ -436,6 +464,29 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     capability: 'mid',
     tier: 'sonnet',
+  },
+  {
+    /*
+     * Its own model page (platform.claude.com/docs/en/models/sonnet-4-5/
+     * overview), the pricing page, the prompt-caching page and the
+     * deprecations page, read 2026-11-05. $3/$15, writes $3.75 and $6, cache
+     * read $0.30, batch 50% off, 200K context, 1,024-token cache minimum.
+     * Deprecated on 2026-09-30 and retiring on 2026-11-30, so it is priced (it
+     * is in every log of the last year) and never recommended. It was missing
+     * here, so every Sonnet 4.5 call read as an unpriced model.
+     */
+    id: 'claude-sonnet-4-5',
+    aliases: ['claude-sonnet-4-5-20250929'],
+    provider: 'anthropic',
+    displayName: 'Claude Sonnet 4.5',
+    recommendable: false,
+    inputPerMTok: 3,
+    outputPerMTok: 15,
+    contextWindow: 200_000,
+    cacheMinTokens: 1024,
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: 'Deprecated; retires 2026-11-30. Recommended replacement: Claude Sonnet 5.5.',
   },
   {
     /*
@@ -1579,6 +1630,8 @@ interface Rates {
 export interface PromptSize {
   inputTokens?: number;
   inputTokensAtMost?: number;
+  /** The response's `usage.speed`, when the log kept it: `"fast"` or `"standard"`. */
+  speed?: string;
 }
 
 const pricingMemo = new WeakMap<
@@ -1655,6 +1708,8 @@ function cache(model: ModelPricing): {
  * collapsing them is the oldest mistake in this repository.
  */
 function holds(when: TierCondition, on: Date, size: PromptSize): boolean | null {
+  // Decided either way: a log that does not record a speed never asked for fast mode.
+  if (when.kind === 'speed') return (size.speed ?? 'standard') === when.speed;
   if (when.kind === 'utc-hours') {
     const day = on.getUTCDay();
     if (when.weekdaysOnly && (day === 0 || day === 6)) return false;
@@ -1769,6 +1824,7 @@ export function effectivePricing(
 
 /** One condition as a sentence a reader can check against a provider's page. */
 function describe(when: TierCondition): string {
+  if (when.kind === 'speed') return `${when.speed} mode (the response's usage.speed is "${when.speed}")`;
   if (when.kind === 'input-tokens-above') {
     return `prompts over ${when.tokens.toLocaleString('en-US')} input tokens`;
   }

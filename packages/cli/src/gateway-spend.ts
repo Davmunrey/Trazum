@@ -87,7 +87,7 @@ export class GatewaySpend {
       (usage.cacheWrite5mTokens !== undefined && usage.cacheWrite1hTokens !== undefined &&
        usage.cacheWrite5mTokens + usage.cacheWrite1hTokens === usage.cacheWriteTokens));
     if (usage === null || !writesKnown ||
-        Object.values(usage).some((value) => !Number.isFinite(value) || value < 0)) {
+        Object.values(usage).some((value) => typeof value === 'number' && (!Number.isFinite(value) || value < 0))) {
       // A flat write count has no TTL. Assuming 5m undercharges a 1h write.
       this.unknown = true;
       return;
@@ -102,6 +102,8 @@ export class GatewaySpend {
         ephemeral_5m_input_tokens: usage.cacheWrite5mTokens ?? 0,
         ephemeral_1h_input_tokens: usage.cacheWrite1hTokens ?? 0,
       },
+      // Fast mode bills at a multiple of standard; the response said which ran.
+      ...(usage.speed === undefined ? {} : { speed: usage.speed }),
     }));
     const index = record === null ? null : indexUsage([record], { catalogue: this.catalogue, on: new Date(now) });
     if (index === null || index.unpriced > 0 || index.dayUsd === null) {

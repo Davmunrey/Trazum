@@ -62,6 +62,7 @@ import { PositionCard } from './Position';
 import { track } from './Analytics';
 import { onDemo } from '../lib/demo';
 import { createPlaygroundFiles } from '../lib/playground';
+import { readUsageFile, UsageFileTooLarge } from '../lib/usage-file';
 import { AnimatedContent } from './motion/AnimatedContent';
 import { Button } from '@/components/ui/button';
 import { Note } from '@/components/ui/note';
@@ -373,6 +374,10 @@ export function Bill({ t }: { t: WebMessages }) {
     shapes: Array<{ shape: string; files: number; records: number; leftOut: number }>;
     /** Provider cost reports dropped here: a bill is not usage, and is named. */
     costReports: number;
+    /** Files read line by line, with their message text set aside, for their size. */
+    inParts: number;
+    /** Files too large to read here at all, by name: not in the bill, and said. */
+    tooLarge: string[];
   } | null>(null);
 
   async function readFile(file: File | undefined) {
@@ -407,6 +412,8 @@ export function Bill({ t }: { t: WebMessages }) {
     let litellmCacheFlagged = 0;
     const shapes = new Map<string, { files: number; records: number; leftOut: number }>();
     let costReports = 0;
+    let inParts = 0;
+    const tooLarge: string[] = [];
     /* One door, as the CLI's `bill`: the same converter the dedicated command
        uses, the same refusals, and one line per shape saying how many rows it
        left out. The reasons are one `trazum from-<shape>` away. */
@@ -418,7 +425,18 @@ export function Bill({ t }: { t: WebMessages }) {
       shapes.set(shape, row);
     };
     for (const file of files) {
-      const text = await file.text();
+      let text: string;
+      try {
+        const read = await readUsageFile(file);
+        text = read.text;
+        if (read.inParts) inParts += 1;
+      } catch (error) {
+        if (error instanceof UsageFileTooLarge) {
+          tooLarge.push(file.name);
+          continue;
+        }
+        throw error;
+      }
       // The 1.71 arm: an OpenTelemetry GenAI export, detected by its shape and
       // converted in this tab. Only the token counts cross; prompts, trace ids
       // and every other span attribute stay behind, held by the core suite.
@@ -538,7 +556,7 @@ export function Bill({ t }: { t: WebMessages }) {
       }
     }
     setIngest(
-      transcripts > 0 || otelExports > 0 || litellmExports > 0 || shapes.size > 0 || costReports > 0
+      transcripts > 0 || otelExports > 0 || litellmExports > 0 || shapes.size > 0 || costReports > 0 || inParts > 0 || tooLarge.length > 0
         ? {
             transcripts,
             convertedCalls,
@@ -555,6 +573,8 @@ export function Bill({ t }: { t: WebMessages }) {
             litellmCacheFlagged,
             shapes: [...shapes].map(([shape, row]) => ({ shape, ...row })),
             costReports,
+            inParts,
+            tooLarge,
           }
         : null,
     );
@@ -815,6 +835,10 @@ export function Bill({ t }: { t: WebMessages }) {
                 </div>
               ))}
               {ingest.costReports > 0 && <div>{t.bill.costReportsDropped(ingest.costReports)}</div>}
+              {ingest.inParts > 0 && <div>{t.bill.readInParts(ingest.inParts)}</div>}
+              {ingest.tooLarge.length > 0 && (
+                <div role="alert" className="font-semibold">{t.bill.tooLargeToRead(ingest.tooLarge.join(', '))}</div>
+              )}
               {ingest.logs > 0 && <div>{t.bill.transcriptAlsoLogs(ingest.logs)}</div>}
               {ingest.collapsed > 0 && <div>{t.bill.transcriptCollapsed(ingest.collapsed)}</div>}
               {ingest.streamed > 0 && <div>{t.bill.transcriptStreamed(ingest.streamed)}</div>}

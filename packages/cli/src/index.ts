@@ -2,11 +2,13 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import { cpus, homedir, tmpdir } from 'node:os';
 import { createInterface } from 'node:readline/promises';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { gunzipSync } from 'node:zlib';
+import { createGunzip, gunzipSync } from 'node:zlib';
+import { Readable } from 'node:stream';
 
 import {
   CONTRACT_NAMES,
@@ -118,6 +120,7 @@ import {
   looksLikeCodexTranscript,
   geminiCliRecords,
   looksLikeGeminiCliSession,
+  slimUsageLine,
   type CwdLabel,
   type WorkspaceLabel,
   type ProjectLabel,
@@ -599,14 +602,94 @@ async function usageIndexFrom(
   return indexUsage(records, { catalogue: pricing });
 }
 
+/*
+  Past this many bytes a usage file is read line by line, its message text set
+  aside, rather than held as one string. JavaScript cannot hold a string much
+  past 512 MiB, and an agent session that read large files or ran chatty
+  commands outgrows that: reading one whole failed with the runtime's
+  "Invalid string length" and took the rest of the bill with it. The
+  environment variable exists so the tests can cross the line without writing
+  a quarter of a gigabyte.
+*/
+const WHOLE_READ_MAX_BYTES = ((): number => {
+  const fromEnv = Number(process.env.TRAZUM_WHOLE_READ_MAX_BYTES);
+  return Number.isSafeInteger(fromEnv) && fromEnv > 0 ? fromEnv : 256 * 1024 * 1024;
+})();
+/*
+  What the lines kept may add up to: under the runtime's own string ceiling
+  (just short of 512 MiB). Its own variable, for the same reason as the one
+  above: so the refusal can be tested without filling a disk.
+*/
+const SLIMMED_MAX_CHARS = ((): number => {
+  const fromEnv = Number(process.env.TRAZUM_SLIMMED_MAX_CHARS);
+  return Number.isSafeInteger(fromEnv) && fromEnv > 0 ? fromEnv : 500 * 1024 * 1024;
+})();
+const megabytesOf = (bytes: number): number => Math.round(bytes / 1_000_000);
+
 async function readUsageLog(file: string, t: CliMessages): Promise<string> {
-  if (!file.endsWith('.gz')) return readFile(file, 'utf8');
-  const compressed = await readFile(file);
+  /*
+    One open file, measured and read through the same handle, so the size
+    that chose the path is the size of what is read: a stat by name and a
+    read by name could see two different files.
+  */
+  const handle = await open(file, 'r');
   try {
-    return gunzipSync(compressed).toString('utf8');
+    return await readUsageHandle(handle, file, t);
+  } finally {
+    await handle.close();
+  }
+}
+
+async function readUsageHandle(handle: FileHandle, file: string, t: CliMessages): Promise<string> {
+  const size = (await handle.stat()).size;
+  if (!file.endsWith('.gz')) {
+    if (size <= WHOLE_READ_MAX_BYTES) return handle.readFile('utf8');
+    return readInParts(handle.createReadStream({ autoClose: false }), file, size, t);
+  }
+  const compressed = await handle.readFile();
+  let inflated: Buffer;
+  try {
+    // Bounded, so a file that inflates past the line is streamed rather than refused.
+    inflated = gunzipSync(compressed, { maxOutputLength: WHOLE_READ_MAX_BYTES });
   } catch (error) {
+    if (error instanceof RangeError && (error as NodeJS.ErrnoException).code === 'ERR_BUFFER_TOO_LARGE') {
+      const gunzip = createGunzip();
+      let failure: Error | undefined;
+      gunzip.on('error', (cause: Error) => { failure = cause; });
+      Readable.from([compressed]).pipe(gunzip);
+      const text = await readInParts(gunzip, file, size, t);
+      if (failure !== undefined) throw new Error(t.profile.badGzip(file, failure.message));
+      return text;
+    }
     throw new Error(t.profile.badGzip(file, error instanceof Error ? error.message : String(error)));
   }
+  return inflated.toString('utf8');
+}
+
+/**
+ * A file too large to hold whole, line by line, each line with its long
+ * strings set aside by `slimUsageLine`: the converters read the same short
+ * fields from it that they would have read from the whole file.
+ */
+async function readInParts(input: NodeJS.ReadableStream, file: string, size: number, t: CliMessages): Promise<string> {
+  const kept: string[] = [];
+  let held = 0;
+  let slimmed = 0;
+  try {
+    for await (const line of createInterface({ input, crlfDelay: Infinity })) {
+      const next = slimUsageLine(line);
+      if (next !== line) slimmed += 1;
+      held += next.length + 1;
+      if (held > SLIMMED_MAX_CHARS) throw new Error(t.profile.tooLargeToRead(file, megabytesOf(size)));
+      kept.push(next);
+    }
+  } catch (error) {
+    // A single line past the runtime's ceiling fails inside the line reader.
+    if (error instanceof RangeError) throw new Error(t.profile.tooLargeToRead(file, megabytesOf(size)));
+    throw error;
+  }
+  console.error(t.profile.readInParts(file, megabytesOf(size), slimmed));
+  return kept.join('\n');
 }
 
 function usageFrom(

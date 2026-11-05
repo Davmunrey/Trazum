@@ -566,6 +566,10 @@ export const es: WebMessages = {
       `${files} archivo(s) ${shape} leídos como ${records} registro(s) tasados, aquí en tu navegador${leftOut > 0 ? `; ${leftOut} fila(s) fuera. Ejecuta trazum from-${shape} sobre el archivo para ver por qué.` : '.'}`,
     costReportsDropped: (count) =>
       `${count} archivo(s) eran un informe de costes del proveedor: una factura, no uso, así que no se tasan aquí. Ponlo junto a un recibo con trazum reconcile.`,
+    readInParts: (count) =>
+      `${count} archivo(s) eran demasiado grandes para leerlos enteros, así que se han leído línea a línea dejando aparte el texto de los mensajes. Los tokens y los modelos se leen como siempre.`,
+    tooLargeToRead: (names) =>
+      `Demasiado grande para leerlo en esta pestaña, ni línea a línea, y fuera de la factura de arriba: ${names}. Ejecuta trazum bill sobre él desde un terminal, o divídelo en archivos más pequeños.`,
     litellmCacheFlagged: (count) =>
       `${count.toLocaleString('es-ES')} fila${count === 1 ? '' : 's'} marcada${count === 1 ? '' : 's'} como acierto de caché. LiteLLM lo registra como una bandera, nunca como un reparto de tokens, así que las cifras de caché dicen "no se puede saber" en vez de una inventada.`,
     routeVerify:

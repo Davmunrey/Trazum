@@ -181,7 +181,9 @@ describe('a conditional rate is decided, or is said not to be', () => {
   it('leaves a model with no tiers exactly as it was', () => {
     // Every other model in the catalogue, and the reason this field could be
     // added at all: 31 call sites keep working because nothing changed for them.
-    const opus = MODELS.find((model) => model.id === 'claude-opus-5');
+    // Opus 4.7: no size band and no fast mode (Opus 5 grew a fast tier on 2026-11-05).
+    const opus = MODELS.find((model) => model.id === 'claude-opus-4-7');
+    assert.equal(opus.tiers, undefined, 'the example model grew a tier: pick another');
     const rates = effectivePricing(opus, PEAK);
     assert.equal(rates.inputPerMTok, 5);
     assert.equal(rates.outputPerMTok, 25);

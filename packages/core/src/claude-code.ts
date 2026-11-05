@@ -74,6 +74,8 @@ export interface ClaudeCodeRecord {
     cache_read_input_tokens?: number;
     cache_creation_input_tokens?: number;
     cache_creation?: { ephemeral_5m_input_tokens?: number; ephemeral_1h_input_tokens?: number };
+    /** The response's `usage.speed`, kept because fast mode bills at a multiple of standard. */
+    speed?: string;
   };
 }
 
@@ -272,6 +274,12 @@ export function claudeCodeRecords(
               },
             }
           : {}),
+        /*
+         * Fast mode bills the same tokens at twice the standard rates on Opus
+         * 5.5, and the response records which speed ran. Dropping the field
+         * priced every fast call at the standard rate: half its cost.
+         */
+        ...(typeof usage.speed === 'string' && usage.speed !== '' ? { speed: usage.speed } : {}),
       },
     };
 
