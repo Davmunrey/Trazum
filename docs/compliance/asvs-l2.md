@@ -47,8 +47,8 @@ gap is listed in the pack, and the summary below matches the rows.
 | V11 Business logic | 8 | 3 | 3 | 0 | 1 | 1 |
 | V12 Files and resources | 15 | 5 | 0 | 0 | 0 | 10 |
 | V13 API and web services | 13 | 7 | 2 | 0 | 0 | 4 |
-| V14 Configuration | 23 | 17 | 4 | 0 | 0 | 2 |
-| **Total** | **259** | **121** | **33** | **0** | **16** | **89** |
+| V14 Configuration | 23 | 18 | 3 | 0 | 0 | 2 |
+| **Total** | **259** | **122** | **32** | **0** | **16** | **89** |
 
 Most of V2 is not applicable for one reason: Trazum has no passwords. Signing
 in is delegated to GitHub, so the password, its storage, its recovery and any
@@ -378,7 +378,7 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 14.4.5 | HSTS on every response, with subdomains | Met | In production (`apps/web/next.config.mjs`); tested in `apps/web/test/route-invariants.test.mjs`. |
 | 14.4.6 | A Referrer-Policy | Met | `no-referrer` (`apps/web/next.config.mjs`). |
 | 14.4.7 | Not embeddable by third-party sites | Met | `frame-ancestors 'none'` and `X-Frame-Options: DENY` (`apps/web/middleware.ts`, `apps/web/next.config.mjs`). |
-| 14.5.1 | Only methods in use accepted, others logged | Partial | Unused methods get 405 from the framework (`apps/web/app/api/prompts/route.ts`); they are not logged. |
+| 14.5.1 | Only methods in use accepted, others logged | Met | The middleware answers any method an API route does not serve, the preflight `OPTIONS` included, with 405, an `Allow` header and an `input.refused` line (`apps/web/middleware.ts`); the table of what each route serves (`apps/web/lib/api-methods.ts`) is held to the route modules' own exports by `apps/web/test/api-methods.test.mjs`. |
 | 14.5.2 | The Origin header never grants access | Met | It only refuses cross-origin writes, on top of the session (`apps/web/lib/auth/routes.ts`). |
 | 14.5.3 | CORS with a strict allow-list | Met | No CORS header is sent at all, so the API is same-origin only (`apps/web/next.config.mjs`, `apps/web/middleware.ts`). |
 | 14.5.4 | Proxy-added headers authenticated | Partial | `X-Forwarded-For` keys rate limits and nothing else, never identity (`apps/web/lib/rate-limit.ts`); on a platform that does not overwrite it, a caller chooses their own bucket. |
