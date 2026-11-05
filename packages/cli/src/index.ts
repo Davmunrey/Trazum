@@ -4735,6 +4735,10 @@ async function commandFromAnthropic(args: Args, t: CliMessages): Promise<void> {
     console.error(t.fromAnthropic.speedUnknown(conversion.speedUnknownFastCapable));
   }
   if (conversion.usOnlyRows > 0) console.error(t.fromAnthropic.usOnly(conversion.usOnlyRows));
+  if (conversion.usOnlyFloor > 0) console.error(t.fromAnthropic.usOnlyFloor(conversion.usOnlyFloor));
+  if (!conversion.geoNamed && conversion.geoUnknownMultiplied > 0) {
+    console.error(t.fromAnthropic.geoUnknown(conversion.geoUnknownMultiplied));
+  }
   if (conversion.webSearchRequests > 0) console.error(t.fromAnthropic.webSearch(conversion.webSearchRequests));
   if (conversion.labelledByWorkspace > 0) {
     console.error(t.fromAnthropic.labelledByWorkspace(conversion.labelledByWorkspace));

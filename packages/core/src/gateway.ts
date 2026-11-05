@@ -101,6 +101,14 @@ export interface GatewayCall {
    * `"fast"` at up to twice, `"ultrafast"`. A setting, not content.
    */
   serviceTier?: string | null;
+  /**
+   * The geography the request pinned, when it named one: Anthropic's
+   * `inference_geo: "us"`, billed at 1.1x on Claude 4.6 and later. A setting,
+   * not content. A request that names none may still run in the workspace's
+   * default geography; the response says which ran, and the spend is
+   * recorded from that.
+   */
+  inferenceGeo?: string | null;
 }
 
 /** Where the budget stands, as the gateway was told at the last refresh. */
@@ -222,10 +230,11 @@ export interface GatewayOptions {
   waivers?: readonly WaiveEntry[];
 }
 
-/** How the call asked to be run, where that changes its price: speed and service tier. */
-const speedOf = (call: GatewayCall): { speed?: string; serviceTier?: string } => ({
+/** How the call asked to be run, where that changes its price: speed, service tier and geography. */
+const speedOf = (call: GatewayCall): { speed?: string; serviceTier?: string; inferenceGeo?: string } => ({
   ...(typeof call.speed === 'string' && call.speed !== '' ? { speed: call.speed } : {}),
   ...(typeof call.serviceTier === 'string' && call.serviceTier !== '' ? { serviceTier: call.serviceTier } : {}),
+  ...(typeof call.inferenceGeo === 'string' && call.inferenceGeo !== '' ? { inferenceGeo: call.inferenceGeo } : {}),
 });
 
 /** What this call costs at a model's rates, or null when it cannot be priced. */
@@ -512,6 +521,8 @@ export interface GatewayUsage {
   speed?: string;
   /** OpenAI's `service_tier`, the tier that actually answered: each has its own table. */
   serviceTier?: string;
+  /** Anthropic's `usage.inference_geo`, the geography that ran: "us" bills 1.1x on Claude 4.6 and later. */
+  inferenceGeo?: string;
 }
 
 /**
@@ -681,6 +692,7 @@ export function streamingUsageReader(
           // that ends before any delta still reports what it reported.
           usage.outputTokens = num(start.output_tokens);
           if (typeof start.speed === 'string' && start.speed !== '') usage.speed = start.speed;
+          if (typeof start.inference_geo === 'string' && start.inference_geo !== '') usage.inferenceGeo = start.inference_geo;
           seen = true;
         }
       }
@@ -698,6 +710,7 @@ export function streamingUsageReader(
         if (typeof d.output_tokens === 'number') usage.outputTokens = num(d.output_tokens);
         if (typeof d.input_tokens === 'number') usage.inputTokens = num(d.input_tokens);
         if (typeof d.speed === 'string' && d.speed !== '') usage.speed = d.speed;
+        if (typeof d.inference_geo === 'string' && d.inference_geo !== '') usage.inferenceGeo = d.inference_geo;
         seen = true;
       }
       return;
@@ -800,6 +813,7 @@ export function usageFromResponse(
       cacheWriteTokens: num(u.cache_creation_input_tokens),
       ...cacheWriteBreakdown(u),
       ...(typeof u.speed === 'string' && u.speed !== '' ? { speed: u.speed } : {}),
+      ...(typeof u.inference_geo === 'string' && u.inference_geo !== '' ? { inferenceGeo: u.inference_geo } : {}),
     };
   }
   if (shape === 'openai') {

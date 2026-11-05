@@ -36,6 +36,7 @@ export function promptSizeOf(record: UsageRecord): PromptSize {
   const how = {
     ...(record.speed === undefined ? {} : { speed: record.speed }),
     ...(record.serviceTier === undefined ? {} : { serviceTier: record.serviceTier }),
+    ...(record.inferenceGeo === undefined ? {} : { inferenceGeo: record.inferenceGeo }),
   };
   return record.requests === undefined ? { inputTokens: prompt, ...how } : { inputTokensAtMost: prompt, ...how };
 }

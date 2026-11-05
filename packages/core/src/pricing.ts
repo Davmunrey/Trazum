@@ -1,4 +1,4 @@
-import type { ModelPricing, PricingTier, ServiceTier, TierCondition } from './types.js';
+import type { InferenceGeo, ModelPricing, PricingTier, ServiceTier, TierCondition } from './types.js';
 
 /**
  * Model and pricing catalogue (USD per million tokens).
@@ -310,6 +310,19 @@ const MISTRAL_CACHE_NOTE =
   'Cached input costs 10% of the input price (mistral.ai/cloud/inference, read 2026-10-11). How caching starts and'
   + ' its minimum are not published anywhere Trazum can read, so no caching advice is given for it.';
 
+/**
+ * US-only inference on Claude 4.6 and later.
+ *
+ * platform.claude.com/docs/en/about-claude/pricing, "Data residency pricing",
+ * read 2026-11-05: "For Claude 4.6 and later models, specifying US-only
+ * inference through the `inference_geo` parameter incurs a 1.1x multiplier on
+ * all token pricing categories, including input tokens, output tokens, cache
+ * writes, and cache reads." It stacks with fast mode and the Batch API
+ * discount, the same page says. Earlier models reject the parameter, so
+ * they carry no multiplier. `price-drift.mjs` reads the sentence weekly.
+ */
+const US_ONLY_INFERENCE = Object.freeze({ us: 1.1 });
+
 export const MODELS: ModelPricing[] = [
   {
     /*
@@ -321,6 +334,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-fable-5-1',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Fable 5.1',
     inputPerMTok: 10,
     outputPerMTok: 50,
@@ -339,6 +353,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-mythos-5-1',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Mythos 5.1',
     recommendable: false,
     inputPerMTok: 10,
@@ -355,6 +370,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-fable-5',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Fable 5',
     inputPerMTok: 10,
     outputPerMTok: 50,
@@ -367,6 +383,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-mythos-5',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Mythos 5',
     recommendable: false,
     inputPerMTok: 10,
@@ -388,6 +405,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-opus-5-5',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Opus 5.5',
     inputPerMTok: 4,
     outputPerMTok: 20,
@@ -410,6 +428,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-opus-5',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Opus 5',
     inputPerMTok: 5,
     outputPerMTok: 25,
@@ -424,6 +443,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-opus-4-8',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Opus 4.8',
     inputPerMTok: 5,
     outputPerMTok: 25,
@@ -442,6 +462,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-opus-4-7',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Opus 4.7',
     inputPerMTok: 5,
     outputPerMTok: 25,
@@ -453,6 +474,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-opus-4-6',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Opus 4.6',
     inputPerMTok: 5,
     outputPerMTok: 25,
@@ -537,6 +559,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-sonnet-5-5',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Sonnet 5.5',
     inputPerMTok: 2,
     outputPerMTok: 10,
@@ -550,6 +573,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-sonnet-5',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Sonnet 5',
     inputPerMTok: 2,
     outputPerMTok: 10,
@@ -564,6 +588,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-sonnet-4-6',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Sonnet 4.6',
     inputPerMTok: 3,
     outputPerMTok: 15,
@@ -638,6 +663,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-haiku-5-5',
     provider: 'anthropic',
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Haiku 5.5',
     inputPerMTok: 0.1,
     outputPerMTok: 0.5,
@@ -2439,6 +2465,8 @@ interface Rates {
   } | null;
   /** The service tier whose table priced the call, when it was not the standard one. */
   serviceTier?: ServiceTier;
+  /** The geography whose published multiplier priced the call, when it was not global. */
+  inferenceGeo?: InferenceGeo;
 }
 
 /**
@@ -2467,7 +2495,27 @@ export interface PromptSize {
    * `serviceTierOf`; anything else prices at the standard rate.
    */
   serviceTier?: string;
+  /**
+   * The response's `usage.inference_geo`, when the log kept it: Anthropic's
+   * `"us"`, `"global"` or `"not_available"`. Normalised by `inferenceGeoOf`;
+   * only a geography the row publishes a multiplier for changes the price.
+   */
+  inferenceGeo?: string;
 }
+
+/**
+ * A response's `usage.inference_geo` as the geography that prices it, or
+ * `undefined` for the global rate. `"global"` is the default and the row's
+ * own price; `"not_available"` is what a model that cannot pin a geography
+ * reports, and is priced the same.
+ */
+export function inferenceGeoOf(value: unknown): InferenceGeo | undefined {
+  if (typeof value !== 'string') return undefined;
+  return value.trim().toLowerCase() === 'us' ? 'us' : undefined;
+}
+
+/** Rounded to a billionth of a dollar per million tokens, so 1.1x of $5 is $5.5 and not $5.500000000000001. */
+const scaled = (rate: number, factor: number): number => Math.round(rate * factor * 1e9) / 1e9;
 
 /**
  * A response's `service_tier` as the tier whose table prices it, or
@@ -2629,6 +2677,35 @@ export function effectivePricing(
   on: Date = new Date(),
   context: PromptSize = {},
 ): Rates {
+  /*
+   * A geography with a published multiplier scales whatever the rest of the
+   * call decides, fast mode and the long band included, because the page says
+   * it stacks with all of them. Applied once, outside everything else.
+   */
+  if (context.inferenceGeo !== undefined) {
+    const { inferenceGeo, ...rest } = context;
+    const rates = effectivePricing(model, on, rest);
+    const geo = inferenceGeoOf(inferenceGeo);
+    const factor = geo === undefined ? undefined : model.inferenceGeoMultipliers?.[geo];
+    if (geo === undefined || factor === undefined) return rates;
+    return {
+      ...rates,
+      inputPerMTok: scaled(rates.inputPerMTok, factor),
+      outputPerMTok: scaled(rates.outputPerMTok, factor),
+      ...(rates.tier?.floor !== undefined
+        ? {
+            tier: {
+              ...rates.tier,
+              floor: {
+                inputPerMTok: scaled(rates.tier.floor.inputPerMTok, factor),
+                outputPerMTok: scaled(rates.tier.floor.outputPerMTok, factor),
+              },
+            },
+          }
+        : {}),
+      inferenceGeo: geo,
+    };
+  }
   /* A call before a published price change is priced as it was billed then. */
   if (model.history !== undefined) {
     const period = pricedAt(model, on);

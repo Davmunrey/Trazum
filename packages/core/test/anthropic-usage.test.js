@@ -234,12 +234,33 @@ describe('fast mode and US-only inference, which the report names', () => {
     assert.equal(ungrouped.records.length, 2);
   });
 
-  it('counts US-only rows, priced at the global rate, as a floor', () => {
+  it('prices a US-only row at the model’s published multiplier', () => {
     const conversion = anthropicUsageRecords(
       report([bucket([result({ inference_geo: 'us' }), result({ inference_geo: 'global' }), result({ inference_geo: 'not_available' })])]),
     );
-    assert.equal(conversion.records.length, 3, 'a US-only row was dropped rather than priced as a floor');
+    assert.equal(conversion.records.length, 3);
     assert.equal(conversion.usOnlyRows, 1);
+    assert.equal(conversion.usOnlyFloor, 0);
+    assert.equal(conversion.geoNamed, true);
+    assert.deepEqual(conversion.records.map((record) => record.usage.inference_geo), ['us', undefined, undefined]);
+    const [us, global] = conversion.records.map((record) => bill(JSON.stringify(record)));
+    assert.ok(Math.abs(us - 1.1 * global) < 1e-12, `US-only ${us} is not 1.1x global ${global}`);
+  });
+
+  it('counts a US-only row on a model with no multiplier as a floor, priced at the global rate', () => {
+    const conversion = anthropicUsageRecords(report([bucket([result({ inference_geo: 'us', model: 'claude-haiku-4-5' })])]));
+    assert.equal(conversion.records.length, 1, 'a US-only row was dropped rather than priced as a floor');
+    assert.equal(conversion.usOnlyRows, 0);
+    assert.equal(conversion.usOnlyFloor, 1);
+  });
+
+  it('says when a model with a US-only multiplier was never asked its geography', () => {
+    const { inference_geo: _geo, ...ungrouped } = result();
+    const conversion = anthropicUsageRecords(
+      report([bucket([ungrouped, { ...ungrouped, model: 'claude-haiku-4-5' }])]),
+    );
+    assert.equal(conversion.geoNamed, false);
+    assert.equal(conversion.geoUnknownMultiplied, 1, 'only Opus 5 bills US-only inference at 1.1x here');
   });
 });
 

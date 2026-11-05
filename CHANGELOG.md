@@ -31,9 +31,21 @@ merged commit with no entry is a change only `git log` remembers.
   and priced from the model's own fast rate, as a logged response carrying
   the field is; one on a model with no fast rate is left out and named. A
   report not grouped by speed that holds a model with a fast mode now says so,
-  and the curl in `docs/commands.md` asks for the grouping. Rows that ran with
-  `inference_geo: "us"`, which bills 1.1x on Claude 4.6 and later, are priced
-  at the global rate and counted as a floor.
+  and the curl in `docs/commands.md` asks for the grouping.
+- **US-only inference was priced a tenth under its cost.** Anthropic bills
+  `inference_geo: "us"` at 1.1x on every token category of Claude 4.6 and
+  later, on top of fast mode, caching and the long band, and every response
+  and every Claude Code transcript line records the geography that ran in
+  `usage.inference_geo`. Trazum dropped the field everywhere. The catalogue
+  now carries the published multiplier on the 13 rows it applies to, and a
+  call whose log says `"us"` is priced at it: through `bill` and every
+  converter, the gateway (from the request's own `inference_geo` before the
+  call and the response's after it), and `from-anthropic`, whose curl now asks
+  for `group_by[]=inference_geo` and which says when a report never named a
+  geography. `"global"`, `"not_available"` and a log without the field keep
+  the standard price. A test fails a Claude 4.6 or later row that arrives
+  without the multiplier, and the weekly price check reads the page's sentence
+  and fails if the multiple or the generation it starts at changes.
 
 ### Release mechanics
 

@@ -230,6 +230,9 @@ export interface PricingTier {
  */
 export type ServiceTier = 'flex' | 'fast' | 'ultrafast';
 
+/** A geography a provider prices inference in differently. Anthropic's `inference_geo: "us"`. */
+export type InferenceGeo = 'us';
+
 /** The rates one service tier charges, with its own conditional bands. */
 export interface ServiceTierRates {
   inputPerMTok: number;
@@ -396,6 +399,21 @@ export interface ModelPricing {
    * standard rate: the page publishes nothing else for it.
    */
   serviceTiers?: Partial<Record<ServiceTier, ServiceTierRates>>;
+  /**
+   * What running the call in one geography multiplies every rate by.
+   *
+   * Anthropic bills US-only inference (`inference_geo: "us"`) at 1.1x "on
+   * all token pricing categories, including input tokens, output tokens,
+   * cache writes, and cache reads" for Claude 4.6 and later, and says the
+   * multiplier stacks with fast mode, the Batch API discount and caching.
+   * Global routing, the default, is the row's own price, and earlier models
+   * reject the parameter. The response names the geography that ran in
+   * `usage.inference_geo`, so a call is decided by its own log line.
+   *
+   * A published multiplier, applied as the page states it, never one derived
+   * here: a row without the field prices every geography at its own rate.
+   */
+  inferenceGeoMultipliers?: Partial<Record<InferenceGeo, number>>;
   /**
    * Other ids that bill at exactly this rate.
    *

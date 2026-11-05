@@ -106,6 +106,8 @@ export class GatewaySpend {
       ...(usage.speed === undefined ? {} : { speed: usage.speed }),
       // So does OpenAI's service tier, each priced from its own table.
       ...(usage.serviceTier === undefined ? {} : { service_tier: usage.serviceTier }),
+      // And US-only inference, 1.1x on Claude 4.6 and later.
+      ...(usage.inferenceGeo === undefined ? {} : { inference_geo: usage.inferenceGeo }),
     }));
     const index = record === null ? null : indexUsage([record], { catalogue: this.catalogue, on: new Date(now) });
     if (index === null || index.unpriced > 0 || index.dayUsd === null) {

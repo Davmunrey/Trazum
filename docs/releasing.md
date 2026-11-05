@@ -274,8 +274,10 @@ failing, so a stale price review never blocks unrelated work.
 **The same weekly run reads the pricing pages themselves.**
 `node scripts/price-drift.mjs` fetches Anthropic's and OpenAI's pricing pages
 in their Markdown form and compares every published figure with the catalogue:
-input, output, cache hits, both cache writes, batch, the long-prompt bands and
-Anthropic's fast mode. A changed price is **drift**, a model on the page that
+input, output, cache hits, both cache writes, batch, the long-prompt bands,
+Anthropic's fast mode and its data residency multiplier (the generation it
+starts at and the multiple, against every Claude row). A changed price is
+**drift**, a model on the page that
 the catalogue lacks is **missing**, and a page whose tables are no longer where
 the script looks is **unread**; each fails the scheduled run, and on any
 other run the report is printed in the step's log without failing. Freshness says

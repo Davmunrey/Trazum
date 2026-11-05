@@ -35,7 +35,11 @@ export const PRICING_MODEL_KEYS = [
   'notes',
   'promo',
   'multipliers',
+  'inferenceGeoMultipliers',
 ] as const;
+
+/** The geographies a provider prices differently, as `InferenceGeo` names them. */
+const INFERENCE_GEO_KEYS = ['us'] as const;
 
 const PROMO_KEYS = ['inputPerMTok', 'outputPerMTok', 'until'] as const;
 
@@ -259,6 +263,23 @@ function parseModel(
   }
   if (raw.multipliers !== undefined) {
     model.multipliers = parseMultipliers(raw.multipliers, `models.${id}.multipliers`, source);
+  }
+  /*
+   * The multiplier a provider publishes for one geography, as the catalogue
+   * carries it on Claude 4.6 and later. Accepted so a catalogue row copied into
+   * an overlay is still a valid overlay row, and so a model added there can say
+   * what US-only inference costs on it. Zero and negatives are refused, as for
+   * every other rate here.
+   */
+  if (raw.inferenceGeoMultipliers !== undefined) {
+    const label = `models.${id}.inferenceGeoMultipliers`;
+    const geo = raw.inferenceGeoMultipliers;
+    if (!isPlainObject(geo)) {
+      throw new PricingOverlayError(`"${label}" must be an object such as {"us": 1.1}`, source);
+    }
+    rejectUnknownKeys(geo, INFERENCE_GEO_KEYS, source, `${label}.`);
+    model.inferenceGeoMultipliers = {};
+    if (geo.us !== undefined) model.inferenceGeoMultipliers.us = positiveNumber(geo.us, `${label}.us`, source);
   }
 
   return model;

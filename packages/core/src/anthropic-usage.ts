@@ -64,9 +64,14 @@
  * and the conversion says the question was not asked.
  *
  * **US-only inference.** `inference_geo: "us"` bills 1.1x on every token
- * category of Claude 4.6 and later, the pricing page says. The catalogue has
- * no geography, so such a row is priced at the global rate and counted: its
- * figure is a floor, named, rather than a multiple composed here.
+ * category of Claude 4.6 and later, the pricing page says, and the catalogue
+ * carries that multiplier on each of those rows. A US-only row is written
+ * with `usage.inference_geo: "us"` and priced at it, exactly as a logged
+ * response carrying the field is. One on a model the catalogue has no
+ * multiplier for is priced at the global rate and counted as a floor, never
+ * multiplied by a figure the row does not publish. A report not grouped by
+ * `inference_geo` cannot say, so its rows are read as global and the
+ * conversion says the question was not asked.
  *
  * **Web search requests.** `server_tool_use.web_search_requests` is billed per
  * request, not per token, so no token rate reaches it. Counted and named, so a
@@ -149,6 +154,8 @@ export interface AnthropicUsageRecord {
     };
     /** `"fast"` when the report says the row ran in fast mode and the model has a fast rate. */
     speed?: 'fast';
+    /** `"us"` when the report says the row ran with US-only inference. */
+    inference_geo?: 'us';
   };
 }
 
@@ -185,11 +192,20 @@ export interface AnthropicUsageConversion {
    * Read as standard, because nothing on the row says otherwise, and said.
    */
   speedUnknownFastCapable: number;
-  /**
-   * Results with `inference_geo: "us"`, priced at the global rate. US-only
-   * inference bills 1.1x on Claude 4.6 and later, so their figure is a floor.
-   */
+  /** Results with `inference_geo: "us"` priced at the model's published US-only multiplier. */
   usOnlyRows: number;
+  /**
+   * Results with `inference_geo: "us"` on a model the catalogue has no
+   * US-only multiplier for, priced at the global rate: their figure is a floor.
+   */
+  usOnlyFloor: number;
+  /** Whether any result named its inference geography at all. */
+  geoNamed: boolean;
+  /**
+   * Results on a model with a US-only multiplier, in a report that never named
+   * a geography. Read as global, because nothing on the row says otherwise, and said.
+   */
+  geoUnknownMultiplied: number;
   /** Server-side tool calls billed per request, which no token rate prices. */
   webSearchRequests: number;
   /** `has_more`: this is one page and the bill from it is understated. */
@@ -252,6 +268,9 @@ export function anthropicUsageRecords(
     speedNamed: false,
     speedUnknownFastCapable: 0,
     usOnlyRows: 0,
+    usOnlyFloor: 0,
+    geoNamed: false,
+    geoUnknownMultiplied: 0,
     webSearchRequests: 0,
     truncated: false,
     labelledByWorkspace: 0,
@@ -305,6 +324,11 @@ export function anthropicUsageRecords(
   let speedNamed = false;
   let speedUnknownFastCapable = 0;
   let usOnlyRows = 0;
+  let usOnlyFloor = 0;
+  let geoNamed = false;
+  let geoUnknownMultiplied = 0;
+  const hasUsMultiplier = (model: string): boolean =>
+    catalogue.byId.get(model)?.inferenceGeoMultipliers?.us !== undefined;
   let labelledByWorkspace = 0;
   let unruledWorkspace = 0;
   let buckets = 0;
@@ -392,6 +416,15 @@ export function anthropicUsageRecords(
         }
       }
 
+      /*
+        US-only inference is the row's own fact, priced by the model's
+        published multiplier where it has one. A report not grouped by
+        geography says nothing either way, and that is said.
+      */
+      const usOnly = result.inference_geo === 'us';
+      if (typeof result.inference_geo === 'string') geoNamed = true;
+      else if (hasUsMultiplier(result.model)) geoUnknownMultiplied += 1;
+
       const creation = result.cache_creation as
         | { ephemeral_5m_input_tokens?: unknown; ephemeral_1h_input_tokens?: unknown }
         | undefined;
@@ -417,11 +450,15 @@ export function anthropicUsageRecords(
               }
             : {}),
           ...(fast ? { speed: 'fast' as const } : {}),
+          ...(usOnly ? { inference_geo: 'us' as const } : {}),
         },
       });
       rows += 1;
       if (fast) fastRows += 1;
-      if (result.inference_geo === 'us') usOnlyRows += 1;
+      if (usOnly) {
+        if (hasUsMultiplier(result.model)) usOnlyRows += 1;
+        else usOnlyFloor += 1;
+      }
     }
   }
 
@@ -438,6 +475,9 @@ export function anthropicUsageRecords(
     speedNamed,
     speedUnknownFastCapable,
     usOnlyRows,
+    usOnlyFloor,
+    geoNamed,
+    geoUnknownMultiplied,
     webSearchRequests,
     truncated: report.has_more === true,
     labelledByWorkspace,
