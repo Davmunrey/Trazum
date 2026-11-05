@@ -17,7 +17,13 @@ export const es: CliMessages = {
   locale: 'es',
   numberLocale: 'es-ES',
 
-  help: (d, bold) => `${bold('trazum')}: reduce el coste de tus prompts sin perder lo que piden.
+  help: (d, bold) => `${bold('trazum')}: lo que cuestan tus agentes de IA y tus llamadas a la API, leído de los logs de esta máquina.
+
+${bold('EMPIEZA AQUÍ')}
+  trazum bill                 Cada sesión de Claude Code, Codex y Gemini CLI de
+                              esta máquina, por agente, proyecto y modelo
+  trazum bill <log|dir>       Cualquier log de uso o export de proveedor que reconozca
+  trazum bill --by month      La misma factura, mes a mes (o día, semana)
 
 ${bold('USO')}
   trazum init [dir] [--dry-run | --yes]

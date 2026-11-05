@@ -30,7 +30,13 @@ export const en: CliMessages = {
   locale: 'en',
   numberLocale: 'en-US',
 
-  help: (d, bold) => `${bold('trazum')}, cut the cost of your prompts without losing what they ask for.
+  help: (d, bold) => `${bold('trazum')}, what your AI agents and API calls cost, read from logs on this machine.
+
+${bold('START HERE')}
+  trazum bill                 Every Claude Code, Codex and Gemini CLI session on
+                              this machine, by agent, project and model
+  trazum bill <log|dir>       Any usage log or provider export it recognises
+  trazum bill --by month      The same bill, month by month (or day, week)
 
 ${bold('USAGE')}
   trazum init [dir] [--dry-run | --yes]

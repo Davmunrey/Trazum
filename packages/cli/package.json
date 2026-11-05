@@ -1,7 +1,7 @@
 {
   "name": "@trazum/cli",
-  "version": "2.6.0",
-  "description": "What your AI agents cost, per project, offline: prices Claude Code sessions and Anthropic, OpenAI, OpenRouter, OTel and LiteLLM usage, writes the bill as PDF, HTML or CSV, and enforces budgets in CI.",
+  "version": "2.7.0",
+  "description": "What your AI agents cost, per project, offline: one bill across Claude Code, Codex and Gemini CLI sessions, plus Anthropic, OpenAI, Gemini, OpenRouter, OTel and LiteLLM usage, written as PDF, HTML or CSV, with budgets enforced in CI.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
   "repository": {
@@ -15,9 +15,12 @@
   },
   "keywords": [
     "claude-code",
+    "codex",
+    "gemini-cli",
     "claude",
     "anthropic",
     "openai",
+    "gemini",
     "llm",
     "ai-agents",
     "cost",
@@ -50,7 +53,7 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
-    "@trazum/core": "2.6.0"
+    "@trazum/core": "2.7.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

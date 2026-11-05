@@ -4,6 +4,14 @@ on:
   push:
     branches: ['main', 'claude/**']
   pull_request:
+  # Weekly on main, with no commit to trigger it. Several guards here are
+  # measured against today: the Action pin against the newest tag, provider
+  # prices against their review date. In October 2026 one went stale between
+  # commits and the first run to notice was a contributor's pull request,
+  # three weeks later. A scheduled failure lands on main, where GitHub tells
+  # the owner.
+  schedule:
+    - cron: '41 6 * * 1'
 
 # Least privilege by default. Any job needing more must ask for it explicitly,
 # which makes the request visible in review.
@@ -44,6 +52,16 @@ jobs:
 
       - name: Build core, CLI, MCP server, the OpenAI tokenizer and the editor extension
         run: npm run build
+
+      # What goes stale with no commit: price reviews, the Action pin, unreleased
+      # work. Reported on every run (in the job summary); a failure only on the
+      # weekly schedule, so an overdue price review never blocks somebody's
+      # unrelated pull request, the way the stale pin once blocked five.
+      - name: Freshness (fails only on the weekly schedule)
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "schedule" ]; then node scripts/freshness.mjs; else node scripts/freshness.mjs --report; fi
 
       # Named for what it runs. `npm test` at the root covers core, CLI, web and
       # the Action, and has for a while — a step labelled "Core and CLI tests"

@@ -2755,9 +2755,21 @@ complete the release. Bounded and concurrent stress probes cover the installable
 packages. No causal savings, inferred task success or automatic harness control
 is claimed.
 
+## 2.7.0 — One bill across your coding agents — released
+
+`bill` with no path reads Codex and Gemini CLI beside Claude Code, each
+location taken from the agent's own source, and adds a table by agent that
+splits the total rather than estimating it again. Gemini CLI gets its own
+adapter, `from-gemini-cli`, the 55th command, shared by the web app, MCP and
+HTTP. `bill --by day|week|month` splits the statement by period. Gemini's
+reasoning and tool-prompt tokens, priced at zero since its importer landed,
+are counted everywhere. Releases are prepared by one counted script, and CI
+checks every Monday for what goes stale with no commit. OpenCode is not read:
+its storage moved to SQLite and is still changing.
+
 ## Next
 
-**Target: 2.6.1, repeated-task evaluation.**
+**Target: 2.7.1, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,

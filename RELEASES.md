@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.6.0**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,66 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.0 — One bill across your coding agents
+
+**Adoption, read 2026-11-05:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), GitHub stars: unavailable (HTTP 403), MCP registry latest 2.6.0.
+
+`trazum bill` with no path now reads **Claude Code, Codex and Gemini CLI**,
+names every folder before it reads it, and splits the result by agent, project
+and model. If you run more than one agent, the bill used to be missing part of
+your work without saying so. Now it isn't, and the By agent table adds up to
+the total.
+
+```bash
+npx -y @trazum/cli@2.7.0 bill
+npx -y @trazum/cli@2.7.0 bill --by week
+```
+
+**Where each agent keeps its sessions comes from the agent's own source
+code**, not from a guess:
+
+- Codex: `$CODEX_HOME/sessions` and `archived_sessions` (`~/.codex` by default).
+- Gemini CLI: `~/.gemini/tmp/<project>/chats`, honouring `GEMINI_CLI_HOME`.
+
+Gemini CLI also has its own command, `trazum from-gemini-cli`, the 55th. The
+same reader is used by the web app's Bill tab, MCP `import_usage` and HTTP
+`/usage/import`. It reads a reply the recorder rewrote once, does not let a
+rewind undo spend, and checks each reply's parts against its recorded total.
+See [docs/gemini-cli.md](docs/gemini-cli.md).
+
+**`bill --by day|week|month`** splits the statement by UTC day, ISO week or
+month. Its last line names the `--since`/`--until` that bills the newest
+period on its own.
+
+**A fix in the flattering direction.** Gemini usage was read without
+`thoughtsTokenCount` (reasoning, billed as output) and
+`toolUsePromptTokenCount` (tool results, billed as input). On a thinking model
+the reasoning is often most of the output, so Gemini bills were too low. Both
+are now counted everywhere: `profile`, `bill` and the gateway. If you billed
+Gemini with an earlier version, run it again.
+
+**`trazum --help` starts with the bill**, in a START HERE block.
+
+For maintainers, two pieces of automation:
+
+- `node scripts/prepare-release.mjs <version>` moves every lockstep version,
+  the changelog heading and the Action pin in one counted step. It refuses
+  rather than guesses. This release was prepared with it.
+- CI now also runs every Monday. `node scripts/freshness.mjs` fails that run
+  when a provider's price review is past 45 days or the Action pin falls two
+  releases behind, so a stale guard surfaces on main, not on somebody's pull
+  request.
+
+**Not read yet: OpenCode.** It moved its sessions to SQLite in 2026 and its
+storage code is still being restructured. Trazum does not guess at a format
+that is changing; it will read it once the format settles.
+
+**On a subscription, these figures are API-equivalent cost, not what you
+paid.** No breaking change. All packages, the plugin and MCP discovery advance
+together to 2.7.0.
 
 ---
 
