@@ -1,6 +1,6 @@
 import { authConfig } from '../../../../lib/auth/config';
 import { sessionRateLimited } from '../../../../lib/auth/routes';
-import { currentUser } from '../../../../lib/auth/session';
+import { clearSessionCookies, currentUser, tokenFromRequest } from '../../../../lib/auth/session';
 import { getStore } from '../../../../lib/store';
 
 export const runtime = 'nodejs';
@@ -74,6 +74,18 @@ export async function GET(request: Request): Promise<Response> {
   const store = await getStore();
   const user = await currentUser(request, store, new Date(), config);
 
+  /**
+   * A cookie that opened nothing is cleared, so the browser stops presenting
+   * it on every page load and the security log records it once rather than
+   * once a page. Not on the memory store: there another instance may still
+   * hold the session this one has never seen, and clearing the cookie would
+   * sign its owner out of that one too.
+   */
+  const headers = new Headers({ 'cache-control': 'private, no-store' });
+  if (!user && !store.ephemeral && tokenFromRequest(request, config.secure)) {
+    for (const cookie of clearSessionCookies(config.secure)) headers.append('set-cookie', cookie);
+  }
+
   return Response.json(
     {
       enabled: true,
@@ -94,6 +106,6 @@ export async function GET(request: Request): Promise<Response> {
        */
       ephemeralSessions: store.ephemeral,
     },
-    { headers: { 'cache-control': 'private, no-store' } },
+    { headers },
   );
 }

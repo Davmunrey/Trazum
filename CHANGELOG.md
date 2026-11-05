@@ -76,6 +76,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **A line for every session cookie that opens nothing.** A cookie whose
+  session has expired, been revoked or never existed now writes an
+  `auth.session` failure line, `unknown_session`, and one that policy ended
+  writes `session_ended` with the account (OWASP ASVS 7.2.1). A visitor with
+  no cookie is not an authentication decision and writes nothing, and no line
+  carries the token or its hash. `/api/auth/session` now clears such a cookie
+  where sessions are durable, so a browser stops presenting it on every page
+  load and the log records it once rather than once a page; not on the memory
+  store, where another instance may still hold that session and clearing the
+  cookie would sign its owner out of it. Six planted faults were each caught,
+  from a visitor recorded to the hash written into the line. ASVS 7.2.1 moves
+  to met (121).
 - **See where you are signed in, and end any one session.** *Your sessions*
   in the account menu lists every live session the account has, with when it
   started, when it was last used (to within a few minutes) and which one is

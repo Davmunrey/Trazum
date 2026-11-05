@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
+import { routeOf, securityEvent } from '../security-log';
 import type { SessionRecord, Store, UserRecord } from '../store/types';
 import { DEFAULT_SESSION_POLICY, type SessionPolicy } from './config';
 import { parseCookies, serializeCookie } from './cookies';
@@ -227,15 +228,27 @@ export async function currentSession(
   const token = tokenFromRequest(request, config.secure);
   if (!token) return null;
 
+  /**
+   * A cookie that opens nothing is an authentication decision too (OWASP ASVS
+   * 4.0.3 7.2.1), and it is written down: `unknown_session` when no live row
+   * has its hash, which is an expired, revoked or forged cookie and the table
+   * cannot say which, and `session_ended` when the row was there and policy
+   * ended it, with whose it was. No cookie at all is a visitor, not a decision,
+   * and writes nothing. Neither line carries the token or its hash.
+   */
   const hash = hashToken(token);
   const found = await store.findSession(hash, now);
-  if (!found) return null;
+  if (!found) {
+    securityEvent('auth.session', 'failure', { reason: 'unknown_session', route: routeOf(request) }, now);
+    return null;
+  }
 
   const next = renewal(found.session, now, config.session);
   if (next.kind === 'end') {
     // The answer is null whether or not the delete lands: the row is dead by
     // policy, and the next request reaches the same verdict.
     await store.deleteSession(hash).catch(() => {});
+    securityEvent('auth.session', 'failure', { userId: found.user.id, reason: 'session_ended', route: routeOf(request) }, now);
     return null;
   }
   if (next.kind === 'refresh') {
