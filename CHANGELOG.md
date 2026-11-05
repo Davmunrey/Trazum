@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.7 — 2026-11-05
+
 ### Fixed
 
 - **A Claude Code call with no `requestId` was billed once per line.**
