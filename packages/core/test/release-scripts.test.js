@@ -83,9 +83,13 @@ describe('prepare-release', () => {
         assert.equal(JSON.parse(readFileSync(join(dir, path), 'utf8')).version, nextPatch, path);
       }
       assert.equal(readFileSync(join(dir, 'packages/mcp/server.json'), 'utf8').split(`"version": "${nextPatch}"`).length - 1, 2);
-      assert.match(readFileSync(join(dir, 'packages/mcp/src/index.ts'), 'utf8'), new RegExp(`version: '${nextPatch.replace(/\./g, '\\.')}'`));
+      assert.ok(readFileSync(join(dir, 'packages/mcp/src/index.ts'), 'utf8').includes(`version: '${nextPatch}'`), 'the MCP handshake version was left behind');
       const changelog = readFileSync(join(dir, 'CHANGELOG.md'), 'utf8');
-      assert.match(changelog, new RegExp(`\\n## Unreleased\\n\\nNo changes yet\\.\\n\\n## ${nextPatch.replace(/\./g, '\\.')} — \\d{4}-\\d{2}-\\d{2}\\n`));
+      // Plain text, not a pattern built from the version: nothing to escape.
+      const heading = `\n## Unreleased\n\nNo changes yet.\n\n## ${nextPatch} — `;
+      const at = changelog.indexOf(heading);
+      assert.ok(at >= 0, 'the changelog has no fresh Unreleased above the new version');
+      assert.match(changelog.slice(at + heading.length, at + heading.length + 11), /^\d{4}-\d{2}-\d{2}\n$/);
       assert.ok(readFileSync(join(dir, 'RELEASES.md'), 'utf8').includes(`**All four packages are on npm at ${nextPatch}**`));
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -95,7 +99,7 @@ describe('prepare-release', () => {
   it('refuses a version that is not newer, and one that is not a version', () => {
     const older = script('prepare-release.mjs', current, '--dry-run');
     assert.equal(older.status, 1);
-    assert.match(older.stderr, new RegExp(`${current.replace(/\./g, '\\.')} is not newer than the current`));
+    assert.ok(older.stderr.includes(`${current} is not newer than the current`), older.stderr);
     const nonsense = script('prepare-release.mjs', 'next', '--dry-run');
     assert.equal(nonsense.status, 1);
     assert.match(nonsense.stderr, /is not a version/);
