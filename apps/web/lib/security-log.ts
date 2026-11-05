@@ -45,7 +45,8 @@ export type SecurityEvent =
   | 'share.revoked'
   | 'admin.access'
   | 'access.refused'
-  | 'input.refused';
+  | 'input.refused'
+  | 'auth.session';
 
 export type SecurityReason =
   | 'cancelled'
@@ -62,7 +63,9 @@ export type SecurityReason =
   | 'invalid_json'
   | 'invalid_input'
   | 'reauth_required'
-  | 'not_found';
+  | 'not_found'
+  | 'unknown_session'
+  | 'session_ended';
 
 export interface SecurityLine {
   type: 'security';

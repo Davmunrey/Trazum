@@ -293,6 +293,64 @@ describe('a request refused for what it sent writes one line', () => {
   });
 });
 
+describe('a session cookie that opens nothing', () => {
+  /**
+   * OWASP ASVS 4.0.3 7.2.1: every authentication decision is logged, and a
+   * presented cookie that resolves to no live session is one. A visitor with
+   * no cookie is not, and writes nothing.
+   */
+  const FORGED = 'forged-cookie-value-5e1d';
+  const ask = async (cookie) => {
+    const { GET } = await import('../app/api/auth/session/route.ts');
+    return GET(new Request(`${ORIGIN}/api/auth/session`, { headers: headers(cookie ? { cookie } : {}) }));
+  };
+
+  it('writes nothing for a visitor, and one line for a cookie no session has', async () => {
+    await ask(null);
+    assert.deepEqual(lines, [], 'a visitor with no cookie was recorded');
+    const answer = await ask(`__Host-trazum_session=${FORGED}`);
+    assert.equal((await answer.json()).user, null);
+    assert.deepEqual(events(), ['auth.session:failure:unknown_session']);
+    assert.equal(parsed()[0].route, '/api/auth/session');
+    assert.equal(parsed()[0].userId, undefined);
+    assert.ok(!lines.join('\n').includes(FORGED), 'the cookie reached the log');
+    assert.ok(!lines.join('\n').includes(mod.session.hashToken(FORGED)), 'its hash reached the log');
+  });
+
+  it('names the account when policy ended the session, and ends it', async () => {
+    const me = await signIn();
+    const issued = mod.session.issueSession(me.user.id, new Date(Date.now() - 2 * 3600_000), true);
+    const store = await mod.store.getStore();
+    await store.createSession(issued.record);
+    process.env.TRAZUM_SESSION_MAX_HOURS = '1';
+    try {
+      lines = [];
+      await ask(`__Host-trazum_session=${issued.token}`);
+    } finally {
+      delete process.env.TRAZUM_SESSION_MAX_HOURS;
+    }
+    assert.deepEqual(events(), ['auth.session:failure:session_ended']);
+    assert.equal(parsed()[0].userId, me.user.id);
+    assert.equal(await store.findSession(mod.session.hashToken(issued.token), new Date()), null);
+    assert.ok(!lines.join('\n').includes(issued.token));
+  });
+
+  it('clears that cookie where sessions are durable, and leaves it where another instance may hold it', async () => {
+    const cleared = (answer) => answer.headers.getSetCookie().some((c) => c.startsWith('__Host-trazum_session=;'));
+    assert.equal(cleared(await ask(`__Host-trazum_session=${FORGED}`)), false, 'the memory store cleared a cookie another instance may know');
+    const store = await mod.store.getStore();
+    store.ephemeral = false;
+    try {
+      assert.equal(cleared(await ask(`__Host-trazum_session=${FORGED}`)), true, 'a durable store left a dead cookie in place');
+      const me = await signIn();
+      assert.equal(cleared(await ask(me.cookie)), false, 'a live session was signed out');
+      assert.equal(cleared(await ask(null)), false);
+    } finally {
+      store.ephemeral = true;
+    }
+  });
+});
+
 describe('every route that can refuse its input records the refusal', () => {
   /**
    * The wrapper is what makes the record complete: it writes the line for
