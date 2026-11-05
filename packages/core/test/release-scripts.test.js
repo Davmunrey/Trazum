@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 
+import { SPAWN_ENV } from '../../cli/test/env.mjs';
+
 /**
  * The two scripts that keep a release from being cut with something left
  * behind, and the repository from going stale between commits.
@@ -21,7 +23,7 @@ import { describe, it } from 'node:test';
 
 const ROOT = new URL('../../../', import.meta.url).pathname;
 const script = (name, ...args) =>
-  spawnSync(process.execPath, [join(ROOT, 'scripts', name), ...args], { cwd: ROOT, encoding: 'utf8', timeout: 60000 });
+  spawnSync(process.execPath, [join(ROOT, 'scripts', name), ...args], { cwd: ROOT, env: SPAWN_ENV, encoding: 'utf8', timeout: 60000 });
 const current = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
 const [major, minor, patch] = current.split('.').map(Number);
 const nextPatch = `${major}.${minor}.${patch + 1}`;
@@ -61,10 +63,10 @@ describe('prepare-release', () => {
       lock.packages['node_modules/planted-dependency'] = { version: current, license: 'MIT' };
       writeFileSync(join(dir, 'package-lock.json'), `${JSON.stringify(lock, null, 2)}\n`);
       // No tags in the copy, so the pin step says so and leaves the documents alone.
-      execFileSync('git', ['init', '-q'], { cwd: dir });
+      execFileSync('git', ['init', '-q'], { cwd: dir, env: SPAWN_ENV });
 
       const result = spawnSync(process.execPath, [join(ROOT, 'scripts', 'prepare-release.mjs'), nextPatch], {
-        cwd: dir, env: { ...process.env, PREPARE_RELEASE_ROOT: dir }, encoding: 'utf8', timeout: 60000,
+        cwd: dir, env: { ...SPAWN_ENV, PREPARE_RELEASE_ROOT: dir }, encoding: 'utf8', timeout: 60000,
       });
       assert.equal(result.status, 0, result.stderr);
 
