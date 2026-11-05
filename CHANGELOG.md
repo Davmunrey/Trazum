@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.4 — 2026-11-05
+
 ### Fixed
 
 - **A batch call was billed at twice its cost, and a usage report's batch rows

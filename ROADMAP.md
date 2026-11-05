@@ -2800,9 +2800,20 @@ asks both reports for the groupings that change a price and prices by them,
 with a store that converges across the change rather than doubling a day. The
 weekly price check reads the data residency sentence too.
 
+## 2.7.4 — Batch billed at half, and a batch's results file read — released
+
+Two corrections about the Batch API, which both providers sell at half the
+standard price. A batch call is priced at the model's batch ratio wherever the
+provider says it ran on one: Anthropic's `usage.service_tier: "batch"`, a usage
+report's batch row from `from-anthropic`, `from-openai` or `trazum connect`,
+where every batch row had been left out. And `bill` reads a batch's results
+file, Anthropic's and OpenAI's, which had read as nothing: each billed line a
+call at the batch rate, the results the provider does not bill left out, and
+nothing but model, usage and end reason crossing.
+
 ## Next
 
-**Target: 2.7.4, repeated-task evaluation.**
+**Target: 2.7.5, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,
