@@ -6,12 +6,16 @@ import * as core from '../dist/index.js';
 import {
   DELIBERATELY_UNPRICED,
   PAGES,
+  LIFECYCLE_PAGES,
   compare,
+  compareLifecycle,
   dollars,
   markdownTables,
   plainName,
   readAnthropic,
+  readAnthropicLifecycle,
   readOpenAi,
+  readOpenAiModelPage,
   render,
 } from '../../../scripts/price-drift.mjs';
 
@@ -310,5 +314,71 @@ describe('markup in a cell', () => {
     }
     assert.equal(plainName('Claude <b>Opus</b> 9<sup>1</sup>'), 'Claude Opus 9');
     assert.equal(dollars('<<b>$1.50</b>'), 1.5);
+  });
+});
+
+describe('the lifecycle: what the provider retires against what the catalogue recommends', () => {
+  const deprecations = (opus47 = 'Active') => `
+# Model deprecations
+
+## Model status
+
+| API model name             | Current state | Deprecated         | Tentative retirement date          |
+| :------------------------- | :------------ | :----------------- | :--------------------------------- |
+| claude-opus-4-7            | ${opus47}${' '.repeat(Math.max(0, 14 - opus47.length))}| N/A                | Not sooner than April 16, 2027     |
+| claude-sonnet-4-5-20250929 | Deprecated    | September 30, 2026 | November 30, 2026                  |
+| claude-mythos-preview      | Deprecated    | June 9, 2026       | To be announced                    |
+`;
+
+  it('reads Anthropic\'s model-status table, dated ids and all', () => {
+    const page = readAnthropicLifecycle(deprecations());
+    assert.deepEqual(page.unread, []);
+    assert.deepEqual(page.entries.map((entry) => [entry.id, entry.state]), [
+      ['claude-opus-4-7', 'Active'],
+      ['claude-sonnet-4-5-20250929', 'Deprecated'],
+      ['claude-mythos-preview', 'Deprecated'],
+    ]);
+    assert.equal(readAnthropicLifecycle('# Nothing\n').unread.length, 1, 'a page without the table reads as unread');
+  });
+
+  it('flags a model the provider deprecated and the catalogue still recommends, and only that', () => {
+    assert.deepEqual(compareLifecycle('anthropic', readAnthropicLifecycle(deprecations()).entries, core), [],
+      'Sonnet 4.5 is deprecated and already not recommended; a model the catalogue lacks is not this check\'s business');
+    const status = compareLifecycle('anthropic', readAnthropicLifecycle(deprecations('Deprecated')).entries, core);
+    assert.deepEqual(status.map((finding) => [finding.kind, finding.model]), [['status', 'claude-opus-4-7']]);
+    assert.match(status[0].detail, /marks it Deprecated, retiring Not sooner than April 16, 2027, and the catalogue still recommends it/);
+  });
+
+  it('reads an OpenAI model page\'s status line and context window', () => {
+    const page = (status) => `# GPT-X\n\n${status === undefined ? '' : `Status: ${status}\n`}\n## Model details\n\n- 400,000 context window\n- 128,000 max output tokens\n`;
+    assert.deepEqual(readOpenAiModelPage(page()), { state: 'Active', contextWindow: 400_000 });
+    assert.deepEqual(readOpenAiModelPage(page('Shut down')), { state: 'Shut down', contextWindow: 400_000 });
+    assert.deepEqual(readOpenAiModelPage('# no details\n'), { state: 'Active' });
+  });
+
+  it('flags a deprecated OpenAI model still recommended, and a changed context window', () => {
+    const findings = compareLifecycle('openai', [
+      { id: 'gpt-5.2', state: 'Deprecated', contextWindow: 400_000 },
+      { id: 'gpt-6-sol', state: 'Active', contextWindow: 2_000_000 },
+      { id: 'gpt-4o', state: 'Deprecated', contextWindow: 128_000 },
+    ], core);
+    assert.deepEqual(findings.map((finding) => [finding.kind, finding.model, finding.detail]), [
+      ['status', 'gpt-5.2', 'the provider marks it Deprecated, and the catalogue still recommends it'],
+      ['drift', 'gpt-6-sol', 'context window: the page says 2,000,000, the catalogue has 1,050,000'],
+    ]);
+  });
+
+  it('asks each OpenAI model\'s own page, by id', () => {
+    assert.equal(LIFECYCLE_PAGES.openaiModel('gpt-5.4-mini'), 'https://developers.openai.com/api/docs/models/gpt-5.4-mini.md');
+    assert.match(LIFECYCLE_PAGES.anthropic, /^https:\/\/platform\.claude\.com\//);
+  });
+
+  it('reports a status finding as failing, after drift and before notes', () => {
+    const lines = render([
+      { provider: 'openai', kind: 'note', model: 'a', detail: 'n' },
+      { provider: 'openai', kind: 'status', model: 'b', detail: 's' },
+      { provider: 'openai', kind: 'drift', model: 'c', detail: 'd' },
+    ], {});
+    assert.deepEqual(lines.slice(0, 3).map((line) => line.split(/\s+/)[0]), ['DRIFT', 'STATUS', 'note']);
   });
 });
