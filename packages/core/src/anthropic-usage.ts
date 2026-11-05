@@ -213,8 +213,14 @@ export interface AnthropicUsageConversion {
    * a geography. Read as global, because nothing on the row says otherwise, and said.
    */
   geoUnknownMultiplied: number;
-  /** Server-side tool calls billed per request, which no token rate prices. */
+  /**
+   * Web searches carried onto the rows they ran on, as
+   * `usage.server_tool_use.web_search_requests`, and billed at the model's
+   * per-search fee: $10 per 1,000 on every Claude model, on top of the tokens.
+   */
   webSearchRequests: number;
+  /** Web searches on rows left out above (a tier or speed with no rate, no model): in no bill. */
+  webSearchLeftOut: number;
   /** `has_more`: this is one page and the bill from it is understated. */
   truncated: boolean;
   /** Records whose label came from a workspace rule rather than `--label`. */
@@ -280,6 +286,7 @@ export function anthropicUsageRecords(
     geoNamed: false,
     geoUnknownMultiplied: 0,
     webSearchRequests: 0,
+    webSearchLeftOut: 0,
     truncated: false,
     labelledByWorkspace: 0,
     unruledWorkspace: 0,
@@ -346,6 +353,7 @@ export function anthropicUsageRecords(
   let batchRows = 0;
   let tierNamed = false;
   let webSearchRequests = 0;
+  let webSearchSeen = 0;
 
   for (const entry of report.data) {
     if (typeof entry !== 'object' || entry === null) continue;
@@ -369,8 +377,14 @@ export function anthropicUsageRecords(
         server_tool_use?: unknown;
       };
 
+      /*
+        Counted here, before any refusal below, so that searches on a row that
+        is then left out are said as left out rather than lost: what reaches a
+        record is billed, and the difference is named.
+      */
       const tool = result.server_tool_use as { web_search_requests?: unknown } | undefined;
-      webSearchRequests += count(tool?.web_search_requests);
+      const searches = count(tool?.web_search_requests);
+      webSearchSeen += searches;
 
       let batchRow = false;
       if (typeof result.service_tier === 'string') {
@@ -474,8 +488,15 @@ export function anthropicUsageRecords(
           ...(fast ? { speed: 'fast' as const } : {}),
           ...(usOnly ? { inference_geo: 'us' as const } : {}),
           ...(batchRow ? { service_tier: 'batch' as const } : {}),
+          /*
+            Billed per search on top of the tokens, at the same fee on the
+            Batch API and whatever the speed or geography: the row's searches
+            ride on the row and `profileUsage` prices them off the model.
+          */
+          ...(searches > 0 ? { server_tool_use: { web_search_requests: searches } } : {}),
         },
       });
+      webSearchRequests += searches;
       rows += 1;
       if (batchRow) batchRows += 1;
       if (fast) fastRows += 1;
@@ -504,6 +525,7 @@ export function anthropicUsageRecords(
     geoNamed,
     geoUnknownMultiplied,
     webSearchRequests,
+    webSearchLeftOut: webSearchSeen - webSearchRequests,
     truncated: report.has_more === true,
     labelledByWorkspace,
     unruledWorkspace,

@@ -1976,6 +1976,10 @@ ${bold('EJEMPLOS')}
       'El log no lleva reloj, así que el recibo no está acotado en el tiempo y lo declara en vez de inventarse un periodo.',
     undatedExcluded: (calls) =>
       `${count(calls)} ${calls === 1 ? 'llamada no trae' : 'llamadas no traen'} marca de tiempo y no se ${calls === 1 ? 'puede' : 'pueden'} situar en este periodo, así que no ${calls === 1 ? 'está' : 'están'} en esta factura: el total es un suelo del periodo.`,
+    webSearch: (requests, usd) =>
+      `${count(requests)} ${requests === 1 ? 'búsqueda web, cobrada' : 'búsquedas web, cobradas'} por búsqueda además de los tokens: ${usd} del total.`,
+    unpricedWebSearch: (requests, models) =>
+      `${count(requests)} ${requests === 1 ? 'búsqueda web' : 'búsquedas web'} en ${models}, cuya lista de precios no publica una tarifa por búsqueda: fuera del total, que es un suelo para ${requests === 1 ? 'ella' : 'ellas'}.`,
     nothingToBill: () => 'Nada de este log se pudo precificar, así que el recibo no tiene líneas.',
   },
 
@@ -2030,10 +2034,12 @@ ${bold('EJEMPLOS')}
       `${file}: no es el JSON que devuelve un endpoint de costes, ni el de Anthropic ni el de OpenAI. Pasa el cuerpo de la respuesta entero.`,
     summary: (computed, billed, difference) =>
       `Trazum calculó $${computed.toFixed(2)}; el proveedor facturó $${billed.toFixed(2)}. Diferencia: $${difference.toFixed(2)}.`,
-    notTokens: (usd) =>
-      `$${usd.toFixed(2)} de eso se factura por algo que ninguna tarifa por token cubre: búsqueda web, ejecución de código, uso de sesión. Trazum cobra tokens y nunca dijo cubrir esto.`,
-    batch: (usd) =>
-      `$${usd.toFixed(2)} es del tramo batch, que from-anthropic deja fuera en vez de cobrarlo a tarifa de catálogo.`,
+    notTokens: (billed, computed) =>
+      `Se facturaron $${billed.toFixed(2)} por algo que no son tokens: búsqueda web, ejecución de código, uso de sesiones. La cifra de Trazum incluye $${computed.toFixed(2)} de búsquedas web y nada más de esto, así que $${(billed - computed).toFixed(2)} de la diferencia son cargos que nunca dijo cubrir.`,
+    batch: (billed, computed) =>
+      `Se facturaron $${billed.toFixed(2)} en el nivel batch; la cifra de Trazum incluye $${computed.toFixed(2)} de llamadas batch, cobradas a la tarifa batch de cada modelo. Los $${(billed - computed).toFixed(2)} que las separan salen de la diferencia.`,
+    splitUnknown: () =>
+      'Este recibo no dice cuánto costaron sus llamadas batch y sus búsquedas web (ningún recibo anterior a 2.7.5 lo dice), así que los cargos batch y no de tokens del proveedor se restaron enteros, como si Trazum no hubiera cobrado ninguno. Un recibo hecho con 2.7.4 sí cobró las llamadas batch, y entonces el resto se queda corto en ellas: vuelve a ejecutar trazum receipt y concilia ese.',
     remainder: (usd) =>
       `Quedan $${usd.toFixed(2)}, y es la única cifra aquí que merece discusión: los mismos tokens estándar cobrados de dos maneras, o uso que tu log nunca vio. Si es negativa, Trazum cobró más de lo que te facturaron, que es una tarifa desactualizada en la dirección que te cuesta dinero.`,
     notAttributable: () =>
@@ -2082,7 +2088,9 @@ ${bold('EJEMPLOS')}
     geoUnknown: (count) =>
       `El informe no nombró ninguna geografía de inferencia, y ${count} fila(s) son de un modelo que factura la inferencia solo en EE. UU. a 1,1x. Se leyeron como globales. Añade group_by[]=inference_geo si algún workspace fija la inferencia en EE. UU.`,
     webSearch: (count) =>
-      `${count} petición(es) de búsqueda web están en el informe y en ninguna línea de la salida: las herramientas de servidor se facturan por petición, no por token, así que ninguna tarifa por token llega a ellas.`,
+      `${count} búsqueda(s) web van con sus filas y se cobran por búsqueda, $10 por cada 1.000 en Claude, además de los tokens.`,
+    webSearchLeftOut: (count) =>
+      `${count} búsqueda(s) web estaban en filas que quedaron fuera arriba, así que tampoco están en ninguna factura.`,
     truncated: () =>
       'El informe dice has_more: true. Esto es una página de varias y una factura hecha con ella se queda corta. Sigue next_page hasta que has_more sea false, y convierte cada página.',
     unparseable: () =>
@@ -2821,6 +2829,9 @@ ${bold('EJEMPLOS')}
     partCacheRead: () => 'Lecturas caché',
     partCacheWrite: () => 'Escrituras caché',
     partOutput: () => 'Salida',
+    partWebSearch: () => 'Búsqueda web',
+    partSearches: (name, usd, pct, searches) =>
+      `${name.padEnd(15)}${usd.padStart(11)}  ${pct.padStart(5)}   ${plural(searches, 'búsqueda')}`,
     byLabelHeading: () => 'Por etiqueta',
     byModelHeading: () => 'Por modelo',
     row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls})`,

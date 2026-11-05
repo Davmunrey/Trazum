@@ -323,6 +323,25 @@ const MISTRAL_CACHE_NOTE =
  */
 const US_ONLY_INFERENCE = Object.freeze({ us: 1.1 });
 
+/**
+ * Anthropic's web search, per 1,000 searches.
+ *
+ * platform.claude.com/docs/en/about-claude/pricing, "Web search tool", and
+ * the web search tool's own page, read 2026-11-05: "Web search is available on
+ * the Claude API for **$10 USD per 1,000 searches**, plus standard token costs
+ * for search-generated content", "Each web search counts as one use,
+ * regardless of the number of results returned. If an error occurs during web
+ * search, the web search will not be billed", and "Web search tool is
+ * available on every model". The tool page also says searches through the
+ * Messages Batches API "are priced the same as those in regular Messages API
+ * requests", so the Batch API ratio never reaches this fee; the 1.1x of
+ * US-only inference is stated for "all token pricing categories", and a
+ * search is not a token, so it does not either. Web fetch has "no additional
+ * charges beyond standard token costs" and carries no fee. `price-drift.mjs`
+ * reads the sentence weekly.
+ */
+const ANTHROPIC_WEB_SEARCH_USD_PER_1K = 10;
+
 export const MODELS: ModelPricing[] = [
   {
     /*
@@ -334,6 +353,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-fable-5-1',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Fable 5.1',
     inputPerMTok: 10,
@@ -353,6 +373,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-mythos-5-1',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Mythos 5.1',
     recommendable: false,
@@ -370,6 +391,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-fable-5',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Fable 5',
     inputPerMTok: 10,
@@ -383,6 +405,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-mythos-5',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Mythos 5',
     recommendable: false,
@@ -405,6 +428,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-opus-5-5',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Opus 5.5',
     inputPerMTok: 4,
@@ -428,6 +452,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-opus-5',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Opus 5',
     inputPerMTok: 5,
@@ -443,6 +468,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-opus-4-8',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Opus 4.8',
     inputPerMTok: 5,
@@ -462,6 +488,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-opus-4-7',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Opus 4.7',
     inputPerMTok: 5,
@@ -474,6 +501,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-opus-4-6',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Opus 4.6',
     inputPerMTok: 5,
@@ -495,6 +523,7 @@ export const MODELS: ModelPricing[] = [
     id: 'claude-opus-4-5',
     aliases: ['claude-opus-4-5-20251101'],
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     displayName: 'Claude Opus 4.5',
     inputPerMTok: 5,
     outputPerMTok: 25,
@@ -519,6 +548,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-opus-4-1-20250805',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     displayName: 'Claude Opus 4.1',
     recommendable: false,
     inputPerMTok: 15,
@@ -539,6 +569,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-opus-4-20250514',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     displayName: 'Claude Opus 4',
     recommendable: false,
     inputPerMTok: 15,
@@ -559,6 +590,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-sonnet-5-5',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Sonnet 5.5',
     inputPerMTok: 2,
@@ -573,6 +605,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-sonnet-5',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Sonnet 5',
     inputPerMTok: 2,
@@ -588,6 +621,7 @@ export const MODELS: ModelPricing[] = [
   {
     id: 'claude-sonnet-4-6',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Sonnet 4.6',
     inputPerMTok: 3,
@@ -610,6 +644,7 @@ export const MODELS: ModelPricing[] = [
     id: 'claude-sonnet-4-5',
     aliases: ['claude-sonnet-4-5-20250929'],
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     displayName: 'Claude Sonnet 4.5',
     recommendable: false,
     inputPerMTok: 3,
@@ -632,6 +667,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-sonnet-4-20250514',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     displayName: 'Claude Sonnet 4',
     recommendable: false,
     inputPerMTok: 3,
@@ -663,6 +699,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-haiku-5-5',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     inferenceGeoMultipliers: US_ONLY_INFERENCE,
     displayName: 'Claude Haiku 5.5',
     inputPerMTok: 0.1,
@@ -691,6 +728,7 @@ export const MODELS: ModelPricing[] = [
     // not derived: see `aliases` in types.ts.
     aliases: ['claude-haiku-4-5-20251001'],
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     displayName: 'Claude Haiku 4.5',
     inputPerMTok: 1,
     outputPerMTok: 5,
@@ -711,6 +749,7 @@ export const MODELS: ModelPricing[] = [
      */
     id: 'claude-3-5-haiku-20241022',
     provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
     displayName: 'Claude Haiku 3.5',
     recommendable: false,
     inputPerMTok: 0.8,

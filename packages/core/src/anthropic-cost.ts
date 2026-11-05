@@ -39,10 +39,15 @@
  * `group_by[]=description`:
  *
  * - **`cost_type` other than `tokens`** — web search, code execution, session
- *   usage. Trazum prices tokens and nothing else, so every cent of these is
- *   billed money it never claimed to cover. Named rather than blamed.
- * - **`service_tier: "batch"`** — billed at a discount `from-anthropic`
- *   deliberately leaves out rather than misprice at a catalogue rate.
+ *   usage. Trazum prices web searches (since 2.7.5) and none of the rest, so
+ *   what is set against this charge is the receipt's own `webSearchUsd`, and
+ *   the difference between the two is billed money Trazum never claimed to
+ *   cover. Named rather than blamed.
+ * - **`service_tier: "batch"`** — billed at the batch tier, which Trazum
+ *   prices at each model's batch rate since 2.7.4. Set against the receipt's
+ *   own `batchUsd`, not taken out whole: taking out the provider's whole
+ *   batch charge when Trazum's figure already holds its own batch calls
+ *   understated the remainder by exactly those calls.
  *
  * What is left after both is the **remainder**, and it is the only figure here
  * worth arguing about: the same standard-tier tokens, priced two ways, or
@@ -108,9 +113,19 @@ export interface Reconciliation {
   billedUsd: number;
   /** Billed minus computed. Positive means the provider charged more. */
   differenceUsd: number;
-  /** The part of the difference the report itself accounts for. */
+  /** What the provider billed for something other than tokens, and at the batch tier. */
   notTokensUsd: number;
   batchUsd: number;
+  /**
+   * What Trazum's own figure holds of each: web searches, and calls priced at
+   * the batch rate. `null` when the receipt does not say, which is every
+   * receipt before 2.7.5; the comparison then reads them as zero and says so
+   * (`computedSplitKnown`).
+   */
+  computedWebSearchUsd: number | null;
+  computedBatchUsd: number | null;
+  /** Whether the receipt said what its batch calls and searches cost. */
+  computedSplitKnown: boolean;
   /**
    * What neither figure explains: the same standard-tier tokens priced two
    * ways, or usage the log never saw. The only number here worth arguing
@@ -247,15 +262,22 @@ export function anthropicCostReport(text: string): AnthropicCostReading {
  * missing money nobody would see was missing.
  */
 export function reconcile(
-  computed: { usd: number; fromMs: number; toMs: number },
+  computed: { usd: number; fromMs: number; toMs: number; batchUsd?: number; webSearchUsd?: number },
   billed: BilledReading,
 ): Reconciliation {
+  const known = (value: number | undefined): number | null =>
+    typeof value === 'number' && Number.isFinite(value) ? value : null;
+  const computedBatchUsd = known(computed.batchUsd);
+  const computedWebSearchUsd = known(computed.webSearchUsd);
   const bare = {
     computedUsd: computed.usd,
     billedUsd: billed.usd,
     differenceUsd: billed.usd - computed.usd,
     notTokensUsd: billed.notTokensUsd,
     batchUsd: billed.batchUsd,
+    computedWebSearchUsd,
+    computedBatchUsd,
+    computedSplitKnown: computedBatchUsd !== null && computedWebSearchUsd !== null,
     remainderUsd: 0,
     attributable: billed.described,
     batchSeparable: billed.batchSeparable,
@@ -277,15 +299,27 @@ export function reconcile(
   }
 
   /*
-    The remainder is what is left when the report's own explanations are taken
-    out of the difference, and it is deliberately not clamped at zero. A
-    negative one is a real answer -- Trazum priced more than the provider
-    charged -- and reporting it as zero would hide a stale rate in exactly the
-    direction that costs somebody money.
+    The remainder is what is left when each of the report's own explanations
+    is set against what Trazum computed for the same thing and the two
+    differences are taken out: billed non-token charges against computed
+    searches, billed batch against computed batch. What remains is the
+    standard-tier tokens, billed against computed. It is deliberately not
+    clamped at zero. A negative one is a real answer -- Trazum priced more
+    than the provider charged -- and reporting it as zero would hide a stale
+    rate in exactly the direction that costs somebody money.
   */
+  /*
+    A category is set off only where the report can name it. A report that
+    cannot say which lines were batch (OpenAI's, or one not grouped by
+    description) has its batch charge inside its total like Trazum's figure
+    has its batch calls, and taking out Trazum's side alone would move the
+    remainder by exactly those calls. The same for non-token charges.
+  */
+  const nonTokens = billed.described ? billed.notTokensUsd - (computedWebSearchUsd ?? 0) : 0;
+  const batch = billed.batchSeparable ? billed.batchUsd - (computedBatchUsd ?? 0) : 0;
   return {
     ...bare,
-    remainderUsd: bare.differenceUsd - billed.notTokensUsd - billed.batchUsd,
+    remainderUsd: bare.differenceUsd - nonTokens - batch,
     refusal: null,
   };
 }

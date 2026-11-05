@@ -87,6 +87,14 @@ standard price. A line without either is priced at the standard, global rate,
 so a US-only workload logged without the field reads a tenth under its cost.
 A record from any other source can say `"batch": true` at the top level, which
 is what Trazum's own usage report converters write for a batch row.
+
+**Keep `server_tool_use` too.** `"server_tool_use": {"web_search_requests": 3}`
+is three searches by Anthropic's web search tool, billed at $10 per 1,000 on
+top of the tokens, at the same fee on the Batch API, in fast mode and on
+US-only inference. A line without it is billed for no searches. The count is
+all that crosses: what was searched for is in the content, which no usage log
+needs.
+
 Claude Code's own transcripts keep both:
 
 ```jsonl

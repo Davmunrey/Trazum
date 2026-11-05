@@ -45,6 +45,13 @@ export const PROFILE_CSV_COLUMNS = [
   'cache_write_usd',
   'output_usd',
   'total_usd',
+  /*
+   * Appended, never inserted, so a reader that addresses columns by position
+   * keeps reading the same twelve. Web searches are billed per search, so
+   * `total_usd` is the four token columns plus `web_search_usd`.
+   */
+  'web_search_requests',
+  'web_search_usd',
 ] as const;
 
 /**
@@ -164,6 +171,8 @@ export function profileToCsv(report: UsageProfileReport, options: ProfileCsvOpti
         usd(breakdown.cacheWriteUsd),
         usd(breakdown.outputUsd),
         usd(breakdown.totalUsd),
+        String(breakdown.webSearchRequests),
+        usd(breakdown.webSearchUsd),
       ].join(','),
     );
   }
@@ -192,6 +201,8 @@ export function profileToCsv(report: UsageProfileReport, options: ProfileCsvOpti
         '',
         '',
         '',
+        '',
+        String(row.breakdown.webSearchRequests),
         '',
       ].join(','),
     );

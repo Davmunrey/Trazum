@@ -36,6 +36,7 @@ export const PRICING_MODEL_KEYS = [
   'promo',
   'multipliers',
   'inferenceGeoMultipliers',
+  'webSearchPerThousandUsd',
 ] as const;
 
 /** The geographies a provider prices differently, as `InferenceGeo` names them. */
@@ -280,6 +281,20 @@ function parseModel(
     rejectUnknownKeys(geo, INFERENCE_GEO_KEYS, source, `${label}.`);
     model.inferenceGeoMultipliers = {};
     if (geo.us !== undefined) model.inferenceGeoMultipliers.us = positiveNumber(geo.us, `${label}.us`, source);
+  }
+  /*
+   * A per-search fee, in dollars per 1,000 searches, as the catalogue carries
+   * it on every Claude row. Accepted for the same two reasons: a copied row
+   * stays valid, and a contract price for searches can be stated. Zero and
+   * negatives are refused like every other rate; a row with no searches to
+   * price simply leaves the key out.
+   */
+  if (raw.webSearchPerThousandUsd !== undefined) {
+    model.webSearchPerThousandUsd = positiveNumber(
+      raw.webSearchPerThousandUsd,
+      `models.${id}.webSearchPerThousandUsd`,
+      source,
+    );
   }
 
   return model;

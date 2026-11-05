@@ -415,6 +415,19 @@ export interface ModelPricing {
    */
   inferenceGeoMultipliers?: Partial<Record<InferenceGeo, number>>;
   /**
+   * What one thousand web searches cost, in US dollars, billed per search on
+   * top of the tokens.
+   *
+   * Anthropic charges $10 per 1,000 searches on every model and counts them in
+   * `usage.server_tool_use.web_search_requests`. The fee is flat: the Batch
+   * API prices searches "the same as those in regular Messages API requests",
+   * and US-only inference and fast mode multiply token rates, which a search
+   * is not. Absent on a row whose provider publishes no such fee, and then a
+   * search the log counts is named as unpriced rather than billed at a rate
+   * borrowed from somewhere else.
+   */
+  webSearchPerThousandUsd?: number;
+  /**
    * Other ids that bill at exactly this rate.
    *
    * A provider's canonical id is often the dated snapshot

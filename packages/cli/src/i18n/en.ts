@@ -1946,6 +1946,10 @@ ${bold('EXAMPLES')}
       'The log carries no clock, so the receipt is unbounded in time and states that rather than inventing a period.',
     undatedExcluded: (calls) =>
       `${count(calls)} ${calls === 1 ? 'call carries' : 'calls carry'} no timestamp and cannot be placed in this period, so ${calls === 1 ? 'it is' : 'they are'} not in this bill: the total is a floor on the period.`,
+    webSearch: (requests, usd) =>
+      `${count(requests)} web ${requests === 1 ? 'search' : 'searches'}, billed per search on top of the tokens: ${usd} of the total.`,
+    unpricedWebSearch: (requests, models) =>
+      `${count(requests)} web ${requests === 1 ? 'search' : 'searches'} on ${models}, whose price list publishes no per-search fee: left out of the total, which is a floor on ${requests === 1 ? 'it' : 'them'}.`,
     nothingToBill: () => 'Nothing in this log could be priced, so the receipt has no lines.',
   },
 
@@ -2000,10 +2004,12 @@ ${bold('EXAMPLES')}
       `${file}: not the JSON a cost report endpoint returns, Anthropic's or OpenAI's. Pass the response body whole.`,
     summary: (computed, billed, difference) =>
       `Trazum computed $${computed.toFixed(2)}; the provider billed $${billed.toFixed(2)}. Difference: $${difference.toFixed(2)}.`,
-    notTokens: (usd) =>
-      `$${usd.toFixed(2)} of that is billed for something no token rate covers: web search, code execution, session usage. Trazum prices tokens and never claimed to cover these.`,
-    batch: (usd) =>
-      `$${usd.toFixed(2)} of it is batch-tier, which from-anthropic leaves out rather than price at a catalogue rate.`,
+    notTokens: (billed, computed) =>
+      `$${billed.toFixed(2)} was billed for something other than tokens: web search, code execution, session usage. Trazum's figure holds $${computed.toFixed(2)} of web searches and nothing else of these, so $${(billed - computed).toFixed(2)} of the difference is charges it never claimed to cover.`,
+    batch: (billed, computed) =>
+      `$${billed.toFixed(2)} was billed at the batch tier; Trazum's figure holds $${computed.toFixed(2)} of batch calls, priced at each model's batch rate. The $${(billed - computed).toFixed(2)} between them is taken out of the difference.`,
+    splitUnknown: () =>
+      'This receipt does not say what its batch calls and web searches cost (no receipt before 2.7.5 does), so the provider\'s whole batch and non-token charges were taken out as if Trazum priced none of them. A receipt made by 2.7.4 did price batch calls, and then the remainder is understated by them: run trazum receipt again and reconcile that.',
     remainder: (usd) =>
       `$${usd.toFixed(2)} is left over, and it is the only figure here worth arguing about: the same standard-tier tokens priced two ways, or usage your log never saw. A negative one means Trazum priced more than you were charged, which is a stale rate in the direction that costs you money.`,
     notAttributable: () =>
@@ -2052,7 +2058,9 @@ ${bold('EXAMPLES')}
     geoUnknown: (count) =>
       `The report never named an inference geography, and ${count} row(s) are on a model that bills US-only inference at 1.1x. They were read as global. Add group_by[]=inference_geo if any workspace pins inference to the US.`,
     webSearch: (count) =>
-      `${count} web search request(s) are in this report and in no line of the output: server tools are billed per request, not per token, so no token rate reaches them.`,
+      `${count} web search(es) ride on their rows and are billed per search, $10 per 1,000 on Claude, on top of the tokens.`,
+    webSearchLeftOut: (count) =>
+      `${count} web search(es) were on rows left out above, so they are in no bill either.`,
     truncated: () =>
       'The report says has_more: true. This is one page of several and a bill built from it is understated. Follow next_page until has_more is false, and convert each page.',
     unparseable: () =>
@@ -2790,6 +2798,9 @@ ${bold('EXAMPLES')}
     partCacheRead: () => 'Cache reads',
     partCacheWrite: () => 'Cache writes',
     partOutput: () => 'Output',
+    partWebSearch: () => 'Web search',
+    partSearches: (name, usd, pct, searches) =>
+      `${name.padEnd(13)}${usd.padStart(11)}  ${pct.padStart(5)}   ${plural(searches, 'search', 'searches')}`,
     byLabelHeading: () => 'By label',
     byModelHeading: () => 'By model',
     row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls})`,

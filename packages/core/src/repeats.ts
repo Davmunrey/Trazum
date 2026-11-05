@@ -1,5 +1,5 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
-import { billedAt, promptSizeOf } from './billing.js';
+import { billedAt, promptSizeOf, webSearchUsdOf } from './billing.js';
 import { UNLABELLED } from './usage.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { UsageRecord } from './usage.js';
@@ -130,7 +130,8 @@ export function createRepeatsTracker(options: RepeatsOptions): RepeatsTracker {
       per(record.cacheReadTokens, inputPerMTok * rates.cacheRead) +
       per(record.cacheWrite5mTokens, inputPerMTok * rates.cacheWrite5m) +
       per(record.cacheWrite1hTokens, inputPerMTok * rates.cacheWrite1h) +
-      per(record.outputTokens, outputPerMTok);
+      per(record.outputTokens, outputPerMTok) +
+      webSearchUsdOf(record, model);
   };
 
   const finish = (): RepeatedTurns[] => {

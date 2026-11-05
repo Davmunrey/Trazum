@@ -512,6 +512,7 @@ export const en: WebMessages = {
     partCacheRead: 'Cache reads',
     partCacheWrite: 'Cache writes',
     partOutput: 'Output',
+    partWebSearch: (searches) => `Web search (${searches})`,
     spendColumn: 'Spend',
     shareColumn: 'Share',
     tokensColumn: 'Tokens',

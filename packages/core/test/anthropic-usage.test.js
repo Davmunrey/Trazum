@@ -61,6 +61,8 @@ describe('the usage report becomes records every door already prices', () => {
         output_tokens: 500,
         cache_read_input_tokens: 200,
         cache_creation: { ephemeral_5m_input_tokens: 500, ephemeral_1h_input_tokens: 1000 },
+        // Billed per search, so they ride on the row they ran on.
+        server_tool_use: { web_search_requests: 10 },
       },
     });
   });
@@ -140,7 +142,13 @@ describe('what it refuses to price, and says instead', () => {
     assert.equal(conversion.records[0].usage.service_tier, 'batch');
     assert.equal(parseUsageLine(JSON.stringify(conversion.records[0])).batch, true);
     const [batch, standard] = conversion.records.map((record) => billOf(JSON.stringify(record)));
-    assert.ok(Math.abs(batch - standard / 2) < 1e-12, `batch ${batch} is not half of standard ${standard}`);
+    /* The tokens halve; the row's ten searches stay at $0.10, because the
+       tool page prices a batch search "the same" as any other. */
+    const searches = 10 * (10 / 1_000);
+    assert.ok(
+      Math.abs((batch - searches) - (standard - searches) / 2) < 1e-12,
+      `batch ${batch} is not half of standard ${standard} on its tokens, plus the searches at full price`,
+    );
   });
 
   it('says when the report never named a tier at all', () => {
@@ -154,13 +162,32 @@ describe('what it refuses to price, and says instead', () => {
     assert.equal(named.tierNamed, true);
   });
 
-  it('counts server tool requests, which no token rate reaches', () => {
+  it('carries web searches onto their rows, where the bill prices them per search', () => {
     const conversion = anthropicUsageRecords(
       report([bucket([result(), result({ server_tool_use: { web_search_requests: 5 } })])]),
     );
     assert.equal(conversion.webSearchRequests, 15);
-    /* And they are in no line: a web search is not tokens. */
-    assert.equal(conversion.records.length, 2);
+    assert.equal(conversion.webSearchLeftOut, 0);
+    assert.deepEqual(
+      conversion.records.map((record) => record.usage.server_tool_use),
+      [{ web_search_requests: 10 }, { web_search_requests: 5 }],
+    );
+    /* $10 per 1,000: fifteen searches are $0.15 on top of the same tokens. */
+    const withSearches = billOf(conversion.records.map((record) => JSON.stringify(record)).join('\n'));
+    const without = billOf(
+      anthropicUsageRecords(report([bucket([result({ server_tool_use: undefined }), result({ server_tool_use: undefined })])]))
+        .records.map((record) => JSON.stringify(record)).join('\n'),
+    );
+    assert.ok(Math.abs(withSearches - without - 0.15) < 1e-12, `${withSearches} - ${without} is not $0.15`);
+  });
+
+  it('names the searches on a row it leaves out, which are then in no bill', () => {
+    const conversion = anthropicUsageRecords(
+      report([bucket([result({ service_tier: 'priority' }), result({ server_tool_use: { web_search_requests: 5 } })])]),
+    );
+    assert.equal(conversion.records.length, 1);
+    assert.equal(conversion.webSearchRequests, 5);
+    assert.equal(conversion.webSearchLeftOut, 10);
   });
 
   it('says when the report is one page of several', () => {
@@ -210,7 +237,9 @@ describe('fast mode and US-only inference, which the report names', () => {
     assert.equal(conversion.records[0].usage.speed, 'fast');
     assert.equal(parseUsageLine(JSON.stringify(conversion.records[0])).speed, 'fast');
 
-    const converted = bill(JSON.stringify(conversion.records[0]));
+    /* The converted row also carries its ten searches, $0.10 at the flat
+       fee fast mode does not touch; the response line below runs none. */
+    const converted = bill(JSON.stringify(conversion.records[0])) - 10 * (10 / 1_000);
     const asResponse = bill(response('claude-opus-5', 'fast'));
     const standard = bill(response('claude-opus-5', undefined));
     assert.ok(Math.abs(converted - asResponse) < 1e-12, `${converted} against ${asResponse}`);
@@ -259,8 +288,14 @@ describe('fast mode and US-only inference, which the report names', () => {
     assert.equal(conversion.usOnlyFloor, 0);
     assert.equal(conversion.geoNamed, true);
     assert.deepEqual(conversion.records.map((record) => record.usage.inference_geo), ['us', undefined, undefined]);
+    /* 1.1x on the tokens; the row's ten searches stay at $0.10, because the
+       page states the multiplier for token categories and a search is not one. */
+    const searches = 10 * (10 / 1_000);
     const [us, global] = conversion.records.map((record) => bill(JSON.stringify(record)));
-    assert.ok(Math.abs(us - 1.1 * global) < 1e-12, `US-only ${us} is not 1.1x global ${global}`);
+    assert.ok(
+      Math.abs((us - searches) - 1.1 * (global - searches)) < 1e-12,
+      `US-only ${us} is not 1.1x global ${global} on its tokens, plus the searches at their own fee`,
+    );
   });
 
   it('counts a US-only row on a model with no multiplier as a floor, priced at the global rate', () => {

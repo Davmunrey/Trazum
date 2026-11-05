@@ -291,7 +291,7 @@ describe('profiling a log', () => {
     const report = profile([]);
     assert.equal(report.total.calls, 0);
     assert.equal(report.total.totalUsd, 0);
-    assert.deepEqual(sharesOf(report.total), { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 });
+    assert.deepEqual(sharesOf(report.total), { input: 0, cacheRead: 0, cacheWrite: 0, output: 0, webSearch: 0 });
   });
 });
 

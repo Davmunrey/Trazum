@@ -178,6 +178,12 @@ export interface UsageBucket {
   /** False when the provider reported writes without saying which TTL. */
   writeTtlKnown: boolean;
   outputTokens: number;
+  /**
+   * Web searches the bucket's requests ran, billed per search on top of the
+   * tokens: Anthropic's `server_tool_use.web_search_requests`. Absent is none,
+   * which is also what a pull stored before 2.7.5 reads as.
+   */
+  webSearchRequests?: number;
   /** Whatever the provider grouped by beyond the model — workspace, key, tier. */
   group: Record<string, string>;
 }
@@ -198,7 +204,9 @@ export interface PullGap {
     | 'unreadable-entry'
     | 'unreadable-field'
     /** Usage at a tier no catalogue rate prices, left out and named. */
-    | 'unpriced-tier';
+    | 'unpriced-tier'
+    /** Web searches on a model whose row publishes no per-search fee, left out and named. */
+    | 'unpriced-web-search';
   detail: string;
 }
 
@@ -241,6 +249,9 @@ function collect(buckets: UsageBucket[]): UsageBucket[] {
     seen.cacheWrite5mTokens += bucket.cacheWrite5mTokens;
     seen.cacheWrite1hTokens += bucket.cacheWrite1hTokens;
     seen.outputTokens += bucket.outputTokens;
+    if ((bucket.webSearchRequests ?? 0) > 0) {
+      seen.webSearchRequests = (seen.webSearchRequests ?? 0) + bucket.webSearchRequests!;
+    }
     seen.writeTtlKnown = seen.writeTtlKnown && bucket.writeTtlKnown;
     // A count merged with an absent count is still absent: adding a number to
     // "unknown" produces a number that describes only part of the traffic.
@@ -308,6 +319,8 @@ export function normalizeAnthropicUsage(payload: unknown): ConnectorPull {
       const write1h = num(creation.ephemeral_1h_input_tokens) ?? 0;
       const flatWrite = num(r.cache_creation_input_tokens) ?? 0;
       const ttlKnown = !(flatWrite > 0 && write5m === 0 && write1h === 0);
+      /* Billed per search, $10 per 1,000 on Claude: the one count here that is not tokens. */
+      const searches = num((r.server_tool_use as Record<string, unknown> | undefined)?.web_search_requests) ?? 0;
       buckets.push({
         fromMs,
         toMs,
@@ -320,6 +333,7 @@ export function normalizeAnthropicUsage(payload: unknown): ConnectorPull {
         cacheWrite1hTokens: ttlKnown ? write1h : 0,
         writeTtlKnown: ttlKnown,
         outputTokens: num(r.output_tokens) ?? 0,
+        ...(searches > 0 ? { webSearchRequests: searches } : {}),
         group: groupOf(r, ['workspace_id', 'api_key_id', 'service_tier', 'context_window', 'speed', 'inference_geo']),
       });
     }
@@ -461,6 +475,13 @@ export interface BucketedSlice {
   tierCeilingBuckets: number;
   tierCeilingUsd: number;
   tierFloorUsd: number;
+  /**
+   * Web searches, billed per search at the model's fee, flat: the Batch API,
+   * fast mode and US-only inference move token rates, not this. Part of
+   * `totalUsd`.
+   */
+  webSearchRequests: number;
+  webSearchUsd: number;
 }
 
 export interface BucketedReport {
@@ -476,6 +497,9 @@ export interface BucketedReport {
     cacheReadTokens: number;
     cacheWriteTokens: number;
     outputTokens: number;
+    /** Web searches billed, and what they came to: already inside `totalUsd`. */
+    webSearchRequests: number;
+    webSearchUsd: number;
   };
   byModel: BucketedSlice[];
   /** Spend per UTC day, oldest first — the shape a total hides. */
@@ -521,6 +545,8 @@ export function bucketedProfile(
       + bucket.outputTokens;
     leftOut.set(key, seen);
   };
+  /* Searches on a model with no per-search fee, per model, so the gap names it. */
+  const searchesLeftOut = new Map<string, number>();
 
   for (const bucket of pull.buckets) {
     const model = catalogue.byId.get(bucket.model);
@@ -613,6 +639,17 @@ export function bucketedProfile(
     const ifAssumed1h = bucket.writeTtlKnown
       ? cacheWriteUsd
       : per(writeTokens, inputPerMTok * rates.cacheWrite1h);
+    /*
+     * Searches at the row's fee, flat, read off the model and not out of
+     * `effectivePricing`: none of the multipliers `how` carries reaches a
+     * search. A model with no fee leaves them out, named below.
+     */
+    const searches = bucket.webSearchRequests ?? 0;
+    const fee = model.webSearchPerThousandUsd;
+    const searchUsd = searches > 0 && fee !== undefined ? (searches / 1_000) * fee : 0;
+    if (searches > 0 && fee === undefined) {
+      searchesLeftOut.set(bucket.model, (searchesLeftOut.get(bucket.model) ?? 0) + searches);
+    }
 
     const slice = slices.get(bucket.model) ?? {
       model: bucket.model,
@@ -632,6 +669,8 @@ export function bucketedProfile(
       tierCeilingBuckets: 0,
       tierCeilingUsd: 0,
       tierFloorUsd: 0,
+      webSearchRequests: 0,
+      webSearchUsd: 0,
     };
     slice.calls = slice.calls === null || bucket.calls === null ? null : slice.calls + bucket.calls;
     slice.inputTokens += bucket.inputTokens;
@@ -642,7 +681,11 @@ export function bucketedProfile(
     slice.cacheReadUsd += cacheReadUsd;
     slice.cacheWriteUsd += cacheWriteUsd;
     slice.outputUsd += outputUsd;
-    slice.totalUsd += inputUsd + cacheReadUsd + cacheWriteUsd + outputUsd;
+    slice.totalUsd += inputUsd + cacheReadUsd + cacheWriteUsd + outputUsd + searchUsd;
+    if (fee !== undefined) {
+      slice.webSearchRequests += searches;
+      slice.webSearchUsd += searchUsd;
+    }
     slice.cachedTokensAtInputRateUsd += atInputRate;
     slice.cacheWriteUsdIfAssumed1h += ifAssumed1h;
     slice.writeTtlKnown = slice.writeTtlKnown && bucket.writeTtlKnown;
@@ -655,7 +698,7 @@ export function bucketedProfile(
 
     const day = new Date(bucket.fromMs).toISOString().slice(0, 10);
     const entry = days.get(day) ?? { usd: 0, calls: bucket.calls === null ? null : 0 };
-    entry.usd += inputUsd + cacheReadUsd + cacheWriteUsd + outputUsd;
+    entry.usd += inputUsd + cacheReadUsd + cacheWriteUsd + outputUsd + searchUsd;
     entry.calls = entry.calls === null || bucket.calls === null ? null : entry.calls + bucket.calls;
     days.set(day, entry);
   }
@@ -675,6 +718,8 @@ export function bucketedProfile(
       cacheReadTokens: byModel.reduce((sum, s) => sum + s.cacheReadTokens, 0),
       cacheWriteTokens: byModel.reduce((sum, s) => sum + s.cacheWriteTokens, 0),
       outputTokens: byModel.reduce((sum, s) => sum + s.outputTokens, 0),
+      webSearchRequests: byModel.reduce((sum, s) => sum + s.webSearchRequests, 0),
+      webSearchUsd: byModel.reduce((sum, s) => sum + s.webSearchUsd, 0),
     },
     byModel,
     byDay: [...days.entries()]
@@ -691,6 +736,14 @@ export function bucketedProfile(
           detail:
             `${left.buckets} row(s) of ${left.model} ran at ${left.tier}, which no catalogue rate here is the rate for, `
             + `and ${left.tokens.toLocaleString('en-US')} token(s) were left out rather than priced at the standard rate`,
+        }),
+      ),
+      ...[...searchesLeftOut.entries()].map(
+        ([model, searches]): PullGap => ({
+          kind: 'unpriced-web-search',
+          detail:
+            `${searches.toLocaleString('en-US')} web search(es) on ${model}, whose row publishes no per-search fee, `
+            + 'were left out rather than billed at another provider\'s',
         }),
       ),
     ],

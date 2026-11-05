@@ -97,12 +97,18 @@ export interface ReceiptPricing {
   reviewedOn: string | null;
 }
 
-/** Where a line's money went. The four add to `ReceiptLine.usd`. */
+/** Where a line's money went. The five add to `ReceiptLine.usd`. */
 export interface ReceiptMoney {
   inputUsd: number;
   cacheReadUsd: number;
   cacheWriteUsd: number;
   outputUsd: number;
+  /**
+   * Web searches, billed per search rather than per token, so no token count
+   * divides it: `ReceiptLine.webSearchRequests` does. Zero on a line that ran
+   * none, which is most of them.
+   */
+  webSearchUsd: number;
 }
 
 /** One slice of a bill: a label's calls to one model. */
@@ -143,9 +149,10 @@ export interface ReceiptLine {
    * recomputed.
    *
    * This is the field that makes a receipt checkable. `usd` alone can only be
-   * believed; these four can be added up, and each can be divided by its own
-   * token count to recover the rate that was really charged -- including the
-   * one for cached reads, which no published rate names.
+   * believed; these five can be added up, and each can be divided by its own
+   * count to recover the rate that was really charged -- including the one for
+   * cached reads, which no published rate names, and the per-search fee,
+   * divided by `webSearchRequests`.
    */
   money: ReceiptMoney;
   /** The catalogue's published rates, as provenance. */
@@ -178,6 +185,12 @@ export interface ReceiptLine {
    * and a reader is entitled to know which slices carry it.
    */
   assumedWriteTtlCalls: number;
+  /**
+   * Web searches these calls ran, each billed at the provider's per-search
+   * fee. The count only: what was searched for never reaches a usage log, and
+   * so never reaches this.
+   */
+  webSearchRequests: number;
 }
 
 /** Everything a receipt refuses to answer, typed rather than left implicit. */
@@ -223,6 +236,15 @@ export type ReceiptGap =
    */
   | { kind: 'tier-ceiling'; calls: number; models: string[]; ceilingUsd: number; floorUsd: number }
   /**
+   * Web searches counted on models whose row publishes no per-search fee.
+   *
+   * Reported because the total is then a **floor**: the searches ran, the
+   * provider presumably charged for them, and no rate here says what. Left out
+   * and named, the same as a model the catalogue does not know, rather than
+   * billed at another provider's fee.
+   */
+  | { kind: 'unpriced-web-search'; requests: number; models: string[] }
+  /**
    * Calls a time window had to leave out because they carry no timestamp.
    *
    * A bill for a period holds the calls it can place in that period. A call
@@ -256,7 +278,13 @@ export interface ReceiptDocument {
    */
   counting: 'counted';
   lines: ReceiptLine[];
-  total: { calls: number; usd: number };
+  /**
+   * The whole receipt. `batchUsd` (calls priced at the Batch API rate, their
+   * tokens) and `webSearchUsd` (searches, per search) are parts of `usd`, said
+   * apart since 2.7.5 so `reconcile` can set each against the provider's own
+   * batch and non-token charges instead of taking those out whole.
+   */
+  total: { calls: number; usd: number; batchUsd: number; webSearchUsd: number };
   /**
    * What this receipt cannot say, and why.
    *
@@ -301,6 +329,7 @@ const RECEIPT_LINE_FIELD_MAP = {
   pricing: true,
   maxCallInputTokens: true,
   assumedWriteTtlCalls: true,
+  webSearchRequests: true,
 } satisfies Record<keyof ReceiptLine, true>;
 
 /**
@@ -348,6 +377,7 @@ const lineFrom = (
       cacheReadUsd: breakdown.cacheReadUsd,
       cacheWriteUsd: breakdown.cacheWriteUsd,
       outputUsd: breakdown.outputUsd,
+      webSearchUsd: breakdown.webSearchUsd,
     },
     pricing: {
       provider: priced.provider ?? 'unknown',
@@ -360,6 +390,9 @@ const lineFrom = (
        their TTL is not visible in a token total. */
     maxCallInputTokens: breakdown.maxCallInputTokens,
     assumedWriteTtlCalls: breakdown.assumedWriteTtlCalls,
+    /* A count of uses, the divisor of `money.webSearchUsd`. It says how many
+       searches ran and nothing about what was searched for. */
+    webSearchRequests: breakdown.webSearchRequests,
   };
 };
 
@@ -424,6 +457,15 @@ export function receiptFrom(
     });
   }
 
+  const unpricedSearches = report.byModel.filter((row) => row.breakdown.webSearchUnpricedRequests > 0);
+  if (unpricedSearches.length > 0) {
+    gaps.push({
+      kind: 'unpriced-web-search',
+      requests: report.total.webSearchUnpricedRequests,
+      models: unpricedSearches.map((row) => row.model),
+    });
+  }
+
   return {
     schemaVersion: 1,
     emittedAt: options.emittedAt?.toISOString() ?? null,
@@ -437,7 +479,12 @@ export function receiptFrom(
      * separation rather than re-deriving it, and `gaps` carries the size of
      * what is missing.
      */
-    total: { calls: report.total.calls, usd: report.total.totalUsd },
+    total: {
+      calls: report.total.calls,
+      usd: report.total.totalUsd,
+      batchUsd: report.total.batchUsd,
+      webSearchUsd: report.total.webSearchUsd,
+    },
     gaps,
   };
 }
