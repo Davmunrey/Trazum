@@ -46,9 +46,9 @@ gap is listed in the pack, and the summary below matches the rows.
 | V10 Malicious code | 5 | 2 | 1 | 0 | 1 | 1 |
 | V11 Business logic | 8 | 2 | 4 | 0 | 1 | 1 |
 | V12 Files and resources | 15 | 5 | 0 | 0 | 0 | 10 |
-| V13 API and web services | 13 | 5 | 2 | 2 | 0 | 4 |
-| V14 Configuration | 23 | 15 | 5 | 1 | 0 | 2 |
-| **Total** | **259** | **111** | **40** | **3** | **16** | **89** |
+| V13 API and web services | 13 | 7 | 2 | 0 | 0 | 4 |
+| V14 Configuration | 23 | 16 | 5 | 0 | 0 | 2 |
+| **Total** | **259** | **114** | **40** | **0** | **16** | **89** |
 
 Most of V2 is not applicable for one reason: Trazum has no passwords. Signing
 in is delegated to GitHub, so the password, its storage, its recovery and any
@@ -344,11 +344,11 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 13.1.1 | One parser for URLs everywhere | Met | The WHATWG `URL` parser for redirects and endpoints alike (`apps/web/lib/auth/github.ts`, `packages/core/src/net.ts`). |
 | 13.1.3 | No secrets in API URLs | Partial | No session token or key ever is. Share tokens are capability URLs by design, redacted from logs and analytics, with `no-referrer` and `noindex` (`apps/web/lib/security-log.ts`, `apps/web/next.config.mjs`). |
 | 13.1.4 | Authorisation at the route and at the resource | Met | `requireCaller` on the route, owner binding in the query (`apps/web/lib/prompts/api.ts`, `apps/web/lib/store/prompts.ts`). |
-| 13.1.5 | Unexpected content types refused (406, 415) | Gap | JSON routes parse the body whatever its `Content-Type`, and the account deletion request is sent without one (`apps/web/components/Account.tsx`). |
+| 13.1.5 | Unexpected content types refused (406, 415) | Met | Every route that reads a body answers 415 unless it says `application/json`, before reading it (`apps/web/lib/request-body.ts`); the app's own requests all say so (`apps/web/components/Account.tsx`). Tested in `apps/web/test/request-body.test.mjs`. |
 | 13.2.1 | Only valid HTTP methods enabled | Met | Each route exports only the methods it serves; any other gets 405 from the framework (`apps/web/app/api/prompts/route.ts`). |
 | 13.2.2 | JSON validated against a schema before use | Partial | Field-by-field validation in each route (`apps/web/app/api/prompts/route.ts`); no declarative schema. |
 | 13.2.3 | CSRF protection for cookie-authenticated APIs | Met | Origin check on writes plus `SameSite=Lax` (`apps/web/lib/auth/routes.ts`). |
-| 13.2.5 | The incoming `Content-Type` checked | Gap | As 13.1.5. |
+| 13.2.5 | The incoming `Content-Type` checked | Met | As 13.1.5 (`apps/web/lib/request-body.ts`). |
 | 13.2.6 | Headers and payload protected in transit | Met | TLS only, with HSTS (`apps/web/next.config.mjs`). |
 | 13.3.1 | XML schema validation | N/A | No XML. |
 | 13.3.2 | WS-Security signatures | N/A | No SOAP. |
@@ -372,7 +372,7 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 14.3.2 | Debug modes off in production | Met | Production builds only; `unsafe-eval` exists only in development (`apps/web/middleware.ts`). |
 | 14.3.3 | No version details in responses | Met | `poweredByHeader: false` (`apps/web/next.config.mjs`). |
 | 14.4.1 | A `Content-Type` with charset on every response | Met | JSON, HTML, SVG and plain text each declare theirs (`apps/web/lib/badge/svg.ts`, `apps/web/middleware.ts`). |
-| 14.4.2 | API responses carry `Content-Disposition: attachment` | Gap | Only the account export sets one (`apps/web/app/api/account/route.ts`). |
+| 14.4.2 | API responses carry `Content-Disposition: attachment` | Met | Every API response, set once in `apps/web/middleware.ts`; the sign-in hops, which people navigate, and the export, which names its own file, are the exceptions. Tested in `apps/web/test/middleware.test.mjs`. |
 | 14.4.3 | A Content Security Policy | Met | Nonce-based with `strict-dynamic` (`apps/web/middleware.ts`); tested in `apps/web/test/middleware.test.mjs`. |
 | 14.4.4 | `X-Content-Type-Options: nosniff` | Met | `apps/web/next.config.mjs`. |
 | 14.4.5 | HSTS on every response, with subdomains | Met | In production (`apps/web/next.config.mjs`); tested in `apps/web/test/route-invariants.test.mjs`. |

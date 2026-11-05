@@ -4,6 +4,7 @@ import { SLOTS, SLOT_IDS, assemble, interview, listModels, resolveLocale, slot }
 import type { Answers, Locale } from '@trazum/core';
 
 import { getWebMessages } from '../../../lib/i18n';
+import { saysJson } from '../../../lib/request-body';
 import { createRateLimiter } from '../../../lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -51,6 +52,11 @@ export async function POST(request: Request) {
   if (rateLimited(request, Date.now())) {
     const t = getWebMessages(localeOf(request));
     return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
+  }
+
+  // JSON or nothing, before a byte is read: see `lib/request-body.ts`.
+  if (!saysJson(request)) {
+    return NextResponse.json({ error: getWebMessages(localeOf(request)).api.notJson }, { status: 415 });
   }
 
   let body: RequestBody;

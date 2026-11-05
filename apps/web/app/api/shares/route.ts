@@ -10,6 +10,7 @@ import {
 } from '../../../lib/shares/api';
 import { MAX_SHARES_PER_OWNER } from '../../../lib/store/shares';
 import { routeOf, securityEvent } from '../../../lib/security-log';
+import { saysJson } from '../../../lib/request-body';
 
 export const runtime = 'nodejs';
 
@@ -53,6 +54,8 @@ export async function POST(request: Request): Promise<Response> {
 
   const config = authConfig();
   if (!config.enabled) return privateJson({ error: 'sign-in is not configured' }, 503);
+
+  if (!saysJson(request)) return privateJson({ error: 'send the body as JSON, with content-type: application/json' }, 415);
 
   let body: { before?: unknown; after?: unknown; settings?: unknown; ttl?: unknown };
   try {

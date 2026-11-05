@@ -30,6 +30,7 @@ import type {
 } from '@trazum/core';
 
 import { getWebMessages } from '../../../lib/i18n';
+import { saysJson } from '../../../lib/request-body';
 import type { WebMessages } from '../../../lib/i18n';
 import { createRateLimiter } from '../../../lib/rate-limit';
 import { USAGE_FIELDS, parseUsage } from '../../../lib/usage-input';
@@ -246,6 +247,11 @@ export async function POST(request: Request) {
     // No body has been read yet, so the header is all we have to go on.
     const t = getWebMessages(localeOf(request));
     return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
+  }
+
+  // JSON or nothing, before a byte is read: see `lib/request-body.ts`.
+  if (!saysJson(request)) {
+    return NextResponse.json({ error: getWebMessages(localeOf(request)).api.notJson }, { status: 415 });
   }
 
   let body: RequestBody;

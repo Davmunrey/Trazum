@@ -157,3 +157,40 @@ describe('and it still does the thing it was written for', () => {
     assert.match(config.matcher[0], /\(\?!badge\//);
   });
 });
+
+describe('API responses download rather than render', () => {
+  const as = (path, method = 'GET') =>
+    middleware(new NextRequest(`${ORIGIN}${path}`, { method, headers: { 'x-forwarded-for': '198.51.100.77' } }));
+
+  it('marks every API response as an attachment', () => {
+    for (const [path, method] of [
+      ['/api/optimize', 'POST'],
+      ['/api/optimize', 'GET'],
+      ['/api/prompts', 'GET'],
+      ['/api/prompts/1b4e28ba-2fa1-11d2-883f-0016d3cca427', 'PATCH'],
+      ['/api/shares', 'POST'],
+      ['/api/auth/session', 'GET'],
+      ['/api/auth/signout', 'POST'],
+      ['/api/account', 'DELETE'],
+      ['/api/admin/overview', 'GET'],
+    ]) {
+      assert.equal(as(path, method).headers.get('content-disposition'), 'attachment; filename="api.json"', `${method} ${path}`);
+    }
+  });
+
+  it('leaves alone what a person reaches by navigating, and every page', () => {
+    // The sign-in hops redirect or show a refusal somebody must read; the
+    // export already downloads under its own name.
+    for (const [path, method] of [
+      ['/api/auth/github', 'GET'],
+      ['/api/auth/github/callback', 'GET'],
+      ['/api/account', 'GET'],
+      ['/', 'GET'],
+      ['/c/abcdefghijklmnop', 'GET'],
+      ['/apis', 'GET'],
+    ]) {
+      assert.equal(as(path, method).headers.get('content-disposition'), null, `${method} ${path}`);
+    }
+  });
+});
+

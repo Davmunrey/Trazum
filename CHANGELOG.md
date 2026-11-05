@@ -13,6 +13,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The web API read any body as JSON, whatever it said it was.** Every route
+  that reads a body now answers 415 unless it is sent as `application/json`,
+  before reading it. That is OWASP ASVS 13.1.5 and 13.2.5, and it refuses the
+  three types a form on another site can send without asking the browser
+  first. The account menu's *Delete account* sent no type at all and is fixed
+  with it; a test now checks every request the app sends with a body.
+- **An API response opened in a tab rendered instead of downloading.** API
+  responses now carry `Content-Disposition: attachment` (ASVS 14.4.2), except
+  the GitHub sign-in hops, which people navigate and must be able to read, and
+  the account export, which names its own file. Checked against the built
+  server as well as in tests. The ASVS level 2 mapping has no gaps left.
 - **Deleting an account failed on Postgres for anybody who had saved a
   prompt.** A prompt version names its author with `author_id references
   trazum_users (id)` and no `on delete`, and Postgres checked that reference

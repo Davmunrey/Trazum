@@ -1113,6 +1113,7 @@ export const en: WebMessages = {
   api: {
     rateLimited: 'Too many requests. Wait a minute and try again.',
     invalidJson: 'The request body is not valid JSON.',
+    notJson: 'Send the body as JSON, with Content-Type: application/json.',
     missingPrompt: 'The prompt is missing.',
     missingBefore: 'The "before" version is missing.',
     missingAfter: 'The "after" version is missing.',

@@ -9,6 +9,7 @@ import {
   versionJson,
 } from '../../../../lib/prompts/api';
 import { MAX_VERSIONS_PER_PROMPT } from '../../../../lib/store/prompts';
+import { saysJson } from '../../../../lib/request-body';
 
 export const runtime = 'nodejs';
 
@@ -51,6 +52,8 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
 
   const { id } = await params;
   if (!isUuid(id)) return privateJson(NOT_FOUND, 404);
+
+  if (!saysJson(request)) return privateJson({ error: 'send the body as JSON, with content-type: application/json' }, 415);
 
   let body: { text?: unknown; note?: unknown };
   try {
@@ -109,6 +112,8 @@ export async function PATCH(request: Request, { params }: Params): Promise<Respo
 
   const { id } = await params;
   if (!isUuid(id)) return privateJson(NOT_FOUND, 404);
+
+  if (!saysJson(request)) return privateJson({ error: 'send the body as JSON, with content-type: application/json' }, 415);
 
   let body: { name?: unknown };
   try {
