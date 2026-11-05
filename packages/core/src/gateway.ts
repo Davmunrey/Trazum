@@ -503,6 +503,34 @@ export interface GatewayUsage {
   speed?: string;
 }
 
+/**
+ * OpenAI's cache writes, inside `prompt_tokens` like its cached reads.
+ *
+ * GPT-5.6 and later bill a write at 1.25x input for the default 30-minute
+ * entry (2.5x for the Responses API's 12-hour one) and report it in
+ * `prompt_tokens_details.cache_write_tokens`. Left inside the prompt it was
+ * priced as plain input, under the bill. A split by lifetime is read when
+ * present; without one every write is the 30-minute kind, the only one Chat
+ * Completions sells. A split that contradicts its total leaves the lifetime
+ * unknown, which the ledger reports rather than prices.
+ */
+function openAiWrites(details: unknown): Partial<GatewayUsage> & { cacheWriteTokens: number } {
+  const n = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0);
+  if (typeof details !== 'object' || details === null) return { cacheWriteTokens: 0 };
+  const d = details as Record<string, unknown>;
+  const written = n(d.cache_write_tokens);
+  if (written === 0) return { cacheWriteTokens: 0 };
+  const split = d.cache_write_tokens_details;
+  if (typeof split === 'object' && split !== null) {
+    const short = n((split as Record<string, unknown>).ttl_30m_tokens);
+    const long = n((split as Record<string, unknown>).ttl_12h_tokens);
+    return short + long === written
+      ? { cacheWriteTokens: written, cacheWrite5mTokens: short, cacheWrite1hTokens: long }
+      : { cacheWriteTokens: written };
+  }
+  return { cacheWriteTokens: written, cacheWrite5mTokens: written, cacheWrite1hTokens: 0 };
+}
+
 function cacheWriteBreakdown(usage: Record<string, unknown>): Partial<GatewayUsage> {
   const creation = usage.cache_creation;
   if (typeof creation !== 'object' || creation === null) return {};
@@ -570,6 +598,9 @@ function completeUsage(shape: WireShape, usage: Record<string, unknown>): boolea
     if (typeof details !== 'object' || details === null || Array.isArray(details)) return false;
     const cached = (details as Record<string, unknown>).cached_tokens;
     if (cached !== undefined && (!count(cached) || (cached as number) > (usage.prompt_tokens as number))) return false;
+    const written = (details as Record<string, unknown>).cache_write_tokens;
+    if (written !== undefined &&
+        (!count(written) || (written as number) + ((cached as number | undefined) ?? 0) > (usage.prompt_tokens as number))) return false;
   }
   if (shape === 'google') {
     if ((usage.cachedContentTokenCount as number | undefined ?? 0) > (usage.promptTokenCount as number)) return false;
@@ -675,8 +706,10 @@ export function streamingUsageReader(
       // `prompt_tokens` includes the cached ones, and pricing them twice would
       // report a bill above the invoice — the same subtraction the log reader
       // makes, for the same reason.
-      usage.inputTokens = Math.max(0, num(o.prompt_tokens) - cached);
+      const writes = openAiWrites(details);
+      usage.inputTokens = Math.max(0, num(o.prompt_tokens) - cached - writes.cacheWriteTokens);
       usage.cacheReadTokens = cached;
+      Object.assign(usage, writes);
       usage.outputTokens = num(o.completion_tokens);
       seen = true;
     }
@@ -768,10 +801,11 @@ export function usageFromResponse(
       // before the fresh input is reported — counting them twice would put
       // the period's total above the invoice, and in the flattering
       // direction. Same correction the connector has made since 1.41.
-      inputTokens: Math.max(0, num(u.prompt_tokens) - cached),
+      inputTokens: Math.max(0, num(u.prompt_tokens) - cached - openAiWrites(details).cacheWriteTokens),
       outputTokens: num(u.completion_tokens),
       cacheReadTokens: cached,
-      cacheWriteTokens: 0,
+      // GPT-5.6 and later bill writes above input; taken out of the prompt the same way.
+      ...openAiWrites(details),
     };
   }
   if (shape === 'google') {

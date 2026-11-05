@@ -11,8 +11,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **Sixteen earlier OpenAI models are priced**, each from its own page:
+  GPT-5.5, GPT-5.5 pro, GPT-5.4, GPT-5.4 pro, mini and nano, GPT-5.2 and
+  GPT-5.2 pro, GPT-5.1, GPT-5 pro, GPT-4.1 and mini, GPT-4o and mini, o3 and
+  o3-pro, with their dated snapshots. Every call to one of them read as an
+  unpriced model. The ones OpenAI marks deprecated are priced for the logs
+  that hold them and never recommended. GPT-5.5 and 5.4 (and their pro
+  models) bill a prompt over 272K at 2x input and 1.5x output, per request.
+  `gpt-4o-2024-05-13` is shut down and was priced differently, so it is not
+  folded into GPT-4o.
+- **GPT-6.1 Terra**: $1/$5, cache read 5% of input, the same 272K band.
+
 ### Fixed
 
+- **OpenAI's 12-hour cache writes were priced as 30-minute ones: half their
+  cost.** GPT-5.6 and later now sell a 12-hour cache entry in the Responses
+  API at 2.5x input, against 1.25x for the default 30 minutes, and report
+  the two apart in `input_tokens_details.cache_write_tokens_details`
+  (`ttl_30m_tokens`, `ttl_12h_tokens`). The split is read, each lifetime is
+  priced at its own rate, and the TTL fit names the 12-hour entry as the one
+  to buy when turns are further apart than 30 minutes. An unsplit write on an
+  OpenAI model is the 30-minute kind, because OpenAI returns the split
+  whenever a 12-hour write is possible; Kimi uses the same field without
+  that rule and is still said to be assumed.
+- **The gateway billed OpenAI cache writes as plain input.** On GPT-5.6 and
+  later a write costs 1.25x input, and `prompt_tokens` includes it; the
+  gateway left it there at 1x. Writes are now taken out of the prompt and
+  priced as writes, in whole and streamed responses alike.
 - **Anthropic fast mode was priced at the standard rate: half its cost.**
   Fast mode (`speed: "fast"`) bills Claude Opus 5.5 at $8/$40 and Opus 5 and
   Opus 4.8 at $10/$50, twice their standard rates, and every response records
