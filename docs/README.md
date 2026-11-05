@@ -33,8 +33,10 @@ Then, if you want to know whether to trust the numbers:
 - **[Compliance readiness](compliance/README.md)**: what SOC 2, ISO 27001,
   OWASP ASVS and CASA would each look at, the system an auditor would scope,
   the [control matrix](compliance/controls.md) with the evidence for every
-  control, and what only the owner can do. It opens by saying Trazum is not
-  certified, and a test keeps every other page from saying otherwise.
+  control, [every ASVS level 2 requirement](compliance/asvs-l2.md) and where
+  Trazum stands on it, and what only the owner can do. It opens by saying
+  Trazum is not certified, and a test keeps every other page from saying
+  otherwise.
 - **[Audited from the outside](audit-rea-2026-11.md)**: what REA, a reverse
   engineering tool that has never seen this source, found reading the npm
   packages as npm serves them and the production page while a marked log was

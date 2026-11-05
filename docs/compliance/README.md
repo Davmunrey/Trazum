@@ -10,7 +10,9 @@ repository can make that audit shorter, not replace it.
 
 The control matrix is [controls.md](controls.md): 23 controls, each with the
 files and tests that prove it and its SOC 2, ISO 27001 and OWASP ASVS
-references.
+references. [asvs-l2.md](asvs-l2.md) goes the other way: every one of the 259
+requirements OWASP ASVS 4.0.3 sets at level 2, and where Trazum stands on each
+(111 met, 40 partly, 3 gaps, 16 for the owner, 89 that do not apply).
 
 ## What each framework is, and who it applies to
 
@@ -18,7 +20,7 @@ references.
 | --- | --- | --- | --- |
 | **SOC 2** (AICPA Trust Services Criteria) | An organisation's controls over a system. Type I at a point in time; Type II over an observation period, typically 3 to 12 months | A licensed CPA firm | Provide the technical controls and their evidence (the matrix) and a precise system description (below) |
 | **ISO/IEC 27001:2022** | An organisation's information security management system (ISMS): policies, risk treatment, the Annex A controls that apply, internal audit, management review | An accredited certification body, in two stages | The same, mapped to Annex A; the ISMS itself is the organisation's |
-| **OWASP ASVS 4.0.3** | An application's security requirements, at levels 1 to 3 | Nobody issues it; it is a standard to test against | Most of it: the matrix maps what is in place |
+| **OWASP ASVS 4.0.3** | An application's security requirements, at levels 1 to 3 | Nobody issues it; it is a standard to test against | Most of it: [asvs-l2.md](asvs-l2.md) maps all 259 level 2 requirements |
 | **CASA** (App Defense Alliance) | One application, against a tailored subset of ASVS, by an authorised lab | An ADA-authorised assessor | Pass the ASVS rows. Google requires CASA only for apps requesting restricted Google API scopes; Trazum signs in with GitHub and requests none, so it is not required today. Confirm the current tiers and scope on the App Defense Alliance site before relying on this |
 
 ## The system in scope
@@ -70,9 +72,22 @@ after it:
 
 ## What remains, in code
 
-Things a pull request can still do, in the order they matter to an audit:
+Things a pull request can still do, in the order they matter to an audit. The
+first two are the three gaps in [the ASVS mapping](asvs-l2.md); the rest are
+partial rows that code could close.
 
-1. **The ASVS level 2 rows not yet mapped**, worked through section by section.
+1. **Refuse a JSON request that does not say it is JSON** (ASVS 13.1.5,
+   13.2.5): answer 415 when `Content-Type` is not `application/json`, after
+   making the account deletion request send one.
+2. **`Content-Disposition: attachment` on API responses** (ASVS 14.4.2), so a
+   response opened directly downloads rather than renders.
+3. **Per-account ceilings counted in the same statement as the insert** (ASVS
+   11.1.6), so saves in flight together cannot pass one.
+4. **An application error boundary that records a security event** (ASVS
+   7.4.3), and a line for requests refused as invalid (7.1.3).
+5. **A list of a person's own sessions** (ASVS 3.3.4), not only *sign out
+   everywhere*.
+6. **An SBOM attached to each release** (ASVS 14.2.5).
 
 ## What only the owner can do
 
@@ -85,6 +100,7 @@ requirement that asks for it.
 | A risk assessment and treatment plan, with a Statement of Applicability | ISO 27001 cannot be certified without one; SOC 2 asks for the risk process | SOC 2 CC3; ISO 27001 6.1, 8.2, 8.3 |
 | Multi-factor authentication on GitHub, the hosting platform, npm and the database provider, for every person with access | The repository's controls are only as strong as the accounts that change them | SOC 2 CC6.1; ISO 27001 5.17, 8.5 |
 | Decide the session numbers: the defaults (thirty days, a day idle) or ASVS level 2 (`TRAZUM_SESSION_MAX_HOURS=12`, `TRAZUM_SESSION_IDLE_MINUTES=30`), and write the choice and its reason into the security policy | An auditor asks what the numbers are and why; the code holds a default, only the policy can hold the reason | SOC 2 CC6.1; ISO 27001 5.15, 8.5 |
+| The platform and secrets settings the ASVS mapping leaves to the owner: a vault behind the two secrets and a written rotation procedure; a database role that is not a default account and can only read and write Trazum's tables; TLS 1.2 or later with strong suites and OCSP stapling; no dangling DNS records; two-factor authentication required on the GitHub accounts in `TRAZUM_ADMINS` | Each is a row marked *Owner* in [asvs-l2.md](asvs-l2.md), and code cannot set any of them | ASVS 1.6.1, 2.10.2, 4.3.1, 6.4.1, 9.1.2, 10.3.3; SOC 2 CC6.1, CC6.6; ISO 27001 5.17, 8.20, 8.24 |
 | Quarterly access reviews: `TRAZUM_ADMINS`, `TRAZUM_ALLOWED_USERS`, GitHub collaborators, platform and database users | Access granted once and never reviewed is the most common SOC 2 exception | SOC 2 CC6.2, CC6.3; ISO 27001 5.18 |
 | Security log retention, alerting and review: how long the platform keeps standard output, who looks, and what pages someone | TRZ-13 writes the lines; keeping and watching them is the operator's | SOC 2 CC7.2, CC7.3; ISO 27001 8.15, 8.16 |
 | An incident response plan, and one tabletop exercise a year | SECURITY.md says how to report; nothing says what happens next | SOC 2 CC7.3 to CC7.5; ISO 27001 5.24 to 5.28 |

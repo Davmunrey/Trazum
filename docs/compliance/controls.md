@@ -3,7 +3,9 @@
 Every control Trazum implements in code, the file or test that proves it, and
 the requirements it answers in three frameworks. Read
 [the readiness pack](README.md) first: this is the evidence, not a
-certificate, and the organisational half is not in this table.
+certificate, and the organisational half is not in this table. For the
+opposite direction, every ASVS level 2 requirement and where Trazum stands on
+it, see [asvs-l2.md](asvs-l2.md).
 
 **References.** SOC 2 uses the AICPA Trust Services Criteria (2017, with the
 2022 revised points of focus). ISO 27001 uses the 2022 Annex A control
