@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 import { analyticsConnectSrc } from '@/lib/analytics';
+import { allowed, apiRoute } from '@/lib/api-methods';
 import { createRateLimiter } from '@/lib/rate-limit';
+import { routeOf, securityEvent } from '@/lib/security-log';
 
 /**
  * A Content-Security-Policy with a real `script-src`, which needs a nonce, which
@@ -106,6 +108,29 @@ export function downloadsAsAttachment(pathname: string, method: string): boolean
 }
 
 export function middleware(request: NextRequest) {
+  /**
+   * A method the route does not serve (OWASP ASVS 4.0.3 14.5.1). Next would
+   * answer it with a 405 of its own and nothing would record it; answered
+   * here, it gets the same status, an `Allow` header naming what the route
+   * does serve, and one `input.refused` line. A path no API route matches is
+   * left to Next's 404.
+   */
+  const api = request.nextUrl.pathname.startsWith('/api/') ? apiRoute(request.nextUrl.pathname) : null;
+  if (api && !allowed(api.methods).includes(request.method)) {
+    securityEvent('input.refused', 'failure', { reason: 'method_not_allowed', route: routeOf(request) });
+    return NextResponse.json(
+      { error: 'method not allowed' },
+      {
+        status: 405,
+        headers: {
+          allow: allowed(api.methods).join(', '),
+          'cache-control': 'no-store',
+          'content-disposition': API_DISPOSITION,
+        },
+      },
+    );
+  }
+
   if (request.nextUrl.pathname.startsWith('/c/') && sharedPageLimited(request, Date.now())) {
     /**
      * 429 with a `Retry-After`, and no body worth reading. A refusal here says

@@ -65,7 +65,8 @@ export type SecurityReason =
   | 'reauth_required'
   | 'not_found'
   | 'unknown_session'
-  | 'session_ended';
+  | 'session_ended'
+  | 'method_not_allowed';
 
 export interface SecurityLine {
   type: 'security';

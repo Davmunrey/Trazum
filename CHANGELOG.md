@@ -76,6 +76,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **A method an API route does not serve is refused and recorded.** Next
+  answered a method a route does not export with a 405 of its own, before any
+  of the app's code ran, so nothing recorded it, and a cross-origin preflight
+  (`OPTIONS`) was answered as though the app served one. The middleware now
+  refuses both with 405, an `Allow` header naming what the route does serve,
+  and an `input.refused` line with the reason `method_not_allowed` and the
+  route with any id or token redacted (OWASP ASVS 14.5.1). HEAD passes wherever
+  GET is served. The table the middleware reads (`lib/api-methods.ts`) is
+  written by hand, so `test/api-methods.test.mjs` imports every route module
+  and holds the table to what each one exports: a route or a method added
+  without its row fails CI instead of being refused in production. Seven
+  planted faults were each caught, among them a method missing from the table,
+  HEAD refused, and a parameter route chosen over a literal one. ASVS 14.5.1
+  moves to met (122).
 - **A line for every session cookie that opens nothing.** A cookie whose
   session has expired, been revoked or never existed now writes an
   `auth.session` failure line, `unknown_session`, and one that policy ended
