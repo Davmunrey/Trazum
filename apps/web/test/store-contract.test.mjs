@@ -40,10 +40,15 @@ const DB_DIR = new URL('../db/', import.meta.url);
 let memoryStore;
 let postgresStore;
 let pg;
+let MAX_PROMPTS_PER_OWNER;
+let MAX_VERSIONS_PER_PROMPT;
+let MAX_SHARES_PER_OWNER;
 
 before(async () => {
   ({ memoryStore } = await import('../lib/store/memory.ts'));
   ({ postgresStore } = await import('../lib/store/postgres.ts'));
+  ({ MAX_PROMPTS_PER_OWNER, MAX_VERSIONS_PER_PROMPT } = await import('../lib/store/prompts.ts'));
+  ({ MAX_SHARES_PER_OWNER } = await import('../lib/store/shares.ts'));
   if (PG_URL) {
     const { default: postgres } = await import('postgres');
     pg = postgres(PG_URL, { max: 2, prepare: false, onnotice: () => {} });
@@ -217,6 +222,43 @@ for (const driver of DRIVERS) {
       assert.equal(await store.shares.revokeShare('live-token', bob.id), false, 'another account revoked a link');
       assert.equal(await store.shares.revokeShare('live-token', alice.id), true);
       assert.equal(await store.shares.findShare('live-token', T0), null);
+    });
+
+    it('holds every ceiling when saves arrive together, and numbers versions without colliding', async () => {
+      const store = await driver.make();
+      const alice = await store.upsertUser(identity(1), T0);
+      const at = (i) => later(i * 1000);
+
+      // One below the prompt ceiling, then six at once: exactly one fits.
+      for (let i = 1; i < MAX_PROMPTS_PER_OWNER; i += 1) {
+        await store.prompts.createPrompt({ ownerId: alice.id, name: `p${i}`, text: 'x', note: null, now: at(i) });
+      }
+      const racing = await Promise.all(
+        Array.from({ length: 6 }, (_, i) =>
+          store.prompts.createPrompt({ ownerId: alice.id, name: `race${i}`, text: 'x', note: null, now: at(1000 + i) })),
+      );
+      assert.equal(racing.filter(Boolean).length, 1, 'saves arriving together passed the prompt ceiling');
+      assert.equal((await store.prompts.listPrompts(alice.id)).length, MAX_PROMPTS_PER_OWNER);
+
+      // Six new versions of one prompt at once: all saved, numbered 2 to 7, no
+      // two the same, and nothing thrown by the unique (prompt_id, version).
+      const [first] = await store.prompts.listPrompts(alice.id);
+      const saves = await Promise.all(
+        Array.from({ length: 6 }, (_, i) =>
+          store.prompts.addVersion({ promptId: first.id, ownerId: alice.id, authorId: alice.id, text: `draft ${i}`, note: null, now: at(2000 + i) })),
+      );
+      assert.deepEqual(saves.map((r) => r.status), Array(6).fill('saved'));
+      assert.deepEqual(saves.map((r) => r.version.version).sort((a, b) => a - b), [2, 3, 4, 5, 6, 7]);
+      assert.ok(MAX_VERSIONS_PER_PROMPT > 7);
+
+      // One below the link ceiling, then six at once: exactly one fits.
+      const link = (token, i) => ({
+        token, ownerId: alice.id, ownerLogin: alice.login, beforeText: 'b', afterText: 'a', settings: {}, now: at(3000 + i), expiresAt: null,
+      });
+      for (let i = 1; i < MAX_SHARES_PER_OWNER; i += 1) await store.shares.createShare(link(`t${i}`, i));
+      const links = await Promise.all(Array.from({ length: 6 }, (_, i) => store.shares.createShare(link(`race${i}`, 500 + i))));
+      assert.equal(links.filter(Boolean).length, 1, 'links made together passed the link ceiling');
+      assert.equal((await store.shares.listShares(alice.id, at(4000))).length, MAX_SHARES_PER_OWNER);
     });
 
     it('counts the library for the admin overview, across accounts', async () => {

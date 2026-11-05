@@ -13,6 +13,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **Saves arriving together could pass a per-account ceiling on Postgres,
+  and two new versions of one prompt could collide.** The ceilings (200
+  prompts, 100 links) were counted in one statement and written in the next,
+  so six saves at once at 199 prompts left 204 or 205 on a real PostgreSQL
+  (three runs), where it now leaves 200. Two new versions read the same
+  newest number and both tried to be the next, and the second failed on the
+  unique constraint as a 500. Each count that decides a write now runs in one
+  transaction after locking the account's or the prompt's row, so the second
+  save waits and counts again. A prompt and its first version also commit
+  together now. The store contract fires six saves at once at each ceiling on
+  a real PostgreSQL; the old code fails it every time, and removing either
+  lock fails it too. The memory driver was never affected.
 - **The web API read any body as JSON, whatever it said it was.** Every route
   that reads a body now answers 415 unless it is sent as `application/json`,
   before reading it. That is OWASP ASVS 13.1.5 and 13.2.5, and it refuses the
