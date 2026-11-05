@@ -134,8 +134,8 @@ describe('the Bill tab ingests a folder in the browser', () => {
     assert.match(bill, /ingest\.transcripts > 0 && <div>\{t\.bill\.transcriptApiEquivalent\}<\/div>/);
     const { en } = await import('../lib/i18n/en.ts');
     const { es } = await import('../lib/i18n/es.ts');
-    assert.match(en.bill.transcriptApiEquivalent, /Claude Code and Codex transcripts.*catalogue API rates, not your subscription invoice/);
-    assert.match(es.bill.transcriptApiEquivalent, /Claude Code y Codex.*API.*suscripción/);
+    assert.match(en.bill.transcriptApiEquivalent, /Claude Code, Codex and Gemini CLI sessions.*catalogue API rates, not your subscription invoice/);
+    assert.match(es.bill.transcriptApiEquivalent, /Claude Code, Codex y Gemini CLI.*API.*suscripción/);
   });
 
   it('a folder of transcripts and a stray usage log price as one bill', () => {

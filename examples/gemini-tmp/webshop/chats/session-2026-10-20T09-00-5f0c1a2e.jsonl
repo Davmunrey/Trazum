@@ -1,0 +1,8 @@
+{"sessionId": "5f0c1a2e-0000-4000-8000-00000000a001", "projectHash": "webshop", "startTime": "2026-10-20T09:00:00.000Z", "lastUpdated": "2026-10-20T09:00:00.000Z", "kind": "main"}
+{"id": "m1", "timestamp": "2026-10-20T09:00:01.000Z", "type": "user", "content": [{"text": "Add a checkout page"}]}
+{"id": "m2", "timestamp": "2026-10-20T09:00:09.000Z", "type": "gemini", "content": "", "model": "gemini-2.5-pro", "thoughts": [], "tokens": null}
+{"id": "m2", "timestamp": "2026-10-20T09:00:09.000Z", "type": "gemini", "content": "Here is the plan", "model": "gemini-2.5-pro", "thoughts": [], "tokens": {"input": 120000, "output": 2000, "cached": 80000, "thoughts": 6000, "tool": 0, "total": 128000}}
+{"id": "m3", "timestamp": "2026-10-20T09:01:30.000Z", "type": "gemini", "content": "", "model": "gemini-2.5-pro", "toolCalls": [{"id": "t1", "name": "read_file", "args": {}, "status": "success", "timestamp": "2026-10-20T09:01:20.000Z"}], "tokens": {"input": 150000, "output": 800, "cached": 120000, "thoughts": 1200, "tool": 4000, "total": 156000}}
+{"$set": {"lastUpdated": "2026-10-20T09:01:31.000Z"}}
+{"$rewindTo": "m2"}
+{"id": "m4", "timestamp": "2026-10-21T14:00:00.000Z", "type": "gemini", "content": "Done", "model": "gemini-2.5-flash", "tokens": {"input": 40000, "output": 1500, "cached": 0, "thoughts": 500, "tool": 0, "total": 42000}}

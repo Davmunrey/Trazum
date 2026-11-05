@@ -48,9 +48,10 @@ ${bold('USO')}
   trazum position <uso.jsonl>
   trazum receipt <uso.jsonl|dir> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
-              [--since <cuándo>] [--until <cuándo>] [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
+              [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-codex <fichero|dir> [--label <nombre>] [-o <fichero>]
+  trazum from-gemini-cli <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
   trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
@@ -267,11 +268,19 @@ ${bold('OPCIONES DE bill')}
                               marca de tiempo no se pueden situar y quedan
                               fuera, contadas en el recibo como hueco, nunca
                               tiradas en silencio.
+  --by <day|week|month>       Reparte el extracto por día UTC, semana ISO (de
+                              lunes a domingo) o mes. Sin él, una factura que
+                              abarca dos meses o más se reparte por mes.
   --stamp                     Sella el recibo con la hora en que se escribió.
   -o, --out <archivo>         Escribe el recibo ahí en vez de en stdout.
 
+  Sin ruta, lee las carpetas de sesiones de cada agente que encuentra:
+  Claude Code (~/.claude/projects), Codex ($CODEX_HOME/sessions y
+  archived_sessions) y Gemini CLI (~/.gemini/tmp/*/chats), cada una nombrada
+  en stderr, y añade una tabla por agente cuando gastó más de uno.
+
   Una sola puerta. Lee un archivo o un directorio, reconoce la forma de cada
-  archivo por su propio texto - una transcripción de Claude Code, spans OTel,
+  archivo por su propio texto - una sesión de Claude Code, Codex o Gemini CLI, spans OTel,
   un export de LiteLLM, Helicone o LangSmith, un informe de Anthropic, OpenAI
   u OpenRouter, o un log de uso plano - lo convierte con el mismo conversor
   que usa el comando dedicado, lo cobra y termina en el recibo. Un archivo
@@ -355,6 +364,18 @@ ${bold('OPCIONES DE from-codex')}
   Solo contadores corroborados: colapsa duplicados y excluye uso ambiguo.
   Los huecos se indican en stderr. Los precios son equivalentes API,
   nunca tu factura de suscripción. El contenido de prompts se descarta.
+
+${bold('OPCIONES DE from-gemini-cli')}
+  --label <nombre>            Marca cada registro con una etiqueta.
+  -o, --out <fichero>         Escribe el uso normalizado en vez de stdout.
+
+  Lee archivos de sesión de Gemini CLI (~/.gemini/tmp/<proyecto>/chats, .jsonl,
+  y el .json antiguo de un solo documento), en local. Un registro por
+  respuesta que traía tokens; una respuesta reescrita se lee una vez. Los
+  tokens de razonamiento se valoran como salida y los resultados de
+  herramientas como entrada, como los factura Google. Los precios son
+  equivalentes API, no la factura de un nivel gratuito o un plan. Prompts,
+  respuestas, razonamientos y contenido de herramientas se descartan.
 
 ${bold('OPCIONES DE from-claude-code')}
   --label <nombre>            Marca cada registro con una etiqueta.
@@ -1963,6 +1984,22 @@ ${bold('EJEMPLOS')}
     written: (file) => `Registro normalizado escrito en ${file}`,
   },
 
+  fromGeminiCli: {
+    noPath: () => 'from-gemini-cli necesita un archivo de sesión o un directorio: trazum from-gemini-cli ~/.gemini/tmp',
+    notFound: (path) => `No se puede leer ${path}`,
+    noFiles: (path) => `No hay archivos de sesión de Gemini CLI (.jsonl o .json) en ${path}`,
+    noUsage: () => 'Ninguna respuesta de Gemini CLI traía recuento de tokens. Revisa los huecos indicados; no se escribió un registro a coste cero.',
+    summary: (files, records, repeats) =>
+      `${files} archivo(s) de Gemini CLI, ${records} registro(s) de respuesta con tokens, ${repeats} línea(s) reescrita(s) leída(s) una sola vez.`,
+    gaps: (missingModel, unsupported, unparseable) =>
+      `Huecos de Gemini CLI: ${missingModel} respuesta(s) sin modelo, ${unsupported} con recuentos imposibles, ${unparseable} línea(s) ilegible(s). No son llamadas a coste cero.`,
+    remainder: (replies) =>
+      `${replies} respuesta(s) de Gemini CLI de un grabador antiguo guardaban un total mayor que sus partes; el resto se valora como salida, el lado más caro, en vez de descartarse.`,
+    caveat: () =>
+      'Las sesiones de Gemini CLI se valoran a tarifas API del catálogo. Con el nivel gratuito o un plan de Code Assist es un equivalente, no lo que pagaste. Los tokens de razonamiento se valoran como salida y los resultados de herramientas como entrada, como los factura Google.',
+    written: (file) => `Registro de uso normalizado escrito en ${file}`,
+  },
+
   fromOtel: {
     noPath: () => 'from-otel necesita un archivo o directorio OTLP: trazum from-otel spans.json',
     notFound: (path) => `${path}: no existe`,
@@ -2087,10 +2124,10 @@ ${bold('EJEMPLOS')}
 
   bill: {
     noPath: (tried) =>
-      `bill necesita un archivo o un directorio que leer, y no encontró ninguna carpeta de Claude Code en ${tried}. Indica una: trazum bill ~/.claude/projects, o trazum bill uso.jsonl.`,
-    defaultPath: (dirs) => `Sin ruta, así que leo la carpeta propia de Claude Code: ${dirs}`,
+      `bill necesita un archivo o un directorio que leer, y no encontró sesiones de Claude Code, Codex ni Gemini CLI en ${tried}. Indica una: trazum bill ~/.claude/projects, o trazum bill uso.jsonl.`,
+    defaultPathFor: (agent, dir) => `Sin ruta, así que leo la carpeta propia de ${agent}: ${dir}`,
     labelledByProject: (files) =>
-      `${files} transcripción(es) de Claude Code etiquetada(s) por su carpeta de proyecto. --label pone una sola etiqueta, --no-label-from-project las deja sin etiqueta.`,
+      `${files} archivo(s) de sesión etiquetado(s) por su carpeta de proyecto. --label pone una sola etiqueta, --no-label-from-project los deja sin etiqueta.`,
     unknownMore: (count) => `${count} archivo(s) más que ninguna forma reclama, sin adivinar y fuera de la factura.`,
     shapeSummary: (shape, files, records, leftOut) =>
       `${files} archivo(s): ${shape}${records === null ? ', leídos tal cual' : `, ${records} registro(s)`}${leftOut > 0 ? `, ${leftOut} fila(s) fuera. trazum from-${shape} sobre un archivo dice por qué.` : '.'}`,
@@ -2099,6 +2136,15 @@ ${bold('EJEMPLOS')}
     colProject: () => 'proyecto',
     colWorkload: () => 'carga',
     colModel: () => 'modelo',
+    colAgent: () => 'agente',
+    colPeriod: (unit) => (unit === 'day' ? 'día' : unit === 'week' ? 'semana' : 'mes'),
+    earlierPeriods: (count, unit) =>
+      `… y ${count} ${unit === 'day' ? 'día(s)' : unit === 'week' ? 'semana(s)' : 'mes(es)'} anterior(es)`,
+    periodsUndated: (calls, usd, unit) =>
+      `${usd} de ${calls} llamada(s) sin marca de tiempo está en el total y en ${unit === 'day' ? 'ningún día' : unit === 'week' ? 'ninguna semana' : 'ningún mes'}.`,
+    periodHint: (since, until, unit) =>
+      `${unit === 'day' ? 'Un día' : unit === 'week' ? 'Una semana' : 'Un mes'} por separado: --since ${since} --until ${until}.`,
+    badBy: (value) => `--by admite day, week o month, no "${value}".`,
     colCalls: () => 'llamadas',
     colShare: () => 'parte',
     moreRows: (count) => `… y ${count} más`,
@@ -2127,7 +2173,7 @@ ${bold('EJEMPLOS')}
     pricingLiveHint: (count) =>
       `${count} id(s) de modelo sin precio llevan prefijo de proveedor, como nombran los modelos OpenRouter y LiteLLM, y el catálogo incluido no los trae. Vuelve a ejecutar con --pricing-live para cobrar los slugs de OpenRouter desde su propia lista.`,
     apiEquivalent: () =>
-      'Las sesiones de Claude Code y Codex se valoran a tarifas API del catálogo. Si pagas una suscripción, pagaste el plan, no esta estimación equivalente; los datos ausentes y las tarifas propias pueden cambiar el resultado.',
+      'Las sesiones de agentes (Claude Code, Codex, Gemini CLI) se valoran a tarifas API del catálogo. Si pagas una suscripción, pagaste el plan, no esta estimación equivalente; los datos ausentes y las tarifas propias pueden cambiar el resultado.',
     prefixedKnown: (ids) =>
       `${ids}: el modelo tras la barra tiene precio aquí con su propio nombre. El prefijo no se quita por ti, porque el mismo modelo a través de un router puede facturarse distinto. Si esas llamadas fueron directas al proveedor, registra el modelo sin el prefijo.`,
     windowMatchesNothing: (from, to) =>

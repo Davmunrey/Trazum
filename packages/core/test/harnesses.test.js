@@ -5,6 +5,8 @@ import { HARNESS_CAPABILITIES, getHarnessCapability } from '../dist/index.js';
 it('distinguishes native adapters from normalized log and MCP access', () => {
   assert.equal(getHarnessCapability('claude-code').nativeImport.command, 'from-claude-code');
   assert.equal(getHarnessCapability('codex').nativeImport.command, 'from-codex');
+  assert.equal(getHarnessCapability('gemini-cli').nativeImport.command, 'from-gemini-cli');
+  assert.equal(getHarnessCapability('gemini-cli').nativeImport.format, 'gemini-cli-session-jsonl');
   for (const id of ['cursor', 'mcp-client']) {
     assert.equal(getHarnessCapability(id).nativeImport, null);
     assert.equal(getHarnessCapability(id).normalizedUsage.command, 'bill');

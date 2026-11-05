@@ -116,6 +116,8 @@ import {
   claudeCodeRecords,
   codexRecords,
   looksLikeCodexTranscript,
+  geminiCliRecords,
+  looksLikeGeminiCliSession,
   type CwdLabel,
   type WorkspaceLabel,
   type ProjectLabel,
@@ -168,6 +170,7 @@ import {
   sharedPrefixes,
   sharesOf,
   spendByMonth,
+  spendByPeriod,
   isOffered,
   SOURCE_EXTENSIONS,
   suggestRewrites,
@@ -219,6 +222,7 @@ import type {
   FailurePolicy,
   GatewayStanding,
   UsageProfileReport,
+  BillPeriodUnit,
   WaiverUse,
   InitDecline,
   InitJustification,
@@ -385,6 +389,8 @@ const VALUE_FLAGS = new Set([
   'what-if',
   'since',
   'until',
+  // `bill --by day|week|month`: the calendar unit the statement is split by.
+  'by',
   'export',
   'limit',
   'locale',
@@ -769,6 +775,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
   receipt: ['out', 'o', 'stamp', 'pricing', 'pricing-live', 'since', 'until'],
   'from-codex': ['label', 'out', 'o'],
+  'from-gemini-cli': ['label', 'out', 'o'],
   'from-claude-code': ['label', 'label-by-cwd', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
@@ -776,7 +783,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'since', 'until'],
+  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'since', 'until', 'by'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
@@ -3433,6 +3440,7 @@ function printReceiptSummary(document: ReceiptDocument, t: CliMessages): void {
 type UsageSource =
   | 'claude-code'
   | 'codex'
+  | 'gemini-cli'
   | 'otel'
   | 'litellm'
   | 'helicone'
@@ -3450,6 +3458,7 @@ type UsageSource =
 function usageSourcesOf(text: string): UsageSource[] {
   const claims: UsageSource[] = [];
   if (looksLikeCodexTranscript(text)) claims.push('codex');
+  if (looksLikeGeminiCliSession(text)) claims.push('gemini-cli');
   if (looksLikeClaudeCodeTranscript(text)) claims.push('claude-code');
   if (looksLikeOtel(text)) claims.push('otel');
   if (looksLikeAnthropicUsage(text)) claims.push('anthropic-usage');
@@ -3493,6 +3502,11 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   /* "What did this month cost" is the question a Claude Code folder of a
      year's sessions answers worst without a period. */
   const period = billingPeriod(args, t);
+  const byFlag = stringFlag(args, 'by');
+  if (byFlag !== undefined && byFlag !== 'day' && byFlag !== 'week' && byFlag !== 'month') {
+    throw new Error(t.bill.badBy(byFlag));
+  }
+  const by = byFlag as BillPeriodUnit | undefined;
 
   /*
     No path is the most common first run, and it used to be a refusal: the
@@ -3502,10 +3516,16 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   */
   let targets = args.positional;
   if (targets.length === 0) {
-    const { found, tried } = await claudeProjectFolders(process.env);
+    /*
+      Every coding agent whose sessions this reads, not only Claude Code:
+      somebody who runs Codex or Gemini CLI as well wants one bill, and asking
+      them to know three folder layouts is the friction this default removes.
+      Each folder found is named on its own line, so nothing is read silently.
+    */
+    const { found, tried } = await agentSessionFolders(process.env);
     if (found.length === 0) throw new Error(t.bill.noPath(tried.join(', ')));
-    console.error(t.bill.defaultPath(found.join(', ')));
-    targets = found;
+    for (const { agent, path } of found) console.error(t.bill.defaultPathFor(AGENT_NAMES[agent], path));
+    targets = found.map(({ path }) => path);
   }
 
   /*
@@ -3559,6 +3579,10 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   /* Claude Code transcripts read: their money is an API-rate equivalent. */
   let claudeCodeFiles = 0;
   let codexFiles = 0;
+  let geminiCliFiles = 0;
+  let geminiRemainder = 0;
+  /* Each agent's own records, so a bill that read more than one can say which spent what. */
+  const agentLines = new Map<AgentId, string[]>();
   const codexEvidence = { source: 'codex', basis: 'api-equivalent-telemetry', files: 0, duplicates: 0, missingModel: 0, unsupported: 0, unparseable: 0 };
   const lines: string[] = [];
   let sources = 0;
@@ -3604,6 +3628,18 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
         records = c.records;
         leftOut = c.missingModel + c.unsupported + c.unparseable;
         if (leftOut > 0) console.error(t.fromCodex.gaps(c.missingModel, c.unsupported, c.unparseable));
+        break;
+      }
+      case 'gemini-cli': {
+        geminiCliFiles += 1;
+        const project =
+          label === undefined && labelFromProject && walked.has(file) ? await geminiProjectLabelFor(file) : undefined;
+        if (project !== undefined && project !== '') labelledByProject += 1;
+        const c = geminiCliRecords(text, project !== undefined && project !== '' ? { label: project } : withLabel);
+        records = c.records;
+        leftOut = c.missingModel + c.unsupported + c.unparseable;
+        geminiRemainder += c.remainderAsOutput;
+        if (leftOut > 0) console.error(t.fromGeminiCli.gaps(c.missingModel, c.unsupported, c.unparseable));
         break;
       }
       case 'claude-code': {
@@ -3666,6 +3702,11 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
       }
     }
     for (const record of records) lines.push(JSON.stringify(record));
+    if (shape === 'claude-code' || shape === 'codex' || shape === 'gemini-cli') {
+      const own = agentLines.get(shape) ?? [];
+      for (const record of records) own.push(JSON.stringify(record));
+      agentLines.set(shape, own);
+    }
     sources += 1;
     const count = shape === 'usage-log' ? null : records.length;
     if (perFile) {
@@ -3683,6 +3724,7 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   for (const file of named) console.error(t.bill.unknown(file));
   if (unclaimed.length > named.length) console.error(t.bill.unknownMore(unclaimed.length - named.length));
   if (labelledByProject > 0) console.error(t.bill.labelledByProject(labelledByProject));
+  if (geminiRemainder > 0) console.error(t.fromGeminiCli.remainder(geminiRemainder));
 
   if (sources === 0) throw new Error(t.bill.nothingRead());
 
@@ -3719,8 +3761,28 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   }
   console.error(t.bill.sources(sources, files.length));
   printReceiptSummary(document, t);
-  if (statement) printBillStatement(report, labelledByProject > 0, t, period.words, claudeCodeFiles + codexFiles > 0);
-  await writeBillSideFiles(args, report, pricing, csvShape, t, period.words, claudeCodeFiles + codexFiles > 0);
+  const agentSessions = claudeCodeFiles + codexFiles + geminiCliFiles > 0;
+  /*
+    By agent, once more than one agent's sessions were read: each agent's own
+    records priced through the same catalogue and window as the whole, so the
+    rows are the total split, not a second estimate beside it.
+  */
+  const byAgent = [...agentLines.entries()]
+    .filter(([, own]) => own.length > 0)
+    .map(([agent, own]) => {
+      const part = profileUsage(own.join('\n'), {
+        catalogue: pricing,
+        ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+        ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+      });
+      return { name: AGENT_NAMES[agent], calls: part.total.calls, usd: part.total.totalUsd };
+    })
+    .filter((row) => row.calls > 0)
+    .sort((a, b) => b.usd - a.usd);
+  if (statement) {
+    printBillStatement(report, labelledByProject > 0, t, period.words, agentSessions, byAgent.length > 1 ? byAgent : [], by);
+  }
+  await writeBillSideFiles(args, report, pricing, csvShape, t, period.words, agentSessions);
 
   /*
     A slug with a slash in it is how OpenRouter names a model, and the bundled
@@ -3776,6 +3838,100 @@ async function claudeProjectFolders(env: NodeJS.ProcessEnv): Promise<{ found: st
   return { found, tried };
 }
 
+/** The coding agents whose local sessions `bill` reads by itself. */
+type AgentId = 'claude-code' | 'codex' | 'gemini-cli';
+
+const AGENT_NAMES: Readonly<Record<AgentId, string>> = Object.freeze({
+  'claude-code': 'Claude Code',
+  codex: 'Codex',
+  'gemini-cli': 'Gemini CLI',
+});
+
+/**
+ * Where each agent keeps its sessions, from each agent's own source.
+ *
+ * - Claude Code: `claudeProjectFolders`, unchanged.
+ * - Codex: `$CODEX_HOME` (default `~/.codex`), its `sessions` and
+ *   `archived_sessions`; an archived session was billed when it ran.
+ * - Gemini CLI: `$GEMINI_CLI_HOME` (default the home directory), then
+ *   `.gemini/tmp/<project>/chats`, and `~/.cache/.gemini/tmp` where the macOS
+ *   sandbox moves it. Only the `chats` folders: the rest of `tmp` is shell
+ *   history and checkpoints, not usage.
+ *
+ * Every folder that exists is returned once; `tried` is every candidate, for
+ * the refusal to name when there is none.
+ */
+async function agentSessionFolders(
+  env: NodeJS.ProcessEnv,
+): Promise<{ found: Array<{ agent: AgentId; path: string }>; tried: string[] }> {
+  const claude = await claudeProjectFolders(env);
+  const found: Array<{ agent: AgentId; path: string }> = claude.found.map((path) => ({ agent: 'claude-code', path }));
+  const tried = [...claude.tried];
+  const seen = new Set(claude.found.map((path) => resolvePath(path)));
+  const isDirectory = async (path: string): Promise<boolean> => {
+    try {
+      return (await stat(path)).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  const home = homedir();
+  const codexHome = env.CODEX_HOME ? env.CODEX_HOME : join(home, '.codex');
+  for (const candidate of [join(codexHome, 'sessions'), join(codexHome, 'archived_sessions')]) {
+    tried.push(candidate);
+    if (!seen.has(resolvePath(candidate)) && (await isDirectory(candidate))) {
+      seen.add(resolvePath(candidate));
+      found.push({ agent: 'codex', path: candidate });
+    }
+  }
+  const geminiHome = env.GEMINI_CLI_HOME ? env.GEMINI_CLI_HOME : home;
+  for (const tmp of [join(geminiHome, '.gemini', 'tmp'), join(geminiHome, '.cache', '.gemini', 'tmp')]) {
+    tried.push(tmp);
+    if (!(await isDirectory(tmp))) continue;
+    let projects: string[] = [];
+    try {
+      projects = (await readdir(tmp, { withFileTypes: true })).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+    } catch {
+      continue;
+    }
+    for (const project of projects) {
+      const chats = join(tmp, project, 'chats');
+      if (!seen.has(resolvePath(chats)) && (await isDirectory(chats))) {
+        seen.add(resolvePath(chats));
+        found.push({ agent: 'gemini-cli', path: chats });
+      }
+    }
+  }
+  return { found, tried };
+}
+
+/**
+ * The project a Gemini CLI session belongs to.
+ *
+ * Gemini CLI keeps a folder per project under `tmp`, named by a short slug in
+ * current versions (with the real working directory in `.project_root`
+ * beside it) and by a SHA-256 of the path in older ones. The working
+ * directory's last segment is the name a person recognises; a bare hash is
+ * no name at all, so it labels nothing rather than putting 64 hex digits on
+ * the bill.
+ */
+async function geminiProjectLabelFor(file: string): Promise<string | undefined> {
+  const parts = resolvePath(file).split('/');
+  const at = parts.lastIndexOf('chats');
+  if (at < 1) return undefined;
+  const projectDir = parts.slice(0, at).join('/');
+  try {
+    const root = (await readFile(join(projectDir, '.project_root'), 'utf8')).trim();
+    const name = root.replace(/[\\/]+$/, '').split(/[\\/]/).pop();
+    if (name !== undefined && name !== '') return name;
+  } catch {
+    // Older versions keep no .project_root: fall back to the folder's name.
+  }
+  const folder = parts[at - 1];
+  if (folder === undefined || folder === '' || /^[0-9a-f]{64}$/i.test(folder)) return undefined;
+  return folder;
+}
+
 /**
  * The bill as a person reads it: the total, by project, by model, and what
  * is not in the total, on stdout. The receipt's figures, rendered: nothing
@@ -3787,6 +3943,8 @@ function printBillStatement(
   t: CliMessages,
   window?: { since: string; until: string },
   apiEquivalent = false,
+  byAgent: { name: string; calls: number; usd: number }[] = [],
+  by?: BillPeriodUnit,
 ): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
@@ -3823,6 +3981,12 @@ function printBillStatement(
   */
   if (apiEquivalent) console.log(`  ${c.yellow(wrap(t.bill.apiEquivalent(), 74, '  '))}`);
 
+  // Which agent spent what, first: it is the split a person running more than one asks for.
+  if (byAgent.length > 1) {
+    console.log();
+    for (const line of table(columns(t.bill.colAgent()), rowsOf(byAgent))) console.log(line);
+  }
+
   const labelled = report.byLabel.filter((row) => row.label !== UNLABELLED);
   if (labelled.length > 0) {
     console.log();
@@ -3849,20 +4013,33 @@ function printBillStatement(
     report's own days, oldest first, newest kept when there are many; shown
     only once the bill spans two calendar months, since one month is the total.
   */
-  const { months, undated } = spendByMonth(report);
-  if (months.length >= 2) {
-    const shown = months.slice(-LIMIT).map(({ month, calls, usd }) => {
+  /*
+    `--by day` and `--by week` ask the same question at a finer grain, and
+    are printed whenever asked, one period or many. The newest are kept when
+    there are more than a screen holds: a month of days, twelve weeks.
+  */
+  const unit = by ?? 'month';
+  const { periods, undated } = spendByPeriod(report, unit);
+  if (periods.length >= (by === undefined ? 2 : 1)) {
+    const keep = unit === 'day' ? 31 : LIMIT;
+    const shown = periods.slice(-keep).map(({ period, calls, usd }) => {
       const share = total > 0 ? usd / total : 0;
-      return [month, n(calls), formatUsd(usd), `${bar(share)} ${pct(share)}`];
+      return [period, n(calls), formatUsd(usd), `${bar(share)} ${pct(share)}`];
     });
-    if (months.length > LIMIT) shown.unshift([c.dim(t.bill.earlierMonths(months.length - LIMIT)), '', '', '']);
-    console.log();
-    for (const line of table(columns(t.bill.colMonth()), shown)) console.log(line);
-    if (undated.calls > 0) {
-      console.log(c.dim(`  ${wrap(t.bill.monthsUndated(undated.calls, formatUsd(undated.usd)), 74, '  ')}`));
+    if (periods.length > keep) {
+      const earlier = periods.length - keep;
+      shown.unshift([c.dim(unit === 'month' ? t.bill.earlierMonths(earlier) : t.bill.earlierPeriods(earlier, unit)), '', '', '']);
     }
-    const newest = months[months.length - 1]!;
-    console.log(c.dim(`  ${t.bill.monthHint(newest.firstDay, newest.lastDay)}`));
+    console.log();
+    for (const line of table(columns(unit === 'month' ? t.bill.colMonth() : t.bill.colPeriod(unit)), shown)) console.log(line);
+    if (undated.calls > 0) {
+      const sentence = unit === 'month'
+        ? t.bill.monthsUndated(undated.calls, formatUsd(undated.usd))
+        : t.bill.periodsUndated(undated.calls, formatUsd(undated.usd), unit);
+      console.log(c.dim(`  ${wrap(sentence, 74, '  ')}`));
+    }
+    const newest = periods[periods.length - 1]!;
+    console.log(c.dim(`  ${unit === 'month' ? t.bill.monthHint(newest.firstDay, newest.lastDay) : t.bill.periodHint(newest.firstDay, newest.lastDay, unit)}`));
   }
 
   console.log();
@@ -4128,6 +4305,62 @@ async function commandFromCodex(args: Args, t: CliMessages): Promise<void> {
   if (out !== undefined) {
     await writeFile(out, text, 'utf8');
     console.error(t.fromCodex.written(out));
+  } else console.log(text.trimEnd());
+}
+
+/**
+ * `trazum from-gemini-cli <file|dir>`: Gemini CLI sessions as a usage log.
+ *
+ * Explicit paths, like `from-codex`; `bill` with no path is the door that
+ * looks in `~/.gemini/tmp` by itself. A directory is walked for `.jsonl` and
+ * `.json` files, and each one is converted only when its own text says it is
+ * a Gemini CLI session, so the shell history and checkpoints that share
+ * `tmp` are left alone rather than misread.
+ */
+async function commandFromGeminiCli(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromGeminiCli.noPath());
+  let info;
+  try { info = await stat(target); } catch { throw new Error(t.fromGeminiCli.notFound(target)); }
+  const files = info.isDirectory()
+    ? (await readdir(target, { recursive: true, withFileTypes: true }))
+      .filter((entry) => entry.isFile() && /\.(jsonl|json)$/i.test(entry.name))
+      .map((entry) => join(entry.parentPath, entry.name)).sort()
+    : [target];
+  if (files.length === 0) throw new Error(t.fromGeminiCli.noFiles(target));
+  const label = stringFlag(args, 'label');
+  const lines: string[] = [];
+  let sessions = 0;
+  let repeats = 0;
+  let missingModel = 0;
+  let unsupported = 0;
+  let unparseable = 0;
+  let remainder = 0;
+  for (const file of files) {
+    const text = await readFile(file, 'utf8');
+    if (!looksLikeGeminiCliSession(text)) continue;
+    sessions++;
+    const conversion = geminiCliRecords(text, label === undefined ? {} : { label });
+    for (const record of conversion.records) lines.push(JSON.stringify(record));
+    repeats += conversion.repeats;
+    missingModel += conversion.missingModel;
+    unsupported += conversion.unsupported;
+    unparseable += conversion.unparseable;
+    remainder += conversion.remainderAsOutput;
+  }
+  if (sessions === 0) throw new Error(t.fromGeminiCli.noFiles(target));
+  console.error(t.fromGeminiCli.summary(sessions, lines.length, repeats));
+  if (missingModel + unsupported + unparseable > 0) {
+    console.error(t.fromGeminiCli.gaps(missingModel, unsupported, unparseable));
+  }
+  if (remainder > 0) console.error(t.fromGeminiCli.remainder(remainder));
+  console.error(t.fromGeminiCli.caveat());
+  if (lines.length === 0) throw new Error(t.fromGeminiCli.noUsage());
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  const text = lines.join('\n') + '\n';
+  if (out !== undefined) {
+    await writeFile(out, text, 'utf8');
+    console.error(t.fromGeminiCli.written(out));
   } else console.log(text.trimEnd());
 }
 
@@ -13733,6 +13966,9 @@ async function main(): Promise<void> {
       break;
     case 'from-codex':
       await commandFromCodex(args, t);
+      break;
+    case 'from-gemini-cli':
+      await commandFromGeminiCli(args, t);
       break;
     case 'from-otel':
       await commandFromOtel(args, t);

@@ -85,6 +85,42 @@ describe('reading a usage line', () => {
     assert.equal(record.outputTokens, 400);
   });
 
+  it("bills Gemini's reasoning as output and its tool results as input", () => {
+    /**
+     * `candidatesTokenCount` leaves out a thinking model's reasoning, which
+     * `thoughtsTokenCount` carries and Google bills as output; tool results
+     * fed back to the model arrive in `toolUsePromptTokenCount`, outside the
+     * prompt count. The total is the sum of all four, so a record read from
+     * the first two alone came out cheaper than the bill.
+     */
+    const record = parseUsageLine(
+      JSON.stringify({
+        model: 'gemini-2.5-pro',
+        usageMetadata: {
+          promptTokenCount: 10_000,
+          cachedContentTokenCount: 4_000,
+          candidatesTokenCount: 300,
+          thoughtsTokenCount: 1_200,
+          toolUsePromptTokenCount: 500,
+          totalTokenCount: 12_000,
+        },
+      }),
+    );
+    assert.equal(record.outputTokens, 1_500, 'the reasoning tokens were priced at zero');
+    assert.equal(record.inputTokens, 6_500, 'tool results fed back as input were dropped');
+    assert.equal(record.cacheReadTokens, 4_000);
+    assert.equal(
+      record.inputTokens + record.cacheReadTokens + record.outputTokens,
+      12_000,
+      'the parts no longer add up to the total Google reports',
+    );
+    // A count that is present and unreadable rejects the line, as everywhere else.
+    assert.equal(
+      parseUsageLine(JSON.stringify({ model: 'gemini-2.5-pro', usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1, thoughtsTokenCount: -3 } })),
+      null,
+    );
+  });
+
   it("reads Gemini's usageMetadata, cached half subtracted like OpenAI's", () => {
     /**
      * Gemini's shape is unambiguous — `usageMetadata` appears in no other

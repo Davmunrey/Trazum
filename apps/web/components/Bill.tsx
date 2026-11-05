@@ -15,6 +15,8 @@ import {
   claudeCodeRecords,
   codexRecords,
   looksLikeCodexTranscript,
+  geminiCliRecords,
+  looksLikeGeminiCliSession,
   contextPressure,
   coverageDrift,
   driversBetween,
@@ -470,6 +472,20 @@ export function Bill({ t }: { t: WebMessages }) {
         convertedCalls += c.records.length;
         collapsed += c.duplicates;
         tally('codex', c.records.length, c.missingModel + c.unsupported + c.unparseable);
+      } else if (looksLikeGeminiCliSession(text)) {
+        /* Gemini CLI keeps a folder per project above each chats folder; its
+           name labels the work unless it is the bare SHA-256 older versions
+           used, which names nothing a person would recognise. */
+        const segments = file.webkitRelativePath.split('/');
+        const at = segments.lastIndexOf('chats');
+        const folder = at > 0 ? segments[at - 1] : undefined;
+        const label = folder !== undefined && folder !== '' && !/^[0-9a-f]{64}$/i.test(folder) ? folder : undefined;
+        const c = geminiCliRecords(text, label !== undefined ? { label } : {});
+        for (const record of c.records) parts.push(JSON.stringify(record));
+        transcripts += 1;
+        convertedCalls += c.records.length;
+        collapsed += c.repeats;
+        tally('gemini-cli', c.records.length, c.missingModel + c.unsupported + c.unparseable);
       } else if (looksLikeClaudeCodeTranscript(text)) {
         transcripts += 1;
         // The project directory name is the label — a per-project bill by

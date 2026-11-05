@@ -8,6 +8,7 @@ from the steps needed to use the tool.
 | See a result in minutes | [Quick start](quick-start.md) | [Setup and integrations](setup.md) |
 | Understand recorded spend | [Usage logs](usage-logs.md) | [Commands](commands.md#find-a-command), [plans](plan-format.md) |
 | Import Codex sessions | [Codex sessions](codex.md) | Local rollout telemetry and its limits |
+| Import Gemini CLI sessions | [Gemini CLI sessions](gemini-cli.md) | Read from the recorder's own source; reasoning billed as output |
 | Compare an agent task before and after a change | [Task efficiency](task-efficiency.md#dashboard) | Local dashboard workflow; CLI/MCP commands since 2.6.0 |
 | Set a budget | [CI gates](ci.md) | [Gateway](gateway.md), [scheduled checks](running.md) |
 | Build an integration | [Agents and harnesses](agents.md) or [Setup](setup.md) | [Local HTTP API](api.md), [JSON output](json-output.md) |
@@ -42,6 +43,7 @@ In the order somebody actually meets them:
 |---|---|
 | [The command reference](commands.md) | Every command's full chapter — the book behind the README's table |
 | [Codex sessions](codex.md) | Import local rollout telemetry and understand its limits |
+| [Gemini CLI sessions](gemini-cli.md) | Import local Gemini CLI chats; where the format comes from and what is counted |
 | [Usage logs](usage-logs.md) | What Trazum can read, and what each optional field unlocks |
 | [Accounts](accounts.md) | Signing in to the web app: the prompt library, share links, and what the database holds |
 | [Local HTTP API](api.md) | Loopback cost oracle and discoverable OpenAPI contract |

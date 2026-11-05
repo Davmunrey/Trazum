@@ -480,7 +480,7 @@ export const en: WebMessages = {
     otelNoCache: (spans) =>
       `${spans} span(s) carried no cache data: OTel has not standardised the cache TTL split, so their cache verdicts read "cannot tell" rather than a guessed one.`,
     transcriptApiEquivalent:
-      "Claude Code and Codex transcripts are priced at catalogue API rates, not your subscription invoice. Missing telemetry and custom rates can change this estimate.",
+      "Claude Code, Codex and Gemini CLI sessions are priced at catalogue API rates, not your subscription invoice. Missing telemetry and custom rates can change this estimate.",
     transcriptPrivacy:
       'The transcripts were read in this tab. The numbers were kept and the words were not: no message text, no paths, no branches crossed the conversion.',
     orPaste: 'or paste the log below',
@@ -1086,7 +1086,7 @@ export const en: WebMessages = {
       cli: {
         title: 'The CLI, complete',
         body:
-          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. This checkout has 54 commands; install the published CLI with "npm i -g @trazum/cli". The new task workflow requires a built checkout until its release. "help" lists what the browser can run.',
+          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. This checkout has 55 commands; install the published CLI with "npm i -g @trazum/cli". The new task workflow requires a built checkout until its release. "help" lists what the browser can run.',
       },
       finish: {
         title: 'That is the tour',

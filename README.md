@@ -35,9 +35,10 @@ not a customer result. Generated from the CLI output.*
 
 </div>
 
-With no path, `bill` reads local Claude Code transcripts and groups the result
-by project and model. **On a subscription, this is API-equivalent cost, not
-what you paid.** Unpriced models are reported as gaps. Local analysis does
+With no path, `bill` reads the local sessions of **Claude Code, Codex and
+Gemini CLI**, names each folder it reads, and splits the result by agent,
+project and model; `--by day|week|month` adds the period you ask for.
+**On a subscription, this is API-equivalent cost, not what you paid.** Unpriced models are reported as gaps. Local analysis does
 not upload your files.
 
 Have a supported usage export instead? Pass its path:
@@ -193,7 +194,7 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
     ┌────────────┬─────────────┼─────────────┬─────────────┐
  @trazum/cli  @trazum/mcp  trazum-vscode  @trazum/web    action/
- 54 commands   MCP server    the editor      Next.js    comments on
+ 55 commands   MCP server    the editor      Next.js    comments on
               for your agents  status bar               pull requests
 
               @trazum/tokenizer-openai   optional: exact counts for OpenAI
@@ -290,8 +291,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 54 commands — [the table
-above](#the-54-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 55 commands — [the table
+above](#the-55-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -309,7 +310,7 @@ from the exit codes it is supposed to relay.
 <a id="the-52-commands"></a>
 <a id="the-53-commands"></a>
 
-## The 54 commands
+## The 55 commands
 
 | Command | What it answers |
 |---|---|
@@ -352,6 +353,7 @@ from the exit codes it is supposed to relay.
 | [`trazum receipt`](docs/commands.md#a-figure-that-still-answers-elsewhere-trazum-receipt) | What did this cost, in a form that still answers when read somewhere else? *Counts, and the money split so it can be added up rather than believed. No prompt text, no answers, no paths: there is no field for them.* |
 | [`trazum from-claude-code`](docs/commands.md#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
 | [`trazum from-codex`](docs/codex.md) | What API-equivalent usage can a local Codex rollout support? *Explicit paths, corroborated counters, no prompt content.* |
+| [`trazum from-gemini-cli`](docs/gemini-cli.md) | What did my Gemini CLI sessions cost at Google's list prices? *Reasoning billed as output, each reply once, no prompt content.* |
 | [`trazum from-otel`](docs/commands.md#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
 | [`trazum from-litellm`](docs/commands.md#the-gateway-everybody-already-runs-trazum-from-litellm) | What did the calls my LiteLLM proxy logged cost? *Reads the spend log the gateway already writes — the counts only, never the prompts, keys or addresses on the same row.* |
 | [`trazum reconcile`](docs/commands.md#what-you-were-actually-billed-trazum-reconcile) | Does what Trazum computed match what the provider charged? *Sets the two figures beside each other, never merges them, and leaves the unexplained remainder standing on its own.* |

@@ -1,10 +1,10 @@
-import { claudeCodeRecords, codexRecords } from '@trazum/core';
+import { claudeCodeRecords, codexRecords, geminiCliRecords } from '@trazum/core';
 
 /** Bound the complete serialized answer, including JSON escaping and repeated labels. */
 export const MAX_IMPORT_RESPONSE_BYTES = 1_000_000;
 
 interface ImportPayload {
-  format: 'claude-code' | 'codex';
+  format: 'claude-code' | 'codex' | 'gemini-cli';
   text: string;
   label?: string;
 }
@@ -17,8 +17,8 @@ export function validateImportPayload(value: unknown): asserts value is ImportPa
   if (Object.keys(payload).some((key) => !['format', 'text', 'label'].includes(key))) {
     throw new Error('Unknown properties are not accepted for usage imports.');
   }
-  if (payload.format !== 'claude-code' && payload.format !== 'codex') {
-    throw new Error('format must be claude-code or codex.');
+  if (payload.format !== 'claude-code' && payload.format !== 'codex' && payload.format !== 'gemini-cli') {
+    throw new Error('format must be claude-code, codex or gemini-cli.');
   }
   if (typeof payload.text !== 'string' || payload.text.trim() === '') {
     throw new Error('text must be non-empty transcript contents, not a file path.');
@@ -33,7 +33,10 @@ export function validateImportPayload(value: unknown): asserts value is ImportPa
 export function importUsage(payload: ImportPayload) {
   const options = payload.label === undefined ? {} : { label: payload.label };
   const conversion = payload.format === 'codex'
-    ? codexRecords(payload.text, options) : claudeCodeRecords(payload.text, options);
+    ? codexRecords(payload.text, options)
+    : payload.format === 'gemini-cli'
+      ? geminiCliRecords(payload.text, options)
+      : claudeCodeRecords(payload.text, options);
   const { records, ...diagnostics } = conversion;
   const result = {
     schemaVersion: 1 as const,

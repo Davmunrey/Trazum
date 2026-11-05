@@ -210,6 +210,43 @@ describe('a bill that spans months says which month cost what', () => {
   });
 });
 
+describe('bill --by splits the statement by day, ISO week or month', () => {
+  const statement = async (lines, by) => {
+    const { path } = await scratch(lines);
+    const result = run(['bill', path, '--table', '--by', by]);
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout;
+  };
+  const row = (text, period) => new RegExp(`^\\s*${period}\\s+(\\d+)\\s+\\$(\\d+\\.\\d{2})`, 'm').exec(text);
+
+  it('by day, every day with a call, and the newest day offered on its own', async () => {
+    const out = await statement(DATED, 'day');
+    assert.deepEqual(row(out, '2026-09-30')?.slice(1), ['1', '2.00']);
+    assert.deepEqual(row(out, '2026-10-31')?.slice(1), ['1', '2.00']);
+    assert.match(flat(out), /One day on its own: --since 2026-10-31 --until 2026-10-31\./);
+  });
+
+  it('by ISO week, Monday to Sunday', async () => {
+    // 2026-09-30 is a Wednesday and 2026-10-01 a Thursday: the same week, W40.
+    const out = await statement(DATED, 'week');
+    assert.deepEqual(row(out, '2026-W40')?.slice(1), ['2', '4.00']);
+    assert.deepEqual(row(out, '2026-W44')?.slice(1), ['1', '2.00']);
+    assert.match(flat(out), /One week on its own: --since 2026-10-26 --until 2026-11-01\./);
+  });
+
+  it('prints the table even for one period when asked, unlike the automatic month table', async () => {
+    const out = await statement(DATED.slice(1, 2), 'month');
+    assert.deepEqual(row(out, '2026-10')?.slice(1), ['1', '2.00']);
+  });
+
+  it('names a unit it does not know instead of guessing one', async () => {
+    const { path } = await scratch(DATED);
+    const result = run(['bill', path, '--by', 'fortnight']);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /--by takes day, week or month, not "fortnight"/);
+  });
+});
+
 describe('trazum receipt takes the same period', () => {
   it('the same calls, the same gap, the same refusal', async () => {
     const { path } = await scratch([...DATED, call(null)]);
