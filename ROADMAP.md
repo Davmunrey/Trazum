@@ -2777,9 +2777,20 @@ failing the whole bill, in the CLI and in the browser. Twenty-one models that
 read as unpriced are priced from their own pages, and six providers were
 re-read in the November review; Google could not be reached and is named.
 
+## 2.7.2 — Codex, Flex and Fast billed, and prices checked weekly — released
+
+A patch of corrections and the check that would have found most of them.
+OpenAI's Flex, Fast and Ultrafast calls are priced from their own tables by the
+response's `service_tier`, where every one had been billed at the standard
+rate. Codex sessions on the Codex models, four retired Claude models still in
+old logs, GPT-5.6 Cyber and Chat Latest are priced; GPT-5, mini and nano, which
+OpenAI deprecated, are no longer recommended. `scripts/price-drift.mjs` reads
+Anthropic's and OpenAI's pricing pages every week and fails the scheduled run on
+a changed price, a missing model or a page it can no longer read.
+
 ## Next
 
-**Target: 2.7.2, repeated-task evaluation.**
+**Target: 2.7.3, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,

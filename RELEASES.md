@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.1**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.2**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,62 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.2 — Codex, Flex and Fast billed, and a weekly check that prices stay true
+
+**Adoption, read 2026-11-05:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), 1 GitHub stars, MCP registry latest 2.7.1.
+
+A patch of corrections, and the check that would have found most of them.
+**If you bill OpenAI calls made on Flex or Fast, or Codex sessions, run it
+again.**
+
+```bash
+npx -y @trazum/cli@2.7.2 bill
+```
+
+**OpenAI's Flex calls were billed at twice their cost, and Fast calls at half
+or less.** OpenAI sells Flex at about half the standard price, Fast (Priority
+until July) at up to twice, and Ultrafast on GPT-6 Astra and GPT-6.1 Sol at six
+times, each from its own table on the pricing page. The response names the
+tier that ran in `service_tier`, and Trazum ignored it. Now a logged response
+and the gateway keep the field, and the call is priced from that tier's table,
+long prompts included, for the 25 models the tables list.
+
+**Codex sessions on the Codex models read as unpriced.** Codex CLI names
+gpt-5.3-codex, and before it gpt-5.2-codex, gpt-5.1-codex and its Max and Mini
+variants, gpt-5-codex and codex-mini-latest. None was priced. Each now is, from
+its own model page.
+
+**Six more models priced**, each from its provider's own pages:
+
+- Claude Opus 4.1 and Opus 4 ($15/$75), Sonnet 4 and Haiku 3.5, retired on
+  the Claude API and present in every log from before;
+- GPT-5.6 Cyber and Chat Latest.
+
+`gpt-5.6` now resolves to GPT-5.6 Sol, as its page says. None of the new
+models is recommended.
+
+**GPT-5, GPT-5 mini and GPT-5 nano are no longer recommended.** Their pages
+mark them deprecated, and the catalogue still offered nano as the cheapest
+OpenAI model there is. They stay priced for the logs that hold them.
+
+**A weekly check that the catalogue still agrees with the pricing pages.**
+`scripts/price-drift.mjs` reads Anthropic's and OpenAI's pricing pages and
+compares every published figure with the catalogue: 50 models, every rate,
+both cache writes, batch, the long-prompt bands, fast mode and the service
+tiers. A changed price, a model the catalogue lacks, or a page whose tables
+moved fails the scheduled CI run within a week. It never writes a price: a
+person reads the page and corrects the row. Its first run found GPT-5.6 Cyber.
+
+**One gap, stated.** GPT-5.6 Sol's $4/$20 is promotional until 30 November,
+its page says, and the price after it is published only as percentages. The
+catalogue keeps today's price rather than derive one; the drift check will
+report the page when it changes.
+
+No breaking change. All packages, the plugin and MCP discovery advance
+together to 2.7.2.
 
 ---
 
