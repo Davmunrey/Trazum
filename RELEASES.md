@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.3**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.4**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,50 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.4 — Batch billed at half, and a batch's results file read
+
+**Adoption, read 2026-11-05:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), 1 GitHub stars, MCP registry latest 2.7.3.
+
+Two corrections about the Batch API, which both providers sell at half the
+standard price. **If you run batch jobs, or bill a usage report or `trazum
+connect` that has any, run it again.**
+
+```bash
+npx -y @trazum/cli@2.7.4 bill
+```
+
+**A batch call was billed at twice its cost, and a usage report's batch rows
+were left out.** Anthropic's response says a call ran on the Batch API in
+`usage.service_tier: "batch"`, and Trazum ignored it; `from-anthropic`,
+`from-openai` and `trazum connect` refused every batch row because there was no
+rate to price it at. There is: each model's batch ratio, the one the batch
+advisory quotes and the weekly price check compares with both providers' batch
+tables. A batch call or row is now priced at it, with caching, the long-prompt
+band and US-only inference on top, as the pages say they stack. Anthropic
+priority and flex rows, whose rates no page publishes, are still left out and
+named.
+
+**A batch's results file is a log, and `bill` reads it.** Anthropic's results
+and OpenAI's output file each put the model and usage one level down, so a
+results file read as nothing. Each billed line is now a call at the batch rate;
+results the provider says it did not bill (Anthropic `errored`, `canceled`,
+`expired`, an OpenAI line without a 200) are counted and left out. Only the
+model, the usage and the end reason cross: the generated text and your
+`custom_id` stay in your file. The web Bill tab reads the same files.
+
+```bash
+curl "https://api.anthropic.com/v1/messages/batches/$BATCH_ID/results" \
+  -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01" > results.jsonl
+npx -y @trazum/cli@2.7.4 bill results.jsonl
+```
+
+**Still waiting on a person:** 2.7.2's tag and GitHub release, as 2.7.3 said.
+
+No breaking change. All packages, the plugin and MCP discovery advance
+together to 2.7.4.
 
 ---
 
