@@ -137,6 +137,12 @@ jobs:
       # checked it once, by hand; this checks it on every run. `playwright-core`
       # is pinned, installed with `--ignore-scripts` outside the workspace, and
       # drives the runner's own Chrome, so nothing published depends on either.
+      #
+      # The page's CPU runs six times slower, so the page hydrates late on every
+      # run. Before the probe waited for the page to say it had started, a busy
+      # runner did that now and then and the probe counted the page's own
+      # start-up requests against the bill; at six times slower that probe
+      # failed every time, and this one does not.
       - name: Privacy probe (a pasted log never leaves the browser)
         run: |
           npm install --prefix "$RUNNER_TEMP/pw" --no-save --ignore-scripts --no-audit --no-fund playwright-core@1.58.2
@@ -145,6 +151,7 @@ jobs:
           node scripts/privacy-probe.mjs --url http://127.0.0.1:3123 \
             --chrome "$(command -v google-chrome || command -v chromium)" \
             --playwright "$RUNNER_TEMP/pw/node_modules/playwright-core" \
+            --cpu-throttle 6 \
             || { cat "$RUNNER_TEMP/web.log"; exit 1; }
 
       - name: Stress the packed release in an isolated installation

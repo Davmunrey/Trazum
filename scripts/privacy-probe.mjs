@@ -105,8 +105,23 @@ let verdict;
 try {
   const context = await browser.newContext({ locale: 'en-US', timezoneId: 'UTC', serviceWorkers: 'block' });
   const page = await context.newPage();
+  // Slows the page's CPU by this factor, to check the probe on a page that
+  // hydrates as late as a loaded CI runner's does. Off unless asked for.
+  const throttle = Number(flag('cpu-throttle', '1'));
+  if (throttle > 1) {
+    await (await context.newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: throttle });
+  }
   const byRequest = new Map();
+  const pending = new Set();
+  let lastActivity = Date.now();
+  const settle = (request) => {
+    pending.delete(request);
+    lastActivity = Date.now();
+  };
+  page.on('requestfinished', settle);
   page.on('request', (request) => {
+    pending.add(request);
+    lastActivity = Date.now();
     const entry = {
       url: request.url(),
       method: request.method(),
@@ -124,6 +139,7 @@ try {
     if (entry) entry.status = response.status();
   });
   page.on('requestfailed', (request) => {
+    settle(request);
     const entry = byRequest.get(request);
     if (entry) entry.failure = request.failure()?.errorText ?? 'failed';
   });
@@ -133,6 +149,21 @@ try {
 
   const box = page.getByRole('textbox', { name: 'Usage log to analyse' });
   await box.waitFor({ state: 'visible', timeout: timeoutMs });
+
+  // Settled means started and then quiet. `networkidle` alone is 500 ms after
+  // the last request, and a runner under load hydrated later than that: the
+  // page's own start-up requests then went out after reading had begun and
+  // failed a commit whose other run, on the same code, passed. The page sets
+  // `data-started` once every first-render effect has run, so each of those
+  // requests has been sent; the quiet wait lets the last of them finish.
+  await page.locator('html[data-started="true"]').waitFor({ state: 'attached', timeout: timeoutMs });
+  const quietBy = Date.now() + timeoutMs;
+  while (pending.size > 0 || Date.now() - lastActivity < 500) {
+    if (Date.now() > quietBy) {
+      throw new Error(`the page never went quiet: ${[...pending].map((request) => request.url()).join(', ')}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 
   phase = 'read';
   await box.fill(log);

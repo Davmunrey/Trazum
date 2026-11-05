@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import { judgePrivacy } from '../scripts/privacy-probe-judge.mjs';
@@ -76,5 +77,41 @@ describe('the privacy probe fails each way the promise can break', () => {
     // The defect the REA audit found: a share list asked for on every visit, answered 503.
     assert.match(judge([request({ url: `${ORIGIN}/api/shares`, status: 503 })]).problems[0], /answered 503/);
     assert.match(judge([request({ status: null, failure: 'net::ERR_ABORTED' })]).problems[0], /failed/);
+  });
+});
+
+describe('the probe starts reading only once the page has started', () => {
+  /**
+   * `networkidle` is 500 ms after the last request, and a busy runner hydrated
+   * later than that: the session check, the optimizer's settings and the
+   * writer's first question went out after reading had begun, and the probe
+   * failed a commit whose other run passed. The page now says when every
+   * first-render effect has run, and the probe waits for that. Each half is
+   * useless without the other, so both are read here.
+   */
+  const app = readFileSync(new URL('../apps/web/components/App.tsx', import.meta.url), 'utf8');
+  const probe = readFileSync(new URL('../scripts/privacy-probe.mjs', import.meta.url), 'utf8');
+  const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+
+  it("the app's last effect marks the page started", () => {
+    const body = app.slice(app.indexOf('export function App('));
+    const effects = [...body.matchAll(/useEffect\(/g)].map((match) => match.index);
+    const marker = body.indexOf("document.documentElement.dataset.started = 'true'");
+    assert.ok(marker !== -1, 'App no longer marks the page started');
+    assert.ok(effects.length > 1, 'App has no effects: has it moved?');
+    assert.ok(effects.at(-1) < marker, 'an effect after the marker runs after the page says it has started');
+    assert.ok(marker - effects.at(-1) < 200, 'the marker is not inside the last effect');
+  });
+
+  it('the probe waits for it, and for quiet, before reading', () => {
+    const read = probe.indexOf("phase = 'read'");
+    const started = probe.indexOf(`html[data-started="true"]`);
+    const quiet = probe.indexOf('pending.size > 0');
+    assert.ok(read !== -1 && started !== -1 && quiet !== -1, 'the probe has changed shape');
+    assert.ok(started < read && quiet < read, 'the probe starts reading before the page has started');
+  });
+
+  it('and CI runs it on a slowed page, where a probe without the wait fails every time', () => {
+    assert.match(ci, /node scripts\/privacy-probe\.mjs[^]*?--cpu-throttle [2-9]\d*/);
   });
 });

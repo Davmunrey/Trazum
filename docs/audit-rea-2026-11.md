@@ -99,6 +99,15 @@ is a pure function, `scripts/privacy-probe-judge.mjs`, tested on its own in
 `fetch` of the pasted log in the Bill tab, which it reported five times over:
 each of the three markers, the request during the read, and its answer.
 
+The probe starts reading only once the page says it has started: the app's
+last first-render effect sets `data-started` on the page, so the session
+check, the optimizer's settings and the writer's first question have all been
+sent, and the probe then waits for the network to go quiet. It used to wait
+for `networkidle` alone, and a busy runner that hydrated more than 500 ms after
+the last asset failed a clean page now and then, counting those three requests
+against the bill. CI now runs the probe with the page's CPU six times slower,
+where the old wait failed every time and this one passes.
+
 ## What this audit does not establish
 
 - **Static analysis reads code; it does not run every path.** REA
