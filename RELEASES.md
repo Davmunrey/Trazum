@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.5**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.6**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,47 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.6 — Subagents billed under their project
+
+**Adoption, read 2026-11-05:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.5.
+
+Found by running `trazum bill` on this repository's own Claude Code sessions:
+one session, 73 subagents. **If you use subagents or workflows in Claude Code,
+run it again.**
+
+```bash
+npx -y @trazum/cli@2.7.6 bill
+```
+
+**A session's subagents were billed under projects that never existed.**
+Claude Code writes each subagent's transcript into the session's own folder,
+`<project>/<session>/subagents/…`, and a workflow's agents one level further
+down. `bill` labelled a transcript by its parent folder, so a quarter of this
+repository's bill sat under six `wf_…` names. The project is now found the way
+Claude Code lays a session out, and all of it is under the project it ran for.
+
+**A transcript that talked about telemetry was left out of the bill.** A
+session whose first prompt said `gen_ai.` or `resourceSpans` was taken for an
+OpenTelemetry export too, refused as ambiguous by the CLI and read as empty by
+the web Bill tab. The OTel reader is now recognised by the export's structure,
+not by a word in somebody's conversation.
+
+**The status line left out the session's subagents.** It priced the
+transcript Claude Code hands it, which is the session's own; it now reads the
+session's subagents folder too, after each turn.
+
+**And a first bill is quieter.** The files Claude Code keeps beside its
+transcripts (subagent metadata, workflow journals, long tool output) were each
+named as a file nothing could read, 152 lines on this repository's folder.
+They are now one line saying they are not usage.
+
+**Still waiting on a person:** 2.7.2's tag and GitHub release, as 2.7.3 said.
+
+No breaking change. All packages, the plugin and MCP discovery advance
+together to 2.7.6.
 
 ---
 

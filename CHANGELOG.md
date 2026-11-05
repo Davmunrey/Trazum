@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.6 — 2026-11-05
+
 ### Fixed
 
 - **A session's subagents were billed under projects that never existed.**
