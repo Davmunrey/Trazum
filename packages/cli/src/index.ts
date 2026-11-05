@@ -3762,7 +3762,7 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
       case 'anthropic-usage': {
         const c = anthropicUsageRecords(text, withLabel);
         records = c.records;
-        leftOut = c.unnamedModel + c.nonStandardTier;
+        leftOut = c.unnamedModel + c.nonStandardTier + c.fastUnpriced;
         break;
       }
       case 'openai-usage': {
@@ -4727,6 +4727,14 @@ async function commandFromAnthropic(args: Args, t: CliMessages): Promise<void> {
     console.error(t.fromAnthropic.nonStandardTier(conversion.nonStandardTier));
   }
   if (!conversion.tierNamed && conversion.rows > 0) console.error(t.fromAnthropic.tierUnknown());
+  if (conversion.fastRows > 0) console.error(t.fromAnthropic.fastPriced(conversion.fastRows));
+  if (conversion.fastUnpriced > 0) {
+    console.error(t.fromAnthropic.fastUnpriced(conversion.fastUnpriced, conversion.fastUnpricedModels.join(', ')));
+  }
+  if (!conversion.speedNamed && conversion.speedUnknownFastCapable > 0) {
+    console.error(t.fromAnthropic.speedUnknown(conversion.speedUnknownFastCapable));
+  }
+  if (conversion.usOnlyRows > 0) console.error(t.fromAnthropic.usOnly(conversion.usOnlyRows));
   if (conversion.webSearchRequests > 0) console.error(t.fromAnthropic.webSearch(conversion.webSearchRequests));
   if (conversion.labelledByWorkspace > 0) {
     console.error(t.fromAnthropic.labelledByWorkspace(conversion.labelledByWorkspace));
@@ -4780,6 +4788,9 @@ async function commandFromOpenai(args: Args, t: CliMessages): Promise<void> {
   if (conversion.unnamedModel > 0) console.error(t.fromOpenai.unnamedModel(conversion.unnamedModel));
   if (conversion.batch > 0) console.error(t.fromOpenai.batch(conversion.batch));
   if (!conversion.batchNamed && conversion.rows > 0) console.error(t.fromOpenai.batchUnknown());
+  if (conversion.serviceTierRows > 0) {
+    console.error(t.fromOpenai.serviceTierPriced(conversion.serviceTierRows, conversion.tiersPriced.join(', ')));
+  }
   if (conversion.nonDefaultTier > 0) {
     console.error(t.fromOpenai.nonDefaultTier(conversion.nonDefaultTier, conversion.tiersRefused.join(', ')));
   }

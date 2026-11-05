@@ -2067,6 +2067,14 @@ ${bold('EJEMPLOS')}
       `${count} fila(s) se facturaron en un tramo para el que una tarifa de catálogo no es la tarifa (batch, priority, flex) y no están en la salida. Cobrarlas a la tarifa estándar inflaría la factura y parecería correcto.`,
     tierUnknown: () =>
       'El informe no nombró ningún tramo de servicio, así que una fila batch y una estándar son indistinguibles aquí. Todo se leyó como estándar. Añade group_by[]=service_tier si parte de este uso va por lotes.',
+    fastPriced: (count) =>
+      `${count} fila(s) corrieron en modo rápido y se cobran con la tarifa rápida del propio modelo, como se cobraría una respuesta registrada con usage.speed "fast".`,
+    fastUnpriced: (count, models) =>
+      `${count} fila(s) corrieron en modo rápido en un modelo para el que Trazum no tiene tarifa rápida (${models}) y no están en la salida. La tarifa estándar queda muy por debajo de la del modo rápido, así que cobrarlas con ella dejaría la factura corta.`,
+    speedUnknown: (count) =>
+      `El informe no nombró ninguna velocidad, y ${count} fila(s) son de un modelo con modo rápido, que se factura más caro. Se leyeron como estándar. Añade group_by[]=speed si parte de este uso corrió en modo rápido.`,
+    usOnly: (count) =>
+      `${count} fila(s) corrieron con inference_geo "us", que se factura a 1,1x en Claude 4.6 y posteriores. Se cobran a la tarifa global, así que su cifra es un suelo.`,
     webSearch: (count) =>
       `${count} petición(es) de búsqueda web están en el informe y en ninguna línea de la salida: las herramientas de servidor se facturan por petición, no por token, así que ninguna tarifa por token llega a ellas.`,
     truncated: () =>
@@ -2101,7 +2109,9 @@ ${bold('EJEMPLOS')}
     batchUnknown: () =>
       'El informe nunca dijo si algo fue batch, así que una fila por lotes y una estándar son indistinguibles aquí. Todo se leyó como estándar. Añade group_by[]=batch si parte de este uso va por lotes.',
     nonDefaultTier: (count, tiers) =>
-      `${count} fila(s) estaban en un tramo de servicio para el que una tarifa de catálogo no es la tarifa (${tiers}) y no están en la salida. El esquema no lista los tramos, así que se nombran en vez de adivinarse.`,
+      `${count} fila(s) estaban en un tramo de servicio para el que Trazum no tiene tabla en ese modelo (${tiers}) y no están en la salida. La tarifa estándar no es la de ese tramo, y el esquema no lista los tramos, así que se nombran en vez de adivinarse.`,
+    serviceTierPriced: (count, tiers) =>
+      `${count} fila(s) corrieron en otro tramo de servicio (${tiers}) y se cobran con la tabla propia de ese tramo, como se cobraría una respuesta registrada que lo nombre.`,
     tierUnknown: () =>
       'El informe no nombró ningún tramo de servicio. Todo se leyó como el tramo por defecto. Añade group_by[]=service_tier si parte de este uso corre en otro.',
     mixed: (rows, tokens, cacheWrites) =>

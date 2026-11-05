@@ -709,6 +709,10 @@ export interface CliMessages {
     /** Said when the report never named a tier: the question was not asked. */
     tierUnknown(): string;
     /** Server tools are billed per request, and no token rate reaches them. */
+    fastPriced(count: number): string;
+    fastUnpriced(count: number, models: string): string;
+    speedUnknown(count: number): string;
+    usOnly(count: number): string;
     webSearch(count: number): string;
     /** One page of several: the bill from it is understated. */
     truncated(): string;
@@ -735,6 +739,7 @@ export interface CliMessages {
     batchUnknown(): string;
     /** Any tier but default, named rather than counted. */
     nonDefaultTier(count: number, tiers: string): string;
+    serviceTierPriced(count: number, tiers: string): string;
     tierUnknown(): string;
     /** Rows reduced to their text part; audio and image tokens set aside. */
     mixed(rows: number, tokens: number, cacheWrites: number): string;

@@ -2922,7 +2922,7 @@ laptop nobody instrumented are not among them.
 # Your own shell, your own admin credential. Trazum never sees it.
 curl "https://api.anthropic.com/v1/organizations/usage_report/messages?\
 starting_at=2026-09-01T00:00:00Z&ending_at=2026-10-01T00:00:00Z&\
-bucket_width=1d&group_by[]=model&group_by[]=service_tier" \
+bucket_width=1d&group_by[]=model&group_by[]=service_tier&group_by[]=speed" \
   -H "anthropic-version: 2023-06-01" \
   -H "x-api-key: $ANTHROPIC_ADMIN_KEY" > usage.json
 
@@ -2947,6 +2947,21 @@ tier but standard are **left out and counted**, the same way an unpriceable
 line becomes a named gap rather than a guess. Without the grouping the command
 says so and reads everything as standard, because the alternative is you
 assuming a question was answered that was never asked.
+
+**And `group_by[]=speed`, if anyone runs fast mode.** Fast mode bills Opus
+5.5 at $8/$40 against $4/$20, and Opus 5 and Opus 4.8 at $10/$50 against
+$5/$25, and the report says which speed ran once it is grouped by it. Since 2.7.3 a fast row is
+written with `usage.speed: "fast"` and priced from the model's own fast rate,
+exactly as a logged response carrying the same field is; a fast row on a model
+the catalogue has no fast rate for is left out and named, because the standard
+rate is well under its cost. Without the grouping a row on a model that has a
+fast mode is read as standard, and the run says so.
+
+**US-only inference is a floor, and said.** With `group_by[]=inference_geo`, a
+row whose `inference_geo` is `"us"` ran with US-only inference, which the
+pricing page bills at 1.1x on every token category of Claude 4.6 and later. The
+catalogue holds no geography, so such a row is priced at the global rate and
+counted: its figure is a floor, named, rather than a multiple composed here.
 
 **Two more things it counts rather than prices.** Web search requests are
 billed per request, not per token, so no token rate reaches them and the total
@@ -3016,11 +3031,17 @@ back to prove it does not.
 **Ask for three groupings.** `group_by[]=model`, or a row says nothing about
 what answered and cannot be priced. `group_by[]=batch`, because a batch job is
 billed at a discount and priced from a catalogue rate it overstates the bill
-while looking right. `group_by[]=service_tier`, because the schema does not
-enumerate the tiers and this does not either: any tier but `default` is left
-out and **named** in the summary, so you see `flex` or `priority` rather than
-a count of something unnamed. Without a grouping the run says the question was
-never asked, rather than letting you assume it was answered.
+while looking right. `group_by[]=service_tier`, because Flex, Fast and
+Ultrafast each have a table of their own: a row at one of them, on a model the
+catalogue has that tier's table for, is written with `service_tier` and priced
+from that table (since 2.7.3), exactly as a logged response naming the tier
+would be, and the summary says how many rows were. The schema does not
+enumerate the tiers and this does not either, so a tier with no table on that
+model (GPT-4o has no Flex) or a value Trazum does not know is left out and
+**named** in the summary, so you see `flex` or `scale` rather than a count of
+something unnamed: the standard rate is not its rate. Without a grouping the
+run says the question was never asked, rather than letting you assume it was
+answered.
 
 **Audio and image tokens are never priced at a text rate.** `input_tokens`
 folds text, audio and image together, and the report's own split —
@@ -3944,8 +3965,10 @@ undecided and falls back to the dearest candidate, while a service tier is
 always decided by the response. A tier the row has no table for (GPT-4o has
 no Flex) prices at the standard rate, and so does a value the table has never
 seen. It is read from a logged Chat Completions or Responses object and by the
-gateway, from whole responses and streams; OpenAI's usage report still leaves
-non-default tiers out and names them, as before.
+gateway, from whole responses and streams, and from OpenAI's usage report
+(since 2.7.3), where a row is priced only when its model has that tier's
+table: a report row sums many calls, so one with no table is left out and
+named rather than priced at the standard rate.
 
 A tier and a promotion may not appear on the same model. No provider here does
 both, and a rate composed from two real ones is the first thing
