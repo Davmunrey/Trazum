@@ -3002,6 +3002,10 @@ ${bold('EXAMPLES')}
       `--what-if does not know "${value}". Priced models: ${available}. Add it with --pricing if you have its rates.`,
     badGzip: (file, detail) =>
       `${file} is gzipped and would not decompress: ${detail}. Reading the rest and saying nothing would report a bill missing whatever that file held, so this stops instead. Check the file, or move it out of the directory.`,
+    readInParts: (file, megabytes, slimmed) =>
+      `${file}: ${megabytes} MB, too large to hold whole, so it was read line by line; the message text in ${slimmed} line(s) was set aside. Token counts and models are read as usual: text is never what a call is billed by here.`,
+    tooLargeToRead: (file, megabytes) =>
+      `${file} is ${megabytes} MB, and even with its message text set aside it is more than one read can hold. Split it into smaller files (for example \`split -l 500000\`) and pass the pieces.`,
     dryRunHeading: () => 'What this log can answer, no bill was produced',
     dryRunParsed: (parsed, skipped) =>
       `${parsed} records parse; ${skipped} lines could not be read. A dry run prices nothing: the point is what the gates you are about to wire would stand on.`,

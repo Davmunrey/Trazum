@@ -1826,6 +1826,18 @@ export interface CliMessages {
       */
     badGzip(file: string, detail: string): string;
     /**
+     * A file too large to hold whole, read line by line with its message
+     * text set aside. Said, because a bill read differently from the others
+     * should say how.
+     */
+    readInParts(file: string, megabytes: number, slimmed: number): string;
+    /**
+     * A file that even line by line, with its text set aside, is more than
+     * one read can hold. An error naming the file and what to do, never the
+     * runtime's own "Invalid string length".
+     */
+    tooLargeToRead(file: string, megabytes: number): string;
+    /**
      * `--dry-run`: readiness per capability, no bill. The question somebody
      * has before wiring CI, answered without making them read a report to
      * discover a missing field.

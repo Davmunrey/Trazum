@@ -3032,6 +3032,10 @@ ${bold('EJEMPLOS')}
       `--what-if no conoce "${value}". Modelos con precio: ${available}. Añádelo con --pricing si tienes sus tarifas.`,
     badGzip: (file, detail) =>
       `${file} está comprimido con gzip y no se ha podido descomprimir: ${detail}. Leer el resto y no decir nada daría una factura a la que le falta lo que hubiera en ese fichero, así que se para aquí. Revisa el fichero, o sácalo del directorio.`,
+    readInParts: (file, megabytes, slimmed) =>
+      `${file}: ${megabytes} MB, demasiado grande para leerlo entero, así que se ha leído línea a línea; el texto de los mensajes de ${slimmed} línea(s) se ha dejado aparte. Los tokens y los modelos se leen como siempre: aquí ninguna llamada se factura por su texto.`,
+    tooLargeToRead: (file, megabytes) =>
+      `${file} ocupa ${megabytes} MB, y ni dejando aparte el texto de los mensajes cabe en una sola lectura. Divídelo en ficheros más pequeños (por ejemplo \`split -l 500000\`) y pásalos.`,
     dryRunHeading: () => 'Qué puede responder este registro, no se ha producido factura',
     dryRunParsed: (parsed, skipped) =>
       `${parsed} registros se leen; ${skipped} líneas no se pudieron leer. Un dry run no valora nada: el punto es sobre qué se apoyarían los gates que vas a cablear.`,

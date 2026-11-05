@@ -199,3 +199,28 @@ an error.
 `trazum init` finds a log named `usage.jsonl`, `usage.ndjson`, `usage.log`,
 `logs/usage.jsonl` or a `logs/` directory without being told. Anywhere else,
 name it.
+
+## Very large files
+
+A file larger than 256 MiB is read line by line instead of whole. JavaScript
+cannot hold a string much past 512 MiB, and an agent session that read large
+files or ran chatty commands can grow past that: Claude Code writes every tool
+result into its transcript.
+
+In that mode each line longer than 4,096 characters is parsed, and every
+string in it longer than 4,096 characters is replaced by a short marker before
+it is kept. Those strings are prompts, replies, thinking, tool arguments and
+tool results; nothing is billed by its text here. What a converter reads (the
+type, model, ids, timestamp, session, working directory and token counts) is
+kept exactly, so the bill is the same as a whole read would give. The tests
+check that byte for byte, with every file forced down this path. A line that
+is not JSON, such as a CSV row, is never rewritten.
+
+The web app's Bill tab does the same in the browser, with the same function
+(`slimUsageLine` in `@trazum/core`), so a large session dropped there is read
+without leaving the page either.
+
+The run says which files were read this way, on stderr. A file whose lines
+are too many to hold even after that is refused with its name and size, never
+the runtime's "Invalid string length": split it (for example
+`split -l 500000`) and pass the pieces.

@@ -11,7 +11,24 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **A usage file past about 512 MB no longer takes the whole bill down.**
+  JavaScript cannot hold a longer string, so reading such a file whole failed
+  with the runtime's "Invalid string length", naming no file, and nothing else
+  was billed either. A Claude Code session that read large files reaches that
+  size: its transcript holds every tool result. Files over 256 MiB are now read
+  line by line with their message text set aside (`slimUsageLine` in
+  `@trazum/core`), which every converter ignores anyway, so the bill is
+  identical: the tests force every file down this path and compare the
+  receipts byte for byte. Gzipped logs that inflate past the line take the same
+  path. A file still too large after that is refused by name, with what to do.
+  The web app's Bill tab had the same ceiling in `File.text()` and now reads
+  such a file the same way, streamed in the browser; a file it still cannot
+  hold is named under the bill rather than failing the tab.
+  Measured on this machine: a 617 MB session billed in 6 s at under 1 GB of
+  memory; 321 MB across 400 sessions, 40,000 calls, in under 4 s. See
+  [docs/usage-logs.md](docs/usage-logs.md#very-large-files).
 
 ## 2.7.0 — 2026-11-05
 
