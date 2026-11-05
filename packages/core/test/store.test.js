@@ -58,6 +58,24 @@ describe('resolveStore', () => {
     assert.equal(resolveStore([older, newer]).records[0].input, 200_000);
   });
 
+  it('lets a newer pull with a finer grouping restate a day rather than add to it', () => {
+    // A store written before connect grouped by tier, speed and geography,
+    // re-pulled after: the same day, split three ways, must still be 200k.
+    const old = record({ input: 200_000, group: {}, pulledAtMs: Date.UTC(2026, 7, 2) });
+    const split = (input, group) => record({ input, group, pulledAtMs: Date.UTC(2026, 7, 3) });
+    const resolved = resolveStore([
+      old,
+      split(120_000, { service_tier: 'standard', speed: 'standard', inference_geo: 'global' }),
+      split(50_000, { service_tier: 'standard', speed: 'fast', inference_geo: 'global' }),
+      split(30_000, { service_tier: 'batch', speed: 'standard', inference_geo: 'global' }),
+    ]);
+    assert.equal(resolved.records.length, 3);
+    assert.equal(resolved.records.reduce((sum, r) => sum + r.input, 0), 200_000);
+    // Another model's older day is not touched by it.
+    const other = record({ model: 'claude-haiku-4-5', pulledAtMs: Date.UTC(2026, 7, 2) });
+    assert.equal(resolveStore([old, other, split(200_000, { speed: 'standard' })]).records.length, 2);
+  });
+
   it('keeps different windows, models and groupings apart', () => {
     const resolved = resolveStore([
       record(),

@@ -45,7 +45,21 @@ merged commit with no entry is a change only `git log` remembers.
   geography. `"global"`, `"not_available"` and a log without the field keep
   the standard price. A test fails a Claude 4.6 or later row that arrives
   without the multiplier, and the weekly price check reads the page's sentence
-  and fails if the multiple or the generation it starts at changes.
+  and fails if the multiple or the generation it starts at changes. A
+  `--pricing` overlay accepts `inferenceGeoMultipliers` too, validated like
+  every other rate, so a catalogue row copied into one is still valid.
+- **`trazum connect` summed every tier into one row and billed it as
+  standard.** It asked each usage report for `group_by[]=model` alone, so
+  Anthropic batch and fast mode, US-only inference, and OpenAI batch, Flex and
+  Fast all arrived folded into one row per model and day, at the standard
+  rate. The Anthropic pull now also groups by service tier, speed and
+  inference geography, and the OpenAI pull by batch and service tier. A fast,
+  US-only, Flex, Fast or Ultrafast row is priced from its own published rate,
+  as `bill` prices the same calls from a log; a row no catalogue rate is the
+  rate for is left out and named with its model, tier and token count. A
+  store kept with `connect --store` converges across the change: the newest
+  pull of a window and model replaces every older record of it, whatever its
+  grouping, so a day stored before and re-pulled after is split, not doubled.
 
 ### Release mechanics
 

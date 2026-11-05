@@ -103,12 +103,23 @@ function urlFor(provider: string, fromMs: number, toMs: number, page: string | n
     url.searchParams.set('starting_at', new Date(fromMs).toISOString());
     url.searchParams.set('ending_at', new Date(toMs).toISOString());
     url.searchParams.set('bucket_width', '1d');
-    url.searchParams.append('group_by[]', 'model');
+    /*
+     * Model, and the three groupings that change what a token costs: the
+     * service tier (batch is billed at a discount), the speed (fast mode at a
+     * multiple) and the geography (US-only inference at 1.1x on Claude 4.6
+     * and later). Without them every row sums all of those at one rate.
+     */
+    for (const group of ['model', 'service_tier', 'speed', 'inference_geo']) {
+      url.searchParams.append('group_by[]', group);
+    }
   } else {
     url.searchParams.set('start_time', String(Math.floor(fromMs / 1000)));
     url.searchParams.set('end_time', String(Math.floor(toMs / 1000)));
     url.searchParams.set('bucket_width', '1d');
-    url.searchParams.append('group_by[]', 'model');
+    // Model, batch (billed at a discount) and service tier (Flex, Fast, each its own table).
+    for (const group of ['model', 'batch', 'service_tier']) {
+      url.searchParams.append('group_by[]', group);
+    }
     url.searchParams.set('limit', '31');
   }
   if (page !== null) url.searchParams.set('page', page);

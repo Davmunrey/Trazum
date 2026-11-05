@@ -89,6 +89,24 @@ describe('fetchProviderUsage', () => {
     // The endpoint is compiled in, never taken from the caller.
     assert.match(calls[0].url, /^https:\/\/api\.anthropic\.com\//);
     assert.equal(calls[0].headers['anthropic-version'], '2023-06-01');
+    // The groupings that change what a token costs are asked for, not left to chance.
+    assert.deepEqual(new URL(calls[0].url).searchParams.getAll('group_by[]'), ['model', 'service_tier', 'speed', 'inference_geo']);
+  });
+
+  it('asks OpenAI for the batch and service-tier groupings too', async () => {
+    const calls = [];
+    const fetchImpl = async (url) => {
+      calls.push(url);
+      return jsonResponse({ data: [], has_more: false });
+    };
+    await fetchProviderUsage({
+      descriptor: OPENAI,
+      fromMs: Date.UTC(2026, 7, 1),
+      toMs: Date.UTC(2026, 7, 3),
+      env: { OPENAI_ADMIN_KEY: 'sk-admin-key' },
+      fetchImpl,
+    });
+    assert.deepEqual(new URL(calls[0]).searchParams.getAll('group_by[]'), ['model', 'batch', 'service_tier']);
   });
 
   it('follows the cursor and stops when the provider says there is no more', async () => {

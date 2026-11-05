@@ -28,7 +28,7 @@
  * recorded is not not-happened, at the level of the type system.
  */
 
-import { effectivePricing, multipliersFor } from './pricing.js';
+import { effectivePricing, multipliersFor, serviceTierOf } from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 
 // --------------------------------------------------------------------------
@@ -196,7 +196,9 @@ export interface PullGap {
     | 'cursor-expired'
     | 'page-limit'
     | 'unreadable-entry'
-    | 'unreadable-field';
+    | 'unreadable-field'
+    /** Usage at a tier no catalogue rate prices, left out and named. */
+    | 'unpriced-tier';
   detail: string;
 }
 
@@ -318,7 +320,7 @@ export function normalizeAnthropicUsage(payload: unknown): ConnectorPull {
         cacheWrite1hTokens: ttlKnown ? write1h : 0,
         writeTtlKnown: ttlKnown,
         outputTokens: num(r.output_tokens) ?? 0,
-        group: groupOf(r, ['workspace_id', 'api_key_id', 'service_tier', 'context_window']),
+        group: groupOf(r, ['workspace_id', 'api_key_id', 'service_tier', 'context_window', 'speed', 'inference_geo']),
       });
     }
   }
@@ -398,7 +400,7 @@ export function normalizeOpenAIUsage(payload: unknown): ConnectorPull {
         // states (`cacheTtl`), and an absent field is not an assumed TTL.
         writeTtlKnown: true,
         outputTokens: num(r.output_tokens) ?? 0,
-        group: groupOf(r, ['project_id', 'api_key_id', 'batch']),
+        group: groupOf(r, ['project_id', 'api_key_id', 'batch', 'service_tier']),
       });
     }
   }
@@ -508,6 +510,17 @@ export function bucketedProfile(
   const slices = new Map<string, BucketedSlice>();
   const days = new Map<string, { usd: number; calls: number | null }>();
   const unpriced = new Map<string, { inputTokens: number; outputTokens: number }>();
+  /* Usage at a tier no rate here prices, summed per model and tier so the gap names both. */
+  const leftOut = new Map<string, { model: string; tier: string; buckets: number; tokens: number }>();
+  const leave = (bucket: UsageBucket, tier: string): void => {
+    const key = `${bucket.model}\n${tier}`;
+    const seen = leftOut.get(key) ?? { model: bucket.model, tier, buckets: 0, tokens: 0 };
+    seen.buckets += 1;
+    seen.tokens +=
+      bucket.inputTokens + bucket.cacheReadTokens + bucket.cacheWrite5mTokens + bucket.cacheWrite1hTokens
+      + bucket.outputTokens;
+    leftOut.set(key, seen);
+  };
 
   for (const bucket of pull.buckets) {
     const model = catalogue.byId.get(bucket.model);
@@ -517,6 +530,46 @@ export function bucketedProfile(
       seen.outputTokens += bucket.outputTokens;
       unpriced.set(bucket.model, seen);
       continue;
+    }
+
+    /*
+     * What the row says about how its tokens ran, where that changes the
+     * price. A tier a catalogue rate is the rate for is priced from it; any
+     * other is left out and named, never priced at the standard rate. The
+     * groupings are the ones `trazum connect` asks for; a payload without
+     * them reads as standard, as it always did.
+     */
+    const group = bucket.group;
+    const how: { speed?: string; serviceTier?: string; inferenceGeo?: string } = {};
+    if (pull.provider === 'anthropic') {
+      const tier = group.service_tier;
+      if (tier !== undefined && tier !== 'standard') {
+        leave(bucket, tier);
+        continue;
+      }
+      if (group.speed === 'fast') {
+        const fastRate = model.tiers?.some((t) => t.when.kind === 'speed' && t.when.speed === 'fast') ?? false;
+        if (!fastRate) {
+          leave(bucket, 'fast mode');
+          continue;
+        }
+        how.speed = 'fast';
+      }
+      if (group.inference_geo !== undefined) how.inferenceGeo = group.inference_geo;
+    } else if (pull.provider === 'openai') {
+      if (group.batch === 'true') {
+        leave(bucket, 'batch');
+        continue;
+      }
+      const tier = group.service_tier;
+      if (tier !== undefined && tier !== 'default') {
+        const named = serviceTierOf(tier);
+        if (named === undefined || model.serviceTiers?.[named] === undefined) {
+          leave(bucket, tier);
+          continue;
+        }
+        how.serviceTier = tier;
+      }
     }
 
     const at = new Date(bucket.fromMs);
@@ -529,7 +582,7 @@ export function bucketedProfile(
     const priced = effectivePricing(
       model,
       at,
-      bucket.calls === 1 ? { inputTokens: prompt } : { inputTokensAtMost: prompt },
+      bucket.calls === 1 ? { inputTokens: prompt, ...how } : { inputTokensAtMost: prompt, ...how },
     );
     const { inputPerMTok, outputPerMTok } = priced;
     const rates = multipliersFor(model, at);
@@ -623,7 +676,17 @@ export function bucketedProfile(
     unpricedModels: [...unpriced.entries()]
       .map(([model, tokens]) => ({ model, ...tokens }))
       .sort((a, b) => b.inputTokens + b.outputTokens - (a.inputTokens + a.outputTokens)),
-    gaps: pull.gaps,
+    gaps: [
+      ...pull.gaps,
+      ...[...leftOut.values()].map(
+        (left): PullGap => ({
+          kind: 'unpriced-tier',
+          detail:
+            `${left.buckets} row(s) of ${left.model} ran at ${left.tier}, which no catalogue rate here is the rate for, `
+            + `and ${left.tokens.toLocaleString('en-US')} token(s) were left out rather than priced at the standard rate`,
+        }),
+      ),
+    ],
     unavailable: pull.unavailable,
   };
 }

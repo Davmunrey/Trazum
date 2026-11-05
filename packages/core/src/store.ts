@@ -17,6 +17,10 @@
  * the later pull wins, because a window pulled again is at worst as complete
  * as it was. That makes overlapping pulls idempotent, which is what lets a
  * scheduled job run every hour over a rolling day without inventing money.
+ * And because one pull carries every grouping of its window at once, the
+ * newest pull of a window and model replaces all older records of it, even
+ * ones grouped differently: a finer grouping restates a day, it does not add
+ * one beside it.
  *
  * **Deduplication that cannot lie.** Two records the store cannot tell apart —
  * a source that served no window, or no model — are kept as *two* and reported
@@ -130,10 +134,27 @@ export function resolveStore(records: readonly StoreRecord[]): ResolvedStore {
     }
   }
 
+  /*
+   * One pull is the whole statement of its window and model: every grouping
+   * the provider served for that window arrives in it together. So the newest
+   * pull of a window replaces every older record of that window and model,
+   * whatever grouping the older one carried. Without this, a store written
+   * before `connect` asked for the tier, speed and geography groupings (2.7.3)
+   * would keep its old summed row beside the new split ones, and count the
+   * same day twice.
+   */
+  const slotOf = (record: StoreRecord): string =>
+    [record.provider, record.fromMs, record.toMs, record.model].join('\n');
+  const newest = new Map<string, number>();
+  for (const record of byIdentity.values()) {
+    const slot = slotOf(record);
+    newest.set(slot, Math.max(newest.get(slot) ?? Number.NEGATIVE_INFINITY, record.pulledAtMs));
+  }
+
   return {
-    records: [...byIdentity.values()].sort(
-      (a, b) => a.fromMs - b.fromMs || a.model.localeCompare(b.model),
-    ),
+    records: [...byIdentity.values()]
+      .filter((record) => record.pulledAtMs === newest.get(slotOf(record)))
+      .sort((a, b) => a.fromMs - b.fromMs || a.model.localeCompare(b.model)),
     possiblyDouble,
     unknownVersion,
   };

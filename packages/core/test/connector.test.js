@@ -251,3 +251,62 @@ describe('bucketedCacheEconomics', () => {
     assert.equal(bucketedCacheEconomics(priced({ data: [anthropicBucket()] })).verdict, 'no-cache');
   });
 });
+
+describe('the tiers the usage report names', () => {
+  /*
+   * `trazum connect` asks both reports for the groupings that change what a
+   * token costs. A row at a tier a catalogue rate is the rate for is priced
+   * from it; any other is left out and named, never priced at the standard
+   * rate. Opus 5: $5/$25 standard, $10/$50 fast; 200k in and 40k out is $2.
+   */
+  const total = (payload, normalize) => priced(payload, normalize).total.totalUsd;
+  const close = (actual, expected, what) => assert.ok(Math.abs(actual - expected) < 1e-9, `${what}: ${actual}, expected ${expected}`);
+  const leftOut = (payload, normalize) =>
+    priced(payload, normalize).gaps.filter((gap) => gap.kind === 'unpriced-tier').map((gap) => gap.detail);
+
+  it('prices an Anthropic row as standard, fast mode, or US-only, by what the row says', () => {
+    close(total({ data: [anthropicBucket({ service_tier: 'standard', speed: 'standard', inference_geo: 'global' })] }), 2, 'standard');
+    close(total({ data: [anthropicBucket({ speed: 'fast' })] }), 4, 'fast mode');
+    close(total({ data: [anthropicBucket({ inference_geo: 'us' })] }), 2.2, 'US-only');
+    close(total({ data: [anthropicBucket({ speed: 'fast', inference_geo: 'us' })] }), 4.4, 'fast and US-only');
+  });
+
+  it('leaves an Anthropic batch row, or a fast row with no fast rate, out and names it', () => {
+    const batch = { data: [anthropicBucket({ service_tier: 'batch' }), anthropicBucket({ service_tier: 'standard' })] };
+    close(total(batch), 2, 'the standard row only');
+    assert.deepEqual(leftOut(batch).length, 1);
+    assert.match(leftOut(batch)[0], /1 row\(s\) of claude-opus-5 ran at batch, which no catalogue rate here is the rate for, and 240,000 token\(s\) were left out/);
+
+    const fastless = { data: [anthropicBucket({ model: 'claude-sonnet-4-6', speed: 'fast' })] };
+    close(total(fastless), 0, 'a fast row with no fast rate');
+    assert.match(leftOut(fastless)[0], /claude-sonnet-4-6 ran at fast mode/);
+  });
+
+  const openAiBucket = (over = {}) => ({
+    start_time: Math.floor(Date.UTC(2026, 7, 1) / 1000),
+    end_time: Math.floor(Date.UTC(2026, 7, 2) / 1000),
+    // 100k each: a row this size cannot hold a long prompt, so the short band is decided.
+    results: [{ model: 'gpt-5.4', input_tokens: 100_000, output_tokens: 100_000, num_model_requests: 40, ...over }],
+  });
+
+  it('prices an OpenAI Flex row from its own table, and leaves batch and a tier with no table out', () => {
+    const standard = total({ data: [openAiBucket({ service_tier: 'default', batch: false })] }, normalizeOpenAIUsage);
+    const flex = total({ data: [openAiBucket({ service_tier: 'flex' })] }, normalizeOpenAIUsage);
+    const model = BUNDLED_CATALOGUE.byId.get('gpt-5.4');
+    close(flex, (model.serviceTiers.flex.inputPerMTok + model.serviceTiers.flex.outputPerMTok) / 10, 'flex');
+    assert.ok(flex < standard, `Flex ${flex} is not below standard ${standard}`);
+
+    const batch = { data: [openAiBucket({ batch: true })] };
+    close(total(batch, normalizeOpenAIUsage), 0, 'a batch row');
+    assert.match(leftOut(batch, normalizeOpenAIUsage)[0], /gpt-5\.4 ran at batch/);
+
+    const noTable = { data: [openAiBucket({ model: 'gpt-4o', service_tier: 'flex' })] };
+    close(total(noTable, normalizeOpenAIUsage), 0, 'Flex on a model with no Flex table');
+    assert.match(leftOut(noTable, normalizeOpenAIUsage)[0], /gpt-4o ran at flex/);
+  });
+
+  it('reads a payload without the groupings as standard, as it always did', () => {
+    close(total({ data: [anthropicBucket()] }), 2, 'ungrouped');
+    assert.deepEqual(leftOut({ data: [anthropicBucket()] }), []);
+  });
+});
