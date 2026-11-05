@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
-import { createReadStream, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import type { FileHandle } from 'node:fs/promises';
 import { cpus, homedir, tmpdir } from 'node:os';
 import { createInterface } from 'node:readline/promises';
 import { dirname, join, resolve as resolvePath } from 'node:path';
@@ -626,12 +627,26 @@ const SLIMMED_MAX_CHARS = ((): number => {
 const megabytesOf = (bytes: number): number => Math.round(bytes / 1_000_000);
 
 async function readUsageLog(file: string, t: CliMessages): Promise<string> {
-  const size = (await stat(file)).size;
-  if (!file.endsWith('.gz')) {
-    if (size <= WHOLE_READ_MAX_BYTES) return readFile(file, 'utf8');
-    return readInParts(createReadStream(file), file, size, t);
+  /*
+    One open file, measured and read through the same handle, so the size
+    that chose the path is the size of what is read: a stat by name and a
+    read by name could see two different files.
+  */
+  const handle = await open(file, 'r');
+  try {
+    return await readUsageHandle(handle, file, t);
+  } finally {
+    await handle.close();
   }
-  const compressed = await readFile(file);
+}
+
+async function readUsageHandle(handle: FileHandle, file: string, t: CliMessages): Promise<string> {
+  const size = (await handle.stat()).size;
+  if (!file.endsWith('.gz')) {
+    if (size <= WHOLE_READ_MAX_BYTES) return handle.readFile('utf8');
+    return readInParts(handle.createReadStream({ autoClose: false }), file, size, t);
+  }
+  const compressed = await handle.readFile();
   let inflated: Buffer;
   try {
     // Bounded, so a file that inflates past the line is streamed rather than refused.
