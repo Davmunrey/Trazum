@@ -170,7 +170,9 @@ Trazum is not certified against SOC 2, ISO 27001 or any other standard.
 [docs/compliance/](docs/compliance/README.md) is the preparation for an audit:
 the system in scope, 23 controls with their evidence and their SOC 2, ISO
 27001 and OWASP ASVS references, and the organisational work that only an
-owner can do.
+owner can do. Beside it are the [threat model](docs/compliance/threat-model.md),
+the [secure coding checklist](docs/compliance/secure-coding.md) and the
+[procedure for rotating each secret](docs/compliance/secret-rotation.md).
 
 ## Independent audits
 

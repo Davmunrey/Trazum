@@ -287,7 +287,9 @@ One more that is a convention rather than a test: **never log a prompt or an API
 key.** Prompts are not stored anywhere, and keys are used once and dropped.
 
 See [SECURITY.md](SECURITY.md) for the reasoning, and for how to report a
-vulnerability privately.
+vulnerability privately. The [secure coding checklist](docs/compliance/secure-coding.md)
+gathers these with the web app's rules in one table, each naming the test that
+holds it.
 
 ## Pull requests
 

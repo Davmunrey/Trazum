@@ -12,7 +12,14 @@ The control matrix is [controls.md](controls.md): 23 controls, each with the
 files and tests that prove it and its SOC 2, ISO 27001 and OWASP ASVS
 references. [asvs-l2.md](asvs-l2.md) goes the other way: every one of the 259
 requirements OWASP ASVS 4.0.3 sets at level 2, and where Trazum stands on each
-(124 met, 30 partly, 16 for the owner, 89 that do not apply, and no gaps).
+(128 met, 27 partly, 15 for the owner, 89 that do not apply, and no gaps).
+
+Three documents an auditor asks for sit beside them, each held to the code by
+`apps/web/test/threat-model.test.mjs`: the [threat model](threat-model.md),
+with the risk behind every limit the server sets; the [secure coding
+checklist](secure-coding.md), each item naming the test that holds it; and the
+[procedure for rotating each secret](secret-rotation.md). They are drafts for
+the owner to approve; the code already does what they describe.
 
 ## What each framework is, and who it applies to
 
@@ -77,6 +84,7 @@ after it:
 | A session cookie that opened nothing (expired, revoked, forged, or ended by policy) was answered without a line, and the browser went on presenting it on every page load | `currentSession` writes an `auth.session` failure line for each, `unknown_session` or `session_ended` with the account, and never for a visitor without a cookie; `/api/auth/session` clears the dead cookie where sessions are durable, and not on the memory store, where another instance may still hold it. `apps/web/lib/auth/session.ts`, `apps/web/test/security-log.test.mjs` | ASVS 7.2.1; SOC 2 CC7.2; ISO 27001 8.15 |
 | A person could end this session or every session, and could not see any of them | *Your sessions* in the account menu lists every live session (when it started, when it was last used, which one is this device) and ends any one; ending another session, or all of them, needs a sign-in in the last fifteen minutes, so a stolen cookie alone cannot sign its owner out of anywhere. Signing in again from a browser replaces that browser's session. `apps/web/app/api/auth/sessions/route.ts`, `apps/web/test/sessions.test.mjs` | ASVS 3.3.4; SOC 2 CC6.1; ISO 27001 8.5 |
 | An error nothing caught left no line of the app's own, and nothing tied the digest on the error page to a record | `onRequestError` in `instrumentation.ts` writes one line per uncaught error with the route's pattern and the digest, never the message, path or headers; checked against the built server with the database unreachable. `apps/web/instrumentation.ts`, `apps/web/test/security-log.test.mjs` | ASVS 7.4.1, 7.4.3; SOC 2 CC7.2; ISO 27001 8.15 |
+| No threat model, no secure coding checklist and no written way to rotate a secret: each limit stated its risk beside its number, and nothing gathered them or noticed one go missing | The three documents above. The threat model's table holds every limit the server sets with its value and the risk that chose it; a test fails when a limit is added or changed without its row, when a variable the app reads or a secret a workflow reads is missing from the rotation page, and when any of the three cites a path that is gone. `docs/compliance/threat-model.md`, `docs/compliance/secure-coding.md`, `docs/compliance/secret-rotation.md`, `apps/web/test/threat-model.test.mjs` | ASVS 1.1.5, 1.1.7, 1.6.3, 11.1.5; SOC 2 CC3.2; ISO 27001 5.17, 8.25 |
 | Each route read its body field by field, each in its own way: a body of `null` threw in seven of the nine handlers that read one, `llm.apiKey: 5` was sent to a provider as a key, `ttl: "toString"` threw while creating a share link, and a misspelt or mistyped field (`level: "medium"`, `reorder: "true"`, `disable_rules`) was quietly read as something else | Every body the API accepts has a declarative schema, all of them in one file, and a route reads nothing from a body but the language it asked for until its schema has passed it; a field it does not declare is refused by name, a value of the wrong type is refused without coercion, and the output is built from the schema's own keys. A test holds each route to the schema listed for its route and method and sends seven malformed bodies to every one of them. `apps/web/lib/schema.ts`, `apps/web/lib/body-schemas.ts`, `apps/web/test/body-schemas.test.mjs` | ASVS 5.1.2, 5.1.3, 5.1.4, 13.2.2; ISO 27001 8.28 |
 
 ## What remains, in code
@@ -87,11 +95,7 @@ Things a pull request can still do, in the order they matter to an audit. The
 wait on the owner or the platform, or record a trade-off made on purpose and
 explained in the row itself.
 
-1. **The documents an audit asks for and a pull request can write**: a threat
-   model naming the risk behind each limit (ASVS 1.1.5, 11.1.5), a secure
-   coding checklist (1.1.7), and the procedure for rotating the two secrets
-   (1.6.3). Approving them stays with the owner.
-2. **A record of a person reading their own library** (ASVS 8.3.5), if the
+1. **A record of a person reading their own library** (ASVS 8.3.5), if the
    owner decides that is worth a line per read; today exports, deletions and
    admin access are recorded and reads are not.
 
@@ -106,7 +110,7 @@ requirement that asks for it.
 | A risk assessment and treatment plan, with a Statement of Applicability | ISO 27001 cannot be certified without one; SOC 2 asks for the risk process | SOC 2 CC3; ISO 27001 6.1, 8.2, 8.3 |
 | Multi-factor authentication on GitHub, the hosting platform, npm and the database provider, for every person with access | The repository's controls are only as strong as the accounts that change them | SOC 2 CC6.1; ISO 27001 5.17, 8.5 |
 | Decide the session numbers: the defaults (thirty days, a day idle) or ASVS level 2 (`TRAZUM_SESSION_MAX_HOURS=12`, `TRAZUM_SESSION_IDLE_MINUTES=30`), and write the choice and its reason into the security policy | An auditor asks what the numbers are and why; the code holds a default, only the policy can hold the reason | SOC 2 CC6.1; ISO 27001 5.15, 8.5 |
-| The platform and secrets settings the ASVS mapping leaves to the owner: a vault behind the two secrets and a written rotation procedure; a database role that is not a default account and can only read and write Trazum's tables; TLS 1.2 or later with strong suites and OCSP stapling; no dangling DNS records; two-factor authentication required on the GitHub accounts in `TRAZUM_ADMINS` | Each is a row marked *Owner* in [asvs-l2.md](asvs-l2.md), and code cannot set any of them | ASVS 1.6.1, 2.10.2, 4.3.1, 6.4.1, 9.1.2, 10.3.3; SOC 2 CC6.1, CC6.6; ISO 27001 5.17, 8.20, 8.24 |
+| The platform and secrets settings the ASVS mapping leaves to the owner: a vault behind the two secrets and how often to rotate them (the procedure is [written](secret-rotation.md)); a database role that is not a default account and can only read and write Trazum's tables; TLS 1.2 or later with strong suites and OCSP stapling; no dangling DNS records; two-factor authentication required on the GitHub accounts in `TRAZUM_ADMINS` | Each is a row marked *Owner* in [asvs-l2.md](asvs-l2.md), and code cannot set any of them | ASVS 1.6.1, 2.10.2, 4.3.1, 6.4.1, 9.1.2, 10.3.3; SOC 2 CC6.1, CC6.6; ISO 27001 5.17, 8.20, 8.24 |
 | Quarterly access reviews: `TRAZUM_ADMINS`, `TRAZUM_ALLOWED_USERS`, GitHub collaborators, platform and database users | Access granted once and never reviewed is the most common SOC 2 exception | SOC 2 CC6.2, CC6.3; ISO 27001 5.18 |
 | Security log retention, alerting and review: how long the platform keeps standard output, who looks, and what pages someone | TRZ-13 writes the lines; keeping and watching them is the operator's | SOC 2 CC7.2, CC7.3; ISO 27001 8.15, 8.16 |
 | An incident response plan, and one tabletop exercise a year | SECURITY.md says how to report; nothing says what happens next | SOC 2 CC7.3 to CC7.5; ISO 27001 5.24 to 5.28 |
