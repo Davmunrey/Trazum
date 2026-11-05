@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.0**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.1**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,61 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.1 — Three bills that were too low, and a file too big to read
+
+**Adoption, read 2026-11-05:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.0.
+
+A patch of corrections. Three of them were in the flattering direction: the
+bill came out lower than what the provider charged. **If you bill Claude Opus
+in fast mode, or OpenAI with 12-hour caching, run it again.**
+
+```bash
+npx -y @trazum/cli@2.7.1 bill
+```
+
+**Anthropic fast mode was billed at half its cost.** Fast mode bills Opus 5.5
+at $8/$40 and Opus 5 and Opus 4.8 at $10/$50, twice their standard rates, and
+every response records the speed in `usage.speed`. Trazum dropped the field.
+Now Claude Code transcripts, logged API responses and the gateway all keep it
+and price by it. A log with no speed is priced as standard, because fast mode
+is an opt-in that every response names.
+
+**OpenAI's 12-hour cache writes were billed at half their cost.** GPT-5.6 and
+later now sell a 12-hour cache entry at 2.5x input, beside the 30-minute one
+at 1.25x, and report them apart. Both are read and priced at their own rate.
+The gateway, separately, had been billing OpenAI cache writes as plain input;
+it no longer does.
+
+**A session past about 512 MB took the whole bill down.** JavaScript cannot
+hold a longer string, and a Claude Code session that read large files grows
+past it. Files over 256 MiB are now read line by line with their message text
+set aside, which nothing is billed by. The tests prove the bill is the same,
+byte for byte. The web app's Bill tab does the same in the browser. Measured:
+a 617 MB session in 6 seconds.
+
+**Twenty-one models that read as unpriced now have prices**, each from its
+provider's own page:
+
+- Claude Sonnet 4.5 (deprecated, served until 2026-11-30);
+- GPT-6.1 Terra, and sixteen earlier OpenAI models still in logs: GPT-5.5,
+  5.4, 5.2, 5.1 and their pro, mini and nano siblings, GPT-5 pro, GPT-4.1,
+  GPT-4o and o3;
+- Kimi K3.1 Pro and its high-speed variant.
+
+Kimi K3 gains its batch price. Deprecated models, and the Kimi K2 series that
+retires in December, are priced and never recommended.
+
+**The November price review.** Anthropic, OpenAI, DeepSeek, Moonshot, xAI and
+Mistral were re-read on 2026-11-05 and every existing price matched. **Google
+could not be read**: its docs moved to a domain this build environment cannot
+reach. Its prices stay as read on 2026-10-10, and the CLI will say they are
+stale from 2026-11-25 until someone reads them.
+
+No breaking change. All packages, the plugin and MCP discovery advance
+together to 2.7.1.
 
 ---
 

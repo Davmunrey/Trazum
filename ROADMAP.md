@@ -2767,9 +2767,19 @@ are counted everywhere. Releases are prepared by one counted script, and CI
 checks every Monday for what goes stale with no commit. OpenCode is not read:
 its storage moved to SQLite and is still changing.
 
+## 2.7.1 — Three bills that were too low — released
+
+A patch of corrections, three of them in the flattering direction. Anthropic
+fast mode (`usage.speed`) and OpenAI's 12-hour cache writes are priced at their
+own rates instead of half; the gateway prices OpenAI cache writes as writes. A
+usage file past the runtime's string ceiling is read line by line rather than
+failing the whole bill, in the CLI and in the browser. Twenty-one models that
+read as unpriced are priced from their own pages, and six providers were
+re-read in the November review; Google could not be reached and is named.
+
 ## Next
 
-**Target: 2.7.1, repeated-task evaluation.**
+**Target: 2.7.2, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,
