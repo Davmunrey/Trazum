@@ -2811,9 +2811,20 @@ file, Anthropic's and OpenAI's, which had read as nothing: each billed line a
 call at the batch rate, the results the provider does not bill left out, and
 nothing but model, usage and end reason crossing.
 
+## 2.7.5 — Web searches billed, and reconcile set like against like — released
+
+Anthropic's web search is billed at its published $10 per 1,000 searches, flat,
+on top of the tokens, from every door that reads a Claude call: transcripts,
+logged responses, batch results, the usage report, `trazum connect` and the
+gateway. It is its own part of every bill, receipt line and CSV row, and the
+weekly price check reads the fee. `trazum reconcile` sets the provider's batch
+and non-token charges against the receipt's own batch calls and searches,
+which 2.7.4 had started pricing without telling it, so its remainder had come
+out short by them.
+
 ## Next
 
-**Target: 2.7.5, repeated-task evaluation.**
+**Target: 2.7.6, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,

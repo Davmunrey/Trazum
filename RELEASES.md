@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.4**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.5**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,52 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.5 — Web searches billed, and reconcile set like against like
+
+**Adoption, read 2026-11-05:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), 1 GitHub stars, MCP registry latest 2.7.4.
+
+Two corrections, one of them to 2.7.4. **If your Claude sessions search the
+web, or you reconcile a receipt against a provider's cost report, run it
+again.**
+
+```bash
+npx -y @trazum/cli@2.7.5 bill
+```
+
+**A call that searched the web was billed as if it had searched for nothing.**
+Anthropic charges $10 per 1,000 web searches on top of the tokens, on every
+model, and every response counts them in `usage.server_tool_use`. Trazum read
+the tokens and dropped the count, so a Claude Code session that searched a
+thousand times came out $10 short. Every Claude row now carries the fee, and a
+call is billed for its searches from every door: a transcript, a logged
+response, a batch's results file, `from-anthropic`, `trazum connect` and the
+gateway. The fee is flat on the Batch API, in fast mode and on US-only
+inference, as the pages say. Web search is its own row in every bill, a fifth
+money part on every receipt line, and two columns appended to the CSV. The
+weekly price check reads the fee off the pricing page.
+
+**`trazum reconcile` took 2.7.4's batch calls out twice.** It subtracted the
+provider's whole batch charge from the difference, which was right while
+Trazum priced no batch call. Since 2.7.4 the receipt holds its batch calls, so
+the remainder, the one figure worth arguing about, came out short by them. A
+receipt now says what its batch calls and searches cost, and `reconcile` sets
+each against the provider's own charge. **A receipt made by 2.7.4 should be
+made again** before you reconcile it; the run says so when it cannot tell.
+
+```bash
+npx -y @trazum/cli@2.7.5 receipt usage.jsonl -o receipt.json
+npx -y @trazum/cli@2.7.5 reconcile receipt.json --against cost.json
+```
+
+**Still waiting on a person:** 2.7.2's tag and GitHub release, as 2.7.3 said.
+
+No breaking change. A receipt line gains `webSearchRequests` and
+`money.webSearchUsd`, a receipt total `batchUsd` and `webSearchUsd`, and the
+profile CSV two columns after `total_usd`; the first twelve keep their places.
+All packages, the plugin and MCP discovery advance together to 2.7.5.
 
 ---
 
