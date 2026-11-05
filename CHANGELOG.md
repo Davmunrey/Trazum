@@ -45,6 +45,19 @@ merged commit with no entry is a change only `git log` remembers.
   pricing page with no model page, so it stays unpriced, recorded in the
   drift check with that reason.
 
+- **`gpt-5.6` is priced as GPT-5.6 Sol.** Its model page says the alias
+  routes there, and a log that names the alias read as unpriced.
+
+### Honest gaps, stated
+
+- **GPT-5.6 Sol's $4/$20 is promotional until 2026-11-30**, its page says,
+  as "a 20% reduction in input pricing and a 33% reduction in output
+  pricing". The price after it is not published as a figure, and one derived
+  from two rounded percentages would be a price nobody quoted, so the
+  catalogue keeps today's and the row's note says so. If the page changes on
+  1 December, the weekly price-drift check reports it; until a person reads
+  the new figure, GPT-5.6 Sol calls after 30 November may be priced low.
+
 ### Guarded
 
 - **A weekly check that the catalogue still agrees with the pricing pages.**

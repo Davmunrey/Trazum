@@ -848,7 +848,21 @@ export const MODELS: ModelPricing[] = [
     notes: OPENAI_CURRENT_NOTE,
   },
   {
+    /*
+     * Its model page, read 2026-11-05: "The `gpt-5.6` alias routes requests
+     * to GPT-5.6 Sol", so a log that names the alias is this model; and
+     * "$4 per million input tokens and $20 per million output tokens, a 20%
+     * reduction in input pricing and a 33% reduction in output pricing ...
+     * promotional pricing is available until November 30, 2026". The price
+     * after the promotion is not published as a figure, and deriving one
+     * from two rounded percentages would be a price nobody quoted, so the row
+     * carries what the page charges today. When the page changes,
+     * `scripts/price-drift.mjs` reports it on the next weekly run; until a
+     * person reads the new figure, a call after 2026-11-30 may be priced low,
+     * and the note says so to anyone reading the row.
+     */
     id: 'gpt-5.6-sol',
+    aliases: ['gpt-5.6'],
     provider: 'openai',
     displayName: 'GPT-5.6 Sol',
     inputPerMTok: 4,
@@ -868,7 +882,9 @@ export const MODELS: ModelPricing[] = [
     ],
     capability: 'large',
     tier: 'opus',
-    notes: OPENAI_CURRENT_NOTE,
+    notes:
+      OPENAI_CURRENT_NOTE
+      + ' $4/$20 is promotional until 2026-11-30, and OpenAI has not published the price after it as a figure.',
   },
   {
     id: 'gpt-5.6-terra',

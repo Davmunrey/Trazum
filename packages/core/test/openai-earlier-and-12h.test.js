@@ -159,3 +159,18 @@ describe('GPT-5.6 Cyber, found by the price-drift check', () => {
     close(bill([line]).total.totalUsd, 0.1 * 31.25, 'a 12-hour write on GPT-5.6 Cyber');
   });
 });
+
+describe('GPT-5.6 Sol, as its page describes it on 2026-11-05', () => {
+  it('answers to the gpt-5.6 alias the page says routes to it', () => {
+    assert.equal(BUNDLED_CATALOGUE.byId.get('gpt-5.6')?.id, 'gpt-5.6-sol');
+  });
+
+  it('carries the promotional price the page charges, and says it is promotional', () => {
+    const model = BUNDLED_CATALOGUE.byId.get('gpt-5.6-sol');
+    const rates = effectivePricing(model, ON, { inputTokens: 1000 });
+    assert.deepEqual([rates.inputPerMTok, rates.outputPerMTok], [4, 20]);
+    // No post-promotion figure is published, so none is derived from the percentages.
+    assert.equal(model.promo, undefined);
+    assert.match(model.notes, /promotional until 2026-11-30/);
+  });
+});
