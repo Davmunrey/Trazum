@@ -77,6 +77,34 @@ export const config = {
  */
 const sharedPageLimited = createRateLimiter({ windowMs: 60_000, max: 120 });
 
+/**
+ * `Content-Disposition: attachment` on API responses (OWASP ASVS 4.0.3 14.4.2).
+ *
+ * An API response opened in a tab downloads instead of rendering, so a
+ * response can never be made to pass for a page or a file the site offers:
+ * the reflected-file-download trick needs a response the browser displays or
+ * saves under a name the attacker chose. `fetch` ignores the header, so the
+ * app's own calls are unchanged.
+ *
+ * Three exceptions, each because a person reaches it by navigating:
+ *
+ * - `/api/auth/github` and its callback are sign-in hops. They redirect, and
+ *   when they refuse somebody the refusal is a sentence that person has to be
+ *   able to read, not a file to find in their downloads.
+ * - `GET /api/account` is the account export, which already downloads under a
+ *   name of its own, `trazum-account-<day>.json`. Set here as well, the two
+ *   values would race, and which one wins differs between platforms.
+ */
+const API_DISPOSITION = 'attachment; filename="api.json"';
+const NAVIGATED = new Set(['/api/auth/github', '/api/auth/github/callback']);
+
+export function downloadsAsAttachment(pathname: string, method: string): boolean {
+  if (!pathname.startsWith('/api/')) return false;
+  if (NAVIGATED.has(pathname)) return false;
+  if (pathname === '/api/account' && method === 'GET') return false;
+  return true;
+}
+
 export function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith('/c/') && sharedPageLimited(request, Date.now())) {
     /**
@@ -155,5 +183,8 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next({ request: { headers } });
   response.headers.set('content-security-policy', policy);
+  if (downloadsAsAttachment(request.nextUrl.pathname, request.method)) {
+    response.headers.set('content-disposition', API_DISPOSITION);
+  }
   return response;
 }

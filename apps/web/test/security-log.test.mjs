@@ -153,7 +153,7 @@ describe('every security decision writes one line', () => {
     const deleted = await mod.deleteAccount(
       new Request(`${ORIGIN}/api/account`, {
         method: 'DELETE',
-        headers: headers({ cookie: again.cookie }),
+        headers: headers({ cookie: again.cookie, 'content-type': 'application/json' }),
         body: JSON.stringify({ confirm: SECRETS.login }),
       }),
     );

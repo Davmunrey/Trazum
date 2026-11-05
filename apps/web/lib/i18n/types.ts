@@ -930,6 +930,7 @@ export interface WebMessages {
   api: {
     rateLimited: string;
     invalidJson: string;
+    notJson: string;
     missingPrompt: string;
     missingBefore: string;
     missingAfter: string;

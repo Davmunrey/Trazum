@@ -8,6 +8,7 @@ import {
   summaryJson,
 } from '../../../lib/prompts/api';
 import { MAX_PROMPTS_PER_OWNER } from '../../../lib/store/prompts';
+import { saysJson } from '../../../lib/request-body';
 
 export const runtime = 'nodejs';
 
@@ -32,6 +33,8 @@ export async function GET(request: Request): Promise<Response> {
 export async function POST(request: Request): Promise<Response> {
   const caller = await requireCaller(request, { write: true });
   if (caller instanceof Response) return caller;
+
+  if (!saysJson(request)) return privateJson({ error: 'send the body as JSON, with content-type: application/json' }, 415);
 
   let body: { name?: unknown; text?: unknown; note?: unknown };
   try {

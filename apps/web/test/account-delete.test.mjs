@@ -144,7 +144,7 @@ const ask = (cookie, body) =>
   deleteAccount(
     new Request(`${ORIGIN}/api/account`, {
       method: 'DELETE',
-      headers: { ...freshClient(), ...(cookie ? { cookie } : {}) },
+      headers: { ...freshClient(), 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
   );
@@ -260,6 +260,24 @@ describe('DELETE /api/account', () => {
     assert.equal((await ask(me.cookie, { confirm: me.login })).status, 204);
   });
 
+  it('refuses a confirmation that does not say it is JSON, and deletes nothing', async () => {
+    // What the account menu sent until it was fixed, and what a form on
+    // another site can send without asking the browser first.
+    const store = await getStore();
+    const me = await signInAs(7);
+    for (const type of [null, 'text/plain;charset=UTF-8', 'application/x-www-form-urlencoded', 'multipart/form-data; boundary=x']) {
+      const response = await deleteAccount(
+        new Request(`${ORIGIN}/api/account`, {
+          method: 'DELETE',
+          headers: { ...freshClient(), cookie: me.cookie, ...(type ? { 'content-type': type } : {}) },
+          body: JSON.stringify({ confirm: me.login }),
+        }),
+      );
+      assert.equal(response.status, 415, `${type ?? 'no content type'} was read as JSON`);
+      assert.ok(await store.findSession(hashToken(me.token), new Date()), `${type ?? 'no content type'} deleted the account`);
+    }
+  });
+
   it('refuses a caller with no session, and one from another origin', async () => {
     const anonymous = await ask(null, { confirm: 'person-6' });
     assert.equal(anonymous.status, 401);
@@ -268,7 +286,7 @@ describe('DELETE /api/account', () => {
     const crossOrigin = await deleteAccount(
       new Request(`${ORIGIN}/api/account`, {
         method: 'DELETE',
-        headers: { ...freshClient(), cookie: me.cookie, origin: 'https://evil.example' },
+        headers: { ...freshClient(), cookie: me.cookie, origin: 'https://evil.example', 'content-type': 'application/json' },
         body: JSON.stringify({ confirm: me.login }),
       }),
     );
@@ -299,7 +317,7 @@ describe('DELETE /api/account', () => {
       const response = await deleteAccount(
         new Request(`${ORIGIN}/api/account?user=${encodeURIComponent(them.user.id)}`, {
           method: 'DELETE',
-          headers: { ...freshClient(), cookie: me.cookie },
+          headers: { ...freshClient(), cookie: me.cookie, 'content-type': 'application/json' },
           body: JSON.stringify(body),
         }),
       );

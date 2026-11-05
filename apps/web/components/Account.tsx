@@ -100,6 +100,7 @@ export function Account({
       const response = await fetch('/api/account', {
         method: 'DELETE',
         credentials: 'same-origin',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ confirm: typed }),
       });
       if (!response.ok) {

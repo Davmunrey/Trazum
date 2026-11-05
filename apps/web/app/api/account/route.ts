@@ -8,6 +8,7 @@ import {
 import { routeOf, securityEvent } from '../../../lib/security-log';
 import { shareUrl } from '../../../lib/shares/api';
 import { getStore } from '../../../lib/store';
+import { saysJson } from '../../../lib/request-body';
 
 export const runtime = 'nodejs';
 
@@ -66,6 +67,8 @@ export async function DELETE(request: Request): Promise<Response> {
     securityEvent('account.deleted', 'failure', { reason: 'not_signed_in', route: routeOf(request) });
     return jsonError('sign in to delete your account', 401);
   }
+
+  if (!saysJson(request)) return jsonError('send the confirmation as JSON, with content-type: application/json', 415);
 
   let confirm: unknown;
   try {
