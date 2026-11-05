@@ -317,9 +317,21 @@ jobs:
             --verify-tag
 
       # The same release when the trigger was the merge rather than a tag.
-      # `gh release create --target` creates the tag itself, pointing at the
-      # merged commit — and a tag created with GITHUB_TOKEN does not retrigger
-      # this workflow, so there is no second run racing this one.
+      #
+      # The tag is pushed over git first, and the release is then created on
+      # the tag that exists. `gh release create --target` used to create the
+      # tag itself, and the releases API refuses that to this token (HTTP 403,
+      # "Resource not accessible by integration") once the target is no longer
+      # the head of main: 2.7.2 published all four packages and then failed
+      # here, because the next pull request merged while the job was running.
+      # backfill-releases.yml found the same split in 2026: the API creates a
+      # release on an existing tag, and git accepts the tag from the token.
+      #
+      # The token reaches git for this one push and nothing else: the checkout
+      # keeps no credential, so it is passed as a header on the command line,
+      # where Actions masks it. A tag pushed with GITHUB_TOKEN does not
+      # retrigger this workflow, so there is no second run racing this one,
+      # and a tag that already exists (a re-run) is left as it is.
       - name: Publish the GitHub release and the tag (from main)
         if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.versions.outputs.publish == 'true'
         env:
@@ -328,8 +340,12 @@ jobs:
           set -euo pipefail
           version="$(node -p "require('./package.json').version")"
           node scripts/release-notes.mjs "$version" > /tmp/release-notes.md
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          if ! git -c "http.https://github.com/.extraheader=$auth" ls-remote --exit-code --tags origin "refs/tags/v$version" > /dev/null; then
+            git -c "http.https://github.com/.extraheader=$auth" push origin "$GITHUB_SHA:refs/tags/v$version"
+          fi
           gh release create "v$version" \
-            --target "$GITHUB_SHA" \
+            --verify-tag \
             --title "v$version" \
             --notes-file /tmp/release-notes.md
 

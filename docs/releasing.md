@@ -413,6 +413,17 @@ including what it costs a reader pinning with a tilde, is in
    `@trazum/mcp` and updates the MCP registry listing, which was the last
    manual step until 1.80.2. No tag to type, no second step to remember.
 
+   **If the packages published and the tag or the release did not**, run the
+   `backfill-releases` workflow from the Actions tab with `version`, `commit`
+   (the merge that set that version, checked against its `package.json`) and
+   `latest` ticked when it is the newest release. It pushes the tag with the
+   workflow's token and creates the release on it. That is what 2.7.2 needed:
+   the next pull request merged while the Release run was working, and the
+   releases API refused to create a tag on a commit that was no longer main's
+   head. The run now pushes the tag over git first, so a merge during a run no
+   longer costs the release, but waiting for the run to finish before merging
+   the next pull request is still the simpler habit.
+
    A pushed tag still works as the manual override — for re-running a release
    whose publish failed, or releasing a commit that is not the newest merge:
 
