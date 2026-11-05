@@ -44,7 +44,8 @@ export type SecurityEvent =
   | 'share.created'
   | 'share.revoked'
   | 'admin.access'
-  | 'access.refused';
+  | 'access.refused'
+  | 'input.refused';
 
 export type SecurityReason =
   | 'cancelled'
@@ -56,7 +57,10 @@ export type SecurityReason =
   | 'not_signed_in'
   | 'cross_origin'
   | 'not_admin'
-  | 'not_owner';
+  | 'not_owner'
+  | 'not_json'
+  | 'invalid_json'
+  | 'invalid_input';
 
 export interface SecurityLine {
   type: 'security';
@@ -105,6 +109,69 @@ export function securityEvent(
   } catch {
     // Swallowed on purpose, see above.
   }
+}
+
+/**
+ * Requests refused for what they sent (OWASP ASVS 4.0.3 7.1.3): a body that
+ * does not say it is JSON, a body that will not parse, and a value a route
+ * will not take. One `input.refused` line each, with a reason, the route and,
+ * on a signed-in route, the account.
+ *
+ * **Never the message the route answered with.** Those quote the input on
+ * purpose, so a person can see what to fix: an unknown rule's name, a model
+ * id, a prompt name that is already taken. In a log the same sentence is the
+ * prompt text this product promises not to keep. The reason is one of three
+ * codes and nothing else.
+ *
+ * **Every refusal, by construction.** A route that reads a body exports its
+ * handlers through `logsRefusedInput`, which looks at the response and writes
+ * the line for any 400, 413, 415 or 422, so a refusal added to a route later
+ * is recorded without anybody remembering to. `security-log.test.mjs` holds
+ * every such route to the wrapper.
+ */
+const callers = new WeakMap<Request, string>();
+const unreadable = new WeakSet<Response>();
+
+/**
+ * Names the account a request came from, for a refusal recorded later in the
+ * same request. Called once the session has been resolved; the request is
+ * the key, so nothing outlives it.
+ */
+export function attributeRequest(request: Request, userId: string): void {
+  callers.set(request, userId);
+}
+
+/**
+ * Marks a refusal as a body that would not parse, the deserialization failure
+ * ASVS 7.1.3 names, rather than a value the route would not take.
+ */
+export function unreadableBody<R extends Response>(response: R): R {
+  unreadable.add(response);
+  return response;
+}
+
+/** Why a response refused its request's input, or `null` when it did not. */
+export function inputRefusal(response: Response): SecurityReason | null {
+  if (unreadable.has(response)) return 'invalid_json';
+  if (response.status === 415) return 'not_json';
+  if (response.status === 400 || response.status === 413 || response.status === 422) return 'invalid_input';
+  return null;
+}
+
+/**
+ * A route handler that writes an `input.refused` line whenever it refuses
+ * what it was sent. The handler's own answer goes back unchanged, and a
+ * handler that throws still throws: that is `onRequestError`'s to record.
+ */
+export function logsRefusedInput<Rest extends unknown[]>(
+  handler: (request: Request, ...rest: Rest) => Promise<Response>,
+): (request: Request, ...rest: Rest) => Promise<Response> {
+  return async (request, ...rest) => {
+    const response = await handler(request, ...rest);
+    const reason = inputRefusal(response);
+    if (reason) securityEvent('input.refused', 'failure', { reason, userId: callers.get(request), route: routeOf(request) });
+    return response;
+  };
 }
 
 /**

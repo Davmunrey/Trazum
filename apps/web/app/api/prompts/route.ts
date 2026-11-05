@@ -9,6 +9,7 @@ import {
 } from '../../../lib/prompts/api';
 import { MAX_PROMPTS_PER_OWNER } from '../../../lib/store/prompts';
 import { saysJson } from '../../../lib/request-body';
+import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
 
 export const runtime = 'nodejs';
 
@@ -22,7 +23,7 @@ export const runtime = 'nodejs';
  * compiler will not let you treat as one.
  */
 
-export async function GET(request: Request): Promise<Response> {
+async function handleGet(request: Request): Promise<Response> {
   const caller = await requireCaller(request, { write: false });
   if (caller instanceof Response) return caller;
 
@@ -30,7 +31,7 @@ export async function GET(request: Request): Promise<Response> {
   return privateJson({ prompts: prompts.map(summaryJson) });
 }
 
-export async function POST(request: Request): Promise<Response> {
+async function handlePost(request: Request): Promise<Response> {
   const caller = await requireCaller(request, { write: true });
   if (caller instanceof Response) return caller;
 
@@ -40,7 +41,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     body = (await request.json()) as typeof body;
   } catch {
-    return privateJson({ error: 'invalid JSON' }, 400);
+    return unreadableBody(privateJson({ error: 'invalid JSON' }, 400));
   }
 
   const name = parseName(body.name);
@@ -84,3 +85,6 @@ export async function POST(request: Request): Promise<Response> {
   // gets on create is the same shape it gets on read, produced by the same code.
   return privateJson({ prompt: full && promptJson(full) }, 201);
 }
+
+export const GET = logsRefusedInput(handleGet);
+export const POST = logsRefusedInput(handlePost);

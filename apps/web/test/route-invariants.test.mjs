@@ -63,12 +63,23 @@ const METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];
  * mistake this repository has now made three times: an unbounded slice makes
  * every later function's text count as this one's, so a guard passes because
  * some *other* handler in the file does the right thing.
+ *
+ * Two forms: `export async function POST(` and, in a route that logs refused
+ * input, `export const POST = logsRefusedInput(handlePost);` with the body in
+ * `async function handlePost(`. The second form puts several handlers next to
+ * each other with no `export` between them, so a body ends at the next
+ * top-level declaration of any kind, not only the next export.
  */
 function handlerBody(source, method) {
-  const start = source.indexOf(`export async function ${method}(`);
-  if (start === -1) return null;
+  let start = source.indexOf(`export async function ${method}(`);
+  if (start === -1) {
+    const wrapped = source.match(new RegExp(`^export const ${method} = \\w+\\((\\w+)\\);$`, 'm'));
+    if (!wrapped) return null;
+    start = source.search(new RegExp(`^async function ${wrapped[1]}\\(`, 'm'));
+    if (start === -1) return null;
+  }
   const rest = source.slice(start + 1);
-  const end = rest.indexOf('\nexport ');
+  const end = rest.search(/\n(?=export |async function |function |const |let |type |interface |class )/);
   return end === -1 ? rest : rest.slice(0, end);
 }
 

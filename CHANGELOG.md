@@ -76,6 +76,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **A line for every request the web app refuses for what it sent.** A body
+  that does not say it is JSON, one that will not parse, and a value a route
+  will not take each write an `input.refused` security line with the reason
+  (`not_json`, `invalid_json`, `invalid_input`), the route and, on a signed-in
+  route, the account's internal id. Never the answer, which quotes the input
+  so a person can see what to fix: an unknown rule's name or a prompt name
+  would otherwise reach the log. Every route that reads a body exports its
+  handlers through one wrapper that records any 400, 413, 415 or 422 it
+  answers, so a refusal added later is recorded without anybody remembering
+  to; a test holds every such route to the wrapper and every parse failure to
+  its mark, and requires any other 400 (the GitHub callback's) to be a
+  decision already written down. The account deletion answers a body that
+  will not parse with its own message now, instead of asking for the login.
+  Eight planted faults were each caught, from a wrapper that writes nothing to
+  an answer copied into the line. OWASP ASVS 7.1.3 moves to met (119).
 - **Every GitHub release carries a bill of materials.** `trazum-v<version>.cdx.json`
   is a CycloneDX 1.5 document listing each workspace and every third-party
   package any of them needs at run time (150 today, 43 of them optional:

@@ -10,6 +10,7 @@ import {
 } from '../../../../lib/prompts/api';
 import { MAX_VERSIONS_PER_PROMPT } from '../../../../lib/store/prompts';
 import { saysJson } from '../../../../lib/request-body';
+import { logsRefusedInput, unreadableBody } from '../../../../lib/security-log';
 
 export const runtime = 'nodejs';
 
@@ -33,7 +34,7 @@ const NOT_FOUND = { error: 'no such prompt' };
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(request: Request, { params }: Params): Promise<Response> {
+async function handleGet(request: Request, { params }: Params): Promise<Response> {
   const caller = await requireCaller(request, { write: false });
   if (caller instanceof Response) return caller;
 
@@ -46,7 +47,7 @@ export async function GET(request: Request, { params }: Params): Promise<Respons
   return privateJson({ prompt: promptJson(prompt) });
 }
 
-export async function POST(request: Request, { params }: Params): Promise<Response> {
+async function handlePost(request: Request, { params }: Params): Promise<Response> {
   const caller = await requireCaller(request, { write: true });
   if (caller instanceof Response) return caller;
 
@@ -59,7 +60,7 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
   try {
     body = (await request.json()) as typeof body;
   } catch {
-    return privateJson({ error: 'invalid JSON' }, 400);
+    return unreadableBody(privateJson({ error: 'invalid JSON' }, 400));
   }
 
   const text = parseText(body.text);
@@ -106,7 +107,7 @@ export async function POST(request: Request, { params }: Params): Promise<Respon
   }
 }
 
-export async function PATCH(request: Request, { params }: Params): Promise<Response> {
+async function handlePatch(request: Request, { params }: Params): Promise<Response> {
   const caller = await requireCaller(request, { write: true });
   if (caller instanceof Response) return caller;
 
@@ -119,7 +120,7 @@ export async function PATCH(request: Request, { params }: Params): Promise<Respo
   try {
     body = (await request.json()) as typeof body;
   } catch {
-    return privateJson({ error: 'invalid JSON' }, 400);
+    return unreadableBody(privateJson({ error: 'invalid JSON' }, 400));
   }
 
   const name = parseName(body.name);
@@ -146,7 +147,7 @@ export async function PATCH(request: Request, { params }: Params): Promise<Respo
   return privateJson({ prompt: prompt && promptJson(prompt) });
 }
 
-export async function DELETE(request: Request, { params }: Params): Promise<Response> {
+async function handleDelete(request: Request, { params }: Params): Promise<Response> {
   const caller = await requireCaller(request, { write: true });
   if (caller instanceof Response) return caller;
 
@@ -158,3 +159,8 @@ export async function DELETE(request: Request, { params }: Params): Promise<Resp
 
   return new Response(null, { status: 204, headers: { 'cache-control': 'private, no-store' } });
 }
+
+export const GET = logsRefusedInput(handleGet);
+export const POST = logsRefusedInput(handlePost);
+export const PATCH = logsRefusedInput(handlePatch);
+export const DELETE = logsRefusedInput(handleDelete);

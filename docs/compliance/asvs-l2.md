@@ -40,7 +40,7 @@ gap is listed in the pack, and the summary below matches the rows.
 | V4 Access control | 9 | 7 | 0 | 0 | 1 | 1 |
 | V5 Validation, sanitisation and encoding | 30 | 16 | 1 | 0 | 0 | 13 |
 | V6 Stored cryptography | 13 | 6 | 0 | 0 | 3 | 4 |
-| V7 Error handling and logging | 12 | 9 | 2 | 0 | 1 | 0 |
+| V7 Error handling and logging | 12 | 10 | 1 | 0 | 1 | 0 |
 | V8 Data protection | 15 | 6 | 6 | 0 | 1 | 2 |
 | V9 Communication | 7 | 4 | 0 | 0 | 3 | 0 |
 | V10 Malicious code | 5 | 2 | 1 | 0 | 1 | 1 |
@@ -48,7 +48,7 @@ gap is listed in the pack, and the summary below matches the rows.
 | V12 Files and resources | 15 | 5 | 0 | 0 | 0 | 10 |
 | V13 API and web services | 13 | 7 | 2 | 0 | 0 | 4 |
 | V14 Configuration | 23 | 17 | 4 | 0 | 0 | 2 |
-| **Total** | **259** | **118** | **36** | **0** | **16** | **89** |
+| **Total** | **259** | **119** | **35** | **0** | **16** | **89** |
 
 Most of V2 is not applicable for one reason: Trazum has no passwords. Signing
 in is delegated to GitHub, so the password, its storage, its recovery and any
@@ -251,7 +251,7 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | --- | --- | --- | --- |
 | 7.1.1 | No credentials or tokens in logs | Met | The log vocabulary has no field for them (`apps/web/lib/security-log.ts`); a test plants each in a request and searches every line (`apps/web/test/security-log.test.mjs`). |
 | 7.1.2 | No other sensitive data in logs | Met | No login, address, share token or prompt text; internal ids only (`apps/web/lib/security-log.ts`). |
-| 7.1.3 | Security events logged | Partial | Sign-ins, sign-outs, exports, deletions, shares and every access refusal (`apps/web/lib/security-log.ts`); a request refused for invalid input (400) is not logged. |
+| 7.1.3 | Security events logged | Met | Sign-ins, sign-outs, exports, deletions, shares, every access refusal, and every request refused for what it sent: a body that is not JSON, one that will not parse, a value a route will not take (`apps/web/lib/security-log.ts`). Every route that reads a body exports its handlers through one wrapper that records any 400, 413, 415 or 422, and `apps/web/test/security-log.test.mjs` holds every such route to it; the line never carries the answer, which quotes the input. |
 | 7.1.4 | Each event carries what an investigation needs | Met | UTC time, event, outcome, internal user id, route and reason code (`apps/web/lib/security-log.ts`). |
 | 7.2.1 | Authentication decisions logged | Partial | Every sign-in, with the reason for each refusal (`apps/web/app/api/auth/github/callback/route.ts`); a lookup that finds no live session on `/api/auth/session` is answered without a line. |
 | 7.2.2 | Failed access control decisions logged | Met | Every refusal is an `access.refused` line with its reason (`apps/web/lib/prompts/api.ts`, `apps/web/lib/security-log.ts`). |

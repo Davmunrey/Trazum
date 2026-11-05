@@ -5,7 +5,7 @@ import {
   currentUser,
   safeEqual,
 } from '../../../lib/auth/session';
-import { routeOf, securityEvent } from '../../../lib/security-log';
+import { attributeRequest, logsRefusedInput, routeOf, securityEvent, unreadableBody } from '../../../lib/security-log';
 import { shareUrl } from '../../../lib/shares/api';
 import { getStore } from '../../../lib/store';
 import { saysJson } from '../../../lib/request-body';
@@ -33,7 +33,7 @@ export const runtime = 'nodejs';
  * terminal. Requiring the login in the request body means the check is a rule
  * this route keeps rather than a dialog it hopes somebody read.
  */
-export async function DELETE(request: Request): Promise<Response> {
+async function handleDelete(request: Request): Promise<Response> {
   const config = authConfig();
   if (!config.enabled) return authDisabled(config);
 
@@ -67,6 +67,7 @@ export async function DELETE(request: Request): Promise<Response> {
     securityEvent('account.deleted', 'failure', { reason: 'not_signed_in', route: routeOf(request) });
     return jsonError('sign in to delete your account', 401);
   }
+  attributeRequest(request, user.id);
 
   if (!saysJson(request)) return jsonError('send the confirmation as JSON, with content-type: application/json', 415);
 
@@ -74,7 +75,7 @@ export async function DELETE(request: Request): Promise<Response> {
   try {
     confirm = ((await request.json()) as { confirm?: unknown })?.confirm;
   } catch {
-    confirm = undefined;
+    return unreadableBody(jsonError('send the confirmation as JSON: {"confirm": "<your login>"}', 400));
   }
 
   /**
@@ -126,7 +127,7 @@ export async function DELETE(request: Request): Promise<Response> {
  * and offered as a download. A `GET` needs no same-origin check: another site
  * can send one, but without CORS it can never read the answer.
  */
-export async function GET(request: Request): Promise<Response> {
+async function handleGet(request: Request): Promise<Response> {
   const config = authConfig();
   if (!config.enabled) return authDisabled(config);
   const route = routeOf(request);
@@ -208,3 +209,6 @@ export async function GET(request: Request): Promise<Response> {
     },
   });
 }
+
+export const DELETE = logsRefusedInput(handleDelete);
+export const GET = logsRefusedInput(handleGet);
