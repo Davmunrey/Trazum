@@ -44,6 +44,31 @@ describe('the OTLP converter prices GenAI spans', () => {
     assert.equal(looksLikeOtel(JSON.stringify({ model: 'claude-sonnet-5', usage: {} })), false);
   });
 
+  it('recognises one pretty-printed, as NDJSON, and with a first line longer than it reads', () => {
+    assert.equal(looksLikeOtel(JSON.stringify(JSON.parse(otlp(span())), null, 2)), true);
+    assert.equal(looksLikeOtel([otlp(span()), otlp(span())].join('\n')), true);
+    const long = otlp(...Array.from({ length: 200 }, () => span()));
+    assert.ok(long.length > 8192);
+    assert.equal(looksLikeOtel(long), true);
+  });
+
+  it('does not claim a transcript that only talks about telemetry', () => {
+    /*
+      A Claude Code transcript of somebody working on OTel names both words in
+      its first prompt. Claimed by this and by the Claude Code reader, it was
+      refused as ambiguous and its whole session left the bill.
+    */
+    const transcript = [
+      JSON.stringify({ type: 'user', message: { role: 'user', content: 'Read resourceSpans and every gen_ai.usage.input_tokens attribute.' } }),
+      JSON.stringify({
+        type: 'assistant', requestId: 'req_1', sessionId: 's', timestamp: '2026-11-05T10:00:00Z',
+        message: { model: 'claude-opus-5', content: [{ type: 'text', text: '{"resourceSpans": []}' }], usage: { input_tokens: 10, output_tokens: 5 } },
+      }),
+    ].join('\n');
+    assert.equal(looksLikeOtel(transcript), false);
+    assert.equal(looksLikeOtel('{"note": "gen_ai.request.model is the key"}'), false);
+  });
+
   it('converts an LLM span into a usage-log record the profiler prices', () => {
     const out = otelRecords(otlp(span()));
     assert.equal(out.llmSpans, 1);

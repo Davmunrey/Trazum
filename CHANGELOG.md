@@ -11,7 +11,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **A session's subagents were billed under projects that never existed.**
+  Claude Code writes a subagent's transcript into the session's own folder,
+  `<project>/<session>/subagents/…`, and a workflow's agents into
+  `…/subagents/workflows/wf_<id>/`. `bill` and `from-claude-code` labelled a
+  transcript by its parent folder, so that spend went under `subagents` or
+  `wf_<id>`: measured on this repository's own transcripts, $137 of a $569
+  bill under six `wf_` names. The project is now the folder above the nearest
+  one that has a transcript of its own name beside it, which is how Claude
+  Code lays a session out; a session's own transcript is labelled as before.
+- **A Claude Code transcript that talked about telemetry was left out of the
+  bill.** `looksLikeOtel` claimed any text with `resourceSpans` or `gen_ai.` in
+  its first 8 KB, and somebody working on OpenTelemetry says both in their
+  first prompt. `bill` saw the file claimed twice and refused it as ambiguous,
+  and the web Bill tab, which asks about OTel first, read it as an export with
+  no spans: either way the session's spend was gone. The detector now reads
+  the document's structure, the OTLP envelope (`resourceSpans` as a top-level
+  array), which is the only thing the OTel reader ever converted. Found on this
+  repository's own transcripts, where it dropped one subagent's file.
+
+### Changed
+
+- **The files a Claude Code session keeps beside its transcripts are counted
+  once.** Each subagent's `.meta.json` and `.prefix.json`, a workflow's
+  `journal.jsonl` and script, and tool output too long for the transcript were
+  each named as a file no shape claims: 152 of them on this repository's own
+  folder, which made a first bill look like a run that had gone wrong. Inside
+  the folder of a session that was read, they are now one line saying they are
+  not usage. A file anywhere else is still named.
 
 ## 2.7.5 — 2026-11-05
 

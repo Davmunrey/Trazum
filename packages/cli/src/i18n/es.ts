@@ -2161,6 +2161,8 @@ ${bold('EJEMPLOS')}
     labelledByProject: (files) =>
       `${files} archivo(s) de sesión etiquetado(s) por su carpeta de proyecto. --label pone una sola etiqueta, --no-label-from-project los deja sin etiqueta.`,
     unknownMore: (count) => `${count} archivo(s) más que ninguna forma reclama, sin adivinar y fuera de la factura.`,
+    sessionSideFiles: (count) =>
+      `${count} archivo(s) que Claude Code guarda dentro de las carpetas de sus sesiones (metadatos de subagentes, diarios de workflows, salidas largas de herramientas) no son uso, y se han pasado por alto.`,
     shapeSummary: (shape, files, records, leftOut) =>
       `${files} archivo(s): ${shape}${records === null ? ', leídos tal cual' : `, ${records} registro(s)`}${leftOut > 0 ? `, ${leftOut} fila(s) fuera. trazum from-${shape} sobre un archivo dice por qué.` : '.'}`,
     statementHeading: () => 'Tu factura',

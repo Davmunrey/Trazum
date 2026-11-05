@@ -3197,6 +3197,21 @@ be undone. `--label` sets one label for everything instead, and
 transcripts is summarised in one line per shape rather than one per file, and
 the files no shape claims are named for the first three and counted after.
 
+**A session's subagents are billed under its project** (since 2.7.6). Claude
+Code writes each subagent's transcript into a folder named after the session,
+`<project>/<session>/subagents/…/agent-<id>.jsonl`, and a workflow's agents one
+level further down, `…/subagents/workflows/wf_<id>/`. Their parent folder is
+`subagents` or `wf_<id>`, and labelling by it had filed that spend under
+projects that never existed: on this repository's own transcripts, a quarter
+of the bill under six `wf_` names. The project is now found the way Claude Code
+lays it out, not by a name: the nearest folder with a transcript of its own
+name beside it is the session's, and the project is the folder above it.
+`from-claude-code` labels the same way. The files a session keeps in that
+folder besides transcripts (each subagent's `.meta.json` and `.prefix.json`, a
+workflow's `journal.jsonl` and script, tool output too long for the transcript)
+are counted in one line as not usage, rather than named one by one as files no
+shape claims; a file anywhere else is still named.
+
 It reads every file and directory it is given (`.json`, `.jsonl`, `.ndjson`
 and `.log`, gzipped or not, the same names `trazum profile` reads), so a
 shell glob prices every file it expands to and a file named twice is read

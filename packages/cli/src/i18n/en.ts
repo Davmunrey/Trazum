@@ -2131,6 +2131,8 @@ ${bold('EXAMPLES')}
     labelledByProject: (files) =>
       `${files} session file(s) labelled by their project folder. --label sets one label instead, --no-label-from-project leaves them unlabelled.`,
     unknownMore: (count) => `${count} more file(s) no shape claims, not guessed at and not in the bill.`,
+    sessionSideFiles: (count) =>
+      `${count} file(s) Claude Code keeps inside its sessions' folders (subagent metadata, workflow journals, long tool output) are not usage, and were passed over.`,
     shapeSummary: (shape, files, records, leftOut) =>
       `${files} file(s): ${shape}${records === null ? ', read as they are' : `, ${records} record(s)`}${leftOut > 0 ? `, ${leftOut} row(s) left out. trazum from-${shape} on a file says why.` : '.'}`,
     statementHeading: () => 'Your bill',
