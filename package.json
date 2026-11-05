@@ -17,8 +17,9 @@
   },
   "scripts": {
     "build": "npm run build -w @trazum/core && npm run build -w @trazum/cli && npm run build -w @trazum/mcp && npm run build -w @trazum/tokenizer-openai && npm run build -w trazum-vscode",
-    "test": "npm run test -w @trazum/core && npm run test -w @trazum/cli && npm run test -w @trazum/mcp && npm run test -w @trazum/tokenizer-openai && npm run test -w trazum-vscode && npm run test -w @trazum/web && npm run test:action && npm run test:agents",
+    "test": "npm run test -w @trazum/core && npm run test -w @trazum/cli && npm run test -w @trazum/mcp && npm run test -w @trazum/tokenizer-openai && npm run test -w trazum-vscode && npm run test -w @trazum/web && npm run test:action && npm run test:agents && npm run test:release",
     "test:agents": "node --test test/agent-workflow.test.mjs test/task-stress.test.mjs test/privacy-probe.test.mjs",
+    "test:release": "node --test test/sbom.test.mjs",
     "typecheck": "npm run typecheck -w @trazum/core && npm run typecheck -w @trazum/cli && npm run typecheck -w @trazum/mcp && npm run typecheck -w @trazum/tokenizer-openai && npm run typecheck -w trazum-vscode && npm run typecheck -w @trazum/web",
     "verify": "npm run build && npm run test && npm run typecheck && npm run build:web",
     "verify:packages": "node scripts/verify-packed-release.mjs",

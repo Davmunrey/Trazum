@@ -86,11 +86,12 @@ The pieces individually, if you want a faster loop:
 
 ```bash
 npm run build      # core, the CLI, the MCP server, the OpenAI tokenizer and the editor extension
-npm test           # core, the CLI, MCP, the tokenizer, the editor extension, the web app, the Action and agent workflows
+npm test           # core, the CLI, MCP, the tokenizer, the editor extension, the web app, the Action, agent workflows and the release's bill of materials
 npm run typecheck  # all six workspaces
 npm run build:web  # the Next.js app
 npm run test:action  # the packaged Action on its own, without the rest
 npm run test:agents  # real CLI/MCP workflows on synthetic logs; run build first
+npm run test:release # the bill of materials each release attaches, checked against npm's own view of the tree
 ```
 
 Two that write files rather than check them:
