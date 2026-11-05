@@ -2064,7 +2064,9 @@ ${bold('EJEMPLOS')}
     unnamedModel: (count) =>
       `${count} fila(s) no nombraron modelo y no están en la salida: el informe no se agrupó por modelo, así que nada en la fila dice qué respondió. Añade group_by[]=model a la petición.`,
     nonStandardTier: (count) =>
-      `${count} fila(s) se facturaron en un tramo para el que una tarifa de catálogo no es la tarifa (batch, priority, flex) y no están en la salida. Cobrarlas a la tarifa estándar inflaría la factura y parecería correcto.`,
+      `${count} fila(s) se facturaron en un tramo que ninguna tarifa publicada aquí cubre (priority, flex, o batch en un modelo sin tarifa batch) y no están en la salida. Cobrarlas a la tarifa estándar sería adivinar sin forma de comprobarlo.`,
+    batchPriced: (count) =>
+      `${count} fila(s) corrieron en la Batch API y se cobran a la tarifa batch del modelo, la mitad de la estándar, como la publica la página de precios.`,
     tierUnknown: () =>
       'El informe no nombró ningún tramo de servicio, así que una fila batch y una estándar son indistinguibles aquí. Todo se leyó como estándar. Añade group_by[]=service_tier si parte de este uso va por lotes.',
     fastPriced: (count) =>
@@ -2109,7 +2111,9 @@ ${bold('EJEMPLOS')}
     unnamedModel: (count) =>
       `${count} fila(s) no nombraron modelo y no están en la salida: el informe no se agrupó por modelo, así que nada en la fila dice qué respondió. Añade group_by[]=model a la petición.`,
     batch: (count) =>
-      `${count} fila(s) eran trabajos por lotes y no están en la salida: batch se factura con descuento, y cobrarlo a tarifa de catálogo inflaría la factura y parecería correcto.`,
+      `${count} fila(s) eran trabajos por lotes en un modelo para el que Trazum no tiene tarifa batch, y no están en la salida: batch se factura con descuento, y cobrarlo a la tarifa estándar inflaría la factura y parecería correcto.`,
+    batchPriced: (count) =>
+      `${count} fila(s) eran trabajos por lotes y se cobran a la tarifa batch del modelo, la mitad de la estándar, como la publica la página de precios.`,
     batchUnknown: () =>
       'El informe nunca dijo si algo fue batch, así que una fila por lotes y una estándar son indistinguibles aquí. Todo se leyó como estándar. Añade group_by[]=batch si parte de este uso va por lotes.',
     nonDefaultTier: (count, tiers) =>

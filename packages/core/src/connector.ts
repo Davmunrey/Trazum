@@ -540,10 +540,14 @@ export function bucketedProfile(
      * them reads as standard, as it always did.
      */
     const group = bucket.group;
-    const how: { speed?: string; serviceTier?: string; inferenceGeo?: string } = {};
+    const how: { speed?: string; serviceTier?: string; inferenceGeo?: string; batch?: boolean } = {};
+    /* The Batch API at the row's batch ratio, where the row has one. */
+    const batchRate = multipliersFor(model).batch !== null;
     if (pull.provider === 'anthropic') {
       const tier = group.service_tier;
-      if (tier !== undefined && tier !== 'standard') {
+      if (tier === 'batch' && batchRate) {
+        how.batch = true;
+      } else if (tier !== undefined && tier !== 'standard') {
         leave(bucket, tier);
         continue;
       }
@@ -558,11 +562,14 @@ export function bucketedProfile(
       if (group.inference_geo !== undefined) how.inferenceGeo = group.inference_geo;
     } else if (pull.provider === 'openai') {
       if (group.batch === 'true') {
-        leave(bucket, 'batch');
-        continue;
+        if (!batchRate) {
+          leave(bucket, 'batch');
+          continue;
+        }
+        how.batch = true;
       }
       const tier = group.service_tier;
-      if (tier !== undefined && tier !== 'default') {
+      if (tier !== undefined && tier !== 'default' && !(how.batch === true && tier === 'batch')) {
         const named = serviceTierOf(tier);
         if (named === undefined || model.serviceTiers?.[named] === undefined) {
           leave(bucket, tier);

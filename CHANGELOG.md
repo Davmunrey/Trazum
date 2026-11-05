@@ -11,7 +11,19 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **A batch call was billed at twice its cost, and a usage report's batch rows
+  were left out of the bill.** Both providers sell the Batch API at half the
+  standard price, with caching on top of the batch rate. Anthropic's response
+  says so in `usage.service_tier: "batch"`, and Trazum ignored it; `from-anthropic`,
+  `from-openai` and `trazum connect` refused every batch row because there was
+  no rate to price it at. There is: each catalogue row's batch ratio, which the
+  batch advisory already quotes and `price-drift.mjs` checks against both
+  providers' batch tables every week. A batch call or row is now priced at it,
+  long band and US-only multiplier included; Anthropic priority and flex rows,
+  whose rates no page publishes, and batch on a model with no batch API, are
+  still left out and named. A record from any source can say `batch: true`.
 
 ## 2.7.3 — 2026-11-05
 

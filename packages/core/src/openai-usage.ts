@@ -94,7 +94,7 @@
  * absence and no second reading to derive.
  */
 
-import { BUNDLED_CATALOGUE, serviceTierOf } from './pricing.js';
+import { BUNDLED_CATALOGUE, multipliersFor, serviceTierOf } from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 
 /** One project, and the label the operator gives it. Matched exactly. */
@@ -121,6 +121,8 @@ export interface OpenaiUsageRecord {
    * the default tier.
    */
   service_tier?: string;
+  /** True when the row ran on the Batch API: billed at the row's batch ratio. */
+  batch?: true;
   usage: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -143,8 +145,10 @@ export interface OpenaiUsageConversion {
   requests: number;
   /** Results with `model: null`, which nothing can price. */
   unnamedModel: number;
-  /** Results with `batch: true`, billed at a discount no catalogue rate is. */
+  /** Results with `batch: true` on a model with no batch rate, left out. */
   batch: number;
+  /** Results with `batch: true` that became records priced at the row's batch ratio. */
+  batchRows: number;
   /** Whether any result said whether it was batch at all. */
   batchNamed: boolean;
   /**
@@ -229,6 +233,7 @@ export function openaiUsageRecords(
     requests: 0,
     unnamedModel: 0,
     batch: 0,
+    batchRows: 0,
     batchNamed: false,
     nonDefaultTier: 0,
     tiersRefused: [],
@@ -267,6 +272,7 @@ export function openaiUsageRecords(
   let unnamedModel = 0;
   let batch = 0;
   let batchNamed = false;
+  let batchRows = 0;
   let nonDefaultTier = 0;
   let serviceTierRows = 0;
   let tierNamed = false;
@@ -295,18 +301,28 @@ export function openaiUsageRecords(
       if (result === null) continue;
       requests += count(result.num_model_requests);
 
+      /*
+        A batch job is billed at the row's batch ratio, half the standard rate,
+        which the pricing page publishes as its own table and `price-drift.mjs`
+        checks weekly. A batch row on a model with no batch rate is left out.
+      */
+      let batchRow = false;
       if (typeof result.batch === 'boolean') {
         batchNamed = true;
         if (result.batch) {
-          batch += 1;
-          continue;
+          const row = typeof result.model === 'string' ? catalogue.byId.get(result.model) : undefined;
+          if (row === undefined || multipliersFor(row).batch === null) {
+            batch += 1;
+            continue;
+          }
+          batchRow = true;
         }
       }
 
       let serviceTier: string | undefined;
       if (typeof result.service_tier === 'string') {
         tierNamed = true;
-        if (result.service_tier !== 'default') {
+        if (result.service_tier !== 'default' && !(batchRow && result.service_tier === 'batch')) {
           /*
             Priced only from a table that exists for this model at this tier.
             The response path falls back to the standard rate for a tier with
@@ -390,6 +406,7 @@ export function openaiUsageRecords(
         ...(label === undefined ? {} : { label }),
         ...requestsField(result.num_model_requests),
         ...(serviceTier === undefined ? {} : { service_tier: serviceTier }),
+        ...(batchRow ? { batch: true as const } : {}),
         usage: {
           prompt_tokens: prompt,
           completion_tokens: completion,
@@ -404,6 +421,7 @@ export function openaiUsageRecords(
         },
       });
       rows += 1;
+      if (batchRow) batchRows += 1;
       if (serviceTier !== undefined) {
         serviceTierRows += 1;
         tiersPriced.add(serviceTier);
@@ -419,6 +437,7 @@ export function openaiUsageRecords(
     unnamedModel,
     batch,
     batchNamed,
+    batchRows,
     nonDefaultTier,
     tiersRefused: [...tiersRefused],
     serviceTierRows,

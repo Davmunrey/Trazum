@@ -2034,7 +2034,9 @@ ${bold('EXAMPLES')}
     unnamedModel: (count) =>
       `${count} row(s) named no model and are not in the output: the report was not grouped by model, so nothing on the row says what answered. Add group_by[]=model to the request.`,
     nonStandardTier: (count) =>
-      `${count} row(s) were billed at a tier a catalogue rate is not the rate for (batch, priority, flex) and are not in the output. Pricing them from the standard rate would overstate the bill and look right doing it.`,
+      `${count} row(s) were billed at a tier no published rate here prices (priority, flex, or batch on a model with no batch rate) and are not in the output. Pricing them from the standard rate would be a guess nobody can check.`,
+    batchPriced: (count) =>
+      `${count} row(s) ran on the Batch API and are priced at the model's batch rate, half the standard one, as the pricing page publishes it.`,
     tierUnknown: () =>
       'The report never named a service tier, so a batch row and a standard row are indistinguishable here. Everything was read as standard. Add group_by[]=service_tier if any of this usage is batched.',
     fastPriced: (count) =>
@@ -2079,7 +2081,9 @@ ${bold('EXAMPLES')}
     unnamedModel: (count) =>
       `${count} row(s) named no model and are not in the output: the report was not grouped by model, so nothing on the row says what answered. Add group_by[]=model to the request.`,
     batch: (count) =>
-      `${count} row(s) were batch jobs and are not in the output: batch is billed at a discount, and pricing it from a catalogue rate would overstate the bill and look right doing it.`,
+      `${count} row(s) were batch jobs on a model Trazum has no batch rate for, and are not in the output: batch is billed at a discount, and pricing it from the standard rate would overstate the bill and look right doing it.`,
+    batchPriced: (count) =>
+      `${count} row(s) were batch jobs and are priced at the model's batch rate, half the standard one, as the pricing page publishes it.`,
     batchUnknown: () =>
       'The report never said whether anything was batch, so a batch row and a standard row are indistinguishable here. Everything was read as standard. Add group_by[]=batch if any of this usage is batched.',
     nonDefaultTier: (count, tiers) =>

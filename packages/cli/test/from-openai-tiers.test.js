@@ -79,3 +79,25 @@ it('bill prices a Flex row below the same row at the default tier', (t) => {
   assert.ok(atFlex.usd > 0);
   assert.ok(atFlex.usd < atStandard.usd, `Flex ${atFlex.usd} is not below standard ${atStandard.usd}`);
 });
+
+it('bill prices a batch row at half the same row run synchronously', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'trazum-openai-tiers-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const batch = join(dir, 'batch.json');
+  const standard = join(dir, 'standard.json');
+  writeFileSync(batch, report([{ ...row('gpt-5.4', 'default'), batch: true }]));
+  writeFileSync(standard, report([{ ...row('gpt-5.4', 'default'), batch: false }]));
+
+  const billed = (path) => {
+    const result = run('bill', path);
+    assert.equal(result.status, 0, result.stderr);
+    return JSON.parse(result.stdout).total;
+  };
+  const atBatch = billed(batch);
+  const atStandard = billed(standard);
+  assert.equal(atBatch.calls, 1, 'the batch row was left out of the bill');
+  assert.ok(Math.abs(atBatch.usd - atStandard.usd / 2) < 1e-9, `batch ${atBatch.usd} is not half of ${atStandard.usd}`);
+
+  const converted = run('from-openai', batch, '--locale', 'en');
+  assert.match(converted.stderr, /1 row\(s\) were batch jobs and are priced at the model's batch rate/);
+});

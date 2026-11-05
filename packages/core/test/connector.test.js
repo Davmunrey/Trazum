@@ -271,11 +271,14 @@ describe('the tiers the usage report names', () => {
     close(total({ data: [anthropicBucket({ speed: 'fast', inference_geo: 'us' })] }), 4.4, 'fast and US-only');
   });
 
-  it('leaves an Anthropic batch row, or a fast row with no fast rate, out and names it', () => {
+  it('prices an Anthropic batch row at half, and leaves priority, or a fast row with no fast rate, out and names it', () => {
     const batch = { data: [anthropicBucket({ service_tier: 'batch' }), anthropicBucket({ service_tier: 'standard' })] };
-    close(total(batch), 2, 'the standard row only');
-    assert.deepEqual(leftOut(batch).length, 1);
-    assert.match(leftOut(batch)[0], /1 row\(s\) of claude-opus-5 ran at batch, which no catalogue rate here is the rate for, and 240,000 token\(s\) were left out/);
+    close(total(batch), 2 + 1, 'the standard row and the batch row at half');
+    assert.deepEqual(leftOut(batch), []);
+
+    const priority = { data: [anthropicBucket({ service_tier: 'priority' }), anthropicBucket({ service_tier: 'standard' })] };
+    close(total(priority), 2, 'the standard row only');
+    assert.match(leftOut(priority)[0], /1 row\(s\) of claude-opus-5 ran at priority, which no catalogue rate here is the rate for, and 240,000 token\(s\) were left out/);
 
     const fastless = { data: [anthropicBucket({ model: 'claude-sonnet-4-6', speed: 'fast' })] };
     close(total(fastless), 0, 'a fast row with no fast rate');
@@ -289,7 +292,7 @@ describe('the tiers the usage report names', () => {
     results: [{ model: 'gpt-5.4', input_tokens: 100_000, output_tokens: 100_000, num_model_requests: 40, ...over }],
   });
 
-  it('prices an OpenAI Flex row from its own table, and leaves batch and a tier with no table out', () => {
+  it('prices an OpenAI Flex row from its own table and a batch row at half, and leaves a tier with no table out', () => {
     const standard = total({ data: [openAiBucket({ service_tier: 'default', batch: false })] }, normalizeOpenAIUsage);
     const flex = total({ data: [openAiBucket({ service_tier: 'flex' })] }, normalizeOpenAIUsage);
     const model = BUNDLED_CATALOGUE.byId.get('gpt-5.4');
@@ -297,8 +300,8 @@ describe('the tiers the usage report names', () => {
     assert.ok(flex < standard, `Flex ${flex} is not below standard ${standard}`);
 
     const batch = { data: [openAiBucket({ batch: true })] };
-    close(total(batch, normalizeOpenAIUsage), 0, 'a batch row');
-    assert.match(leftOut(batch, normalizeOpenAIUsage)[0], /gpt-5\.4 ran at batch/);
+    close(total(batch, normalizeOpenAIUsage), standard / 2, 'a batch row');
+    assert.deepEqual(leftOut(batch, normalizeOpenAIUsage), []);
 
     const noTable = { data: [openAiBucket({ model: 'gpt-4o', service_tier: 'flex' })] };
     close(total(noTable, normalizeOpenAIUsage), 0, 'Flex on a model with no Flex table');

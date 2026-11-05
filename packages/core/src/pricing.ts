@@ -2467,6 +2467,8 @@ interface Rates {
   serviceTier?: ServiceTier;
   /** The geography whose published multiplier priced the call, when it was not global. */
   inferenceGeo?: InferenceGeo;
+  /** True when the call was billed at the row's batch ratio. */
+  batch?: true;
 }
 
 /**
@@ -2501,6 +2503,12 @@ export interface PromptSize {
    * only a geography the row publishes a multiplier for changes the price.
    */
   inferenceGeo?: string;
+  /**
+   * The call ran on the provider's Batch API: Anthropic's `usage.service_tier`
+   * `"batch"`, a batch result file's line, or a usage report's batch row.
+   * Billed at the row's batch ratio.
+   */
+  batch?: boolean;
 }
 
 /**
@@ -2516,6 +2524,26 @@ export function inferenceGeoOf(value: unknown): InferenceGeo | undefined {
 
 /** Rounded to a billionth of a dollar per million tokens, so 1.1x of $5 is $5.5 and not $5.500000000000001. */
 const scaled = (rate: number, factor: number): number => Math.round(rate * factor * 1e9) / 1e9;
+
+/** Every rate a call is billed at, multiplied by one published factor: the floor of an undecided band too. */
+function scaleRates(rates: Rates, factor: number): Rates {
+  return {
+    ...rates,
+    inputPerMTok: scaled(rates.inputPerMTok, factor),
+    outputPerMTok: scaled(rates.outputPerMTok, factor),
+    ...(rates.tier?.floor !== undefined
+      ? {
+          tier: {
+            ...rates.tier,
+            floor: {
+              inputPerMTok: scaled(rates.tier.floor.inputPerMTok, factor),
+              outputPerMTok: scaled(rates.tier.floor.outputPerMTok, factor),
+            },
+          },
+        }
+      : {}),
+  };
+}
 
 /**
  * A response's `service_tier` as the tier whose table prices it, or
@@ -2688,23 +2716,22 @@ export function effectivePricing(
     const geo = inferenceGeoOf(inferenceGeo);
     const factor = geo === undefined ? undefined : model.inferenceGeoMultipliers?.[geo];
     if (geo === undefined || factor === undefined) return rates;
-    return {
-      ...rates,
-      inputPerMTok: scaled(rates.inputPerMTok, factor),
-      outputPerMTok: scaled(rates.outputPerMTok, factor),
-      ...(rates.tier?.floor !== undefined
-        ? {
-            tier: {
-              ...rates.tier,
-              floor: {
-                inputPerMTok: scaled(rates.tier.floor.inputPerMTok, factor),
-                outputPerMTok: scaled(rates.tier.floor.outputPerMTok, factor),
-              },
-            },
-          }
-        : {}),
-      inferenceGeo: geo,
-    };
+    return { ...scaleRates(rates, factor), inferenceGeo: geo };
+  }
+  /*
+   * A call the provider ran on its Batch API is billed at the row's batch
+   * ratio, on input and output alike, and the cache multipliers apply on top
+   * of the batch input rate, as both providers' pages say. The ratio is the
+   * one the batch advisory quotes and `price-drift.mjs` checks against each
+   * batch table every week. A row with no batch API (`batch: null`) cannot
+   * have run one, so such a call keeps the standard price: a ceiling.
+   */
+  if (context.batch === true) {
+    const { batch: _batch, ...rest } = context;
+    const rates = effectivePricing(model, on, rest);
+    const ratio = multipliersFor(model, on).batch;
+    if (ratio === null) return rates;
+    return { ...scaleRates(rates, ratio), batch: true };
   }
   /* A call before a published price change is priced as it was billed then. */
   if (model.history !== undefined) {

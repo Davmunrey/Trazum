@@ -202,6 +202,14 @@ export interface UsageRecord {
    */
   inferenceGeo?: string;
   /**
+   * True when the call ran on the provider's Batch API, which bills it at the
+   * row's batch ratio (half the standard rate at Anthropic and OpenAI). Read
+   * from Anthropic's `usage.service_tier: "batch"`, which every Messages
+   * response carries, or from a record-level `batch: true`, which the usage
+   * report converters write for a batch row. Absent is not batch.
+   */
+  batch?: true;
+  /**
    * Set when an OpenAI-shaped line split its cache writes by lifetime and the
    * parts did not add up to the total. The lifetime is then unknown even on a
    * model whose unsplit writes are known to be the short kind.
@@ -999,6 +1007,14 @@ export function parseUsageLine(line: string): UsageRecord | null {
     ...(typeof usage.inference_geo === 'string' && usage.inference_geo !== ''
       ? { inferenceGeo: usage.inference_geo }
       : {}),
+    /*
+     * The Batch API, billed at half the standard rate by both providers.
+     * Anthropic names it in `usage.service_tier` ("standard", "priority" or
+     * "batch"); a converted usage report row says `batch: true`. OpenAI's
+     * response-level `service_tier` never says "batch", so the two readings
+     * cannot collide on a flat record.
+     */
+    ...(record.batch === true || usage.service_tier === 'batch' ? { batch: true as const } : {}),
     ...(openAiSplitGiven && !openAiSplitAgrees ? { writeSplitContradicted: true as const } : {}),
   };
 }
