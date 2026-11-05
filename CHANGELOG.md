@@ -67,7 +67,7 @@ merged commit with no entry is a change only `git log` remembers.
   and fast mode, 50 models in all, including the "Specialized models" table
   where the Codex and ChatGPT models are priced. A changed price, a model the catalogue
   lacks, or a page whose tables moved is a finding and fails the scheduled CI
-  run; on pull requests it is reported in the job summary. Freshness says how
+  run; on pull requests it is printed in the step's log. Freshness says how
   long ago a provider was read; this says whether its page has changed since.
   Three of the corrections in 2.7.1 were prices already published for weeks.
   It never writes a price. GPT-5.5 Cyber and the three Rosalind models are on

@@ -272,3 +272,13 @@ describe('the report and the script', () => {
     assert.match(workflow, /"\$EVENT" = "schedule" \]; then node scripts\/price-drift\.mjs;/);
   });
 });
+
+describe('markup in a cell', () => {
+  it('leaves no tag and no angle bracket, however the tags are nested', () => {
+    for (const cell of ['<<b>sup>x', 'Claude <b>Opus</b> 9<sup>1</sup>', '<<script>script>alert(1)<</script>/script>', 'a <b']) {
+      assert.doesNotMatch(plainName(cell), /[<>]/, cell);
+    }
+    assert.equal(plainName('Claude <b>Opus</b> 9<sup>1</sup>'), 'Claude Opus 9');
+    assert.equal(dollars('<<b>$1.50</b>'), 1.5);
+  });
+});

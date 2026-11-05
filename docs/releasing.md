@@ -277,7 +277,8 @@ in their Markdown form and compares every published figure with the catalogue:
 input, output, cache hits, both cache writes, batch, the long-prompt bands and
 Anthropic's fast mode. A changed price is **drift**, a model on the page that
 the catalogue lacks is **missing**, and a page whose tables are no longer where
-the script looks is **unread**; each fails the scheduled run. Freshness says
+the script looks is **unread**; each fails the scheduled run, and on any
+other run the report is printed in the step's log without failing. Freshness says
 how long ago a provider was read; this says whether its page still agrees.
 It never writes a price: a finding is a reason to re-read the page and change
 `packages/core/src/pricing.ts` by hand, with the page quoted. A model left

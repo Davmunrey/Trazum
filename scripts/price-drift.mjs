@@ -44,7 +44,7 @@
  * where GitHub notifies the owner, within a week instead of whenever somebody
  * next re-reads. Reads the built `@trazum/core` (run `npm run build` first).
  */
-import { appendFileSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -107,17 +107,31 @@ export function markdownTables(markdown) {
   return tables;
 }
 
+/**
+ * Markup out of a table cell: footnotes (`<sup>2</sup>`) with their text, any
+ * other tag, and then any angle bracket left. Repeated until nothing changes,
+ * because one pass over `<<b>sup>` leaves a tag behind; the text is printed and
+ * never rendered, and a page is still not trusted to be well formed.
+ */
+function untag(cell) {
+  let text = cell;
+  let previous;
+  do {
+    previous = text;
+    text = text.replace(/<sup>[^<]*<\/sup>/g, '').replace(/<[^<>]*>/g, '');
+  } while (text !== previous);
+  return text.replace(/[<>]/g, '');
+}
+
 /** `$0.20 / MTok<sup>2</sup>` → 0.2; `-` or anything without a dollar figure → undefined. */
 export function dollars(cell) {
-  const match = /\$\s*([\d,]*\.?\d+)/.exec(cell.replace(/<[^>]*>/g, ''));
+  const match = /\$\s*([\d,]*\.?\d+)/.exec(untag(cell));
   return match === null ? undefined : Number(match[1].replace(/,/g, ''));
 }
 
 /** A model cell as a person reads it: links to their text, footnotes and tags gone. */
 export function plainName(cell) {
-  return cell
-    .replace(/<sup>.*?<\/sup>/g, '')
-    .replace(/<[^>]*>/g, '')
+  return untag(cell)
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
@@ -379,7 +393,7 @@ export function compare(provider, page, core, now = new Date(), deliberately = D
   return { findings, compared: seen.size };
 }
 
-/** The findings as the lines the job summary and the terminal show. */
+/** The findings as the lines the terminal and the CI log show. */
 export function render(findings, checked) {
   const order = { unread: 0, missing: 1, drift: 2, note: 3 };
   const label = { unread: 'UNREAD ', missing: 'MISSING', drift: 'DRIFT  ', note: 'note   ' };
@@ -434,9 +448,8 @@ async function main(argv) {
   const lines = render(findings, checked);
   const text = lines.join('\n');
   console.log(text);
-  if (process.env.GITHUB_STEP_SUMMARY) {
-    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Price drift\n\n\`\`\`\n${text}\n\`\`\`\n`);
-  }
+  // Printed, never written to a file: the report carries text read off a web
+  // page, and the CI log is where it is read.
   const failing = findings.filter((f) => f.kind !== 'note').length;
   if (failing > 0 && !reportOnly) {
     console.error(`\n${failing} finding(s). Re-read the page and correct packages/core/src/pricing.ts by hand; this script never writes a price.`);
