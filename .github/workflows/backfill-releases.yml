@@ -21,9 +21,11 @@ name: backfill-releases
 on:
   workflow_dispatch:
     # One release instead of the archive list below: for a version whose
-    # packages published and whose tag or release did not (2.7.2, when main
-    # moved while release.yml was running). Leave all three empty for the
-    # archive.
+    # packages published and whose release did not. Leave all three empty for
+    # the archive. It can push the tag only while the commit's workflow files
+    # still match main's: GitHub refuses this token a ref whose workflows
+    # differ, which is exactly why 2.7.2's tag went missing. Past that point a
+    # person pushes the tag, and release.yml's tag run creates the release.
     inputs:
       version:
         description: 'One version to release, e.g. 2.7.2 (empty: the archive list)'

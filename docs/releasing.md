@@ -413,16 +413,23 @@ including what it costs a reader pinning with a tilde, is in
    `@trazum/mcp` and updates the MCP registry listing, which was the last
    manual step until 1.80.2. No tag to type, no second step to remember.
 
-   **If the packages published and the tag or the release did not**, run the
-   `backfill-releases` workflow from the Actions tab with `version`, `commit`
-   (the merge that set that version, checked against its `package.json`) and
-   `latest` ticked when it is the newest release. It pushes the tag with the
-   workflow's token and creates the release on it. That is what 2.7.2 needed:
-   the next pull request merged while the Release run was working, and the
-   releases API refused to create a tag on a commit that was no longer main's
-   head. The run now pushes the tag over git first, so a merge during a run no
-   longer costs the release, but waiting for the run to finish before merging
-   the next pull request is still the simpler habit.
+   **If the packages published and the tag or the release did not**, push the
+   tag yourself on the release commit, and the tag-triggered run skips the
+   uploads (every version is already on npm) and creates the release:
+
+   ```bash
+   git tag v2.7.2 <release commit> && git push origin v2.7.2
+   ```
+
+   That is what 2.7.2 needed. A pull request that changed a comment in
+   `ci.yml` merged while the Release run was publishing, and GitHub refuses
+   the workflow's token any ref whose `.github/workflows/` files differ from
+   main's: GITHUB_TOKEN can never hold the `workflows` permission that would
+   allow it. The failed step now says so and prints the command. **Don't merge
+   a pull request that touches `.github/workflows/` while a Release run is in
+   progress**, and it does not happen. `backfill-releases` can create one
+   missing release from its `version`, `commit` and `latest` inputs, but only
+   while that commit's workflow files still match main's.
 
    A pushed tag still works as the manual override — for re-running a release
    whose publish failed, or releasing a commit that is not the newest merge:
