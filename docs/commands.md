@@ -668,6 +668,18 @@ zero nobody measured. Where the providers differ, the report differs: OpenAI
 serves a request count and Anthropic does not, so one report has per-call
 averages and the other says why it has none.
 
+**It asks for the groupings that change a price, and prices by them.** Since
+2.7.3 the Anthropic pull is grouped by model, service tier, speed and
+inference geography, and the OpenAI pull by model, batch and service tier.
+A row in fast mode is priced at the model's fast rate, a US-only row at the
+1.1x Claude 4.6 and later bill, and an OpenAI Flex, Fast or Ultrafast row from
+that tier's own table, exactly as `bill` prices the same calls from a log. A
+row no catalogue rate is the rate for (Anthropic batch or priority, OpenAI
+batch, a tier with no table on that model, fast mode on a model without a
+fast rate) is left out and named with its model, tier and token count, never
+priced at the standard rate. Before, every pull was grouped by model alone,
+so all of those were summed into one row and billed as standard.
+
 **A partial pull is a partial pull.** A rate limit, a page cap or an expired
 cursor returns what arrived with the gap named — never a total that quietly
 describes less traffic than you asked about. `--dry-run` shows exactly what
@@ -694,7 +706,11 @@ The store: 14 measurements · $47.95 · 2026-08-01 → 2026-08-08
 provider, window, model and grouping, so the same day pulled at noon and again
 at midnight is one fact restated — the later pull wins, because a window pulled
 again is at worst as complete as it was. That is what makes a scheduled hourly
-pull over a rolling day safe.
+pull over a rolling day safe. And because one pull carries every grouping of
+its window at once, the newest pull of a window and model replaces all older
+records of it, even ones grouped differently: a store written before 2.7.3,
+when `connect` grouped by model alone, re-pulled after it holds the same day
+split by tier, speed and geography, never the old sum beside the new split.
 
 **Deduplication that cannot lie.** Two records the store cannot tell apart — a
 window of no length, a record naming no model — are kept as *two* and reported
