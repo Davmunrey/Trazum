@@ -780,6 +780,8 @@ export interface CliMessages {
     labelledByProject(files: number): string;
     /** The unclaimed files past the first few, counted rather than listed. */
     unknownMore(count: number): string;
+    /** Files a Claude Code session keeps beside its transcript, inside its own folder: not usage. */
+    sessionSideFiles(count: number): string;
     /** Many files of one shape: one line for the shape, not one per file. */
     shapeSummary(shape: string, files: number, records: number | null, leftOut: number): string;
     /** The human statement a terminal gets instead of the JSON receipt. */

@@ -41,6 +41,11 @@ of Claude Code:
 Sonnet  $0.7761 · 10 calls · cache 88% · saved $2.91
 ```
 
+The figure is the whole session's, its subagents included (since 2.7.6).
+Claude Code writes each subagent's transcript into a folder named after the
+session, which is not the transcript it hands the status line, and the line
+had left them out: a quarter of the cost on this repository's own sessions.
+
 **Nothing there is tokens.** Claude Code draws the status line's stdout in the
 terminal, and writes a `Stop` hook's stdout to the debug log. Neither is
 context, so neither is billed. The one hook whose stdout *is* handed to the

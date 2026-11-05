@@ -178,12 +178,28 @@ function tryParse(text: string): unknown | undefined {
 
 /**
  * Does this text look like an OpenTelemetry span export rather than a usage
- * log or a Claude Code transcript? The presence of `resourceSpans` (the OTLP
- * envelope) or a `gen_ai.` attribute key — a signature, not a filename, so
- * the web tab can route a dropped file with no help from the reader. Reads a
- * bounded prefix: an export announces itself early.
+ * log or a Claude Code transcript? A signature, not a filename, so the web tab
+ * can route a dropped file with no help from the reader, and read off the
+ * document's **structure**: its top level is the OTLP envelope, an object
+ * whose `resourceSpans` is an array, which is the only thing `otelRecords`
+ * reads anything from.
+ *
+ * It used to be the words. `resourceSpans` or `gen_ai.` anywhere in the first
+ * 8 KB claimed a file, and a Claude Code transcript of somebody working on
+ * telemetry says both in its first prompt. Claimed twice, the transcript was
+ * refused as ambiguous and its whole session left the bill: measured on this
+ * repository's own transcripts, where one subagent's file went missing that
+ * way. A word in a conversation is not a format.
+ *
+ * Two readings, both of the envelope. The head opens with it, which is how a
+ * pretty-printed export and an NDJSON line too long for the prefix both
+ * begin; or the first line parses and its top level carries it.
  */
 export function looksLikeOtel(text: string, prefixBytes = 8192): boolean {
   const head = text.slice(0, prefixBytes);
-  return head.includes('resourceSpans') || head.includes('gen_ai.');
+  if (/^\s*\{\s*"resourceSpans"\s*:\s*\[/.test(head)) return true;
+  const first = head.split('\n').find((line) => line.trim() !== '');
+  if (first === undefined) return false;
+  const root = asObject(tryParse(first));
+  return root !== null && Array.isArray(root.resourceSpans);
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import { cpus, homedir, tmpdir } from 'node:os';
@@ -2815,10 +2815,38 @@ async function commandWrite(args: Args, t: CliMessages): Promise<void> {
  * exists to refuse, and it does not get an exception for being convenient.
  */
 function projectLabelFor(file: string): string | undefined {
-  const folder = dirname(resolvePath(file)).split('/').pop();
+  const folder = projectFolderOf(file).split('/').pop();
   if (folder === undefined || folder === '') return undefined;
   const trimmed = folder.replace(/^-+/, '');
   return trimmed !== '' ? trimmed : folder;
+}
+
+/**
+ * The project folder a transcript belongs to, which is not always its parent.
+ *
+ * A session's own transcript sits in the project folder,
+ * `<project>/<session>.jsonl`, and everything the session spawned sits in a
+ * folder named after it: subagents at `<project>/<session>/subagents/…`,
+ * workflow agents at `<project>/<session>/subagents/workflows/wf_…/…`. The
+ * parent of those is `subagents` or `wf_…`, and labelling by it filed a
+ * session's subagent spend under projects that never existed: measured on
+ * this repository's own transcripts, a quarter of a $569 bill under six
+ * `wf_` names.
+ *
+ * So the folder is found the way Claude Code lays it out, not by a name: the
+ * nearest ancestor that has a transcript of its own name beside it is the
+ * session's folder, and the project is its parent. A transcript with no such
+ * ancestor is a session's own, and its parent is the project, as before.
+ */
+function projectFolderOf(file: string): string {
+  const parent = dirname(resolvePath(file));
+  let dir = parent;
+  for (;;) {
+    const up = dirname(dir);
+    if (up === dir) return parent;
+    if (existsSync(`${dir}.jsonl`)) return up;
+    dir = up;
+  }
 }
 
 
@@ -3713,6 +3741,8 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   */
   const perFile = files.length <= 8;
   const unclaimed: string[] = [];
+  /* The folders of the Claude Code sessions read, `<project>/<session>`, where the session keeps its other files. */
+  const sessionFolders = new Set<string>();
   const byShape = new Map<string, { files: number; records: number | null; leftOut: number }>();
 
   for (const file of files) {
@@ -3770,6 +3800,7 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
         const c = claudeCodeRecords(text, project !== undefined && project !== '' ? { label: project } : withLabel);
         records = c.records;
         leftOut = c.assistantWithoutUsage + c.unparseable;
+        sessionFolders.add(resolvePath(file).replace(/\.jsonl$/, ''));
         break;
       }
       case 'otel': {
@@ -3848,9 +3879,30 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
     }
   }
   for (const [shape, sum] of byShape) console.error(t.bill.shapeSummary(shape, sum.files, sum.records, sum.leftOut));
-  const named = perFile ? unclaimed : unclaimed.slice(0, 3);
+  /*
+    A Claude Code session keeps more than its transcript in the folder named
+    after it: each subagent's metadata and prompt prefix, each workflow's
+    journal and script, tool output too long for the transcript. None of it is
+    usage, and naming each as a file no shape claims made a first bill read as
+    a hundred and fifty things gone wrong. Counted once instead, and only
+    inside the folder of a session that was read, so a file anywhere else is
+    still named.
+  */
+  const insideSession = (file: string): boolean => {
+    let dir = dirname(resolvePath(file));
+    for (;;) {
+      if (sessionFolders.has(dir)) return true;
+      const up = dirname(dir);
+      if (up === dir) return false;
+      dir = up;
+    }
+  };
+  const sideFiles = unclaimed.filter(insideSession).length;
+  const unknown = unclaimed.filter((file) => !insideSession(file));
+  if (sideFiles > 0) console.error(t.bill.sessionSideFiles(sideFiles));
+  const named = perFile ? unknown : unknown.slice(0, 3);
   for (const file of named) console.error(t.bill.unknown(file));
-  if (unclaimed.length > named.length) console.error(t.bill.unknownMore(unclaimed.length - named.length));
+  if (unknown.length > named.length) console.error(t.bill.unknownMore(unknown.length - named.length));
   if (labelledByProject > 0) console.error(t.bill.labelledByProject(labelledByProject));
   if (geminiRemainder > 0) console.error(t.fromGeminiCli.remainder(geminiRemainder));
 
