@@ -799,6 +799,20 @@ export function parseUsageLine(line: string): UsageRecord | null {
   const geminiCached = geminiMeta
     ? readCount(geminiMeta.cachedContentTokenCount)
     : ({ kind: 'absent' } as Count);
+  /**
+   * The two Gemini counts that sit outside `promptTokenCount` and
+   * `candidatesTokenCount` and are still billed. The SDK's own definitions
+   * (`@google/genai`, `UsageMetadata`): `thoughtsTokenCount` is "the model's
+   * generated 'thoughts' output", priced as output, and
+   * `toolUsePromptTokenCount` is "the results from tool executions, which are
+   * provided back to the model as input", priced as input; and
+   * `totalTokenCount` "is the sum of prompt, candidates, tool-use prompt and
+   * thoughts". Reading only the first two priced every thinking model's
+   * reasoning at zero: on Gemini 2.5 Pro and 3.1 Pro that is often most of the
+   * output, and it was the flattering direction.
+   */
+  const geminiThoughts = geminiMeta ? readCount(geminiMeta.thoughtsTokenCount) : ({ kind: 'absent' } as Count);
+  const geminiToolPrompt = geminiMeta ? readCount(geminiMeta.toolUsePromptTokenCount) : ({ kind: 'absent' } as Count);
 
   const counts: Record<string, Count> = {
     input: readCount(
@@ -818,6 +832,8 @@ export function parseUsageLine(line: string): UsageRecord | null {
     openAiCached,
     openAiWrite,
     geminiCached,
+    geminiThoughts,
+    geminiToolPrompt,
     write5m,
     write1h,
   };
@@ -848,7 +864,7 @@ export function parseUsageLine(line: string): UsageRecord | null {
 
   return {
     model,
-    inputTokens: Math.max(0, valueOf(counts.input!) - cached - openAiWritten),
+    inputTokens: Math.max(0, valueOf(counts.input!) - cached - openAiWritten) + valueOf(counts.geminiToolPrompt!),
     cacheReadTokens: counts.cacheRead!.kind === 'ok' ? counts.cacheRead!.value : cached,
     /**
      * The split when the log carries it, the flat number otherwise — and
@@ -859,7 +875,7 @@ export function parseUsageLine(line: string): UsageRecord | null {
     cacheWrite1hTokens: hasSplit ? split1h : 0,
     // `cache_write_tokens` names no TTL either; see the note in `profileUsage`.
     writeTtlKnown: hasSplit || (flatWrite === 0 && openAiWritten === 0),
-    outputTokens: valueOf(counts.output!),
+    outputTokens: valueOf(counts.output!) + valueOf(counts.geminiThoughts!),
     /**
      * Trimmed and internally normalised: any whitespace run becomes one space.
      * A label is a workload name, and it is also used as half of structured keys
@@ -1586,6 +1602,97 @@ export function spendByMonth(report: Pick<UsageProfileReport, 'spendByDay' | 'to
   const undatedCalls = report.total.calls - dated.calls;
   return {
     months,
+    undated:
+      undatedCalls > 0
+        ? { calls: undatedCalls, usd: Math.max(0, report.total.totalUsd - dated.usd) }
+        : { calls: 0, usd: 0 },
+  };
+}
+
+/** The calendar unit a bill is split by. Weeks are ISO weeks: Monday to Sunday, UTC. */
+export type BillPeriodUnit = 'day' | 'week' | 'month';
+
+/** One period of a bill, UTC. */
+export interface PeriodSpend {
+  /** `YYYY-MM-DD` for a day, `YYYY-Www` (ISO) for a week, `YYYY-MM` for a month. */
+  period: string;
+  /** The first and last UTC day of the period, the `--since`/`--until` that bill it alone. */
+  firstDay: string;
+  lastDay: string;
+  calls: number;
+  usd: number;
+}
+
+/** A bill by day, week or month, and the part of it that sits in no period. */
+export interface SpendByPeriod {
+  unit: BillPeriodUnit;
+  /** Oldest first. Only periods with priced, dated calls appear. */
+  periods: PeriodSpend[];
+  /** Priced calls with no clock: in the total and in no period. */
+  undated: { calls: number; usd: number };
+}
+
+const isoDay = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
+
+/** ISO 8601 week of a UTC day: the week belongs to the year of its Thursday. */
+function isoWeekOf(day: string): { key: string; monday: string; sunday: string } {
+  const ms = Date.parse(`${day}T00:00:00Z`);
+  const weekday = (new Date(ms).getUTCDay() + 6) % 7; // Monday = 0
+  const monday = ms - weekday * 86_400_000;
+  const thursday = new Date(monday + 3 * 86_400_000);
+  const year = thursday.getUTCFullYear();
+  const firstThursday = Date.UTC(year, 0, 4);
+  const firstMonday = firstThursday - ((new Date(firstThursday).getUTCDay() + 6) % 7) * 86_400_000;
+  const week = Math.round((monday - firstMonday) / (7 * 86_400_000)) + 1;
+  return { key: `${year}-W${String(week).padStart(2, '0')}`, monday: isoDay(monday), sunday: isoDay(monday + 6 * 86_400_000) };
+}
+
+/**
+ * A bill by calendar day, ISO week or month, summed from the report's own days.
+ *
+ * The same rules as `spendByMonth`, which is this with `month`: UTC, priced
+ * calls with a clock only, and the undated remainder returned beside the
+ * periods so they reconcile to the total. A week is ISO 8601's, Monday to
+ * Sunday, numbered by the year its Thursday falls in, so the last days of
+ * December can belong to week 1 of the next year, as every ISO calendar says.
+ */
+export function spendByPeriod(
+  report: Pick<UsageProfileReport, 'spendByDay' | 'total'>,
+  unit: BillPeriodUnit,
+): SpendByPeriod {
+  const byPeriod = new Map<string, { firstDay: string; lastDay: string; calls: number; usd: number }>();
+  for (const day of report.spendByDay) {
+    let key: string;
+    let firstDay: string;
+    let lastDay: string;
+    if (unit === 'day') {
+      key = day.day;
+      firstDay = day.day;
+      lastDay = day.day;
+    } else if (unit === 'week') {
+      const week = isoWeekOf(day.day);
+      key = week.key;
+      firstDay = week.monday;
+      lastDay = week.sunday;
+    } else {
+      key = day.day.slice(0, 7);
+      const [year, monthNumber] = key.split('-').map(Number);
+      firstDay = `${key}-01`;
+      lastDay = new Date(Date.UTC(year ?? 1970, monthNumber ?? 1, 0)).toISOString().slice(0, 10);
+    }
+    const entry = byPeriod.get(key) ?? { firstDay, lastDay, calls: 0, usd: 0 };
+    entry.calls += day.calls;
+    entry.usd += day.usd;
+    byPeriod.set(key, entry);
+  }
+  const periods = [...byPeriod.entries()]
+    .sort(([, a], [, b]) => a.firstDay.localeCompare(b.firstDay))
+    .map(([period, { firstDay, lastDay, calls, usd }]) => ({ period, firstDay, lastDay, calls, usd }));
+  const dated = periods.reduce((sum, p) => ({ calls: sum.calls + p.calls, usd: sum.usd + p.usd }), { calls: 0, usd: 0 });
+  const undatedCalls = report.total.calls - dated.calls;
+  return {
+    unit,
+    periods,
     undated:
       undatedCalls > 0
         ? { calls: undatedCalls, usd: Math.max(0, report.total.totalUsd - dated.usd) }

@@ -152,6 +152,11 @@ function workspace() {
     { type: 'turn_context', payload: { model: 'gpt-5-mini' } },
     { timestamp: '2026-10-12T09:00:00Z', type: 'event_msg', payload: { type: 'token_count', info: { total_token_usage: codexUsage, last_token_usage: codexUsage } } },
   ].map((row) => JSON.stringify(row)).join('\n'));
+  write('gemini-session.jsonl', [
+    { sessionId: 'synthetic-offline-gemini', projectHash: 'offline' },
+    { id: 'g1', type: 'gemini', timestamp: '2026-10-12T09:00:00Z', model: 'gemini-2.5-flash',
+      tokens: { input: 1000, output: 100, cached: 0, thoughts: 50, tool: 0, total: 1150 } },
+  ].map((row) => JSON.stringify(row)).join('\n'));
 
   const day = (month, n) => new Date(Date.UTC(2026, month - 1, n, 9, 0, 0)).toISOString();
   const month = (m) => {
@@ -440,6 +445,7 @@ const INVOCATION = {
   position: ['usage.jsonl'],
   receipt: ['usage.jsonl'],
   'from-codex': ['codex-rollout.jsonl', '--label', 'offline-test', '-o', 'codex-usage.jsonl'],
+  'from-gemini-cli': ['gemini-session.jsonl', '--label', 'offline-test', '-o', 'gemini-usage.jsonl'],
   'from-claude-code': ['transcript.jsonl', '-o', 'c1.jsonl'],
   'from-otel': ['spans.json', '-o', 'c2.jsonl'],
   'from-litellm': ['litellm.json', '-o', 'c3.jsonl'],

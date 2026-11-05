@@ -636,6 +636,19 @@ export interface CliMessages {
     written(file: string): string;
   };
 
+  fromGeminiCli: {
+    noPath(): string;
+    notFound(path: string): string;
+    noFiles(path: string): string;
+    noUsage(): string;
+    summary(files: number, records: number, repeats: number): string;
+    gaps(missingModel: number, unsupported: number, unparseable: number): string;
+    /** Replies whose total exceeded the parts an older recorder kept; the remainder is priced as output. */
+    remainder(replies: number): string;
+    caveat(): string;
+    written(file: string): string;
+  };
+
   fromOtel: {
     noPath(): string;
     notFound(path: string): string;
@@ -744,7 +757,8 @@ export interface CliMessages {
     /** No path given and no Claude Code folder where Claude Code keeps one. */
     noPath(tried: string): string;
     /** No path given: the folders found and read instead, named. */
-    defaultPath(dirs: string): string;
+    /** One line per agent folder found when no path was given. */
+    defaultPathFor(agent: string, dir: string): string;
     /** Claude Code sessions took their label from their project folder. */
     labelledByProject(files: number): string;
     /** The unclaimed files past the first few, counted rather than listed. */
@@ -757,6 +771,14 @@ export interface CliMessages {
     colProject(): string;
     colWorkload(): string;
     colModel(): string;
+    /** The By-agent table's first column, shown once more than one agent's sessions were read. */
+    colAgent(): string;
+    /** `--by day|week`: the first column, the rows past the screen, the undated remainder, the hint. */
+    colPeriod(unit: 'day' | 'week' | 'month'): string;
+    earlierPeriods(count: number, unit: 'day' | 'week' | 'month'): string;
+    periodsUndated(calls: number, usd: string, unit: 'day' | 'week' | 'month'): string;
+    periodHint(since: string, until: string, unit: 'day' | 'week' | 'month'): string;
+    badBy(value: string): string;
     colCalls(): string;
     colShare(): string;
     moreRows(count: number): string;

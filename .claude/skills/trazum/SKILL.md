@@ -283,6 +283,7 @@ and all eight are built:
 | LangSmith exports | `trazum from-langsmith <file\|dir> -o usage.jsonl` |
 | Claude Code transcripts | `trazum from-claude-code ~/.claude/projects -o usage.jsonl` |
 | Codex rollout JSONL, explicitly supplied | `trazum from-codex ./rollout.jsonl --label coding -o usage.jsonl` |
+| Gemini CLI sessions | `trazum from-gemini-cli ~/.gemini/tmp -o usage.jsonl` (or plain `trazum bill`, which reads all three agents' folders) |
 | Nothing local at all, but an Anthropic admin key | `trazum from-anthropic usage.json --label <project> -o usage.jsonl` |
 | Nothing local at all, but an OpenAI admin key | `trazum from-openai usage.json --label <project> -o usage.jsonl` |
 | Nothing local at all, but an OpenRouter management key | `trazum from-openrouter activity.json --label <project> -o usage.jsonl`, then price with `--pricing-live` |

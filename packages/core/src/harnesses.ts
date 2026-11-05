@@ -9,8 +9,8 @@ export interface HarnessCapability {
   readonly id: string;
   readonly name: string;
   readonly nativeImport: {
-    readonly command: 'from-claude-code' | 'from-codex';
-    readonly format: 'claude-code-transcript-jsonl' | 'codex-session-jsonl';
+    readonly command: 'from-claude-code' | 'from-codex' | 'from-gemini-cli';
+    readonly format: 'claude-code-transcript-jsonl' | 'codex-session-jsonl' | 'gemini-cli-session-jsonl';
   } | null;
   readonly normalizedUsage: { readonly command: 'bill'; readonly format: 'trazum-usage-jsonl' };
   readonly billingMode: 'unknown';
@@ -42,6 +42,7 @@ export const HARNESS_CAPABILITIES: HarnessCapabilities = Object.freeze({
   harnesses: Object.freeze([
     harness('claude-code', 'Claude Code', { command: 'from-claude-code', format: 'claude-code-transcript-jsonl' }),
     harness('codex', 'Codex', { command: 'from-codex', format: 'codex-session-jsonl' }),
+    harness('gemini-cli', 'Gemini CLI', { command: 'from-gemini-cli', format: 'gemini-cli-session-jsonl' }),
     harness('cursor', 'Cursor', null),
     harness('mcp-client', 'Generic MCP client', null),
   ]),

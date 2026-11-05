@@ -17,12 +17,16 @@ export {
   profileUsage,
   sharesOf,
   spendByMonth,
+  spendByPeriod,
 } from './usage.js';
 export type {
   CacheEconomics,
   CacheVerdict,
   MonthSpend,
   SpendByMonth,
+  BillPeriodUnit,
+  PeriodSpend,
+  SpendByPeriod,
   UsageProfileOptions,
   UsageBreakdown,
   FieldCoverage,
@@ -668,6 +672,9 @@ export type {
 
 export { codexRecords, looksLikeCodexTranscript } from './codex.js';
 export type { CodexRecord, CodexConversion } from './codex.js';
+// Gemini CLI session files, read against the recorder's own source. See gemini-cli.ts.
+export { geminiCliRecords, looksLikeGeminiCliSession } from './gemini-cli.js';
+export type { GeminiCliRecord, GeminiCliConversion } from './gemini-cli.js';
 
 export { HARNESS_CAPABILITIES, getHarnessCapability } from './harnesses.js';
 export type { HarnessCapability, HarnessCapabilities } from './harnesses.js';

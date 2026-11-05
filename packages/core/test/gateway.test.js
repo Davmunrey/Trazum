@@ -310,9 +310,19 @@ describe('complete usage required for live accounting', () => {
     assert.ok(usageFromResponse('openai', { usage: { prompt_tokens: 10, completion_tokens: 0 } }, strict));
   });
 
-  it('does not silently omit Gemini reasoning tokens from live spend', () => {
-    const usageMetadata = { promptTokenCount: 10, candidatesTokenCount: 2, thoughtsTokenCount: 5 };
-    assert.equal(usageFromResponse('google', { usageMetadata }, strict), null);
-    assert.ok(usageFromResponse('google', { usageMetadata: { ...usageMetadata, thoughtsTokenCount: 0 } }, strict));
+  it('prices Gemini reasoning as output and tool results as input, strict or not', () => {
+    // The SDK's definitions: thoughts are generated output, tool-use prompt
+    // tokens are tool results fed back as input, and the total is all four.
+    const usageMetadata = { promptTokenCount: 10, candidatesTokenCount: 2, thoughtsTokenCount: 5, toolUsePromptTokenCount: 3 };
+    for (const options of [strict, {}]) {
+      const usage = usageFromResponse('google', { usageMetadata }, options);
+      assert.equal(usage.outputTokens, 7, 'reasoning tokens were dropped from the bill');
+      assert.equal(usage.inputTokens, 13, 'tool results fed back as input were dropped');
+    }
+    // A malformed count is refused under strict accounting rather than read as zero.
+    for (const bad of [-1, NaN, 'x']) {
+      assert.equal(usageFromResponse('google', { usageMetadata: { ...usageMetadata, thoughtsTokenCount: bad } }, strict), null);
+      assert.equal(usageFromResponse('google', { usageMetadata: { ...usageMetadata, toolUsePromptTokenCount: bad } }, strict), null);
+    }
   });
 });

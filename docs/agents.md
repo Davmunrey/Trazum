@@ -25,14 +25,16 @@ tools not yet available in an older npm release.
 ## Native import versus generic access
 
 The [capabilities endpoint](api.md#start-and-discover) reports native import
-support independently from CLI, MCP and HTTP access. Claude Code and Codex
-have native JSONL adapters; other clients can supply the normalized
+support independently from CLI, MCP and HTTP access. Claude Code, Codex and
+(since 2.7.0) Gemini CLI have native adapters; other clients can supply the normalized
 [usage-log format](usage-logs.md). Do not treat Cursor or another MCP client's
 transcripts as supported simply because that client can call Trazum tools.
 
-With the CLI, use explicit authorized paths with `from-claude-code` or
-`from-codex`. With MCP, call `import_usage` with explicit `format` (`claude-code`
-or `codex`), transcript `text` and an optional approved `label`. The server never
+With the CLI, use explicit authorized paths with `from-claude-code`,
+`from-codex` or `from-gemini-cli`; `trazum bill` with no path reads the three
+agents' own session folders and names each one first. With MCP, call
+`import_usage` with explicit `format` (`claude-code`, `codex` or `gemini-cli`),
+session `text` and an optional approved `label`. The server never
 opens a path and never derives labels from working directories. Native adapter
 output excludes prompts, tool responses and paths, but retains session IDs.
 Keep raw transcripts out of model context where the host can pass them directly

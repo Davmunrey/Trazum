@@ -13,6 +13,7 @@ import {
   buildPlan,
   claudeCodeRecords,
   codexRecords,
+  geminiCliRecords,
   compareTasks,
   parsePlanDocument,
   parseTaskReport,
@@ -1761,11 +1762,11 @@ function savingsPlan(text: string) {
 const IMPORT_USAGE: ToolDefinition = {
   name: 'import_usage',
   title: 'Import native agent usage from transcript text',
-  description: 'Converts explicit Claude Code or Codex transcript text into normalized JSONL for profile_usage and plan_savings. Returns conversion diagnostics, never subscription billing or a completeness guarantee. No files, network or writes; prompt/tool/path content is excluded. Session identifiers remain. Labels are explicit only.',
+  description: 'Converts explicit Claude Code, Codex or Gemini CLI session text into normalized JSONL for profile_usage and plan_savings. Returns conversion diagnostics, never subscription billing or a completeness guarantee. No files, network or writes; prompt/tool/path content is excluded. Session identifiers remain. Labels are explicit only.',
   inputSchema: {
     type: 'object',
     properties: {
-      format: { type: 'string', enum: ['claude-code', 'codex'] },
+      format: { type: 'string', enum: ['claude-code', 'codex', 'gemini-cli'] },
       text: { type: 'string', minLength: 1, maxLength: MAX_LOG_CHARS,
         description: 'Transcript JSONL contents, never a path. Import one source at a time; separate calls do not share deduplication state.' },
       label: { type: 'string', minLength: 1, maxLength: 200,
@@ -1774,8 +1775,8 @@ const IMPORT_USAGE: ToolDefinition = {
     required: ['format', 'text'], additionalProperties: false,
   },
   run: (args) => {
-    if (args.format !== 'claude-code' && args.format !== 'codex') {
-      throw new InvalidArguments('format must be claude-code or codex');
+    if (args.format !== 'claude-code' && args.format !== 'codex' && args.format !== 'gemini-cli') {
+      throw new InvalidArguments('format must be claude-code, codex or gemini-cli');
     }
     const text = savingsText(args, 'text', MAX_LOG_CHARS);
     if (args.label !== undefined && (typeof args.label !== 'string' ||
@@ -1783,7 +1784,9 @@ const IMPORT_USAGE: ToolDefinition = {
       throw new InvalidArguments('label must be non-empty text of at most 200 characters');
     }
     const options = args.label === undefined ? {} : { label: args.label as string };
-    const conversion = args.format === 'codex' ? codexRecords(text, options) : claudeCodeRecords(text, options);
+    const conversion = args.format === 'codex'
+      ? codexRecords(text, options)
+      : args.format === 'gemini-cli' ? geminiCliRecords(text, options) : claudeCodeRecords(text, options);
     const { records, ...diagnostics } = conversion;
     const log = records.map((record) => JSON.stringify(record)).join('\n');
     // A repeated explicit label can expand output beyond the accepted downstream log size.

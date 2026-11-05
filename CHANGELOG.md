@@ -11,8 +11,41 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **One bill across your coding agents.** `trazum bill` with no path now
+  reads Codex (`$CODEX_HOME/sessions` and `archived_sessions`) and Gemini CLI
+  (`~/.gemini/tmp/<project>/chats`, honouring `GEMINI_CLI_HOME`) as well as
+  Claude Code, each folder named on stderr before it is read. Once more than
+  one agent spent money, the statement adds a table by agent, the total
+  split rather than a second estimate. Each location comes from the agent's
+  own source code.
+- **Gemini CLI sessions.** `trazum from-gemini-cli <file|dir>`, the 55th
+  command, and the same reader in `bill`, the web app's Bill tab, MCP
+  `import_usage` and HTTP `/usage/import` (`format: "gemini-cli"`). Read
+  against the recorder's own source rather than a sample: a reply the
+  recorder rewrote is read once, a rewind does not undo spend, and the parts
+  of each reply are checked against its recorded total. Sessions are labelled
+  by the project their `.project_root` names. `geminiCliRecords` and
+  `looksLikeGeminiCliSession` in `@trazum/core`; `gemini-cli` in
+  `GET /capabilities`. See [docs/gemini-cli.md](docs/gemini-cli.md).
+- **`bill --by day|week|month`.** The statement split by UTC day, ISO week or
+  month, printed whenever asked; the last line names the `--since`/`--until`
+  that bills the newest period alone. `spendByPeriod` in `@trazum/core`, of
+  which `spendByMonth` is the month case.
+
 ### Fixed
 
+- **Gemini's reasoning tokens were priced at zero.** A usage log carrying
+  Gemini's `usageMetadata` was read from `promptTokenCount` and
+  `candidatesTokenCount` alone, which leave out `thoughtsTokenCount` (the
+  model's reasoning, billed as output) and `toolUsePromptTokenCount` (tool
+  results fed back to the model, billed as input). On a thinking model such as
+  Gemini 2.5 Pro or 3.1 Pro the reasoning is often most of the output, and the
+  error ran in the flattering direction. Both are now counted, in `profile`,
+  `bill` and the gateway alike, per the definitions in Google's own
+  `@google/genai` SDK; the gateway's strict mode, which refused such responses
+  because nothing priced them, now accepts and prices them.
 - **The Action pin moves to 2.6.0** in `docs/setup.md` and `docs/running.md`,
   the commit the `v2.6.0` tag points at. It had stayed at 2.5.1 through 2.5.2
   and 2.6.0, and once `v2.6.0` was tagged the docs-pin guard failed on every

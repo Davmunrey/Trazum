@@ -13,7 +13,7 @@ export const IMPORT_SCHEMAS = {
   UsageImportRequest: {
     type: 'object', required: ['format', 'text'], additionalProperties: false,
     properties: {
-      format: { type: 'string', enum: ['claude-code', 'codex'] },
+      format: { type: 'string', enum: ['claude-code', 'codex', 'gemini-cli'] },
       text: { type: 'string', minLength: 1, description: 'Non-blank transcript JSONL contents, never a path. No automatic format detection or shared deduplication state.' },
       label: { type: 'string', minLength: 1, maxLength: 200, description: 'Optional explicit, non-blank workload label; limited to 200 UTF-16 code units. Never inferred from source metadata.' },
     },
@@ -22,6 +22,7 @@ export const IMPORT_SCHEMAS = {
     description: 'Complete JSON response is limited to 1,000,000 UTF-8 bytes. Empty output does not establish zero usage. Preserve diagnostics alongside downstream reports.',
     oneOf: [
       object({ ...common, format: { const: 'codex' }, diagnostics: object(counters(['duplicates', 'unparseable', 'missingModel', 'unsupported', 'otherLines'])) }),
+      object({ ...common, format: { const: 'gemini-cli' }, diagnostics: object(counters(['repeats', 'unparseable', 'unsupported', 'missingModel', 'remainderAsOutput'])) }),
       object({ ...common, format: { const: 'claude-code' }, diagnostics: object({
         ...counters(['collapsed', 'noRequestId', 'otherLines', 'unparseable', 'assistantWithoutUsage', 'streamed', 'disagreements', 'synthetic']),
         resume: object({ line: count, records: count }),

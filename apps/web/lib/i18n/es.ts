@@ -483,7 +483,7 @@ export const es: WebMessages = {
     otelNoCache: (spans) =>
       `${spans} span(s) sin datos de caché: OTel no ha estandarizado el reparto de TTL de caché, así que sus veredictos de caché dicen "no se puede saber" en vez de uno inventado.`,
     transcriptApiEquivalent:
-      'Las transcripciones de Claude Code y Codex se valoran con tarifas API del catálogo, no con tu factura de suscripción. La telemetría incompleta y las tarifas propias pueden cambiar esta estimación.',
+      'Las sesiones de Claude Code, Codex y Gemini CLI se valoran con tarifas API del catálogo, no con tu factura de suscripción. La telemetría incompleta y las tarifas propias pueden cambiar esta estimación.',
     transcriptPrivacy:
       'Los transcripts se leyeron en esta pestaña. Se quedaron los números y no las palabras: ni texto de mensajes, ni rutas, ni ramas cruzaron la conversión.',
     orPaste: 'o pega el registro debajo',
@@ -1105,7 +1105,7 @@ export const es: WebMessages = {
       cli: {
         title: 'La CLI, completa',
         body:
-          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Este checkout tiene 54 comandos; instala la CLI publicada con «npm i -g @trazum/cli». El nuevo flujo task requiere compilar el repositorio hasta su publicación. «help» lista lo que el navegador puede ejecutar.',
+          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Este checkout tiene 55 comandos; instala la CLI publicada con «npm i -g @trazum/cli». El nuevo flujo task requiere compilar el repositorio hasta su publicación. «help» lista lo que el navegador puede ejecutar.',
       },
       finish: {
         title: 'Ese es el tour',

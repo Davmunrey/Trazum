@@ -17,7 +17,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 | Improve prompts | [use measured traffic](#the-multiplication-stops-guessing---from-log) · [reorder](#reordering-for-the-cache---reorder) · [rank](#which-prompt-to-fix-first-trazum-rank) · [prune](#which-few-shot-examples-earn-their-tokens-trazum-prune) · [evaluate](#does-the-shorter-prompt-still-work) |
 | Integrate and report | [MCP](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) · [conform](#building-on-the-format-trazum-conform) · [rollup](#more-than-one-machine-trazum-rollup) · [receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt) · [report](#the-year-from-what-was-already-written-down-trazum-report) |
 
-[All commands](../README.md#the-54-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
+[All commands](../README.md#the-55-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
 
 <details>
 <summary>All chapters on this page</summary>
@@ -70,6 +70,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 - [Prices that are not a table somebody typed: `--pricing-live`](#prices-that-are-not-a-table-somebody-typed---pricing-live)
 - [Where the money actually went: `trazum profile`](#where-the-money-actually-went-trazum-profile)
 - [Codex sessions: `trazum from-codex`](#codex-sessions-trazum-from-codex)
+- [Gemini CLI sessions: `trazum from-gemini-cli`](#gemini-cli-sessions-trazum-from-gemini-cli)
 - [The agent's own bill: `trazum from-claude-code`](#the-agents-own-bill-trazum-from-claude-code)
 - [The universal cost lens: `trazum from-otel`](#the-universal-cost-lens-trazum-from-otel)
 - [The gateway everybody already runs: `trazum from-litellm`](#the-gateway-everybody-already-runs-trazum-from-litellm)
@@ -2566,6 +2567,24 @@ corroborated token counts and model context, excludes ambiguous snapshots and
 reports gaps to stderr. Prices are catalogue API equivalents, never a Codex
 subscription invoice. See [Codex input and limitations](codex.md).
 
+### Gemini CLI sessions: `trazum from-gemini-cli`
+
+```bash
+trazum from-gemini-cli ~/.gemini/tmp -o usage.jsonl
+trazum bill ~/.gemini/tmp --table
+```
+
+Since 2.7.0. Reads Gemini CLI's own session files (`chats/session-*.jsonl`,
+and the older single-document `.json`), written the way its recorder writes
+them: a reply appended before its tokens and again with them is read once,
+and editing the history (a rewind, a removed message) does not undo spend.
+One record per reply that carried token counts: cached tokens taken out of
+the prompt count, **reasoning (`thoughts`) priced as output and tool results
+fed back (`tool`) priced as input**, as Google bills them, with the parts
+checked against the recorded total. Prompts, replies, thoughts and tool
+content are discarded. `bill` with no path reads these folders by itself.
+See [Gemini CLI input and limitations](gemini-cli.md).
+
 ### The agent's own bill: `trazum from-claude-code`
 
 The largest new LLM bill many people have is one they never instrumented: the
@@ -3042,10 +3061,23 @@ npx @trazum/cli bill exports/ --pricing-live -o receipt.json
 npx @trazum/cli bill logs/*.jsonl
 ```
 
-**With no path it reads Claude Code's own folder**: `$CLAUDE_CONFIG_DIR/projects`,
-then `~/.claude/projects`, then `~/.config/claude/projects`, every one that
-exists, each named on stderr before it is read. With none of them there it
-refuses and names every place it looked.
+**With no path it reads every coding agent's own folder it finds.** Claude
+Code: `$CLAUDE_CONFIG_DIR/projects`, then `~/.claude/projects`, then
+`~/.config/claude/projects`. Codex (since 2.7.0): `$CODEX_HOME/sessions` and
+`$CODEX_HOME/archived_sessions`, `~/.codex` when `CODEX_HOME` is unset. Gemini
+CLI (since 2.7.0): every `chats` folder under `~/.gemini/tmp/<project>/`
+(`$GEMINI_CLI_HOME` moves the home, and `~/.cache/.gemini/tmp` is read too,
+where the macOS sandbox puts it). Every folder that exists is named on stderr
+before it is read, one line per agent folder. With none of them there it
+refuses and names every place it looked. Each location comes from the agent's
+own source, not a guess: see [Codex](codex.md) and [Gemini CLI](gemini-cli.md).
+
+**Once more than one agent spent money, the statement adds a table by agent**
+above the one by project: each agent's records priced through the same
+catalogue and window as the whole, so the rows are the total split, not a
+second estimate beside it. Gemini CLI sessions are labelled by the project
+their `.project_root` names (or their folder, when it is not a bare hash), so
+the project table spans agents too.
 
 **On a terminal it prints a statement, in a pipe the receipt.** A person at a
 terminal gets the total, a table by project, a table by model and what is not
@@ -3053,9 +3085,10 @@ in the total; a script piping the output gets the JSON receipt it always got.
 `--receipt` forces the receipt on a terminal and `--table` forces the
 statement in a pipe. `-o receipt.json` writes the receipt and still shows the statement.
 
-**A Claude Code bill is what the work costs at API rates.** Transcripts are
-priced at Anthropic's list rates, and somebody on a Pro or Max plan paid the
-plan instead. The statement says so whenever transcripts were read, and so do
+**An agent bill is what the work costs at API rates.** Claude Code, Codex and
+Gemini CLI sessions are priced at the providers' list rates, and somebody on a
+Pro or Max plan, a ChatGPT plan, or Gemini's free tier or Code Assist paid
+something else. The statement says so whenever transcripts were read, and so do
 the PDF, HTML and Markdown documents and the web app's Bill tab; a metered API
 log gets no such sentence, because there the figure is money billed.
 
@@ -3072,7 +3105,7 @@ It reads every file and directory it is given (`.json`, `.jsonl`, `.ndjson`
 and `.log`, gzipped or not, the same names `trazum profile` reads), so a
 shell glob prices every file it expands to and a file named twice is read
 once. It tells each file's shape **from its own text** — a Claude Code
-transcript, OTel spans, a LiteLLM, Helicone or LangSmith export, an Anthropic,
+transcript, a Codex rollout, a Gemini CLI session, OTel spans, a LiteLLM, Helicone or LangSmith export, an Anthropic,
 OpenAI or OpenRouter report, or a plain usage log — converts it with the same
 converter the dedicated command uses, prices it, and ends on the same receipt
 `trazum receipt` writes.
@@ -3139,6 +3172,18 @@ month alone through the window and "Back to the whole log" returns. All of
 them sum the months with one function, `spendByMonth` in `@trazum/core`, so the
 three cannot disagree about which month a call at 23:59 UTC on the last day
 belongs to.
+
+**`--by day`, `--by week` and `--by month` choose the grain** (since 2.7.0).
+A week is ISO 8601's, Monday to Sunday, numbered by the year its Thursday
+falls in, so 1 January 2027 is in 2026-W53, as every ISO calendar has it. The
+table asked for is printed even when the bill fits in one period, unlike the
+automatic month table; a month of days and twelve weeks are kept on screen,
+with the earlier ones counted out loud. The last line names the
+`--since`/`--until` that bills the newest period on its own. A unit it does
+not know (`--by fortnight`) is refused by name rather than guessed. The day,
+week and month sums are `spendByPeriod` in `@trazum/core`, the same function
+`spendByMonth` is, so a call at 23:59 UTC is in the same day, week and month on
+every surface.
 
 **The bill for somebody else.** The receipt on stdout is for a machine. The
 person who signs the bill off reads an attachment, so `bill` writes the same

@@ -547,7 +547,7 @@ function completeUsage(shape: WireShape, usage: Record<string, unknown>): boolea
       : ['promptTokenCount', 'candidatesTokenCount'];
   if (!required.every((key) => count(usage[key]))) return false;
   const optional = shape === 'anthropic' ? ['cache_read_input_tokens', 'cache_creation_input_tokens']
-    : shape === 'google' ? ['cachedContentTokenCount', 'thoughtsTokenCount'] : [];
+    : shape === 'google' ? ['cachedContentTokenCount', 'thoughtsTokenCount', 'toolUsePromptTokenCount'] : [];
   if (optional.some((key) => usage[key] !== undefined && !count(usage[key]))) return false;
   if (shape === 'anthropic' && usage.cache_creation !== undefined) {
     const breakdown = cacheWriteBreakdown(usage);
@@ -562,8 +562,6 @@ function completeUsage(shape: WireShape, usage: Record<string, unknown>): boolea
   }
   if (shape === 'google') {
     if ((usage.cachedContentTokenCount as number | undefined ?? 0) > (usage.promptTokenCount as number)) return false;
-    // The current price path has no separate reasoning-token treatment.
-    if ((usage.thoughtsTokenCount as number | undefined ?? 0) > 0) return false;
   }
   return true;
 }
@@ -773,8 +771,12 @@ export function usageFromResponse(
       // part is subtracted rather than added. `usage.ts` has made this exact
       // correction for imported Gemini logs since the importer landed; the
       // gateway is not allowed to make it differently.
-      inputTokens: Math.max(0, num(u.promptTokenCount) - cached),
-      outputTokens: num(u.candidatesTokenCount),
+      // Tool results fed back to the model are input outside
+      // `promptTokenCount`, and a thinking model's reasoning is output
+      // outside `candidatesTokenCount`: both billed, both read here the way
+      // `usage.ts` reads them, so live spend and the imported log agree.
+      inputTokens: Math.max(0, num(u.promptTokenCount) - cached) + num(u.toolUsePromptTokenCount),
+      outputTokens: num(u.candidatesTokenCount) + num(u.thoughtsTokenCount),
       cacheReadTokens: cached,
       // Gemini's implicit cache reports no write count. Zero here is a fact
       // about the response, not a stand-in for one that failed to arrive.

@@ -62,6 +62,7 @@ const schemas = {
       oneOf: [
         object({ command: { const: 'from-claude-code' }, format: { const: 'claude-code-transcript-jsonl' } }),
         object({ command: { const: 'from-codex' }, format: { const: 'codex-session-jsonl' } }),
+        object({ command: { const: 'from-gemini-cli' }, format: { const: 'gemini-cli-session-jsonl' } }),
       ],
     }),
     normalizedUsage: object({ command: { const: 'bill' }, format: { const: 'trazum-usage-jsonl' } }),

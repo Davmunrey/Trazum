@@ -16,7 +16,12 @@ trazum verify plan.json --against newer-usage.jsonl
 ```
 
 `from-codex` accepts a file or directory. Directory reads recurse through
-`.jsonl` and `.ndjson` files. Nothing automatically scans your Codex home.
+`.jsonl` and `.ndjson` files; `from-codex` never looks in your Codex home by
+itself. Since 2.7.0, `trazum bill` with **no path** does: it reads
+`$CODEX_HOME/sessions` and `$CODEX_HOME/archived_sessions` (`~/.codex` when
+`CODEX_HOME` is unset, the folders Codex's own source names), names each
+folder on stderr before reading it, and splits the statement by agent when
+Claude Code or Gemini CLI sessions were read too.
 Decompress archives before importing them. Without `-o`, normalized JSONL goes
 to stdout; diagnostics go to stderr. Conversion with no attributable records
 fails instead of writing an empty output.

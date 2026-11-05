@@ -61,9 +61,10 @@ ${bold('USAGE')}
   trazum position <usage.jsonl>
   trazum receipt <usage.jsonl|dir> [--stamp] [--since <when>] [--until <when>] [-o <file>]
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
-              [--since <when>] [--until <when>] [--pdf-out|--html-out|--markdown-out|--csv-out <file>]
+              [--since <when>] [--until <when>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-codex <file|dir> [--label <name>] [-o <file>]
+  trazum from-gemini-cli <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
   trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
@@ -235,11 +236,19 @@ ${bold('OPTIONS FOR bill')}
                               means the whole of it. Calls with no timestamp
                               cannot be placed and are left out, counted on
                               the receipt as a gap, never dropped silently.
+  --by <day|week|month>       Split the statement by UTC day, ISO week (Monday
+                              to Sunday) or month. Without it, a bill spanning
+                              two months or more is split by month.
   --stamp                     Stamp the receipt with the time it was written.
   -o, --out <file>            Write the receipt there instead of stdout.
 
+  With no path, reads every coding agent's own session folders it finds:
+  Claude Code (~/.claude/projects), Codex ($CODEX_HOME/sessions and
+  archived_sessions) and Gemini CLI (~/.gemini/tmp/*/chats), each named on
+  stderr, and adds a By agent table once more than one spent money.
+
   One door. Reads a file or a directory, tells each file's shape from its own
-  text - a Claude Code transcript, OTel spans, a LiteLLM, Helicone or LangSmith
+  text - a Claude Code, Codex or Gemini CLI session, OTel spans, a LiteLLM, Helicone or LangSmith
   export, an Anthropic, OpenAI or OpenRouter report, or a plain usage log -
   converts it with the same converter the dedicated command uses, prices it,
   and ends on the receipt. A file no shape claims is named, not guessed; a
@@ -316,6 +325,17 @@ ${bold('OPTIONS FOR from-codex')}
   counters only: replayed snapshots collapse, ambiguous usage is excluded.
   Conversion gaps are reported on stderr. Prices are API equivalents,
   never your subscription invoice. Prompt content is discarded.
+
+${bold('OPTIONS FOR from-gemini-cli')}
+  --label <name>              Stamp every record with one label.
+  -o, --out <file>            Write normalized usage instead of stdout.
+
+  Read Gemini CLI session files (~/.gemini/tmp/<project>/chats, .jsonl, and
+  the older single-document .json), locally. One record per reply that
+  carried token counts; a reply the recorder rewrote is read once. Reasoning
+  tokens are priced as output and tool results fed back as input, as Google
+  bills them. Prices are API equivalents, not a free-tier or plan invoice.
+  Prompts, replies, thoughts and tool content are discarded.
 
 ${bold('OPTIONS FOR from-claude-code')}
   --label <name>              Stamp every record with one label.
@@ -1934,6 +1954,22 @@ ${bold('EXAMPLES')}
     written: (file) => `Wrote normalized usage to ${file}`,
   },
 
+  fromGeminiCli: {
+    noPath: () => 'from-gemini-cli needs a session file or a directory: trazum from-gemini-cli ~/.gemini/tmp',
+    notFound: (path) => `Cannot read ${path}`,
+    noFiles: (path) => `No Gemini CLI session files (.jsonl or .json) in ${path}`,
+    noUsage: () => 'No Gemini CLI reply carried token counts. Inspect the named gaps; no zero-cost log was written.',
+    summary: (files, records, repeats) =>
+      `${files} Gemini CLI file(s), ${records} reply record(s) with token counts, ${repeats} rewritten line(s) read once.`,
+    gaps: (missingModel, unsupported, unparseable) =>
+      `Gemini CLI gaps: ${missingModel} reply(ies) without a model, ${unsupported} with impossible token counts, ${unparseable} unreadable line(s). These are not zero-cost calls.`,
+    remainder: (replies) =>
+      `${replies} Gemini CLI reply(ies) from an older recorder kept a total larger than its parts; the remainder is priced as output, the dearer side, rather than dropped.`,
+    caveat: () =>
+      'Gemini CLI sessions are priced at catalogue API rates. On a free tier or a Code Assist plan that is an equivalent, not what you paid. Reasoning tokens are priced as output and tool results fed back as input, as Google bills them.',
+    written: (file) => `Wrote normalized usage to ${file}`,
+  },
+
   fromOtel: {
     noPath: () => 'from-otel needs an OTLP file or directory: trazum from-otel spans.json',
     notFound: (path) => `${path}: not found`,
@@ -2058,10 +2094,10 @@ ${bold('EXAMPLES')}
 
   bill: {
     noPath: (tried) =>
-      `bill needs a file or a directory to read, and found no Claude Code folder at ${tried}. Name one: trazum bill ~/.claude/projects, or trazum bill usage.jsonl.`,
-    defaultPath: (dirs) => `No path given, so reading Claude Code's own folder: ${dirs}`,
+      `bill needs a file or a directory to read, and found no Claude Code, Codex or Gemini CLI sessions at ${tried}. Name one: trazum bill ~/.claude/projects, or trazum bill usage.jsonl.`,
+    defaultPathFor: (agent, dir) => `No path given, so reading ${agent}'s own folder: ${dir}`,
     labelledByProject: (files) =>
-      `${files} Claude Code transcript(s) labelled by their project folder. --label sets one label instead, --no-label-from-project leaves them unlabelled.`,
+      `${files} session file(s) labelled by their project folder. --label sets one label instead, --no-label-from-project leaves them unlabelled.`,
     unknownMore: (count) => `${count} more file(s) no shape claims, not guessed at and not in the bill.`,
     shapeSummary: (shape, files, records, leftOut) =>
       `${files} file(s): ${shape}${records === null ? ', read as they are' : `, ${records} record(s)`}${leftOut > 0 ? `, ${leftOut} row(s) left out. trazum from-${shape} on a file says why.` : '.'}`,
@@ -2070,6 +2106,13 @@ ${bold('EXAMPLES')}
     colProject: () => 'project',
     colWorkload: () => 'workload',
     colModel: () => 'model',
+    colAgent: () => 'agent',
+    colPeriod: (unit) => unit,
+    earlierPeriods: (count, unit) => `… and ${count} earlier ${unit}(s)`,
+    periodsUndated: (calls, usd, unit) =>
+      `${usd} from ${calls} call(s) with no timestamp is in the total and in no ${unit}.`,
+    periodHint: (since, until, unit) => `One ${unit} on its own: --since ${since} --until ${until}.`,
+    badBy: (value) => `--by takes day, week or month, not "${value}".`,
     colCalls: () => 'calls',
     colShare: () => 'share',
     moreRows: (count) => `… and ${count} more`,
@@ -2098,7 +2141,7 @@ ${bold('EXAMPLES')}
     pricingLiveHint: (count) =>
       `${count} unpriced model id(s) carry a provider prefix, the way OpenRouter and LiteLLM name models, and the bundled catalogue does not carry those. Run again with --pricing-live to price OpenRouter's slugs from its own list.`,
     apiEquivalent: () =>
-      'Claude Code and Codex transcripts are priced at catalogue API rates. On a subscription you paid the plan, not this API-equivalent estimate; missing telemetry and custom rates can change the result.',
+      'Agent sessions (Claude Code, Codex, Gemini CLI) are priced at catalogue API rates. On a subscription you paid the plan, not this API-equivalent estimate; missing telemetry and custom rates can change the result.',
     prefixedKnown: (ids) =>
       `${ids}: the model after the slash is priced here under its own name. The prefix is not stripped for you, because the same model through a router can bill differently. If those calls went straight to the provider, log the model without the prefix.`,
     windowMatchesNothing: (from, to) =>

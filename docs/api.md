@@ -45,6 +45,7 @@ services. This is a support registry, not an installation detector.
 |---|---|---|
 | `claude-code` | `from-claude-code`, Claude Code transcript JSONL | `bill` |
 | `codex` | `from-codex`, Codex session JSONL | `bill` |
+| `gemini-cli` | `from-gemini-cli`, Gemini CLI session JSONL (and the older single-document `.json`) | `bill` |
 | `cursor` | `null`: no native importer | `bill` |
 | `mcp-client` | `null`: no native importer | `bill` |
 
@@ -121,8 +122,8 @@ receive the same answer; this API has no reservation ledger. See the
 `node packages/cli/dist/index.js serve --port 7317` from the repository root.
 Check `GET /openapi.json` for the route before using it.
 
-The request has required `format` (`claude-code` or `codex`) and nonblank
-`text` containing native transcript JSONL. Optional `label` is nonblank text
+The request has required `format` (`claude-code`, `codex` or `gemini-cli`,
+the last since 2.7.0) and nonblank `text` containing the native session text. Optional `label` is nonblank text
 of at most 200 characters, supplied explicitly; it is never inferred from a
 path. Unknown properties, invalid types and unsupported formats return
 `400 bad-request`. The endpoint receives content, never a filename: no files,

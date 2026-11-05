@@ -120,7 +120,7 @@ describe('trazum bill reads a directory of whatever it finds', () => {
     const markdown = join(dir, 'bill.md');
     const result = run(['bill', projects, '--table', '--html-out', html, '--markdown-out', markdown]);
     assert.equal(result.status, 0, result.stderr);
-    const sentence = /Claude Code and Codex transcripts are priced at catalogue API rates\. On a subscription you paid the plan, not this API-equivalent estimate/;
+    const sentence = /Agent sessions \(Claude Code, Codex, Gemini CLI\) are priced at catalogue API rates\. On a subscription you paid the plan, not this API-equivalent estimate/;
     const flat = (text) => text.replace(/\s+/g, ' ');
     assert.match(flat(result.stdout), sentence, 'the statement does not say what a plan pays');
     assert.match(flat(readFileSync(html, 'utf8').replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'")), sentence, 'the HTML');
@@ -285,7 +285,7 @@ describe('trazum bill as a first run meets it', () => {
     assert.equal(result.status, 0, result.stderr);
     const labels = JSON.parse(result.stdout).lines.map((line) => line.label).sort();
     assert.deepEqual(labels, ['home-me-etl', 'home-me-webapp']);
-    assert.match(result.stderr, /2 Claude Code transcript\(s\) labelled by their project folder/);
+    assert.match(result.stderr, /2 session file\(s\) labelled by their project folder/);
   });
 
   it('leaves them unlabelled when asked, and lets --label win', () => {
