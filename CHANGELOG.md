@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.1 — 2026-11-05
+
 ### Added
 
 - **Sixteen earlier OpenAI models are priced**, each from its own page:
