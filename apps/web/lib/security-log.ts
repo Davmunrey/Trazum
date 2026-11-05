@@ -123,3 +123,55 @@ export function routeOf(request: Request): string {
     return '';
   }
 }
+
+/**
+ * The last-resort record of an error nothing else caught (OWASP ASVS 4.0.3
+ * 7.4.3), called by `onRequestError` in `instrumentation.ts`.
+ *
+ * One line: `{"type":"error","at":…,"route":…,"method":…,"kind":…,"digest":…}`.
+ * `digest` is the id the framework's generic error page shows the person who
+ * hit the error, so someone they report it to can find this line (7.4.1).
+ *
+ * `route` is the route's pattern, `/api/prompts/[id]` or `/c/[token]`, never
+ * the path that was requested, so a share token or an id in the URL cannot
+ * reach the log. The error's message, its stack, the headers and the body are
+ * never read: a message from a JSON parser or a database driver can quote the
+ * input it choked on, and that input can be somebody's prompt. The framework
+ * already prints the error itself; this is the line that is safe to keep.
+ */
+export interface ErrorLine {
+  type: 'error';
+  at: string;
+  route: string;
+  method: string;
+  kind: string;
+  digest?: string;
+}
+
+const ERROR_KINDS = new Set(['render', 'route', 'action', 'proxy', 'middleware']);
+
+export function unhandledError(
+  error: unknown,
+  request: { method?: unknown },
+  context: { routePath?: unknown; routeType?: unknown },
+  now: Date = new Date(),
+): void {
+  const routePath = typeof context.routePath === 'string' ? context.routePath : '';
+  const line: ErrorLine = {
+    type: 'error',
+    at: now.toISOString(),
+    // A pattern starts with a slash and carries no query; anything else is
+    // not what the framework promised and is not written.
+    route: /^\/[^?#\s]{0,200}$/.test(routePath) ? routePath : 'unknown',
+    method: typeof request.method === 'string' && /^[A-Z]{1,10}$/.test(request.method) ? request.method : 'unknown',
+    kind: typeof context.routeType === 'string' && ERROR_KINDS.has(context.routeType) ? context.routeType : 'unknown',
+  };
+  const digest = (error as { digest?: unknown } | null)?.digest;
+  if (typeof digest === 'string' && /^[\w-]{1,64}$/.test(digest)) line.digest = digest;
+  try {
+    sink(JSON.stringify(line));
+  } catch {
+    // Swallowed on purpose, as in `securityEvent`.
+  }
+}
+

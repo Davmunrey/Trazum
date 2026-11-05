@@ -12,7 +12,7 @@ The control matrix is [controls.md](controls.md): 23 controls, each with the
 files and tests that prove it and its SOC 2, ISO 27001 and OWASP ASVS
 references. [asvs-l2.md](asvs-l2.md) goes the other way: every one of the 259
 requirements OWASP ASVS 4.0.3 sets at level 2, and where Trazum stands on each
-(115 met, 39 partly, 16 for the owner, 89 that do not apply, and no gaps).
+(117 met, 37 partly, 16 for the owner, 89 that do not apply, and no gaps).
 
 ## What each framework is, and who it applies to
 
@@ -71,6 +71,7 @@ after it:
 | The sign-in, session and library limits were counted by each server instance alone, so a platform running several instances multiplied them | Counted in `trazum_rate_limits` across instances when the deployment has accounts and a database, keyed by an HMAC of the address under a key the database does not hold; falls back to the instance's own count if the table is missing or unreachable. `apps/web/lib/shared-limit.ts`, `apps/web/test/shared-limit.test.mjs` | SOC 2 CC6.6; ISO 27001 8.26; ASVS V11.1 |
 | JSON routes parsed a body whatever its `Content-Type`, the account deletion request sent none, and API responses opened in a tab rendered | Every body-reading route answers 415 unless the body says `application/json`, and every request the app sends says so; API responses carry `Content-Disposition: attachment`, except the sign-in hops and the export. `apps/web/lib/request-body.ts`, `apps/web/middleware.ts`, `apps/web/test/request-body.test.mjs` | ASVS 13.1.5, 13.2.5, 14.4.2; ISO 27001 8.26 |
 | The per-account ceilings were counted in one statement and written in the next, so saves arriving together could pass one; two new versions of one prompt could both try to be the same number, and the second failed as a 500 | Each count that decides a write runs in one transaction after locking the account's or the prompt's row; six saves fired at once at each ceiling on a real PostgreSQL. `apps/web/lib/store/transaction.ts`, `apps/web/test/store-contract.test.mjs` | ASVS 11.1.6; ISO 27001 8.28 |
+| An error nothing caught left no line of the app's own, and nothing tied the digest on the error page to a record | `onRequestError` in `instrumentation.ts` writes one line per uncaught error with the route's pattern and the digest, never the message, path or headers; checked against the built server with the database unreachable. `apps/web/instrumentation.ts`, `apps/web/test/security-log.test.mjs` | ASVS 7.4.1, 7.4.3; SOC 2 CC7.2; ISO 27001 8.15 |
 
 ## What remains, in code
 
@@ -78,8 +79,8 @@ Things a pull request can still do, in the order they matter to an audit. The
 [ASVS mapping](asvs-l2.md) has no gaps left; these are partial rows that code
 could close.
 
-1. **An application error boundary that records a security event** (ASVS
-   7.4.3), and a line for requests refused as invalid (7.1.3).
+1. **A line for requests refused as invalid** (ASVS 7.1.3), beside the
+   refusals the security log already records.
 2. **A list of a person's own sessions** (ASVS 3.3.4), not only *sign out
    everywhere*.
 3. **An SBOM attached to each release** (ASVS 14.2.5).

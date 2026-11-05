@@ -40,7 +40,7 @@ gap is listed in the pack, and the summary below matches the rows.
 | V4 Access control | 9 | 7 | 0 | 0 | 1 | 1 |
 | V5 Validation, sanitisation and encoding | 30 | 16 | 1 | 0 | 0 | 13 |
 | V6 Stored cryptography | 13 | 6 | 0 | 0 | 3 | 4 |
-| V7 Error handling and logging | 12 | 7 | 4 | 0 | 1 | 0 |
+| V7 Error handling and logging | 12 | 9 | 2 | 0 | 1 | 0 |
 | V8 Data protection | 15 | 6 | 6 | 0 | 1 | 2 |
 | V9 Communication | 7 | 4 | 0 | 0 | 3 | 0 |
 | V10 Malicious code | 5 | 2 | 1 | 0 | 1 | 1 |
@@ -48,7 +48,7 @@ gap is listed in the pack, and the summary below matches the rows.
 | V12 Files and resources | 15 | 5 | 0 | 0 | 0 | 10 |
 | V13 API and web services | 13 | 7 | 2 | 0 | 0 | 4 |
 | V14 Configuration | 23 | 16 | 5 | 0 | 0 | 2 |
-| **Total** | **259** | **115** | **39** | **0** | **16** | **89** |
+| **Total** | **259** | **117** | **37** | **0** | **16** | **89** |
 
 Most of V2 is not applicable for one reason: Trazum has no passwords. Signing
 in is delegated to GitHub, so the password, its storage, its recovery and any
@@ -258,9 +258,9 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 7.3.1 | Logs encoded against injection | Met | `JSON.stringify` over a closed vocabulary; the route is a redacted path (`apps/web/lib/security-log.ts`). |
 | 7.3.3 | Logs protected from access and modification | Owner | Standard output is held by the platform; who can read it is the operator's configuration. |
 | 7.3.4 | Synchronised time, in UTC | Met | ISO 8601 in UTC (`apps/web/lib/security-log.ts`); clock synchronisation is the platform's. |
-| 7.4.1 | Generic messages for unexpected errors | Partial | Refusals are short fixed messages (`apps/web/lib/auth/routes.ts`); an unexpected error reaches the framework's generic production page. No custom error page carries an incident id. |
+| 7.4.1 | Generic messages for unexpected errors | Met | Refusals are short fixed messages (`apps/web/lib/auth/routes.ts`); an unexpected error gets the framework's generic answer, never a stack, and a failed page shows a digest that the error line records, so a report can be matched to its line (`apps/web/instrumentation.ts`). |
 | 7.4.2 | Exceptions handled across the code | Met | Expected failures are caught where they happen: malformed JSON, a store refusal, a provider error (`apps/web/app/api/prompts/route.ts`, `apps/web/app/api/optimize/route.ts`). |
-| 7.4.3 | A last-resort error handler | Partial | The framework catches any unhandled exception and answers 500 without detail (`apps/web/package.json`); there is no application error boundary of its own that records one. |
+| 7.4.3 | A last-resort error handler | Met | `onRequestError` in `apps/web/instrumentation.ts` writes one line for every error nothing caught: the route's pattern, method, kind and digest, never the message, path or headers (`apps/web/lib/security-log.ts`). Tested in `apps/web/test/security-log.test.mjs` and checked against the built server. |
 
 ## V8 Data protection
 

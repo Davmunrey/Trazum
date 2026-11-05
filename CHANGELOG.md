@@ -63,6 +63,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **A line for every error the web app did not catch.** `onRequestError` in
+  `apps/web/instrumentation.ts` writes one structured line per uncaught
+  error: the route's pattern (`/api/prompts/[id]`, never the path requested,
+  so no token in a URL reaches the log), the method, the kind and the digest
+  the error page shows, so a person's report can be matched to its line. The
+  error's message, its stack, the headers and the body are never written: a
+  parser's or a driver's message can quote the input it failed on. Checked
+  against the built server with the database unreachable, and by a test that
+  plants secrets in the error and the request. OWASP ASVS 7.4.1 and 7.4.3.
 - **Every OWASP ASVS 4.0.3 level 2 requirement, mapped.**
   `docs/compliance/asvs-l2.md` takes all 259, V1 to V14, and says where the
   hosted web app stands on each: 111 met, 40 partly, 3 gaps, 16 for the owner,
