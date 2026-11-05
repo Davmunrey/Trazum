@@ -112,6 +112,17 @@ them out with the cached ones and prices them as writes, against an entry
 that lives at least 30 minutes, which is what the cache TTL verdict judges
 your gaps against on those models.
 
+**Keep `service_tier` beside `usage`.** The response names the tier that ran,
+and OpenAI bills each from its own table: `"flex"` at about half the standard
+price, `"priority"` or `"fast"` at up to twice, `"ultrafast"` at six times on
+GPT-6 Astra and GPT-6.1 Sol. A line without it, or with `"default"`, is priced
+at the standard rate, so a Flex workload logged without the field reads at
+twice its cost:
+
+```jsonl
+{"timestamp":"2026-11-01T09:14:22Z","model":"gpt-6-sol","service_tier":"flex","usage":{"input_tokens":120000,"output_tokens":900,"input_tokens_details":{"cached_tokens":100000}}}
+```
+
 Moonshot's Kimi API reports usage in the same two shapes, `cache_write_tokens`
 included, and Trazum reads them the same way. On Kimi K3 a write is billed by
 its entry's lifetime, $3 for five minutes and $6 for an hour per million
