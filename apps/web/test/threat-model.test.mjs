@@ -61,8 +61,9 @@ const rows = limitsSection
   });
 
 /** The number as the table writes it, standing alone: `30`, not the 30 in `300` or `1,300`. */
+const escapeRegExp = (text) => text.replace(/[\\^$.*+?()[\]{}|/]/g, '\\$&');
 const shows = (text, number) =>
-  new RegExp(`(?<![\\d.])(?<!\\d,)${number.toLocaleString('en-US').replace(/[.,]/g, '\\$&')}(?!\\d)(?!,\\d)(?!\\.\\d)`).test(text);
+  new RegExp(`(?<![\\d.])(?<!\\d,)${escapeRegExp(number.toLocaleString('en-US'))}(?!\\d)(?!,\\d)(?!\\.\\d)`).test(text);
 
 /** Every rate limiter the server sets: inline per route, or shared and named. */
 function rateLimiters() {
@@ -92,7 +93,7 @@ function namedLimits() {
 
 /** A constant's value from its declaration, for the two the module does not export. */
 function declared(file, name) {
-  const m = code(join(ROOT, file)).match(new RegExp(`const ${name} = ([\\d_ *+]+);`));
+  const m = code(join(ROOT, file)).match(new RegExp(`const ${escapeRegExp(name)} = ([\\d_ *+]+);`));
   assert.ok(m, `${name} in ${file} is not a plain arithmetic constant any more: teach this test to read it`);
   return m[1].replaceAll('_', '').split('+').reduce((sum, term) => sum + term.split('*').reduce((p, f) => p * Number(f), 1), 0);
 }
