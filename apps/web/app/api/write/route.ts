@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 
-import { SLOTS, SLOT_IDS, assemble, interview, listModels, resolveLocale, slot } from '@trazum/core';
+import { SLOTS, SLOT_IDS, assemble, interview, resolveLocale } from '@trazum/core';
 import type { Answers, Locale } from '@trazum/core';
 
 import { getWebMessages } from '../../../lib/i18n';
-import { saysJson } from '../../../lib/request-body';
+import { WRITE, readBody } from '../../../lib/body-schemas';
+import { requestedLocale, saysJson } from '../../../lib/request-body';
 import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
 import { createRateLimiter } from '../../../lib/rate-limit';
 
@@ -25,29 +26,18 @@ export const runtime = 'nodejs';
  * that has a network by definition.
  */
 
-/** Per answer. An interview is fourteen short fields, not a pasted corpus. */
-const MAX_ANSWER_CHARS = 20_000;
-
 const rateLimited = createRateLimiter({ windowMs: 60_000, max: 60 });
-
-interface RequestBody {
-  answers?: unknown;
-  locale?: unknown;
-  callsPerMonth?: unknown;
-  avgOutputTokens?: unknown;
-}
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
-function localeOf(request: Request, body?: RequestBody): Locale {
-  const requested = typeof body?.locale === 'string' ? body.locale : null;
-  return resolveLocale(requested ?? request.headers.get('accept-language'));
+function localeOf(request: Request, raw?: unknown): Locale {
+  return resolveLocale(requestedLocale(raw) ?? request.headers.get('accept-language'));
 }
 
-const positive = (value: unknown): number | undefined =>
-  typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+/** Zero is the field left at its default, as it always was: a budget of nothing is not a budget. */
+const positive = (value: number | undefined): number | undefined => (value !== undefined && value > 0 ? value : undefined);
 
 async function handlePost(request: Request) {
   if (rateLimited(request, Date.now())) {
@@ -60,65 +50,34 @@ async function handlePost(request: Request) {
     return NextResponse.json({ error: getWebMessages(localeOf(request)).api.notJson }, { status: 415 });
   }
 
-  let body: RequestBody;
+  let raw: unknown;
   try {
-    body = (await request.json()) as RequestBody;
+    raw = await request.json();
   } catch {
     return unreadableBody(badRequest(getWebMessages(localeOf(request)).api.invalidJson));
   }
 
-  const t = getWebMessages(localeOf(request, body));
+  const t = getWebMessages(localeOf(request, raw));
 
-  const raw = body.answers;
-  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
-    return badRequest(t.api.answersNotAnObject);
-  }
-
-  const sent = raw as Record<string, unknown>;
+  const read = readBody(WRITE, raw, t);
+  if (!read.ok) return badRequest(read.message);
+  const body = read.value;
+  const sent = body.answers;
 
   /*
-    Refused first, then built — and the loop runs over the catalogue.
-
-    An unknown slot is refused rather than ignored: a browser that misspells one
-    would otherwise get a draft assembled without it and no way to tell that
-    from an answer the assembly had no use for.
-
     **The keys written here come from `SLOTS`, never from the request.** The
     first version iterated the request's own entries, so the property being
-    assigned was a string the caller chose — `__proto__` among them. The slot
-    check would have refused that one, but a write whose *target* is
-    caller-controlled is only ever as safe as the guard immediately above it,
-    and CodeQL was right to call it what it is. Iterating the catalogue makes
-    the set of writable keys a fixed literal, and the map has no prototype to
-    reach in the first place.
+    assigned was a string the caller chose — `__proto__` among them. The
+    schema now refuses any key that is not a question, but a write whose
+    *target* is caller-controlled is only ever as safe as the guard in front of
+    it, and CodeQL was right to call it what it is. Iterating the catalogue
+    makes the set of writable keys a fixed literal, and the map has no
+    prototype to reach in the first place.
   */
-  for (const id of Object.keys(sent)) {
-    if (slot(id) === undefined) return badRequest(t.api.unknownSlot(id));
-  }
-
   const answers: Record<string, string | null> = Object.create(null) as Record<string, string | null>;
   for (const entry of SLOTS) {
-    if (!Object.prototype.hasOwnProperty.call(sent, entry.id)) continue;
     const value = sent[entry.id];
-    if (value === null) {
-      answers[entry.id] = null;
-      continue;
-    }
-    if (typeof value !== 'string') return badRequest(t.api.answerNotText(entry.id));
-    if (value.length > MAX_ANSWER_CHARS) {
-      return badRequest(
-        t.api.answerTooLong(entry.id, MAX_ANSWER_CHARS.toLocaleString(t.numberLocale)),
-      );
-    }
-    answers[entry.id] = value;
-  }
-
-  const model = answers['model'];
-  if (typeof model === 'string' && model.trim() && !listModels().some((m) => m.id === model.trim())) {
-    // Not an error. An unpriced model is one of the three answers the budget
-    // verdict gives, and refusing it here would turn a measurement this format
-    // can express into a failure the caller has to handle.
-    void 0;
+    if (value !== undefined) answers[entry.id] = value;
   }
 
   const draft = assemble(answers as Answers, {

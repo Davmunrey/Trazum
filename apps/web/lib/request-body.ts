@@ -18,3 +18,18 @@ export function saysJson(request: Request): boolean {
   if (!type) return false;
   return type.split(';')[0].trim().toLowerCase() === 'application/json';
 }
+
+/**
+ * The `locale` a body asked for, read before the body is checked.
+ *
+ * A refusal of the body has to be worded in some language, and the right one
+ * is the one the caller named, so this is the one field read from a body its
+ * schema has not passed yet. It only ever chooses among the languages the app
+ * speaks (`resolveLocale`), and the schema still refuses a `locale` that is
+ * not text.
+ */
+export function requestedLocale(raw: unknown): string | null {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const locale = (raw as { locale?: unknown }).locale;
+  return typeof locale === 'string' ? locale : null;
+}

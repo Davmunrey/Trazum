@@ -131,15 +131,15 @@ describe('a request field that cannot be honoured is refused, not ignored', () =
     assert.match(body.error, /no tiene nada que aplicar/);
   });
 
-  it('says nothing about a value that was never going to be honoured', async () => {
-    // `applySuggestions: "false"` asks for nothing and gets nothing, which is
-    // what it says. Only a literal `true` — the only value that would have been
-    // acted on — is a request the route cannot satisfy.
-    const { status, body } = await post({ prompt: PROMPT, applySuggestions: 'false' });
-
-    assert.equal(status, 200);
-    assert.equal(body.error, undefined);
-    assert.equal(body.suggestions, undefined, 'suggestions arrived without being asked for');
+  it('refuses a string where true or false goes, rather than reading it either way', async () => {
+    // `"false"` used to be read as asking for nothing, and `"true"` as not
+    // asking either. Both were guesses about a caller with a bug; the body's
+    // schema now says which field is wrong instead.
+    for (const value of ['false', 'true', 1, 'yes']) {
+      const { status, body } = await post({ prompt: PROMPT, applySuggestions: value });
+      assert.equal(status, 400, String(value));
+      assert.match(body.error, /"applySuggestions" must be true or false/);
+    }
   });
 });
 
@@ -174,17 +174,20 @@ describe('suggestions over HTTP', () => {
     assert.equal(body.tokensSaved, body.tokensBefore - body.tokensAfter);
   });
 
-  it('does not apply them for a string that merely looks like a boolean', async () => {
-    // The rewrite comes from a model. Being non-empty is not consent.
-    const { body } = await post({
+  it('does not apply them for a string that merely looks like a boolean, nor call the model', async () => {
+    // The rewrite comes from a model. Being non-empty is not consent, and a
+    // refusal that arrives after the model was paid for is a refusal too late.
+    const before = calls;
+    const { status, body } = await post({
       prompt: PROMPT,
       suggest: true,
       applySuggestions: 'true',
       llm: CALLER_KEY,
     });
 
-    assert.equal(body.suggestions.applied, false);
-    assert.equal(body.optimized, PROMPT);
+    assert.equal(status, 400);
+    assert.match(body.error, /applySuggestions/);
+    assert.equal(calls, before, 'the model was called for a body that was refused');
   });
 
   it('never spends the operator\u2019s key on a caller who brought none', async () => {

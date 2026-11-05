@@ -1,13 +1,5 @@
-import {
-  isUuid,
-  parseName,
-  parseNote,
-  parseText,
-  privateJson,
-  promptJson,
-  requireCaller,
-  versionJson,
-} from '../../../../lib/prompts/api';
+import { PROMPT_RENAME, PROMPT_VERSION, readBody } from '../../../../lib/body-schemas';
+import { isUuid, privateJson, promptJson, requireCaller, versionJson } from '../../../../lib/prompts/api';
 import { MAX_VERSIONS_PER_PROMPT } from '../../../../lib/store/prompts';
 import { saysJson } from '../../../../lib/request-body';
 import { logsRefusedInput, unreadableBody } from '../../../../lib/security-log';
@@ -56,25 +48,22 @@ async function handlePost(request: Request, { params }: Params): Promise<Respons
 
   if (!saysJson(request)) return privateJson({ error: 'send the body as JSON, with content-type: application/json' }, 415);
 
-  let body: { text?: unknown; note?: unknown };
+  let raw: unknown;
   try {
-    body = (await request.json()) as typeof body;
+    raw = await request.json();
   } catch {
     return unreadableBody(privateJson({ error: 'invalid JSON' }, 400));
   }
 
-  const text = parseText(body.text);
-  if ('error' in text) return privateJson({ error: text.error }, 400);
-
-  const note = parseNote(body.note);
-  if ('error' in note) return privateJson({ error: note.error }, 400);
+  const read = readBody(PROMPT_VERSION, raw);
+  if (!read.ok) return privateJson({ error: read.message }, 400);
 
   const result = await caller.store.prompts.addVersion({
     promptId: id,
     ownerId: caller.user.id,
     authorId: caller.user.id,
-    text: text.value,
-    note: note.value,
+    text: read.value.text,
+    note: read.value.note || null,
     now: new Date(),
   });
 
@@ -116,20 +105,21 @@ async function handlePatch(request: Request, { params }: Params): Promise<Respon
 
   if (!saysJson(request)) return privateJson({ error: 'send the body as JSON, with content-type: application/json' }, 415);
 
-  let body: { name?: unknown };
+  let raw: unknown;
   try {
-    body = (await request.json()) as typeof body;
+    raw = await request.json();
   } catch {
     return unreadableBody(privateJson({ error: 'invalid JSON' }, 400));
   }
 
-  const name = parseName(body.name);
-  if ('error' in name) return privateJson({ error: name.error }, 400);
+  const read = readBody(PROMPT_RENAME, raw);
+  if (!read.ok) return privateJson({ error: read.message }, 400);
+  const { name } = read.value;
 
   const renamed = await caller.store.prompts.renamePrompt(
     id,
     caller.user.id,
-    name.value,
+    name,
     new Date(),
   );
 
@@ -140,7 +130,7 @@ async function handlePatch(request: Request, { params }: Params): Promise<Respon
     // this route refuses to confirm on principle.
     const still = await caller.store.prompts.getPrompt(id, caller.user.id);
     if (!still) return privateJson(NOT_FOUND, 404);
-    return privateJson({ error: `you already have a prompt called “${name.value}”` }, 409);
+    return privateJson({ error: `you already have a prompt called “${name}”` }, 409);
   }
 
   const prompt = await caller.store.prompts.getPrompt(id, caller.user.id);

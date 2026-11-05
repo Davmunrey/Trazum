@@ -38,7 +38,7 @@ gap is listed in the pack, and the summary below matches the rows.
 | V2 Authentication | 53 | 3 | 1 | 0 | 2 | 47 |
 | V3 Session management | 18 | 14 | 1 | 0 | 0 | 3 |
 | V4 Access control | 9 | 7 | 0 | 0 | 1 | 1 |
-| V5 Validation, sanitisation and encoding | 30 | 16 | 1 | 0 | 0 | 13 |
+| V5 Validation, sanitisation and encoding | 30 | 17 | 0 | 0 | 0 | 13 |
 | V6 Stored cryptography | 13 | 6 | 0 | 0 | 3 | 4 |
 | V7 Error handling and logging | 12 | 11 | 0 | 0 | 1 | 0 |
 | V8 Data protection | 15 | 6 | 6 | 0 | 1 | 2 |
@@ -46,9 +46,9 @@ gap is listed in the pack, and the summary below matches the rows.
 | V10 Malicious code | 5 | 2 | 1 | 0 | 1 | 1 |
 | V11 Business logic | 8 | 3 | 3 | 0 | 1 | 1 |
 | V12 Files and resources | 15 | 5 | 0 | 0 | 0 | 10 |
-| V13 API and web services | 13 | 7 | 2 | 0 | 0 | 4 |
+| V13 API and web services | 13 | 8 | 1 | 0 | 0 | 4 |
 | V14 Configuration | 23 | 18 | 3 | 0 | 0 | 2 |
-| **Total** | **259** | **122** | **32** | **0** | **16** | **89** |
+| **Total** | **259** | **124** | **30** | **0** | **16** | **89** |
 
 Most of V2 is not applicable for one reason: Trazum has no passwords. Signing
 in is delegated to GitHub, so the password, its storage, its recovery and any
@@ -197,9 +197,9 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | ID | Requirement | Status | Evidence, or why |
 | --- | --- | --- | --- |
 | 5.1.1 | Defence against parameter pollution | Met | Each value is read from one place: the JSON body or one named query parameter; nothing merges sources (`apps/web/app/api/auth/signout/route.ts`, `apps/web/app/api/prompts/route.ts`). |
-| 5.1.2 | Defence against mass assignment | Met | Fields are copied one by one; share settings pass a whitelist (`apps/web/lib/shares/api.ts`); tested in `apps/web/test/shares.test.mjs`. |
-| 5.1.3 | Positive validation of input | Met | Types, lengths and allow-lists for every field: link lifetimes, levels, models (`apps/web/lib/shares/api.ts`, `apps/web/lib/store/prompts.ts`). |
-| 5.1.4 | Structured data validated against a schema | Partial | Validated field by field in each route (`apps/web/app/api/prompts/route.ts`); there is no declarative schema. |
+| 5.1.2 | Defence against mass assignment | Met | A body's schema builds what it returns from its own keys and refuses any other key by name, `__proto__` included (`apps/web/lib/schema.ts`); stores copy fields one by one. Tested in `apps/web/test/body-schemas.test.mjs` and `apps/web/test/shares.test.mjs`. |
+| 5.1.3 | Positive validation of input | Met | Types, lengths, ranges and allow-lists for every field of every body: link lifetimes, levels, models, rule ids (`apps/web/lib/body-schemas.ts`). |
+| 5.1.4 | Structured data validated against a schema | Met | Every body the API accepts has a declarative schema, in one file (`apps/web/lib/body-schemas.ts`, built with `apps/web/lib/schema.ts`); no coercion, so `"true"` is not `true`. A test holds each route to the schema listed for it and sends malformed bodies to all of them (`apps/web/test/body-schemas.test.mjs`). |
 | 5.1.5 | Redirects only to allow-listed destinations | Met | `next` must be a same-origin path (`apps/web/lib/auth/github.ts`); tested in `apps/web/test/auth.test.mjs`. |
 | 5.2.1 | Untrusted HTML sanitised | N/A | No HTML is accepted; every user string is rendered as text. |
 | 5.2.2 | Unstructured data bounded | Met | Every free-text field has a length ceiling (`apps/web/lib/store/prompts.ts`, `apps/web/lib/shares/api.ts`). |
@@ -346,7 +346,7 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 13.1.4 | Authorisation at the route and at the resource | Met | `requireCaller` on the route, owner binding in the query (`apps/web/lib/prompts/api.ts`, `apps/web/lib/store/prompts.ts`). |
 | 13.1.5 | Unexpected content types refused (406, 415) | Met | Every route that reads a body answers 415 unless it says `application/json`, before reading it (`apps/web/lib/request-body.ts`); the app's own requests all say so (`apps/web/components/Account.tsx`). Tested in `apps/web/test/request-body.test.mjs`. |
 | 13.2.1 | Only valid HTTP methods enabled | Met | Each route exports only the methods it serves; any other gets 405 from the framework (`apps/web/app/api/prompts/route.ts`). |
-| 13.2.2 | JSON validated against a schema before use | Partial | Field-by-field validation in each route (`apps/web/app/api/prompts/route.ts`); no declarative schema. |
+| 13.2.2 | JSON validated against a schema before use | Met | Each route keeps the parsed body as `unknown` and reads nothing from it but the requested language until its schema has passed it (`apps/web/lib/body-schemas.ts`); held to that in the source by `apps/web/test/body-schemas.test.mjs`. |
 | 13.2.3 | CSRF protection for cookie-authenticated APIs | Met | Origin check on writes plus `SameSite=Lax` (`apps/web/lib/auth/routes.ts`). |
 | 13.2.5 | The incoming `Content-Type` checked | Met | As 13.1.5 (`apps/web/lib/request-body.ts`). |
 | 13.2.6 | Headers and payload protected in transit | Met | TLS only, with HSTS (`apps/web/next.config.mjs`). |

@@ -272,18 +272,33 @@ describe('creating a link is a deliberate publication', () => {
 // ---------------------------------------------------------------------------
 
 describe('the settings a link replays come from a whitelist', () => {
-  it('keeps only the keys it declares', async () => {
+  it('refuses a key it does not declare, naming it, and keeps only the ones it does', async () => {
+    // Whatever is stored is handed back to the core on every future view, so a
+    // key that is not a setting is refused at the door, not quietly dropped.
+    for (const [settings, name] of [
+      [{ level: 'aggressive', somethingElse: 'nope' }, 'settings.somethingElse'],
+      [{ callsPerMonth: 'lots' }, 'settings.callsPerMonth'],
+    ]) {
+      const response = await sharesRoute.POST(
+        req(`${ORIGIN}/api/shares`, post({ before: BEFORE, after: AFTER, settings }, alice.cookie)),
+      );
+      assert.equal(response.status, 400, JSON.stringify(settings));
+      assert.match((await response.json()).error, new RegExp(`"${name.replace('.', '\\.')}"`));
+    }
+
+    // `__proto__` as JSON writes it: an own key of the parsed object, which a
+    // merge would have walked straight into the prototype.
+    const polluted = await sharesRoute.POST(
+      req(`${ORIGIN}/api/shares`, {
+        ...post(null, alice.cookie),
+        body: `{"before": ${JSON.stringify(BEFORE)}, "after": ${JSON.stringify(AFTER)}, "settings": {"__proto__": {"polluted": true}}}`,
+      }),
+    );
+    assert.equal(polluted.status, 400);
+    assert.equal({}.polluted, undefined);
+
     await share(alice.cookie, {
-      settings: {
-        level: 'aggressive',
-        optimizeBoth: true,
-        model: 'claude-opus-5',
-        callsPerMonth: 5000,
-        // Not a field. Must not survive into the stored object, because whatever
-        // is stored is handed back to the core on every future view.
-        __proto__: { polluted: true },
-        somethingElse: 'nope',
-      },
+      settings: { level: 'aggressive', optimizeBoth: true, model: 'claude-opus-5', callsPerMonth: 5000 },
     });
 
     const store = await getStore();
@@ -324,10 +339,14 @@ describe('the settings a link replays come from a whitelist', () => {
     assert.equal(parsed.value.avgOutputTokens, 1_000_000);
   });
 
-  it('reads level as safe for anything that is not the literal word', async () => {
-    for (const level of ['aggressive ', 'AGGRESSIVE', true, 1, null]) {
-      assert.equal(api.parseSettings({ level }).value.level, 'safe', String(level));
+  it('refuses a level that is not one of the two words, and reads one left out as safe', async () => {
+    // It used to read anything else as `safe`, so `"AGGRESSIVE"` published a
+    // link that replayed a comparison the sharer did not ask for.
+    for (const level of ['aggressive ', 'AGGRESSIVE', true, 1]) {
+      assert.match(api.parseSettings({ level }).error, /"level"/, String(level));
     }
+    assert.equal(api.parseSettings({ level: null }).value.level, 'safe');
+    assert.equal(api.parseSettings({}).value.level, 'safe');
     assert.equal(api.parseSettings({ level: 'aggressive' }).value.level, 'aggressive');
   });
 });

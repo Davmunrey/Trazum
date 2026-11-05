@@ -1163,6 +1163,44 @@ export const en: WebMessages = {
       + 'returned silently and changed nothing, which is not an answer.',
     llmNotConfigured:
       'The model-assisted pass needs your own API key, which this request did not carry. This server never lends its own: a key configured here would be spent by whoever asked, with nothing to attribute it to. Paste a key, and an endpoint and model if you are not using Anthropic. Everything else on this page is deterministic and needs no key.',
+    badInput: (issue) => {
+      const field = `"${issue.path.join('.')}"`;
+      const n = (value: number) => value.toLocaleString('en-US');
+      const words = (of: readonly string[]) =>
+        of.length <= 12 ? of.join(', ') : `${of.slice(0, 12).join(', ')} and ${n(of.length - 12)} more`;
+      const e = issue.expected;
+      switch (issue.problem) {
+        case 'unknown':
+          return `${field} is not a field this request takes, and would have been ignored without a word. It takes: ${e.kind === 'object' ? e.fields.join(', ') : ''}.`;
+        case 'missing':
+          return `${field} is required.`;
+        case 'blank':
+          return `${field} is empty.`;
+        case 'long':
+          return `${field} is longer than ${e.kind === 'text' ? n(e.max) : ''} characters.`;
+        case 'pattern':
+          return `${field} is not in the form this field takes.`;
+        case 'many':
+          return `${field} holds more than ${e.kind === 'list' ? n(e.max) : ''} entries.`;
+        default:
+          break;
+      }
+      if (issue.path.length === 0) return 'The body must be a JSON object.';
+      switch (e.kind) {
+        case 'object':
+          return `${field} must be an object.`;
+        case 'text':
+          return `${field} must be text.`;
+        case 'boolean':
+          return `${field} must be true or false.`;
+        case 'number':
+          return `${field} must be a number from ${n(e.min)} to ${n(e.max)}.`;
+        case 'choice':
+          return `${field} must be one of: ${words(e.of)}.`;
+        case 'list':
+          return `${field} must be a list.`;
+      }
+    },
     unexpected: 'Unexpected error.',
   },
 };

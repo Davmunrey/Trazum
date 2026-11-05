@@ -8,6 +8,7 @@ import {
 import { attributeRequest, logsRefusedInput, routeOf, securityEvent, unreadableBody } from '../../../lib/security-log';
 import { shareUrl } from '../../../lib/shares/api';
 import { getStore } from '../../../lib/store';
+import { ACCOUNT_DELETE, readBody } from '../../../lib/body-schemas';
 import { saysJson } from '../../../lib/request-body';
 
 export const runtime = 'nodejs';
@@ -71,12 +72,16 @@ async function handleDelete(request: Request): Promise<Response> {
 
   if (!saysJson(request)) return jsonError('send the confirmation as JSON, with content-type: application/json', 415);
 
-  let confirm: unknown;
+  let raw: unknown;
   try {
-    confirm = ((await request.json()) as { confirm?: unknown })?.confirm;
+    raw = await request.json();
   } catch {
     return unreadableBody(jsonError('send the confirmation as JSON: {"confirm": "<your login>"}', 400));
   }
+
+  const read = readBody(ACCOUNT_DELETE, raw);
+  if (!read.ok) return jsonError(read.message, 400);
+  const { confirm } = read.value;
 
   /**
    * Constant-time, and not because the login is a secret.
@@ -86,7 +91,7 @@ async function handleDelete(request: Request): Promise<Response> {
    * comparison did not need care, and the next person to copy this block may be
    * comparing something that does. It costs nothing to be uniform.
    */
-  if (typeof confirm !== 'string' || !safeEqual(confirm, user.login)) {
+  if (!safeEqual(confirm, user.login)) {
     return jsonError('type your login exactly to confirm', 400);
   }
 

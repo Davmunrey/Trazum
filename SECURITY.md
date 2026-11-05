@@ -50,7 +50,8 @@ the CLI; what changed is who is allowed to choose.
 | ReDoS from a crafted prompt | Time budget over pathological inputs on every pull request | `security.test.js` |
 | A dependency that reads your prompts | All three published packages — core, CLI and the MCP server — carry **zero** runtime dependencies, asserted in CI. The MCP server hand-rolls its JSON-RPC layer for exactly this reason: it reads text a model chose | `security.test.js`, `publish.test.js` |
 | `optimize()` quietly phoning home | `fetch` is only permitted in the two modules whose job is to make calls | `security.test.js` |
-| Memory exhaustion | 400 KB prompt cap, 30 requests/minute per IP | `apps/web/app/api/optimize/route.ts` |
+| Memory exhaustion | 400 KB prompt cap, 30 requests/minute per IP | `apps/web/lib/body-schemas.ts`, `apps/web/app/api/optimize/route.ts` |
+| A body the route did not expect: `null`, a string where a key goes, a field nobody declared | Every body the API accepts has a declarative schema; anything else is a `400` naming the field, before the route reads a byte of it | `apps/web/lib/body-schemas.ts`, `apps/web/test/body-schemas.test.mjs` |
 | A vulnerable dependency arriving in a PR | Dependency review blocks moderate and above | `.github/workflows/security.yml` |
 | Injected code in a contribution | CodeQL with `security-extended` | `.github/workflows/security.yml` |
 | A workflow being used to exfiltrate secrets | `permissions: contents: read` by default, `--ignore-scripts` on install, no `pull_request_target` — the last one now asserted | `.github/workflows/`, `security.test.js` |

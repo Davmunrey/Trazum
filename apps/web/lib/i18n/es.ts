@@ -1183,6 +1183,44 @@ export const es: WebMessages = {
       + 'respondido en silencio sin cambiar nada, y eso no es una respuesta.',
     llmNotConfigured:
       'La pasada asistida por modelo necesita tu propia clave de API, y esta petición no la traía. Este servidor nunca presta la suya: una clave configurada aquí la gastaría quien preguntase, sin nada a lo que atribuirla. Pega una clave, y endpoint y modelo si no usas Anthropic. Todo lo demás de esta página es determinista y no necesita clave.',
+    badInput: (issue) => {
+      const field = `"${issue.path.join('.')}"`;
+      const n = (value: number) => value.toLocaleString('es-ES');
+      const words = (of: readonly string[]) =>
+        of.length <= 12 ? of.join(', ') : `${of.slice(0, 12).join(', ')} y ${n(of.length - 12)} más`;
+      const e = issue.expected;
+      switch (issue.problem) {
+        case 'unknown':
+          return `${field} no es un campo de esta petición, y se habría ignorado sin avisar. Sus campos: ${e.kind === 'object' ? e.fields.join(', ') : ''}.`;
+        case 'missing':
+          return `Falta ${field}.`;
+        case 'blank':
+          return `${field} está vacío.`;
+        case 'long':
+          return `${field} pasa de ${e.kind === 'text' ? n(e.max) : ''} caracteres.`;
+        case 'pattern':
+          return `${field} no tiene la forma que este campo espera.`;
+        case 'many':
+          return `${field} tiene más de ${e.kind === 'list' ? n(e.max) : ''} entradas.`;
+        default:
+          break;
+      }
+      if (issue.path.length === 0) return 'El cuerpo debe ser un objeto JSON.';
+      switch (e.kind) {
+        case 'object':
+          return `${field} debe ser un objeto.`;
+        case 'text':
+          return `${field} debe ser texto.`;
+        case 'boolean':
+          return `${field} debe ser true o false.`;
+        case 'number':
+          return `${field} debe ser un número entre ${n(e.min)} y ${n(e.max)}.`;
+        case 'choice':
+          return `${field} debe ser uno de: ${words(e.of)}.`;
+        case 'list':
+          return `${field} debe ser una lista.`;
+      }
+    },
     unexpected: 'Error inesperado.',
   },
 };

@@ -464,9 +464,12 @@ curl -X POST https://your-deployment/api/optimize \
   }'
 ```
 
-`reorder`, `suggest` and `applySuggestions` are honoured only on a literal `true`
-— the body is untrusted, and a truthy check would let `"false"` rearrange
-somebody's prompt. With `reorder`, the response carries what moved and what was
+Every body is checked against a schema before anything runs
+([`apps/web/lib/body-schemas.ts`](../apps/web/lib/body-schemas.ts) lists them
+all). A field the endpoint does not take, or a value of the wrong type, is a
+**`400`** that names it: `"reorder": "true"` is refused rather than read either
+way, and a misspelt `disable_rules` is refused rather than ignored. With
+`reorder`, the response carries what moved and what was
 declined, and `original` stays the text you sent so a diff shows the move. With
 `suggest`, it carries every proposal that survived the checks and everything
 rejected and why — present even when the model proposed nothing, so "nothing was

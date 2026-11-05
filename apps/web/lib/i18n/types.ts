@@ -1,4 +1,5 @@
 import type { AdvisoryId, Locale } from '@trazum/core';
+import type { Issue } from '../schema';
 import type { TaskMessages } from './tasks-en';
 
 /**
@@ -969,6 +970,11 @@ export interface WebMessages {
     endpointNotAllowed(allowed: readonly string[]): string;
     applyNeedsSuggest: string;
     llmNotConfigured: string;
+    /**
+     * The general sentence for a body its schema refused (`lib/schema.ts`),
+     * used wherever a body has no words of its own for the problem.
+     */
+    badInput(issue: Issue): string;
     unexpected: string;
   };
 }

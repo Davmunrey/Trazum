@@ -1,13 +1,17 @@
-import { MAX_INPUT_CHARS, RULES, listModels } from '@trazum/core';
+import { MAX_INPUT_CHARS, listModels } from '@trazum/core';
 
 import { mintToken } from '../auth/session';
-import { DEFAULT_SHARE_TTL, SHARE_TTL_DAYS } from '../store/shares';
+import { SHARE_SETTINGS, saySettings } from '../body-schemas';
+import { getWebMessages } from '../i18n';
+import { check } from '../schema';
+import type { Infer } from '../schema';
+import { SHARE_TTL_DAYS } from '../store/shares';
 import type { ShareSettings, ShareTtl } from '../store/shares';
 
 /**
- * Turning a request body into a share, and a token into a URL.
+ * Turning a checked request body into a share, and a token into a URL.
  *
- * The validation here is not politeness. The settings a share stores are read
+ * The validation behind it is not politeness. The settings a share stores are read
  * back later and handed to `comparePrompts`, so anything this function lets
  * through becomes configuration that runs on every future view — by a reader who
  * did not choose it and cannot see it. So the parse is a whitelist that produces
@@ -43,54 +47,36 @@ export function expiryFor(ttl: ShareTtl, now: Date): Date | null {
   return days === null ? null : new Date(now.getTime() + days * 86_400_000);
 }
 
-export function parseTtl(raw: unknown): ShareTtl | null {
-  if (raw === undefined || raw === null) return DEFAULT_SHARE_TTL;
-  if (typeof raw !== 'string') return null;
-  return raw in SHARE_TTL_DAYS ? (raw as ShareTtl) : null;
-}
-
-function clamp(value: unknown, fallback: number, min: number, max: number): number {
-  const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
-  return Math.min(max, Math.max(min, n));
-}
-
 /**
- * A settings object built from known keys only.
+ * A settings object built from known keys only, by `SHARE_SETTINGS` in
+ * `lib/body-schemas.ts`, then filled with the Compare tab's own defaults.
  *
  * Clamped rather than rejected for the numeric fields, because a share is made
  * from whatever the Compare tab happened to hold and refusing the whole link
- * over a call volume of −1 helps nobody. The model and the rule ids *are*
- * rejected, because both are identifiers the core looks up and a silent fallback
- * would price the comparison against something the sharer did not pick.
+ * over a call volume of −1 helps nobody; the schema says so in as many words.
+ * Everything else that does not fit is refused: the model and the rule ids are
+ * identifiers the core looks up, and a silent fallback would price the
+ * comparison against something the sharer did not pick.
  */
-export function parseSettings(raw: unknown): { value: ShareSettings } | { error: string } {
-  const input = (raw ?? {}) as Record<string, unknown>;
-
-  const model = typeof input.model === 'string' ? input.model : listModels()[0]!.id;
-  if (!listModels().some((m) => m.id === model)) {
-    return { error: `unknown model: ${model}` };
-  }
-
-  const disableRules = Array.isArray(input.disableRules)
-    ? input.disableRules.filter((id): id is string => typeof id === 'string')
-    : [];
-  const unknownRule = disableRules.find((id) => !RULES.some((rule) => rule.id === id));
-  if (unknownRule) return { error: `unknown rule: ${unknownRule}` };
-
+export function settingsFrom(input: Infer<typeof SHARE_SETTINGS> | undefined): ShareSettings {
+  const settings = input ?? {};
   return {
-    value: {
-      // Anything that is not the literal string is `safe`, matching how every
-      // other endpoint in this app reads this field.
-      level: input.level === 'aggressive' ? 'aggressive' : 'safe',
-      optimizeBoth: input.optimizeBoth === true,
-      disableRules,
-      model,
-      callsPerMonth: Math.round(clamp(input.callsPerMonth, 10_000, 0, 1_000_000_000)),
-      avgOutputTokens: Math.round(clamp(input.avgOutputTokens, 300, 0, 1_000_000)),
-      cacheHitRate: clamp(input.cacheHitRate, 0, 0, 1),
-      batchEligible: input.batchEligible === true,
-    },
+    level: settings.level ?? 'safe',
+    optimizeBoth: settings.optimizeBoth === true,
+    disableRules: settings.disableRules ?? [],
+    model: settings.model ?? listModels()[0]!.id,
+    callsPerMonth: Math.round(settings.callsPerMonth ?? 10_000),
+    avgOutputTokens: Math.round(settings.avgOutputTokens ?? 300),
+    cacheHitRate: settings.cacheHitRate ?? 0,
+    batchEligible: settings.batchEligible === true,
   };
+}
+
+/** The settings object on its own, as the badge and the tests build one. */
+export function parseSettings(raw: unknown): { value: ShareSettings } | { error: string } {
+  const checked = check(SHARE_SETTINGS, raw ?? {});
+  if (!checked.ok) return { error: saySettings(checked.issue, 0) ?? getWebMessages('en').api.badInput(checked.issue) };
+  return { value: settingsFrom(checked.value) };
 }
 
 /**
