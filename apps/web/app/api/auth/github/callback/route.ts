@@ -4,6 +4,7 @@ import { parseCookies, serializeCookie } from '../../../../../lib/auth/cookies';
 import { exchangeCode, fetchIdentity, stateMatches, unpackState } from '../../../../../lib/auth/github';
 import { authDisabled, authRateLimited, jsonError, redirect } from '../../../../../lib/auth/routes';
 import { issueSession, stateCookieName } from '../../../../../lib/auth/session';
+import { routeOf, securityEvent } from '../../../../../lib/security-log';
 import { getStore } from '../../../../../lib/store';
 
 export const runtime = 'nodejs';
@@ -42,7 +43,9 @@ export async function GET(request: Request): Promise<Response> {
 
   const cleared = clearState(config.secure);
 
+  const route = routeOf(request);
   if (authRateLimited(request, Date.now())) {
+    securityEvent('auth.sign_in', 'failure', { reason: 'rate_limited', route });
     return jsonError('too many sign-in attempts, try again in a minute', 429, {
       'set-cookie': cleared,
     });
@@ -54,6 +57,7 @@ export async function GET(request: Request): Promise<Response> {
   // The user pressed Cancel on GitHub's consent screen. Not an error on our
   // side and not worth a stack trace — send them back to the page they left.
   if (params.get('error')) {
+    securityEvent('auth.sign_in', 'failure', { reason: 'cancelled', route });
     return redirect('/?signin=cancelled', [cleared]);
   }
 
@@ -62,6 +66,7 @@ export async function GET(request: Request): Promise<Response> {
   );
 
   if (!stateMatches(cookieValue ?? null, params.get('state'), new Date())) {
+    securityEvent('auth.sign_in', 'failure', { reason: 'state_mismatch', route });
     // Deliberately vague to the caller and deliberately a 400. The two ways to
     // arrive here, a forged callback and a real one that sat in a tab past the
     // ten-minute window, are indistinguishable from the outside, and telling
@@ -79,6 +84,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const code = params.get('code');
   if (!code) {
+    securityEvent('auth.sign_in', 'failure', { reason: 'missing_code', route });
     return jsonError('sign-in could not be verified; start again', 400, {
       'set-cookie': cleared,
     });
@@ -86,6 +92,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const exchanged = await exchangeCode(config, code, fetch);
   if ('error' in exchanged) {
+    securityEvent('auth.sign_in', 'failure', { reason: 'provider_error', route });
     return jsonError(`GitHub declined the sign-in: ${exchanged.error}`, 502, {
       'set-cookie': cleared,
     });
@@ -93,6 +100,7 @@ export async function GET(request: Request): Promise<Response> {
 
   const identity = await fetchIdentity(exchanged.accessToken, fetch);
   if ('error' in identity) {
+    securityEvent('auth.sign_in', 'failure', { reason: 'provider_error', route });
     return jsonError(`GitHub declined the sign-in: ${identity.error}`, 502, {
       'set-cookie': cleared,
     });
@@ -103,6 +111,7 @@ export async function GET(request: Request): Promise<Response> {
     the users table holds only people the operator let in.
   */
   if (!maySignIn(identity, signInPolicy())) {
+    securityEvent('auth.sign_in', 'failure', { reason: 'not_allowed', route }); // a refused account is never written, so it has no id
     return jsonError(
       `${identity.login} cannot sign in to this deployment: its operator decides who can. `
         + 'Ask them to add your GitHub login or id to TRAZUM_ALLOWED_USERS.',
@@ -139,6 +148,7 @@ export async function GET(request: Request): Promise<Response> {
    * the session is already written and the cookie is already earned.
    */
   await store.deleteExpiredSessions(now).catch(() => {});
+  securityEvent('auth.sign_in', 'success', { userId: user.id, route }, now);
 
   // `next` comes back out of the cookie, not out of the URL, and has already
   // been through `safeNextPath` on both the way in and the way out.

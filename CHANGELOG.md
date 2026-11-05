@@ -13,6 +13,9 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The accounts guide said account deletion did not exist,** in its list of
+  what is not covered, months after it shipped. Corrected, and the guide now
+  documents the export and the security log.
 - **The web page asked for the share list on every visit, and logged a failed
   request when there was no account to ask about.** The Compare tab fetched
   `/api/shares` as it mounted, which a deployment with no accounts can only
@@ -23,6 +26,34 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **A compliance readiness pack.** `docs/compliance/` says first that Trazum
+  is not certified against SOC 2, ISO 27001 or any other standard, then
+  prepares for an audit: what SOC 2, ISO 27001, OWASP ASVS and CASA each
+  assess and who issues them, the system an auditor would scope (the hosted
+  web app; the CLI, MCP server and libraries run on the user's machine and are
+  out of scope by design), 23 controls with the files and tests that prove
+  each and their SOC 2, ISO 27001 and ASVS references, what remains in code,
+  and the organisational work only an owner can do. `compliance.test.js`
+  fails the build when an evidence path stops existing, a row loses a
+  reference, or any page or web string claims a certification.
+- **A security event log for the web app.** Sign-ins and every way one is
+  refused, sign-outs, account exports and deletions, share links made and
+  revoked, admin access, and every refusal of the library, shares or admin
+  APIs now write one structured line to standard output, with the account's
+  internal id and a reason code. Never a session token or its hash, an OAuth
+  code or state, a GitHub login, name or avatar, an IP address, a share token
+  or prompt text: the test plants each one in a request and searches every
+  line for it, and capability tokens in a route are replaced with `:token`.
+- **Download my data.** `GET /api/account`, and a link in the account menu,
+  return everything an account holds as one JSON file: the profile, every
+  saved prompt with every version, and every live share link with its text.
+  Session hashes are left out, because they would open nothing and belong to
+  nobody's export. An account could be deleted before; now it can also be
+  taken away.
+- **`Permissions-Policy` and `Cross-Origin-Opener-Policy` on every page.**
+  Camera, microphone, geolocation, payment, USB and motion sensors are denied;
+  the clipboard is left alone because the copy buttons use it. No other window
+  keeps a handle on this one.
 - **The web audit runs on every pull request.** `scripts/privacy-probe.mjs`
   serves the standalone web build, pastes a log carrying marker strings into
   the Bill tab in Chrome, reads the bill, and fails CI if a marker appears in

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronsUpDown, LogOut, Trash2 } from 'lucide-react';
+import { ChevronsUpDown, Download, LogOut, Trash2 } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -321,6 +321,18 @@ export function Account({
               {t.account.signOutEverywhereHint}
             </span>
           </span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          {/*
+            A plain link the browser downloads, not a fetch: the file is the
+            account, and the browser's own download is the one place it should
+            land. Same origin, so the session cookie goes with it.
+          */}
+          <a href="/api/account" download>
+            <Download aria-hidden="true" />
+            <span>{t.account.exportData}</span>
+          </a>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

@@ -29,6 +29,7 @@ const ENV = {
 };
 
 let deleteAccount;
+let exportAccount;
 let signIn;
 let callback;
 let getStore;
@@ -55,7 +56,7 @@ before(async () => {
   for (const key of Object.keys(ENV)) saved[key] = process.env[key];
   Object.assign(process.env, ENV);
 
-  ({ DELETE: deleteAccount } = await import('../app/api/account/route.ts'));
+  ({ DELETE: deleteAccount, GET: exportAccount } = await import('../app/api/account/route.ts'));
   ({ GET: signIn } = await import('../app/api/auth/github/route.ts'));
   ({ GET: callback } = await import('../app/api/auth/github/callback/route.ts'));
   ({ getStore, resetStore } = await import('../lib/store/index.ts'));
@@ -319,5 +320,64 @@ describe('DELETE /api/account', () => {
 
     const response = await ask(me.cookie, { confirm: me.login });
     assert.equal(response.status, 503);
+  });
+});
+
+
+describe('an account can be taken away as well as removed', () => {
+  /**
+   * `GET /api/account`, written for the compliance readiness pack: the right
+   * of access and portability next to the right to deletion. Everything the
+   * account holds comes back in one file; nothing that opens an account does.
+   */
+  const download = (cookie) =>
+    exportAccount(
+      new Request(`${ORIGIN}/api/account`, { headers: { ...freshClient(), ...(cookie ? { cookie } : {}) } }),
+    );
+
+  it('returns the account, every version of every prompt and every live link, as a download', async () => {
+    const me = await signInAs(41);
+    const other = await signInAs(42);
+    const store = await getStore();
+    const { prompt } = await fillLibrary(store, me.user);
+    await fillLibrary(store, other.user);
+    await store.shares.createShare({
+      token: `live-${me.user.id}`,
+      ownerId: me.user.id,
+      ownerLogin: me.user.login,
+      beforeText: 'live before',
+      afterText: 'live after',
+      settings: {},
+      now: new Date(),
+      expiresAt: new Date(Date.now() + 86_400_000),
+    });
+
+    const response = await download(me.cookie);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-disposition'), /^attachment; filename="trazum-account-\d{4}-\d{2}-\d{2}\.json"$/);
+    assert.match(response.headers.get('cache-control'), /no-store/);
+    const text = await response.text();
+    const body = JSON.parse(text);
+
+    assert.equal(body.format, 'trazum-account-export');
+    assert.equal(body.account.login, me.login);
+    assert.equal(body.prompts.length, 1);
+    assert.equal(body.prompts[0].id, prompt.id);
+    assert.deepEqual(body.prompts[0].versions.map((v) => v.text), ['the first text', 'the second text']);
+    // The expired link is gone for everyone, this export included; the live one is here, whole.
+    assert.equal(body.shares.length, 1);
+    assert.equal(body.shares[0].before, 'live before');
+    assert.equal(body.shares[0].url, `${ORIGIN}/c/live-${me.user.id}`);
+
+    // Nothing that opens the account, and nothing of anybody else's.
+    assert.ok(!text.includes(me.token), 'the export carries the session token');
+    assert.ok(!text.includes(hashToken(me.token)), 'the export carries the session token hash');
+    assert.ok(!text.includes(other.login), 'the export carries another account');
+    assert.ok(!text.includes(`tok-${other.user.id}`), "the export carries another account's link");
+  });
+
+  it('is for the signed-in owner only', async () => {
+    assert.equal((await download(null)).status, 401);
+    assert.equal((await download('__Host-trazum_session=not-a-session')).status, 401);
   });
 });

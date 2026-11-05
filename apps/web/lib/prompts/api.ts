@@ -12,6 +12,7 @@ import {
 } from '../store/prompts';
 import type { PromptSummary, PromptVersionRecord, PromptWithHistory } from '../store/prompts';
 import type { Store, UserRecord } from '../store/types';
+import { routeOf, securityEvent } from '../security-log';
 
 /**
  * Everything the two library routes share: who is asking, what they sent, and
@@ -46,6 +47,7 @@ export async function requireCaller(
   if (!config.enabled) return authDisabled(config);
 
   if (libraryRateLimited(request, Date.now())) {
+    securityEvent('access.refused', 'failure', { reason: 'rate_limited', route: routeOf(request) });
     return jsonError('too many requests, try again in a minute', 429);
   }
 
@@ -53,12 +55,16 @@ export async function requireCaller(
   // which this app never sends, and refusing it would break nothing an attacker
   // does while breaking every legitimate script that lists a library.
   if (write && !sameOrigin(request, config)) {
+    securityEvent('access.refused', 'failure', { reason: 'cross_origin', route: routeOf(request) });
     return jsonError('cross-origin write refused', 403);
   }
 
   const store = await getStore();
   const user = await currentUser(request, store, new Date(), config.secure);
-  if (!user) return jsonError('sign in to use the prompt library', 401);
+  if (!user) {
+    securityEvent('access.refused', 'failure', { reason: 'not_signed_in', route: routeOf(request) });
+    return jsonError('sign in to use the prompt library', 401);
+  }
 
   return { user, store };
 }

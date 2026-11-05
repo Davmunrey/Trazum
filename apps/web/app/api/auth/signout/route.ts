@@ -1,6 +1,7 @@
 import { authConfig } from '../../../../lib/auth/config';
 import { authDisabled, jsonError, sameOrigin } from '../../../../lib/auth/routes';
 import { clearSessionCookies, hashToken, tokenFromRequest } from '../../../../lib/auth/session';
+import { routeOf, securityEvent } from '../../../../lib/security-log';
 import { getStore } from '../../../../lib/store';
 
 export const runtime = 'nodejs';
@@ -31,6 +32,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!config.enabled) return authDisabled(config);
 
   if (!sameOrigin(request, config)) {
+    securityEvent('auth.sign_out', 'failure', { reason: 'cross_origin', route: routeOf(request) });
     return jsonError('cross-origin sign-out refused', 403);
   }
 
@@ -47,12 +49,15 @@ export async function POST(request: Request): Promise<Response> {
     const store = await getStore();
     const hash = hashToken(token);
 
-    const found = everywhere ? await store.findSession(hash, new Date()) : null;
-    if (found) await store.deleteSessionsForUser(found.user.id);
+    // Resolved either way now, so the record can say whose session ended; the
+    // lookup is one indexed read by token hash.
+    const found = await store.findSession(hash, new Date());
+    if (everywhere && found) await store.deleteSessionsForUser(found.user.id);
     // Also the fallback when `all` was asked for and the token resolved to
     // nothing: deleting a hash that is not there costs nothing, and the
     // alternative is a branch that quietly does less than it was asked.
     else await store.deleteSession(hash);
+    if (found) securityEvent('auth.sign_out', 'success', { userId: found.user.id, route: routeOf(request) });
   }
 
   const headers = new Headers();

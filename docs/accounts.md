@@ -293,8 +293,17 @@ of it.
 | GitHub's access token | **Never stored.** Exchanged, used once to read the profile above, dropped |
 | Your session token | Sent to your browser as a cookie. Stored here only as its SHA-256 |
 | Your email address | Never requested. `read:user` does not include it |
+| What you sign in, sign out, export, delete, share and revoke | One line per event on the server's standard output, with the account's internal id and never its login, a token, an address or any prompt text (`lib/security-log.ts`). Kept for as long as the operator's platform keeps logs |
 
 Trazum cannot act on your GitHub account, because it does not keep the means to.
+
+**You can take it with you, and you can remove it.** The account menu's
+*Download my data* returns everything the account holds as one JSON file
+(`GET /api/account`): the profile above, every saved prompt with every version
+and note, and every live share link with the text it publishes. Sessions are
+not in it, because only a hash of each token is stored and it opens nothing.
+*Delete account* removes all of the same, immediately; links you sent stop
+working.
 
 ---
 
@@ -373,8 +382,9 @@ goes wrong.
   minute, counted in the memory of whichever instance served the request. It
   stops a script; it does not stop a botnet, and behind a corporate NAT the
   budget is the office's rather than yours.
-- **There is no account deletion yet.** `deleteSessionsForUser` exists in the
-  store and nothing calls it. Signing out ends one session.
+- **Security events go to standard output and nowhere else.** How long they
+  are kept, who can read them and what raises an alert is the platform's
+  configuration, which this repository cannot see or set.
 - **Sessions do not renew.** Thirty days from issue, absolute. On day 31 you
   sign in again.
 - **GitHub is the only provider.** The store keys on `(provider, provider_id)`

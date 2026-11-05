@@ -311,6 +311,22 @@ describe('the headers a page cannot set itself', () => {
     assert.equal(referrer.headers.find((h) => h.key === 'referrer-policy').value, 'no-referrer');
   });
 
+  it('every page switches off the browser features it never uses, and keeps no opener', async () => {
+    const all = await rules();
+    const permissions = ruleFor(all, 'permissions-policy');
+    assert.ok(permissions, 'nothing declares a Permissions-Policy');
+    assert.equal(permissions.source, '/:path*');
+    const value = permissions.headers.find((h) => h.key === 'permissions-policy').value;
+    for (const feature of ['camera', 'microphone', 'geolocation', 'payment', 'usb']) {
+      assert.match(value, new RegExp(`(^|, )${feature}=\\(\\)`), `${feature} is not denied`);
+    }
+    // The app writes to the clipboard from a click; denying it would break the copy buttons.
+    assert.doesNotMatch(value, /clipboard/);
+    const opener = ruleFor(all, 'cross-origin-opener-policy');
+    assert.ok(opener, 'nothing declares a Cross-Origin-Opener-Policy');
+    assert.equal(opener.headers.find((h) => h.key === 'cross-origin-opener-policy').value, 'same-origin');
+  });
+
   it('the share page tells crawlers to stay out, in a header and not only a tag', async () => {
     const robots = ruleFor(await rules(), 'x-robots-tag');
     assert.ok(robots, 'nothing declares an X-Robots-Tag');

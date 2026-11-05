@@ -30,6 +30,11 @@ Then, if you want to know whether to trust the numbers:
 - **[Any input](hardening.md)** — what is promised about input this tool was
   never meant to see, and the seeded fuzz suite in CI that holds each promise:
   never throws, never grows, idempotent, masks intact, money never negative.
+- **[Compliance readiness](compliance/README.md)**: what SOC 2, ISO 27001,
+  OWASP ASVS and CASA would each look at, the system an auditor would scope,
+  the [control matrix](compliance/controls.md) with the evidence for every
+  control, and what only the owner can do. It opens by saying Trazum is not
+  certified, and a test keeps every other page from saying otherwise.
 - **[Audited from the outside](audit-rea-2026-11.md)**: what REA, a reverse
   engineering tool that has never seen this source, found reading the npm
   packages as npm serves them and the production page while a marked log was
