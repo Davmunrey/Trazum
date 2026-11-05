@@ -11,7 +11,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Guarded
+
+- **The weekly price check now reads each provider's lifecycle too.**
+  Anthropic's deprecations page has one table of every model's state, and
+  each OpenAI model page opens with a `Status:` line once the model is
+  deprecated or shut down, and gives its context window. A model the provider
+  has deprecated, retired or shut down that the catalogue still recommends is
+  now a finding, and so is a context window that differs from the page; both
+  fail the scheduled CI run. The catalogue had recommended GPT-5, mini and
+  nano for weeks after their pages said "Status: Deprecated", and nothing
+  compared the two. Planted on saved copies of the pages, a deprecation on
+  each side and a changed window were each reported.
 
 ## 2.7.2 — 2026-11-05
 

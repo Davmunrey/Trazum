@@ -4,7 +4,8 @@
  *
  *   node scripts/price-drift.mjs            # read the pages; exit 1 on any finding
  *   node scripts/price-drift.mjs --report   # the same report, always exit 0
- *   node scripts/price-drift.mjs --anthropic-file a.md --openai-file o.md
+ *   node scripts/price-drift.mjs --anthropic-file a.md --openai-file o.md \
+ *     --anthropic-lifecycle-file d.md --openai-models-dir models/
  *                                           # offline, from copies saved earlier
  *
  * ## Why this exists
@@ -26,6 +27,10 @@
  * - **unread**: a page that could not be fetched, or whose tables are no longer
  *   where this script looks. A check that silently passes because it read
  *   nothing would be worse than no check, so this is a finding too;
+ * - **status**: a model the provider has deprecated, retired or shut down that
+ *   the catalogue still recommends, read from Anthropic's deprecations page and
+ *   each OpenAI model's own page (`LIFECYCLE_PAGES`), which also give the
+ *   context windows compared as drift;
  * - **note**: a catalogue model the page no longer lists, and a model the page
  *   lists that is deliberately left unpriced (`DELIBERATELY_UNPRICED`).
  *
@@ -444,15 +449,95 @@ export function compare(provider, page, core, now = new Date(), deliberately = D
   return { findings, compared: seen.size };
 }
 
+/**
+ * Where each provider says which models it has deprecated or retired.
+ *
+ * A price can be right and the advice around it wrong: on 2026-11-05 the
+ * catalogue still offered GPT-5, mini and nano as cheaper alternatives, and
+ * each of their pages opened with "Status: Deprecated". Nothing compared the
+ * two. Anthropic publishes one table of every model's state; OpenAI puts a
+ * `Status:` line and the context window on each model's own page.
+ */
+export const LIFECYCLE_PAGES = {
+  anthropic: 'https://platform.claude.com/docs/en/about-claude/model-deprecations.md',
+  openaiModel: (id) => `https://developers.openai.com/api/docs/models/${encodeURIComponent(id)}.md`,
+};
+
+/** Anthropic's model-status table, one entry per API model name. */
+export function readAnthropicLifecycle(markdown) {
+  for (const table of markdownTables(markdown)) {
+    const name = column(table.header, 'API model name');
+    const state = column(table.header, 'Current state');
+    if (name !== 0 || state < 0) continue;
+    const retires = column(table.header, 'Tentative retirement date');
+    return {
+      entries: table.rows.map((cells) => ({
+        id: plainName(cells[name]).replace(/`/g, ''),
+        state: plainName(cells[state] ?? ''),
+        ...(retires > 0 ? { retires: plainName(cells[retires] ?? '') } : {}),
+      })),
+      unread: [],
+    };
+  }
+  return { entries: [], unread: ['the model status table ("API model name", "Current state") is not on the deprecations page'] };
+}
+
+/**
+ * One OpenAI model page: its `Status:` line, absent on a model in service,
+ * and its context window, "- 400,000 context window".
+ */
+export function readOpenAiModelPage(markdown) {
+  const status = /^Status:\s*(.+?)\s*$/m.exec(markdown)?.[1];
+  const window = /^-\s*([\d,]+)\s+context window/m.exec(markdown)?.[1];
+  return {
+    state: status === undefined ? 'Active' : plainName(status),
+    ...(window === undefined ? {} : { contextWindow: Number(window.replace(/,/g, '')) }),
+  };
+}
+
+/**
+ * The provider's lifecycle against the catalogue's advice, as findings.
+ *
+ * A model the provider marks deprecated, retired or shut down and the
+ * catalogue still recommends is a **status** finding: the price is fine and
+ * the advice to move there is not. A context window that differs from the
+ * page is drift, because what fits in a model is what the fit checks judge.
+ * A model the catalogue does not hold is the pricing check's business.
+ */
+export function compareLifecycle(provider, entries, core) {
+  const findings = [];
+  for (const entry of entries) {
+    const model = core.BUNDLED_CATALOGUE.byId.get(entry.id);
+    if (model === undefined || model.provider !== provider) continue;
+    if (/deprecated|retired|shut down/i.test(entry.state) && core.isOffered(model)) {
+      findings.push({
+        provider,
+        kind: 'status',
+        model: model.id,
+        detail: `the provider marks it ${entry.state}${entry.retires && !/^n\/?a$/i.test(entry.retires) ? `, retiring ${entry.retires}` : ''}, and the catalogue still recommends it`,
+      });
+    }
+    if (entry.contextWindow !== undefined && entry.contextWindow !== model.contextWindow) {
+      findings.push({
+        provider,
+        kind: 'drift',
+        model: model.id,
+        detail: `context window: the page says ${entry.contextWindow.toLocaleString('en-US')}, the catalogue has ${model.contextWindow.toLocaleString('en-US')}`,
+      });
+    }
+  }
+  return findings;
+}
+
 /** The findings as the lines the terminal and the CI log show. */
 export function render(findings, checked) {
-  const order = { unread: 0, missing: 1, drift: 2, note: 3 };
-  const label = { unread: 'UNREAD ', missing: 'MISSING', drift: 'DRIFT  ', note: 'note   ' };
+  const order = { unread: 0, missing: 1, drift: 2, status: 3, note: 4 };
+  const label = { unread: 'UNREAD ', missing: 'MISSING', drift: 'DRIFT  ', status: 'STATUS ', note: 'note   ' };
   const lines = [...findings]
     .sort((a, b) => order[a.kind] - order[b.kind] || a.provider.localeCompare(b.provider) || (a.model ?? '').localeCompare(b.model ?? ''))
     .map((f) => `${label[f.kind]}  ${f.provider}${f.model ? ` ${f.model}` : ''}: ${f.detail}`);
   for (const [provider, count] of Object.entries(checked)) {
-    lines.push(`ok       ${provider}: ${count} catalogue model(s) compared with the page`);
+    lines.push(`ok       ${provider}: ${count} catalogue model(s) compared`);
   }
   lines.push('note     google, deepseek, moonshot, xai, mistral: no machine-readable page; re-read by a person (see freshness.mjs)');
   return lines;
@@ -496,6 +581,31 @@ async function main(argv) {
     findings.push(...found);
     checked[provider] = compared;
   }
+
+  // Lifecycle: Anthropic's one table, and each OpenAI model's own page.
+  const lifecycleFile = fileFor('--anthropic-lifecycle-file');
+  try {
+    const page = readAnthropicLifecycle(lifecycleFile === undefined ? await fetchPage(LIFECYCLE_PAGES.anthropic) : readFileSync(lifecycleFile, 'utf8'));
+    findings.push(...page.unread.map((detail) => ({ provider: 'anthropic', kind: 'unread', detail })));
+    findings.push(...compareLifecycle('anthropic', page.entries, core));
+  } catch (error) {
+    findings.push({ provider: 'anthropic', kind: 'unread', detail: `${lifecycleFile ?? LIFECYCLE_PAGES.anthropic} could not be read: ${error.message}` });
+  }
+  const modelsDir = fileFor('--openai-models-dir');
+  const openAiIds = core.MODELS.filter((model) => model.provider === 'openai').map((model) => model.id);
+  const entries = [];
+  for (let i = 0; i < openAiIds.length; i += 4) {
+    await Promise.all(openAiIds.slice(i, i + 4).map(async (id) => {
+      try {
+        const markdown = modelsDir === undefined ? await fetchPage(LIFECYCLE_PAGES.openaiModel(id)) : readFileSync(join(modelsDir, `${id}.md`), 'utf8');
+        entries.push({ id, ...readOpenAiModelPage(markdown) });
+      } catch (error) {
+        findings.push({ provider: 'openai', kind: 'note', model: id, detail: `its model page could not be read (${error.message}), so its status and window were not checked` });
+      }
+    }));
+  }
+  findings.push(...compareLifecycle('openai', entries, core));
+  checked['openai model pages'] = entries.length;
   const lines = render(findings, checked);
   const text = lines.join('\n');
   console.log(text);

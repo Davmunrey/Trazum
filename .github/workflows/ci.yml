@@ -66,7 +66,9 @@ jobs:
       # Freshness knows when a provider was last read, not whether its page has
       # changed since. This reads Anthropic's and OpenAI's pricing pages and
       # compares every figure with the catalogue: a changed price, a model the
-      # catalogue lacks, or a page it can no longer read is a finding. Printed
+      # catalogue lacks, or a page it can no longer read is a finding, and so is
+      # a model the provider has deprecated that the catalogue still recommends,
+      # or a context window that moved. Printed
       # in this step's log on every run, a failure only on the weekly schedule,
       # for the same reason as above. It never writes a price; a person does.
       - name: Price drift against the providers' pages (fails only on the weekly schedule)

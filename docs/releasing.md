@@ -288,6 +288,16 @@ publish no page a script reads reliably, so they stay with freshness and a
 person. `--report` never fails; `--anthropic-file` and `--openai-file` run it
 on saved copies.
 
+**It also reads each provider's lifecycle.** Anthropic's deprecations page has
+one table of every model's state, and each OpenAI model page opens with a
+`Status:` line when the model is deprecated or shut down and gives its context
+window. A model the provider marks deprecated, retired or shut down that the
+catalogue still recommends is a **status** finding, and a context window that
+differs from the page is drift; both fail the scheduled run. It exists because
+the catalogue recommended GPT-5, mini and nano for weeks after their pages said
+"Status: Deprecated". `--anthropic-lifecycle-file` and `--openai-models-dir`
+run it on saved copies.
+
 The steps below are what the script does and what it leaves, in order.
 
 **Which number first.** Since 1.50.1 the version carries the narrative: a
