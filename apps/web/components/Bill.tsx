@@ -1955,6 +1955,7 @@ function Report({
                       n(Math.round(growth.minTurnTokens)),
                       n(Math.round(growth.maxTurnTokens)),
                       n(growth.longestSession),
+                      growth.sessions,
                     )}
                   </div>
                   <div className="mt-1 text-[13px] text-muted-foreground">

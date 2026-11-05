@@ -2312,7 +2312,7 @@ ${bold('EJEMPLOS')}
     collapsed: (lines) => `${lines} línea(s) extra de llamadas ya contadas colapsadas: una llamada a la API se escribe como una línea por bloque de contenido, y contar cada línea sobrefacturaría.`,
     streamed: (count) => `${count} llamada(s) se escribieron aún en streaming; quedaron los recuentos de la línea final.`,
     disagreements: (count) => `${count} llamada(s) tenían líneas en desacuerdo más allá del crecimiento del streaming: un recuento encogió, u otro campo cambió. Se quedó la última línea, pero es un hallazgo: merece un vistazo al transcript.`,
-    noRequestId: (count) => `${count} llamada(s) sin id de petición, así que nada pudo colapsarse contra ellas; cada una se tasa tal como quedó registrada.`,
+    noRequestId: (count) => `${count} llamada(s) sin id de petición ni id de mensaje, así que nada pudo colapsarse contra ellas; cada una se tasa tal como quedó registrada.`,
     synthetic: (count) => `${count} turno(s) que Claude Code escribió por su cuenta (modelo «<synthetic>») quedan fuera de la salida: ningún proveedor los facturó, así que no son llamadas.`,
     labelled: () => 'Etiquetado por carpeta de proyecto. Usa --no-label-from-project para dejarlo sin etiqueta, o --label <nombre> para poner una.',
     skipped: (other, unparseable, withoutUsage) => `Omitidas: ${other} línea(s) no-assistant (el resto del negocio del transcript), ${unparseable} imparseables, ${withoutUsage} línea(s) assistant sin usage.`,
@@ -2876,8 +2876,10 @@ ${bold('EJEMPLOS')}
     leverPromptCeiling: (usd, pct) =>
       `Para comparar: acortar el texto del prompt puede tocar ${usd} como mucho, el ${pct} de esta factura, y solo si borraras hasta el último token de entrada. La cifra real está muy por debajo, porque la mayoría de esos tokens son contexto recuperado, historial de conversación y resultados de herramientas que no están en ningún fichero de prompt.`,
     historyHeading: () => 'Lo que cuesta reenviar la conversación',
-    historyGrowth: (label, model, first, last, turns) =>
-      `${label} en ${model}: la entrada va de ${first} tokens en el turno más pequeño a ${last} en el más grande, en conversaciones de hasta ${turns} turnos.`,
+    historyGrowth: (label, model, first, last, turns, conversations) =>
+      conversations > 1
+        ? `${label} en ${model}: en ${count(conversations)} conversaciones, el turno más pequeño tiene de media ${first} tokens y el más grande ${last}, en conversaciones de hasta ${turns} turnos.`
+        : `${label} en ${model}: la entrada va de ${first} tokens en el turno más pequeño a ${last} en el más grande, en ${turns} turnos.`,
     historyCeiling: (usd, pct, flat, spent) =>
       `Si cada turno hubiera tenido el tamaño del más pequeño, esa entrada habría costado ${flat} en vez de ${spent}, así que como mucho ${usd} de esta factura es crecimiento de la conversación (${pct}). Es un techo y no un ahorro: parte de eso son los mensajes nuevos del propio usuario, que nada puede truncar, y esto lee cuentas y no contenido, así que no puede separarlos. Lo que lo mueve es limitar el historial que reproduces, o resumirlo.`,
     truncatedWaste: (calls, usd, pct) =>
@@ -3021,7 +3023,7 @@ ${bold('EJEMPLOS')}
     floorUndated: (calls) =>
       `${count(calls)} ${calls === 1 ? 'llamada no lleva marca de tiempo y cayó' : 'llamadas no llevan marca de tiempo y cayeron'} fuera de la ventana`,
     sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
-      `${label} en ${model}: en ${sessions} conversaciones, la mediana cuesta ${median} a lo largo de ${medianTurns} turnos, el 95% queda por debajo de ${p95} y la más cara fue ${max}. Recuentos facturados exactos, por conversación: la cifra con la que se fija un precio por asiento o una cuota. Una conversación que empezó antes de este registro o sigue después solo cuenta por los turnos aquí registrados.`,
+      `${label} en ${model}: en ${sessions} sesiones, la mediana cuesta ${median} a lo largo de ${medianTurns} turnos, el 95% queda por debajo de ${p95} y la más cara fue ${max}. Recuentos facturados exactos, por sesión con sus subagentes: la cifra con la que se fija un precio por asiento o una cuota. Una sesión que empezó antes de este registro o sigue después solo cuenta por los turnos aquí registrados.`,
     labelBudgetOk: (label, usd, max) =>
       `Dentro del presupuesto: ${label} gastó ${usd} contra ${max}.`,
     labelBudgetFailed: (label, usd, max) =>
@@ -3181,9 +3183,9 @@ ${bold('EJEMPLOS')}
     noLogsInDirectory: (directory, extensions) =>
       `No hay registros de uso en "${directory}". Se buscaron ficheros terminados en ${extensions}. Un directorio sin nada legible es un error, no un informe vacío, que se leería como "no has gastado nada".`,
     sessionCostTail: (ratio) =>
-      `El percentil 95 es ${ratio}x la mediana ahí: casi todas las conversaciones son baratas y unas pocas no, y esa es una cola que una cuota puede cazar. Cuando mediana y p95 quedan cerca, la carga es cara sin más y no hay cola que perseguir.`,
+      `El percentil 95 es ${ratio}x la mediana ahí: casi todas las sesiones son baratas y unas pocas no, y esa es una cola que una cuota puede cazar. Cuando mediana y p95 quedan cerca, la carga es cara sin más y no hay cola que perseguir.`,
     sessionSpendOnly: (sessions, max) =>
-      `${sessions} ${sessions === '1' ? 'conversación' : 'conversaciones'} en este registro; la más cara costó ${max}. Demasiado pocas por carga para un percentil: un máximo es un hecho con cualquier recuento, y es la cifra que juzga --max-session-usd.`,
+      `${sessions} ${sessions === '1' ? 'sesión' : 'sesiones'} en este registro, subagentes incluidos; la más cara costó ${max}. Demasiado pocas por carga para un percentil: un máximo es un hecho con cualquier recuento, y es la cifra que juzga --max-session-usd.`,
     waiveActive: (gate, reason, until, daysLeft) =>
       `WAIVED: el fallo de ${gate} de arriba queda registrado y silenciado hasta ${until} (${daysLeft} días restantes): "${reason}". La factura lo sigue contando; solo el código de salida calla, y el día que caduque el waiver este gate vuelve a fallar.`,
     waiveExpired: (gate, until, reason) =>

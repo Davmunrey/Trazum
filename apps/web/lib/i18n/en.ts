@@ -655,9 +655,12 @@ export const en: WebMessages = {
       'Nothing to compare: every priced call in this log is already on that model, or too large '
       + 'for its context window.',
     historyHeading: 'What re-sending the conversation costs',
-    historyGrowth: (label, model, first, last, turns) =>
-      `${label} on ${model}: input ranges from ${first} tokens on the smallest turn to ${last} `
-      + `on the largest, over conversations of up to ${turns} turns.`,
+    historyGrowth: (label, model, first, last, turns, conversations) =>
+      conversations > 1
+        ? `${label} on ${model}: across ${conversations.toLocaleString('en-US')} conversations, the smallest turn `
+          + `averages ${first} tokens and the largest ${last}, over conversations of up to ${turns} turns.`
+        : `${label} on ${model}: input ranges from ${first} tokens on the smallest turn to ${last} `
+          + `on the largest, over ${turns} turns.`,
     historyCeiling: (usd, pct, flat, spent) =>
       `If every turn had been the size of its smallest one, that input would have cost ${flat} `
       + `instead of ${spent}, so at most ${usd} of this bill is conversation growth (${pct}). `
@@ -858,17 +861,17 @@ export const en: WebMessages = {
         stopReason: 'A field the log stopped recording is not a finding that got fixed. Gone quiet with it: answers cut off at max_tokens, and the retries billed after them.',
       })[field] ?? '',
     sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
-      `${label} on ${model}: across ${sessions} conversations, the median one costs ${median} `
+      `${label} on ${model}: across ${sessions} sessions, the median one costs ${median} `
       + `over ${medianTurns} turns, 95% come in under ${p95}, and the dearest was ${max}. Exact `
-      + 'billed counts per conversation; one that started before this log or continues after it '
-      + 'counts only for the turns recorded here.',
+      + 'billed counts per session with its subagents; one that started before this log or '
+      + 'continues after it counts only for the turns recorded here.',
     sessionCostTail: (ratio) =>
-      `The 95th percentile is ${ratio}x the median: most conversations are cheap and a few are `
+      `The 95th percentile is ${ratio}x the median: most sessions are cheap and a few are `
       + 'not, which is a tail a quota can catch rather than a workload that is uniformly expensive.',
     sessionSpendOnly: (sessions, max) =>
-      `${sessions} conversation${sessions === 1 ? '' : 's'} in this log; the most expensive cost `
-      + `${max}. Too few per workload for a percentile: a maximum is a fact at any count, and it `
-      + 'is the figure a per-conversation budget judges.',
+      `${sessions} session${sessions === 1 ? '' : 's'} in this log, subagents included; the most `
+      + `expensive cost ${max}. Too few per workload for a percentile: a maximum is a fact at any `
+      + 'count, and it is the figure a per-session budget judges.',
     byLabelHeading: 'By label',
     byModelHeading: 'By model',
     priceUnknown: 'Unpriced',

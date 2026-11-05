@@ -84,6 +84,32 @@ describe('the transcript converter prices each call once', () => {
     assert.equal(out.noRequestId, 2);
   });
 
+  it('collapses a call with no requestId by its message id', () => {
+    // Every Claude Fable 5.1 line in this repository's own transcripts came
+    // without a requestId: 289 lines for 124 responses, each billed as a call.
+    const block = (id, output_tokens = 20) => {
+      const line = assistant();
+      delete line.requestId;
+      line.message = { ...line.message, id: id, usage: { ...line.message.usage, output_tokens } };
+      return line;
+    };
+    const out = claudeCodeRecords(lines(block('msg_01A'), block('msg_01A'), block('msg_01A', 25), block('msg_01B')));
+    assert.equal(out.records.length, 2, 'one record per response');
+    assert.equal(out.records[0].usage.output_tokens, 25, 'the last line of the call stands');
+    assert.equal(out.collapsed, 2);
+    assert.equal(out.streamed, 1);
+    assert.equal(out.noRequestId, 0, 'a message id is a key');
+    assert.ok(!JSON.stringify(out.records).includes('msg_01'), 'the message id is grouped by, never emitted');
+  });
+
+  it('never collapses a requestId into a message id that happens to match', () => {
+    const keyed = assistant({ requestId: 'same' });
+    const bare = assistant();
+    delete bare.requestId;
+    bare.message = { ...bare.message, id: 'same' };
+    assert.equal(claudeCodeRecords(lines(keyed, bare)).records.length, 2);
+  });
+
   it('counts the transcript’s other business without converting it', () => {
     const out = claudeCodeRecords(
       lines({ type: 'user', message: { content: SECRET_TEXT } }, { type: 'system' }, assistant()) +

@@ -95,7 +95,7 @@ describe('the cost of one conversation, on screen', () => {
     const log = await write([turn('a', 1), turn('b', 2), turn('c', 8)]);
     const out = flat(run([log]));
     assert.doesNotMatch(out, /the median one costs/);
-    assert.match(out, /3 conversations in this log; the most expensive cost \$8\.00/);
+    assert.match(out, /3 sessions in this log, subagents included; the most expensive cost \$8\.00/);
     assert.match(out, /--max-session-usd/);
     for (const key of ['"a"', '"b"', '"c"']) assert.ok(!out.includes(key), `session key ${key} leaked`);
 
@@ -103,6 +103,6 @@ describe('the cost of one conversation, on screen', () => {
     const bigger = await write([1, 2, 3, 4, 5].map((i) => turn(`s${i}`, i)));
     const spoken = flat(run([bigger]));
     assert.match(spoken, /the median one costs/);
-    assert.doesNotMatch(spoken, /conversations in this log; the most expensive/);
+    assert.doesNotMatch(spoken, /sessions in this log, subagents included; the most expensive/);
   });
 });

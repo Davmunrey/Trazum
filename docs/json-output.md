@@ -67,7 +67,7 @@ this section without changing a promise, which must not fail.
 | `unpricedModels` | Model ids the price catalogue does not know, named rather than silently costed at zero. |
 | `unpriced` | What those calls used, kept entirely out of `total`. |
 | `skippedLines` | 1-based positions of lines that could not be read. |
-| `conversations` | What re-sending history costs per slice — a ceiling, never a saving. |
+| `conversations` | What re-sending history costs per slice — a ceiling, never a saving. A conversation is a session's thread: a subagent that shares its session's id (`thread` on the record) is a conversation of its own here, and in `repeatedTurns`, `truncationRetries`, `cacheTtlFit` and `singleTurnCacheWrites`. `sessionCosts` and `sessionSpend` count the whole session, subagents included. |
 | `hasSessions` | Whether any record carried a session at all. Distinguishes "no growth" from "not measured". |
 | `outputShapes` | Where output spend concentrates, with the `max_tokens` ceilings the measured answers fit within. |
 | `inputShapes` | How big a slice's calls are: the ceilings half and 95% of them fit within, their ratio, and how much of the size was cache reads. Slices with too few calls for a percentile are absent, not zeroed. |
@@ -85,8 +85,8 @@ this section without changing a promise, which must not fail.
 | `cacheTtlFit` | Whether each slice's cache TTL fits how fast its turns arrive. |
 | `timeWindow` | The `--since`/`--until` filter applied, with the clockless calls it excluded. `null` when unfiltered. |
 | `singleTurnCacheWrites` | Cache writes by conversations that never came back — a ceiling, or a fact when the slice read nothing. |
-| `sessionCosts` | What one conversation costs: median, p95 and maximum per slice. |
-| `sessionSpend` | The whole log's conversations summarised for a per-conversation budget: how many, and what the single most expensive one cost. `null` when no record carried a session. |
+| `sessionCosts` | What one session costs, its subagents included: median, p95 and maximum per slice. |
+| `sessionSpend` | The whole log's sessions summarised for a per-session budget: how many, and what the single most expensive one cost, subagents included. `null` when no record carried a session. |
 | `cache` | Whether caching paid for itself over the whole log, with the worst case when the TTL was not recorded. |
 | `cacheByLabel` | The same verdict per workload — where a total hides a loss. |
 | `pricing` | Which price table produced these dollars, and how old it is, in **two parts**. `lastReviewed` and `ageDays` are the table's: its oldest provider, which is what *how old is this catalogue* means. `reportReviewed` and `reportAgeDays` are these figures': the oldest provider among the models actually priced here, and the pair the staleness warning is decided from. They differ exactly when a report uses none of the models holding the table back, which is why the warning used to fire on reports it did not describe. |

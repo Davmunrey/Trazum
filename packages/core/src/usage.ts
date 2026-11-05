@@ -140,6 +140,19 @@ export interface UsageRecord {
    */
   session: string | null;
   /**
+   * A conversation inside the session, when the session ran more than one: a
+   * Claude Code subagent, which shares its session's id and keeps a context of
+   * its own. Read from `thread`.
+   *
+   * The findings that follow a conversation turn by turn (how its input grows,
+   * whether a turn repeats or retries the last, whether the cache TTL fits the
+   * gaps, a write never read back) group by session **and** thread, because a
+   * subagent's turns are not the main thread's. What a session costs, and the
+   * per-session budget, stay by session: a session costs its subagents too.
+   * Like the session key, it is grouped by and never shown.
+   */
+  thread?: string;
+  /**
    * When the call happened, as epoch milliseconds, or `null` when the log does
    * not say.
    *
@@ -1014,6 +1027,7 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * nobody sets measures nothing.
      */
     session: nameOf(record.session) ?? nameOf(record.conversation_id),
+    ...(nameOf(record.thread) === null ? {} : { thread: nameOf(record.thread)! }),
     /**
      * Read from either spelling, for the same reason `session` is: `outcome`
      * in a log somebody wrote for this, `trazum_outcome` in one where a
@@ -1444,13 +1458,22 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       spanTo = Math.max(spanTo, record.ts);
       spanCalls += 1;
     }
-    conversations.add(record);
+    /*
+      A conversation is a session's thread. Every finding that reads one turn
+      after the last reads it per thread; what a session costs stays the
+      whole session's, its subagents included.
+    */
+    const conversation =
+      record.thread === undefined || record.session === null
+        ? record
+        : { ...record, session: `${record.session}\u0000${record.thread}` };
+    conversations.add(conversation);
     output.add(record);
     input.add(record);
-    repeats.add(record);
-    truncRetries.add(record);
-    ttlFit.add(record);
-    ledger.add(record);
+    repeats.add(conversation);
+    truncRetries.add(conversation);
+    ttlFit.add(conversation);
+    ledger.add(conversation);
     sessionCosts.add(record);
 
     const usdBefore = total.totalUsd;

@@ -36,6 +36,7 @@ findings are unavailable rather than reporting them as zero.
 | `label` | Per-workload bills, budgets per label, the plan's ranking. Without it everything is one bucket. |
 | `timestamp` | Days, drift, the watch, rates per month. Without it a total is still a total. |
 | `session` | Conversation growth, per-session budgets, cache TTL fit. |
+| `thread` | Only when one session runs several conversations at once, such as an agent and its subagents: which one the call belongs to. The turn-by-turn findings (growth, repeats, truncation retries, cache TTL fit, cache writes never read) follow each thread on its own; what a session costs, and the per-session budget, still count the whole session. Leave it out on the main conversation. `from-claude-code` and `bill` write it for you from a subagent's `agentId`. |
 | cache token fields | The cache verdict — whether caching is paying for itself or costing you. |
 | `stop_reason` | Truncation-and-retry detection: work billed twice. |
 | `requests` | Only on a row that sums calls, such as a usage report's hourly or daily bucket: how many it sums, or `null` when the report does not say. A per-call log leaves it out. It is what lets a model priced by prompt length be billed honestly: a call is billed on its own prompt, and a summed row at the dearer rate unless its whole prompt total is under the line, with the cheaper figure printed beside it. The `from-*` converters for usage reports write it for you. |
