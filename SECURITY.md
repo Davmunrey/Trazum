@@ -198,6 +198,10 @@ Some of this cannot be committed to a file — it lives in repository settings.
 - `.github/dependabot.yml` — weekly updates, routine patches grouped so real
   security bumps stay visible.
 - `.github/rulesets/main-branch.json` — an importable branch ruleset.
+- `scripts/sbom.mjs` — the CycloneDX bill of materials attached to every
+  GitHub release: each workspace and every package any of them needs at run
+  time, from the lockfile, checked before anything is uploaded and made on
+  every pull request by `test/sbom.test.mjs`.
 
 ### Needs an admin to switch on
 

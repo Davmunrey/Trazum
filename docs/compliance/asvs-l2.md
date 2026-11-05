@@ -47,8 +47,8 @@ gap is listed in the pack, and the summary below matches the rows.
 | V11 Business logic | 8 | 3 | 3 | 0 | 1 | 1 |
 | V12 Files and resources | 15 | 5 | 0 | 0 | 0 | 10 |
 | V13 API and web services | 13 | 7 | 2 | 0 | 0 | 4 |
-| V14 Configuration | 23 | 16 | 5 | 0 | 0 | 2 |
-| **Total** | **259** | **117** | **37** | **0** | **16** | **89** |
+| V14 Configuration | 23 | 17 | 4 | 0 | 0 | 2 |
+| **Total** | **259** | **118** | **36** | **0** | **16** | **89** |
 
 Most of V2 is not applicable for one reason: Trazum has no passwords. Signing
 in is delegated to GitHub, so the password, its storage, its recovery and any
@@ -367,7 +367,7 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 14.2.2 | Unneeded features and samples removed | Met | The production image carries the built server only (`Dockerfile`). |
 | 14.2.3 | Subresource integrity for CDN assets | N/A | Nothing is loaded from a CDN; scripts, styles and fonts come from the app's own origin. |
 | 14.2.4 | Components from trusted, maintained repositories | Met | The npm registry, through a lockfile, reviewed by Socket and dependency review (`.github/workflows/security.yml`). |
-| 14.2.5 | A software bill of materials | Partial | The lockfile lists every dependency and Socket reports one per pull request (`.github/workflows/security.yml`); no SBOM is attached to releases. |
+| 14.2.5 | A software bill of materials | Met | Every GitHub release carries a CycloneDX bill of each workspace and every third-party package any of them needs at run time, with version, licence, purl and hash, written from the lockfile and checked before anything is uploaded (`scripts/sbom.mjs`, `.github/workflows/release.yml`); `test/sbom.test.mjs` makes it on every pull request and holds it to what `npm ls` and `npm sbom` find. |
 | 14.2.6 | Third-party libraries kept to what is needed | Partial | Core, CLI and MCP have no third-party runtime dependency (`packages/core/package.json`); the web app depends on Next, React and `postgres` directly. |
 | 14.3.2 | Debug modes off in production | Met | Production builds only; `unsafe-eval` exists only in development (`apps/web/middleware.ts`). |
 | 14.3.3 | No version details in responses | Met | `poweredByHeader: false` (`apps/web/next.config.mjs`). |

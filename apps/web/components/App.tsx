@@ -497,6 +497,23 @@ export function App({
   });
 
   /**
+   * Says the page has started: every effect of the first render has run, so
+   * each request the page makes on its own has been sent (the session check
+   * above, the optimizer's settings, the writer's first question). React runs
+   * a parent's effects after its children's, and one component's in the
+   * order they are written, which is why this is the last effect here.
+   *
+   * `scripts/privacy-probe.mjs` waits for it before it pastes a log, and
+   * `test/privacy-probe.test.mjs` keeps it last. Waiting for the network to go
+   * quiet was not enough: on a slow runner React hydrated more than 500 ms
+   * after the last asset arrived, those three requests went out after the
+   * probe had started reading, and the probe counted them against the bill.
+   */
+  useEffect(() => {
+    document.documentElement.dataset.started = 'true';
+  }, []);
+
+  /**
    * Selecting a tab rewrites the address, so the tab somebody is looking at is
    * the tab they can send to somebody else. `replaceState`, not `pushState`:
    * the rail is navigation within one page, and filling the back button with

@@ -412,7 +412,7 @@ including what it costs a reader pinning with a tilde, is in
    `decide` job, which sees a manifest version the registry does not have and
    hands it to the release job: verify again, publish all four packages,
    create the `v<version>` tag on the merge commit, and publish the GitHub
-   release from `RELEASES.md`. Then a third job waits for npm to serve the new
+   release from `RELEASES.md` with the bill of materials attached. Then a third job waits for npm to serve the new
    `@trazum/mcp` and updates the MCP registry listing, which was the last
    manual step until 1.80.2. No tag to type, no second step to remember.
 
@@ -445,6 +445,22 @@ The workflow does the rest. It will refuse if the tag and the manifests disagree
 and it runs the same `verify` a pull request runs before anything is published —
 a release gate that checks less than the pull-request gate lets through exactly
 what the tag was for.
+
+**Every GitHub release carries a bill of materials**, from the first release
+after 2.7.7: `trazum-v<version>.cdx.json`, a CycloneDX 1.5 document listing
+each workspace and every third-party package any of them needs at run time,
+with its version, licence, purl, hash and tarball, and what depends on what.
+The release job writes it with `scripts/sbom.mjs` before anything is uploaded,
+and the script checks the document before writing it, so a bill that fails
+stops the release while nothing is published. It is read from the lockfile
+rather than made by `npm sbom --omit dev`, which on this tree leaves out seven
+packages a runtime dependency needs whenever a development tool needs them as
+well. `test/sbom.test.mjs` makes the same document on every pull request and
+requires it to hold everything `npm ls --omit dev` and `npm sbom` find. To make
+one yourself: `node scripts/sbom.mjs trazum.cdx.json`. A release created by
+hand or by `backfill-releases` has none: that workflow runs on main's tree,
+whose lockfile is not the old commit's, so a bill made there would describe
+the wrong release.
 
 `@trazum/core` publishes first. The CLI and the MCP server depend on it at an exact version, so the
 other order leaves a window where installing the CLI fails on a dependency that
@@ -608,7 +624,7 @@ the closest a manual publish gets to not holding a credential.
 
 Run the workflow from the Actions tab. `workflow_dispatch` is **dry-run only** —
 every publish step is gated on a tag, so a manual run does the install, the
-`verify` and the `npm pack --dry-run`, and stops. A publish reachable without a
+`verify`, the `npm pack --dry-run` and the bill of materials, and stops. A publish reachable without a
 tag would be a release with no version to check against.
 
 ## If something goes wrong

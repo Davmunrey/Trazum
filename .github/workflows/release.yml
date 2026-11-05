@@ -170,6 +170,19 @@ jobs:
       - name: Stress the packed release in an isolated installation
         run: npm run verify:packages
 
+      # The software bill of materials attached to the GitHub release (OWASP
+      # ASVS 14.2.5): every workspace and every third-party package any of them
+      # needs at run time, read from the lockfile, as CycloneDX. Made here, on
+      # every run including the dry run and before anything is uploaded, so a
+      # bill that fails its own check stops the release while nothing is
+      # published. `test/sbom.test.mjs` makes and checks the same document on
+      # every pull request.
+      - name: Bill of materials
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          node scripts/sbom.mjs "/tmp/sbom/trazum-v$version.cdx.json"
+
       # The packages publish in dependency order, so a half-finished release is
       # the expensive shape: core uploads, the CLI fails, and core's number is
       # spent — npm never reuses a version, so the whole set has to move to the
@@ -312,6 +325,7 @@ jobs:
           set -euo pipefail
           node scripts/release-notes.mjs "${GITHUB_REF_NAME#v}" > /tmp/release-notes.md
           gh release create "$GITHUB_REF_NAME" \
+            "/tmp/sbom/trazum-$GITHUB_REF_NAME.cdx.json" \
             --title "$GITHUB_REF_NAME" \
             --notes-file /tmp/release-notes.md \
             --verify-tag
@@ -356,6 +370,7 @@ jobs:
             fi
           fi
           gh release create "v$version" \
+            "/tmp/sbom/trazum-v$version.cdx.json" \
             --verify-tag \
             --title "v$version" \
             --notes-file /tmp/release-notes.md

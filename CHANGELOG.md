@@ -13,6 +13,19 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The privacy probe could fail a clean page on a busy runner.** It began
+  reading the bill once the network had been idle for 500 ms, and a runner
+  under load hydrated later than that, so the page's own start-up requests
+  (the session check, the optimizer's settings, the writer's first question)
+  went out after reading had begun and were counted against it. The same
+  commit passed on one run and failed on the other. The app's last
+  first-render effect now marks the page started, and the probe waits for
+  that mark and then for quiet before it pastes anything. With the page's CPU
+  six times slower, the old probe failed five runs out of five and the new
+  one passed every run at one, six, twelve and twenty times slower; CI now
+  runs it at six, so a probe that stops waiting fails every time rather than
+  now and then. `test/privacy-probe.test.mjs` keeps the mark the app's last
+  effect, the wait before the read and the slowed run in CI.
 - **Saves arriving together could pass a per-account ceiling on Postgres,
   and two new versions of one prompt could collide.** The ceilings (200
   prompts, 100 links) were counted in one statement and written in the next,
@@ -63,6 +76,23 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Every GitHub release carries a bill of materials.** `trazum-v<version>.cdx.json`
+  is a CycloneDX 1.5 document listing each workspace and every third-party
+  package any of them needs at run time (150 today, 43 of them optional:
+  platform binaries and peers used when present), with version, licence,
+  purl, SHA-512 and tarball, and what depends on what. `scripts/sbom.mjs`
+  writes it from the lockfile in the release job, before anything is
+  uploaded, and checks it first, so a bill that fails stops the release while
+  nothing is published; the dry run makes it too. It does not use
+  `npm sbom --omit dev`, which on this tree leaves out seven packages a
+  runtime dependency needs whenever a development tool needs them as well
+  (Next's `postcss`, Radix's `tslib`, sharp's `detect-libc` among them).
+  `test/sbom.test.mjs`, now part of `npm test`, makes the same document on
+  every pull request and requires it to hold everything `npm ls --omit dev`
+  finds installed and everything `npm sbom` lists, with the same version,
+  licence and hash; nine planted faults, from following development
+  dependencies to a release step that attaches nothing, were each caught.
+  OWASP ASVS 14.2.5 moves to met (118).
 - **A line for every error the web app did not catch.** `onRequestError` in
   `apps/web/instrumentation.ts` writes one structured line per uncaught
   error: the route's pattern (`/api/prompts/[id]`, never the path requested,
