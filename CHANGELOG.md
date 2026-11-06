@@ -96,6 +96,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Every read of a person's saved prompts or share links is recorded**
+  (OWASP ASVS 4.0.3 8.3.5). The library list, one prompt, a rename (which
+  answers with the prompt's whole history) and the list of one's share links
+  each write a `library.read` line with the account and the kind of route,
+  never the text, the name or the id; asking for an id that is not the
+  caller's writes the same line with `not_found`, which is what guessing ids
+  looks like. A stolen session's reading can now be told from its owner's by
+  when it happened. A share link's public page still records no view, by
+  design. `apps/web/test/security-log.test.mjs` plants the prompt, its name,
+  its id and the share token and searches every line for them, and fails any
+  handler that answers with saved prompts and records no read; five faults
+  planted in the routes were each caught.
 - **A threat model, a secure coding checklist and a procedure for rotating
   each secret** (OWASP ASVS 4.0.3 1.1.5, 1.1.7, 1.6.3, 11.1.5), in
   `docs/compliance/`. The threat model covers what a hosted Trazum is worth

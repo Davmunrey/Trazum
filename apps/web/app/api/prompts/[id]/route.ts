@@ -2,7 +2,7 @@ import { PROMPT_RENAME, PROMPT_VERSION, readBody } from '../../../../lib/body-sc
 import { isUuid, privateJson, promptJson, requireCaller, versionJson } from '../../../../lib/prompts/api';
 import { MAX_VERSIONS_PER_PROMPT } from '../../../../lib/store/prompts';
 import { saysJson } from '../../../../lib/request-body';
-import { logsRefusedInput, unreadableBody } from '../../../../lib/security-log';
+import { logsRefusedInput, routeOf, securityEvent, unreadableBody } from '../../../../lib/security-log';
 
 export const runtime = 'nodejs';
 
@@ -34,8 +34,14 @@ async function handleGet(request: Request, { params }: Params): Promise<Response
   if (!isUuid(id)) return privateJson(NOT_FOUND, 404);
 
   const prompt = await caller.store.prompts.getPrompt(id, caller.user.id);
-  if (!prompt) return privateJson(NOT_FOUND, 404);
+  if (!prompt) {
+    // Somebody else's prompt and no prompt at all are the same answer and the
+    // same line; a run of them from one account is somebody guessing ids.
+    securityEvent('library.read', 'failure', { userId: caller.user.id, reason: 'not_found', route: routeOf(request) });
+    return privateJson(NOT_FOUND, 404);
+  }
 
+  securityEvent('library.read', 'success', { userId: caller.user.id, route: routeOf(request) });
   return privateJson({ prompt: promptJson(prompt) });
 }
 
@@ -134,6 +140,8 @@ async function handlePatch(request: Request, { params }: Params): Promise<Respon
   }
 
   const prompt = await caller.store.prompts.getPrompt(id, caller.user.id);
+  // A rename answers with the prompt's whole history, so it is a read of it.
+  securityEvent('library.read', 'success', { userId: caller.user.id, route: routeOf(request) });
   return privateJson({ prompt: prompt && promptJson(prompt) });
 }
 

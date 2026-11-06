@@ -82,7 +82,7 @@ of privilege.
 | A method a route does not serve, or a preflight | Tampering | Refused with 405 and recorded | `apps/web/lib/api-methods.ts` |
 | Script injected into a page | Tampering | A nonce-based CSP with `strict-dynamic`; React escapes what it renders | `apps/web/middleware.ts`, TRZ-09 |
 | A page framed to trick a click | Tampering | `X-Frame-Options: DENY` and `frame-ancestors 'none'` | TRZ-09 |
-| An action nobody can show happened | Repudiation | One structured line per security decision, with the account where there is one | `apps/web/lib/security-log.ts`, TRZ-13 |
+| An action nobody can show happened | Repudiation | One structured line per security decision, and per read of one's own saved prompts, with the account where there is one | `apps/web/lib/security-log.ts`, TRZ-13 |
 | A token, address, login or prompt in a log | Information disclosure | The log writes none of them; a test plants each in a request and reads every line | `apps/web/test/security-log.test.mjs`, TRZ-13 |
 | Guessing a share link | Information disclosure | 256 bits from the system's random source, and the share page is rate-limited | `apps/web/lib/shares/api.ts`, `apps/web/middleware.ts` |
 | A share link that outlives its purpose | Information disclosure | Every link expires after the lifetime chosen when it was made (unless *never* was chosen), can be revoked, and goes with the account | `apps/web/lib/store/shares.ts`, TRZ-10 |
@@ -114,9 +114,11 @@ Each is a decision rather than an oversight. The longer reasoning is in
 - **The SSRF filter reads names, not resolved addresses.** On the one path where
   a stranger supplies the string, the string is no longer what gets fetched; the
   filter alone guards only what the operator types.
-- **Reading one's own library is not recorded.** Exports, deletions, shares and
-  admin access are; a read of one's own prompts is a decision for the owner
-  (ASVS 8.3.5, listed as remaining in the [pack](README.md#what-remains-in-code)).
+- **A share link's page records no view.** Every read of a person's own
+  library is recorded, and so are exports, deletions and admin access; the
+  public page of a share link is not, because a link is a publication to
+  whoever holds it and a write caused by an anonymous request is a lever.
+  The page's own comment says the same.
 
 ## The limits, and the risk behind each
 

@@ -30,6 +30,7 @@ async function handleGet(request: Request): Promise<Response> {
   const config = authConfig();
   const publicUrl = config.enabled ? config.publicUrl : '';
   const shares = await caller.store.shares.listShares(caller.user.id, new Date());
+  securityEvent('library.read', 'success', { userId: caller.user.id, route: routeOf(request) });
 
   return privateJson({
     shares: shares.map((share) => ({
