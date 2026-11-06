@@ -13,6 +13,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The MCP server and the local HTTP API read an agent's session as a broken
+  log.** An agent asked what its own work cost reaches for the session it is
+  in; `profile_usage` answered that transcript with "No usage records in that
+  log", every line unreadable, and `plan_savings`, `verify_savings` and
+  `POST /savings/plan` and `/savings/verify` with "no readable usage records".
+  They now say what the text is and point at what converts it:
+  `import_usage` with the right `format`, `POST /usage/import`, or the CLI's
+  `from-` command for a provider report. One verdict in `@trazum/core`,
+  `notAUsageLog`, now decides it for the CLI, the MCP server and the HTTP API
+  alike, and the log inputs' descriptions name `import_usage` before anyone
+  has to be refused.
 - **`bill` sent people to commands that do not exist.** Explaining rows it
   left out of an Anthropic or OpenAI usage report, it built the command's name
   from the shape's, `from-anthropic-usage` or `from-openai-usage`, and both

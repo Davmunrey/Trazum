@@ -42,6 +42,8 @@ import {
   repriceProfile,
   slot,
   MAX_INPUT_CHARS,
+  AGENT_SHAPES,
+  notAUsageLog,
 } from '@trazum/core';
 import type { RuleLevel } from '@trazum/core';
 
@@ -332,7 +334,9 @@ const PROFILE: ToolDefinition = {
         type: 'string',
         minLength: 1,
         maxLength: MAX_LOG_CHARS,
-        description: 'The usage log text, one JSON object per line. Never a file path.',
+        description:
+          'The usage log text, one JSON object per line. Never a file path. A Claude Code, Codex or Gemini CLI '
+          + 'session is not one: convert it with import_usage first.',
       },
       label: {
         type: 'string',
@@ -401,6 +405,7 @@ const PROFILE: ToolDefinition = {
         `log is ${log.length} characters, over the ${MAX_LOG_CHARS} limit`,
       );
     }
+    refuseOtherShape(log, 'log');
     const onlyLabel = args.label;
     if (onlyLabel !== undefined && typeof onlyLabel !== 'string') {
       throw new InvalidArguments('label must be a string');
@@ -908,6 +913,7 @@ const PROFILE: ToolDefinition = {
           `previous_log is ${previousLog.length} characters, over the ${MAX_LOG_CHARS} limit`,
         );
       }
+      refuseOtherShape(previousLog, 'previous_log');
       // The same filters on both sides: a windowed or drilled-down bill
       // against the whole previous log would call every sibling workload a
       // vanished saving.
@@ -1602,7 +1608,9 @@ const POSITION: ToolDefinition = {
         type: 'string',
         minLength: 1,
         maxLength: MAX_LOG_CHARS,
-        description: 'The usage log text, one JSON object per line. Never a file path.',
+        description:
+          'The usage log text, one JSON object per line. Never a file path. A Claude Code, Codex or Gemini CLI '
+          + 'session is not one: convert it with import_usage first.',
       },
       monthlyUsd: {
         type: 'number',
@@ -1624,6 +1632,7 @@ const POSITION: ToolDefinition = {
     if (typeof log !== 'string' || log.length === 0) {
       throw new InvalidArguments('log must be the usage log text, one JSON object per line');
     }
+    refuseOtherShape(log, 'log');
     let limits;
     try {
       if (args.limits !== undefined) limits = parseLimits(args.limits, 'position');
@@ -1662,12 +1671,55 @@ const POSITION: ToolDefinition = {
 /** Savings documents are text, never paths; the two tools add no I/O capability. */
 const SAVINGS_LOG_PROPERTY = {
   type: 'string', minLength: 1, maxLength: MAX_LOG_CHARS,
-  description: 'Normalized usage-log text, one JSON object per line. Never a path.',
+  description: 'Normalized usage-log text, one JSON object per line. Never a path. A Claude Code, Codex or Gemini CLI session is not one: convert it with import_usage first.',
 };
 const SAVINGS_PRICING_PROPERTY = {
   type: 'string', minLength: 1, maxLength: MAX_PRICING_BYTES,
   description: 'Optional pricing-overlay JSON text. Use the same rates for planning and verification.',
 };
+
+/**
+ * Usage-log text, refused by name when it is something else.
+ *
+ * An agent asked what its own work cost will reach for the session it is
+ * in, and passing that transcript here answered "No usage records in that
+ * log" with every line counted unreadable. That reads as a broken file, and
+ * an agent told a file is broken stops, when `import_usage` converts it in
+ * one call. So the shapes the CLI's `bill` tells apart are asked here too,
+ * through the same detection in core, and a session is pointed at
+ * `import_usage`. Shapes only the CLI converts are pointed at it, and a
+ * provider's cost report at `trazum reconcile`.
+ *
+ * Asked only when the first line is not already a usage line, so a usage
+ * log pays one parsed line. Text nothing claims passes through, and its
+ * unreadable lines are reported where they always were.
+ */
+function refuseOtherShape(text: string, key: string): void {
+  const not = notAUsageLog(text);
+  if (not === null) return;
+  if (not.kind === 'shape' && AGENT_SHAPES.includes(not.shape)) {
+    throw new InvalidArguments(
+      `${key} is a ${not.shape} session, not a usage log, so it holds no record this tool reads. `
+        + `Call import_usage with format "${not.shape}" and this text, then pass the log it returns as ${key}.`,
+    );
+  }
+  if (not.kind === 'shape') {
+    throw new InvalidArguments(
+      `${key} is ${not.shape} data, not a usage log, so it holds no record this tool reads. `
+        + (not.command === null ? '' : `From a terminal, trazum ${not.command} turns it into one; `)
+        + 'trazum bill reads it as it is.',
+    );
+  }
+  if (not.kind === 'ambiguous') {
+    throw new InvalidArguments(
+      `${key} is not a usage log, and more than one format claims it (${not.shapes.join(', ')}), so it was not converted.`,
+    );
+  }
+  throw new InvalidArguments(
+    `${key} is a provider's cost report, a bill rather than usage, so it holds no record this tool reads. `
+      + 'From a terminal, trazum reconcile sets it beside a receipt.',
+  );
+}
 
 function savingsText(args: Record<string, unknown>, key: string, max: number): string {
   const value = args[key];
@@ -1690,6 +1742,7 @@ function savingsCatalogue(args: Record<string, unknown>) {
 }
 
 function savingsReport(log: string, catalogue: typeof BUNDLED_CATALOGUE) {
+  refuseOtherShape(log, 'log');
   const report = profileUsage(log, { catalogue });
   if (report.total.calls + report.unpriced.calls === 0) {
     throw new InvalidArguments('log contains no readable usage records; pass normalized JSONL text with model and token counts');

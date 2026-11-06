@@ -224,3 +224,53 @@ describe('a directory handed to a command that does not walk folders', () => {
     }
   });
 });
+
+describe('the local HTTP API handed a coding agent session as a log', () => {
+  /*
+    POST /savings/plan and /savings/verify answered a Claude Code session with
+    "log contains no readable usage records", when POST /usage/import converts
+    it. Same verdict as the CLI and the MCP server, in the API's words.
+  */
+  const serve = async (t) => {
+    const { buildServer, listen } = await import('../dist/serve.js');
+    const { BUNDLED_CATALOGUE } = await import('@trazum/core');
+    const server = buildServer({
+      catalogue: BUNDLED_CATALOGUE,
+      position: () => { throw new Error('not read'); },
+      measured: () => { throw new Error('not read'); },
+    });
+    const address = await listen(server, { port: 0 });
+    t.after(() => { server.closeAllConnections(); server.close(); });
+    return async (path, payload) => {
+      const response = await fetch(`http://${address}${path}`, { method: 'POST', body: JSON.stringify(payload) });
+      return { status: response.status, body: await response.json() };
+    };
+  };
+  const session = readFileSync(SESSION, 'utf8');
+
+  it('plan and verify name it and point at /usage/import, and the advice works', async (t) => {
+    const post = await serve(t);
+    const usage = '{"model":"claude-opus-5","label":"synthetic-work","usage":{"input_tokens":400000,"output_tokens":1000}}';
+    const planned = await post('/savings/plan', { log: usage });
+    assert.equal(planned.status, 200);
+    for (const [path, payload] of [
+      ['/savings/plan', { log: session }],
+      ['/savings/verify', { log: session, plan: JSON.stringify(planned.body.plan) }],
+    ]) {
+      const refused = await post(path, payload);
+      assert.equal(refused.status, 400, `${path} read a Claude Code session as a usage log`);
+      assert.match(refused.body.detail, /log is a claude-code session, not a usage log\. POST it to \/usage\/import with format "claude-code"/);
+    }
+    const imported = await post('/usage/import', { format: 'claude-code', text: session });
+    assert.equal(imported.status, 200, JSON.stringify(imported.body));
+    assert.equal((await post('/savings/plan', { log: imported.body.log })).status, 200);
+  });
+
+  it('names a provider report by its CLI converter', async (t) => {
+    const post = await serve(t);
+    const file = anthropicUsage(scratch());
+    const refused = await post('/savings/plan', { log: readFileSync(file, 'utf8') });
+    assert.equal(refused.status, 400);
+    assert.match(refused.body.detail, /log is anthropic-usage data, not a usage log\. trazum from-anthropic turns it into one; trazum bill reads it as it is\./);
+  });
+});

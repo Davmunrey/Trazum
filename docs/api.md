@@ -158,7 +158,9 @@ These endpoints receive text, never file paths. They do not read files, persist
 plans, invoke models, reserve funds or access provider services. Import native
 sessions first with [HTTP `/usage/import`](#import-native-usage), CLI
 `from-claude-code` / `from-codex` or MCP `import_usage`,
-and retain their conversion diagnostics separately. The HTTP endpoints cannot recover excluded source records.
+and retain their conversion diagnostics separately. A session sent as `log`
+directly is refused with `400`, naming its format and the `/usage/import`
+request that converts it; a provider report is named with its CLI converter. The HTTP endpoints cannot recover excluded source records.
 
 Use the same server configuration for both requests. Its selected catalogue,
 including any configured price overlay, prices all supplied logs. Request-level

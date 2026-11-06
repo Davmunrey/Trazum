@@ -115,7 +115,7 @@ import {
   indexUsage,
   parseUsageLine,
   SHAPE_COMMAND,
-  firstLineOf,
+  notAUsageLog,
   usageShapesOf,
   type UsageShape,
   plannedCalls,
@@ -3603,16 +3603,11 @@ async function readUsageLogOnly(file: string, t: CliMessages, billPath: string =
   } finally {
     await handle.close();
   }
-  const first = firstLineOf(text);
-  if (first === undefined || parseUsageLine(first) !== null) return text;
-  const claims = usageShapesOf(text).filter((shape) => shape !== 'usage-log');
-  const [only] = claims;
-  if (claims.length === 1 && only !== undefined) {
-    throw new Error(t.errors.logIsOtherShape(file, only, SHAPE_COMMAND[only], billPath));
-  }
-  if (claims.length > 1) throw new Error(t.errors.logIsAmbiguous(file, claims.join(', ')));
-  if (looksLikeAnthropicCost(text) || looksLikeOpenaiCost(text)) throw new Error(t.errors.logIsCostReport(file));
-  return text;
+  const not = notAUsageLog(text);
+  if (not === null) return text;
+  if (not.kind === 'shape') throw new Error(t.errors.logIsOtherShape(file, not.shape, not.command, billPath));
+  if (not.kind === 'ambiguous') throw new Error(t.errors.logIsAmbiguous(file, not.shapes.join(', ')));
+  throw new Error(t.errors.logIsCostReport(file));
 }
 
 /**

@@ -9,6 +9,7 @@
  * is named the same way in both places.
  */
 
+import { looksLikeAnthropicCost } from './anthropic-cost.js';
 import { looksLikeAnthropicUsage } from './anthropic-usage.js';
 import { looksLikeBatchResults } from './batch-results.js';
 import { looksLikeClaudeCodeTranscript } from './claude-code.js';
@@ -17,6 +18,7 @@ import { looksLikeGeminiCliSession } from './gemini-cli.js';
 import { looksLikeHelicone } from './helicone.js';
 import { looksLikeLangsmith } from './langsmith.js';
 import { looksLikeLiteLlm } from './litellm.js';
+import { looksLikeOpenaiCost } from './openai-cost.js';
 import { looksLikeOpenaiUsage } from './openai-usage.js';
 import { looksLikeOpenrouterActivity } from './openrouter-activity.js';
 import { looksLikeOtel } from './otel.js';
@@ -99,4 +101,45 @@ export function usageShapesOf(text: string): UsageShape[] {
   const first = firstLineOf(text);
   if (first !== undefined && parseUsageLine(first) !== null) claims.push('usage-log');
   return claims;
+}
+
+/** The coding agents whose sessions convert to a usage log. */
+export const AGENT_SHAPES: readonly UsageShape[] = ['claude-code', 'codex', 'gemini-cli'];
+
+/**
+ * Why a text handed to something that reads a usage log is not one.
+ *
+ * - `shape`: one shape claims it; `command` is the CLI converter, or null.
+ * - `ambiguous`: more than one claims it, so nobody should convert it.
+ * - `cost-report`: a provider's bill, which is not usage at all.
+ */
+export type NotAUsageLog =
+  | { kind: 'shape'; shape: Exclude<UsageShape, 'usage-log'>; command: string | null }
+  | { kind: 'ambiguous'; shapes: UsageShape[] }
+  | { kind: 'cost-report' };
+
+/**
+ * Whether a text meant as a usage log is something else, and what.
+ *
+ * Every door that reads one usage log (the CLI's `profile` and its kin, the
+ * MCP server's tools, the local HTTP API) read a Claude Code session as a
+ * log whose every line was unreadable, and answered "no usage records". That
+ * reads as a broken file. This names what the text is, so each door can
+ * point at what reads it, in its own words.
+ *
+ * Null when the first line with anything on it is a usage line, so a usage
+ * log pays one parsed line for the question, and null when nothing claims
+ * the text, whose unreadable lines are then counted where they always were.
+ */
+export function notAUsageLog(text: string): NotAUsageLog | null {
+  const first = firstLineOf(text);
+  if (first === undefined || parseUsageLine(first) !== null) return null;
+  const claims = usageShapesOf(text).filter(
+    (shape): shape is Exclude<UsageShape, 'usage-log'> => shape !== 'usage-log',
+  );
+  const [only] = claims;
+  if (claims.length === 1 && only !== undefined) return { kind: 'shape', shape: only, command: SHAPE_COMMAND[only] };
+  if (claims.length > 1) return { kind: 'ambiguous', shapes: claims };
+  if (looksLikeAnthropicCost(text) || looksLikeOpenaiCost(text)) return { kind: 'cost-report' };
+  return null;
 }
