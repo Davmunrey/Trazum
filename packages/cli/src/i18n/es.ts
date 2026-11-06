@@ -52,7 +52,7 @@ ${bold('USO')}
   trazum schema <contrato>
   trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
   trazum position <uso.jsonl>
-  trazum receipt <uso.jsonl|dir> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
+  trazum receipt <uso.jsonl> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
               [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
@@ -1251,6 +1251,14 @@ ${bold('EJEMPLOS')}
       'esa ruta es un directorio, y este comando lee un fichero. Nombra el fichero de dentro, o usa un comando que recorra una carpeta.',
     fileNotReadable: (path) =>
       `${path}: sin permiso de lectura. Revisa el dueño y los permisos del fichero, y vuelve a ejecutarlo.`,
+    logIsDirectory: (path) =>
+      `${path} es un directorio, y este comando lee un registro de uso. trazum bill ${path} lee todos los registros de uso y sesiones de agentes de código que hay dentro.`,
+    logIsOtherShape: (path, shape, command, billPath) =>
+      `${path} son datos de ${shape}, no un registro de uso, así que este comando no encontraría ninguna llamada en él. trazum bill ${billPath} lo lee tal cual${command === null ? '.' : `, y trazum ${command} ${path} -o uso.jsonl escribe un registro de uso que este comando lee.`}`,
+    logIsAmbiguous: (path, shapes) =>
+      `${path} no es un registro de uso, y lo reclama más de una forma (${shapes}). Conviértelo con el comando from- de la que sea, y apunta este comando al registro de uso que escriba.`,
+    logIsCostReport: (path) =>
+      `${path} es un informe de costes de un proveedor, una factura y no uso, así que este comando no encontraría ninguna llamada en él. Ponlo junto a un recibo con trazum reconcile.`,
     livePricingFailed: (url: string, detail: string) =>
       `No se han podido cargar los precios en vivo desde ${url}: ${detail}. Los precios incluidos siguen ahí: quita --pricing-live para usarlos.`,
     optionNeedsValue: (name) => `La opción --${name} necesita un valor.`,
@@ -2163,8 +2171,8 @@ ${bold('EJEMPLOS')}
     unknownMore: (count) => `${count} archivo(s) más que ninguna forma reclama, sin adivinar y fuera de la factura.`,
     sessionSideFiles: (count) =>
       `${count} archivo(s) que Claude Code guarda dentro de las carpetas de sus sesiones (metadatos de subagentes, diarios de workflows, salidas largas de herramientas) no son uso, y se han pasado por alto.`,
-    shapeSummary: (shape, files, records, leftOut) =>
-      `${files} archivo(s): ${shape}${records === null ? ', leídos tal cual' : `, ${records} registro(s)`}${leftOut > 0 ? `, ${leftOut} fila(s) fuera. trazum from-${shape} sobre un archivo dice por qué.` : '.'}`,
+    shapeSummary: (shape, files, records, leftOut, command) =>
+      `${files} archivo(s): ${shape}${records === null ? ', leídos tal cual' : `, ${records} registro(s)`}${leftOut > 0 ? `, ${leftOut} fila(s) fuera${command === null ? '.' : `. trazum ${command} sobre un archivo dice por qué.`}` : '.'}`,
     statementHeading: () => 'Tu factura',
     statementTotal: (usd, calls) => `${usd} en ${calls.toLocaleString('es-ES')} llamada(s) con precio`,
     colProject: () => 'proyecto',
@@ -2194,8 +2202,8 @@ ${bold('EJEMPLOS')}
       'El recibo como datos: --receipt, o -o recibo.json. El documento para quien paga: --pdf-out factura.pdf.',
     notFound: (path) => `${path}: no encontrado`,
     noFiles: (path) => `${path}: no hay archivos .json, .jsonl, .ndjson ni .log dentro, ni sin comprimir ni en .gz.`,
-    file: (path, shape, records, leftOut) =>
-      `${path}: ${shape}${records === null ? ', leído tal cual' : `, ${records} registro(s)`}${leftOut > 0 ? `, ${leftOut} fila(s) fuera. Ejecuta trazum from-${shape} sobre él para ver por qué.` : '.'}`,
+    file: (path, shape, records, leftOut, command) =>
+      `${path}: ${shape}${records === null ? ', leído tal cual' : `, ${records} registro(s)`}${leftOut > 0 ? `, ${leftOut} fila(s) fuera${command === null ? '.' : `. Ejecuta trazum ${command} sobre él para ver por qué.`}` : '.'}`,
     unknown: (path) =>
       `${path}: ninguna forma que esta herramienta lee lo reclama, así que no se adivinó y no está en la factura.`,
     ambiguous: (path, shapes) =>
@@ -3180,8 +3188,8 @@ ${bold('EJEMPLOS')}
       `El 95% de las respuestas que sí terminaron cabe en ${p95} tokens de salida, así que un tope por ahí dejaría de cortarlas. Medido en estas llamadas, prometido para ninguna.`,
     readFiles: (files, directory) =>
       `Leídos ${count(files)} ficheros de registro de ${directory}, en orden de nombre, como una sola factura. Todas las cifras de abajo los cubren todos.`,
-    noLogsInDirectory: (directory, extensions) =>
-      `No hay registros de uso en "${directory}". Se buscaron ficheros terminados en ${extensions}. Un directorio sin nada legible es un error, no un informe vacío, que se leería como "no has gastado nada".`,
+    noLogsInDirectory: (directory, extensions, folders) =>
+      `No hay registros de uso en "${directory}". Se buscaron ficheros terminados en ${extensions}. Un directorio sin nada legible es un error, no un informe vacío, que se leería como "no has gastado nada".${folders ? ` Contiene carpetas, en las que este comando no entra: trazum bill "${directory}" lee todos los registros de uso y sesiones de agentes de código que hay dentro.` : ''}`,
     sessionCostTail: (ratio) =>
       `El percentil 95 es ${ratio}x la mediana ahí: casi todas las sesiones son baratas y unas pocas no, y esa es una cola que una cuota puede cazar. Cuando mediana y p95 quedan cerca, la carga es cara sin más y no hay cola que perseguir.`,
     sessionSpendOnly: (sessions, max) =>

@@ -233,6 +233,8 @@ export type {
 export { indexUsage, positionAt } from './position.js';
 export type { MeasuredIndex } from './position.js';
 export { claudeCodeRecords, looksLikeClaudeCodeTranscript } from './claude-code.js';
+export { SHAPE_COMMAND, firstLineOf, usageShapesOf } from './usage-shapes.js';
+export type { UsageShape } from './usage-shapes.js';
 export { otelRecords, looksLikeOtel } from './otel.js';
 export type { OtelConversion, OtelRecord } from './otel.js';
 export { litellmRecords, looksLikeLiteLlm } from './litellm.js';

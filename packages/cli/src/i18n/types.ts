@@ -95,6 +95,16 @@ export interface CliMessages {
     /** Node reports EISDIR from `read` with no path on it, so this one names none. */
     fileIsDirectoryUnnamed(): string;
     fileNotReadable(path: string): string;
+    /**
+     * A command that reads one usage log, handed something else. Each names
+     * the file, what it is, and the command that reads it: a refusal that
+     * only said "no usage records" read as a broken file.
+     */
+    logIsDirectory(path: string): string;
+    /** `command` is the converter for the shape, null where none exists. `billPath` is what `bill` should be pointed at. */
+    logIsOtherShape(path: string, shape: string, command: string | null, billPath: string): string;
+    logIsAmbiguous(path: string, shapes: string): string;
+    logIsCostReport(path: string): string;
     livePricingFailed: (url: string, detail: string) => string;
     optionNeedsValue(name: string): string;
     mustBeNonNegative(name: string, raw: string): string;
@@ -783,7 +793,7 @@ export interface CliMessages {
     /** Files a Claude Code session keeps beside its transcript, inside its own folder: not usage. */
     sessionSideFiles(count: number): string;
     /** Many files of one shape: one line for the shape, not one per file. */
-    shapeSummary(shape: string, files: number, records: number | null, leftOut: number): string;
+    shapeSummary(shape: string, files: number, records: number | null, leftOut: number, command: string | null): string;
     /** The human statement a terminal gets instead of the JSON receipt. */
     statementHeading(): string;
     statementTotal(usd: string, calls: number): string;
@@ -814,7 +824,7 @@ export interface CliMessages {
     notFound(path: string): string;
     noFiles(path: string): string;
     /** One line per file: its shape, what it became, what was left out. */
-    file(path: string, shape: string, records: number | null, leftOut: number): string;
+    file(path: string, shape: string, records: number | null, leftOut: number, command: string | null): string;
     /** No shape claimed it: named, never guessed. */
     unknown(path: string): string;
     /** Two shapes claimed it: named, never picked between. */
@@ -1927,7 +1937,8 @@ export interface CliMessages {
     /** What the answers that finished actually needed, for setting the cap. */
     truncatedCeiling(p95: string): string;
     readFiles(files: number, directory: string): string;
-    noLogsInDirectory(directory: string, extensions: string): string;
+    /** `folders`: it holds folders the walk did not go into, which is where coding agents keep their sessions. */
+    noLogsInDirectory(directory: string, extensions: string, folders: boolean): string;
     /**
      * The time window — the drill-down in time. Every figure below the line
      * describes a slice, so the line prints before any of them; clockless
