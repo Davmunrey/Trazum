@@ -1,5 +1,14 @@
 /** Pure HTTP savings handlers. Text only; never paths, provider calls or writes. */
-import { BUNDLED_CATALOGUE, profileUsage, billLevers, buildPlan, parsePlanDocument, verifyPlan } from '@trazum/core';
+import {
+  AGENT_SHAPES,
+  BUNDLED_CATALOGUE,
+  billLevers,
+  buildPlan,
+  notAUsageLog,
+  parsePlanDocument,
+  profileUsage,
+  verifyPlan,
+} from '@trazum/core';
 import type { PricingCatalogue } from '@trazum/core';
 
 export class SavingsInputError extends Error {}
@@ -19,7 +28,33 @@ export function validateSavingsPayload(value: unknown, verify: boolean): void {
   }
 }
 
+/**
+ * A coding agent's session sent as `log` was refused as "no readable usage
+ * records", which reads as a broken file when `/usage/import` converts it in
+ * one request. Named instead, through the same verdict the CLI and the MCP
+ * server use, with the request or command that reads it.
+ */
+function refuseOtherShape(log: string): void {
+  const not = notAUsageLog(log);
+  if (not === null) return;
+  if (not.kind === 'shape' && AGENT_SHAPES.includes(not.shape)) {
+    throw new SavingsInputError(
+      `log is a ${not.shape} session, not a usage log. POST it to /usage/import with format "${not.shape}", then send the log that returns.`,
+    );
+  }
+  if (not.kind === 'shape') {
+    throw new SavingsInputError(
+      `log is ${not.shape} data, not a usage log. ${not.command === null ? '' : `trazum ${not.command} turns it into one; `}trazum bill reads it as it is.`,
+    );
+  }
+  if (not.kind === 'ambiguous') {
+    throw new SavingsInputError(`log is not a usage log, and more than one format claims it (${not.shapes.join(', ')}), so it was not converted.`);
+  }
+  throw new SavingsInputError("log is a provider's cost report, a bill rather than usage. trazum reconcile sets it beside a receipt.");
+}
+
 function savingsReport(log: string, catalogue: PricingCatalogue) {
+  refuseOtherShape(log);
   const report = profileUsage(log, { catalogue });
   if (report.total.calls + report.unpriced.calls === 0) {
     throw new SavingsInputError('log contains no readable usage records; pass normalized JSONL text with model and token counts');

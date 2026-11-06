@@ -59,7 +59,9 @@ trazum verify plan.json --against later.jsonl --json
 ```
 
 For native transcripts, first call MCP `import_usage` and pass its returned `log`
-to `profile_usage` or `plan_savings`. Preserve its diagnostics alongside later
+to `profile_usage` or `plan_savings`. A transcript passed to them directly is
+refused by name, with the `import_usage` call that converts it, rather than
+read as a log whose every line is unreadable. Preserve its diagnostics alongside later
 reports: empty output is not zero usage, conversion cannot establish source
 completeness, and separate imports do not share deduplication state. Do not
 concatenate overlapping imports. CLI normalization remains an alternative.
