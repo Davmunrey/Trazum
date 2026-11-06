@@ -207,6 +207,27 @@ describe('the limits table', () => {
   });
 });
 
+describe('every API route', () => {
+  it('is rate-limited, as the threat model says', () => {
+    /**
+     * The table above lists the limits; this holds that no route escapes them.
+     * Sign-out did, until it was found writing the threat model's own sentence
+     * that every route was limited.
+     */
+    const routes = walk(join(WEB, 'app', 'api'), (p) => p.endsWith('route.ts'));
+    assert.ok(routes.length >= 14, `found ${routes.length} routes: has app/api moved?`);
+    for (const path of routes) {
+      const source = code(path);
+      assert.match(
+        source,
+        /\b(?:rateLimited|authRateLimited|sessionRateLimited|libraryRateLimited)\(|\brequireCaller\(/,
+        `${at(path)} answers without any rate limit`,
+      );
+    }
+    assert.match(model, /a per-address rate limit on every API route \(/, 'the threat model no longer says every route is limited');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // What the three documents cite
 // ---------------------------------------------------------------------------

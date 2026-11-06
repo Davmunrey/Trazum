@@ -1,5 +1,5 @@
 import { authConfig } from '../../../../lib/auth/config';
-import { authDisabled, jsonError, sameOrigin } from '../../../../lib/auth/routes';
+import { authDisabled, jsonError, sameOrigin, sessionRateLimited } from '../../../../lib/auth/routes';
 import { clearSessionCookies, hashToken, signedInRecently, tokenFromRequest } from '../../../../lib/auth/session';
 import { routeOf, securityEvent } from '../../../../lib/security-log';
 import { getStore } from '../../../../lib/store';
@@ -43,6 +43,21 @@ export async function POST(request: Request): Promise<Response> {
   if (!sameOrigin(request, config)) {
     securityEvent('auth.sign_out', 'failure', { reason: 'cross_origin', route: routeOf(request) });
     return jsonError('cross-origin sign-out refused', 403);
+  }
+
+  /**
+   * The session bucket, because this is the same work as a session check: one
+   * indexed lookup by the hash of a cookie the caller chose, from a caller who
+   * need not be signed in. It was the one API route with no limit at all.
+   *
+   * A refusal clears nothing. Clearing the cookie without deleting its row
+   * would leave a live session whose token the browser has just forgotten,
+   * the failure this route's own comment exists to prevent; the caller asks
+   * again in a minute instead.
+   */
+  if (await sessionRateLimited(request, Date.now())) {
+    securityEvent('auth.sign_out', 'failure', { reason: 'rate_limited', route: routeOf(request) });
+    return jsonError('too many requests, try again in a minute', 429, { 'cache-control': 'no-store' });
   }
 
   /**

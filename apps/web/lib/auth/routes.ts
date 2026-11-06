@@ -29,6 +29,8 @@ export const authRateLimited = createSharedRateLimiter('auth', { windowMs: 60_00
 
 /**
  * A separate budget for `GET /api/auth/session`, and separate on purpose.
+ * Sign-out and listing one's sessions spend it too: each is the same lookup
+ * by the hash of a cookie the caller chose.
  *
  * It is the endpoint the header asks before it can draw anything, so a person
  * clicking around the app calls it far more often than they sign in. Sharing
