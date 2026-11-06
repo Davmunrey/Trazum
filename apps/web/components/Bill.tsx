@@ -49,6 +49,7 @@ import {
   STALE_PRICING_DAYS,
   sharesOf,
   spendByMonth,
+  SHAPE_COMMAND,
   verdictMatchesSlice,
 } from '@trazum/core';
 import type {
@@ -57,6 +58,7 @@ import type {
   DroppedVerdict,
   PricingCatalogue,
   UsageProfileReport,
+  UsageShape,
 } from '@trazum/core';
 
 import { Plan } from './Plan';
@@ -373,7 +375,7 @@ export function Bill({ t }: { t: WebMessages }) {
      * they became, rows the converter left out. Counts only, like every field
      * above; the reasons for a row left out are the dedicated command's.
      */
-    shapes: Array<{ shape: string; files: number; records: number; leftOut: number }>;
+    shapes: Array<{ shape: UsageShape; files: number; records: number; leftOut: number }>;
     /** Provider cost reports dropped here: a bill is not usage, and is named. */
     costReports: number;
     /** Files read line by line, with their message text set aside, for their size. */
@@ -412,14 +414,14 @@ export function Bill({ t }: { t: WebMessages }) {
     let litellmRows = 0;
     let litellmUnnamed = 0;
     let litellmCacheFlagged = 0;
-    const shapes = new Map<string, { files: number; records: number; leftOut: number }>();
+    const shapes = new Map<UsageShape, { files: number; records: number; leftOut: number }>();
     let costReports = 0;
     let inParts = 0;
     const tooLarge: string[] = [];
     /* One door, as the CLI's `bill`: the same converter the dedicated command
        uses, the same refusals, and one line per shape saying how many rows it
-       left out. The reasons are one `trazum from-<shape>` away. */
-    const tally = (shape: string, records: number, leftOut: number) => {
+       left out. The reasons are one command away, the one SHAPE_COMMAND names. */
+    const tally = (shape: UsageShape, records: number, leftOut: number) => {
       const row = shapes.get(shape) ?? { files: 0, records: 0, leftOut: 0 };
       row.files += 1;
       row.records += records;
@@ -837,7 +839,7 @@ export function Bill({ t }: { t: WebMessages }) {
               )}
               {ingest.shapes.map((row) => (
                 <div key={row.shape} className="font-semibold">
-                  {t.bill.shapeSummary(row.shape, row.files, row.records, row.leftOut)}
+                  {t.bill.shapeSummary(row.shape, row.files, row.records, row.leftOut, SHAPE_COMMAND[row.shape])}
                 </div>
               ))}
               {ingest.costReports > 0 && <div>{t.bill.costReportsDropped(ingest.costReports)}</div>}

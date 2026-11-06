@@ -19,7 +19,7 @@ import { SPAWN_ENV } from './env.mjs';
  */
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
-const SOURCE = new URL('../src/index.ts', import.meta.url);
+const SHAPES = new URL('../../core/src/usage-shapes.ts', import.meta.url);
 const HELP_EN = new URL('../src/i18n/en.ts', import.meta.url);
 const HELP_ES = new URL('../src/i18n/es.ts', import.meta.url);
 const CLAUDE_EXAMPLE = new URL('../../../examples/claude-projects', import.meta.url).pathname;
@@ -59,9 +59,9 @@ function anthropicUsage(dir) {
 
 /** The commands `bill` names, read from the map itself so a new shape is held too. */
 function pointedCommands() {
-  const source = readFileSync(SOURCE, 'utf8');
+  const source = readFileSync(SHAPES, 'utf8');
   const block = /const SHAPE_COMMAND[^=]*= \{([\s\S]*?)\n\};/.exec(source);
-  assert.ok(block, 'SHAPE_COMMAND is no longer declared in src/index.ts');
+  assert.ok(block, 'SHAPE_COMMAND is no longer declared in packages/core/src/usage-shapes.ts');
   const commands = [...block[1].matchAll(/:\s*'([a-z-]+)'/g)].map(([, command]) => command);
   assert.ok(commands.length >= 8, `SHAPE_COMMAND parsed to ${commands.length} commands`);
   return commands;
@@ -89,7 +89,7 @@ describe('the command bill points at for the reasons', () => {
   });
 
   it('names no command where none exists, rather than one that does not', () => {
-    const source = readFileSync(SOURCE, 'utf8');
+    const source = readFileSync(SHAPES, 'utf8');
     assert.match(source, /'batch-results': null,/);
     assert.match(source, /'usage-log': null,/);
   });

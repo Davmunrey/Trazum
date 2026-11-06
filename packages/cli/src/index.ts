@@ -114,6 +114,10 @@ import {
   languagesWithStanding,
   indexUsage,
   parseUsageLine,
+  SHAPE_COMMAND,
+  firstLineOf,
+  usageShapesOf,
+  type UsageShape,
   plannedCalls,
   claudeCodeRecords,
   codexRecords,
@@ -133,16 +137,7 @@ import {
   anthropicUsageRecords,
   looksLikeOpenaiCost,
   looksLikeAnthropicCost,
-  looksLikeAnthropicUsage,
-  looksLikeClaudeCodeTranscript,
-  looksLikeHelicone,
-  looksLikeLangsmith,
-  looksLikeLiteLlm,
-  looksLikeOpenaiUsage,
-  looksLikeOpenrouterActivity,
-  looksLikeBatchResults,
   batchResultRecords,
-  looksLikeOtel,
   openaiCostReport,
   openaiUsageRecords,
   openrouterActivityRecords,
@@ -3582,82 +3577,6 @@ function printReceiptSummary(document: ReceiptDocument, t: CliMessages): void {
   if (searches > 0) console.error(t.receipt.webSearch(searches, formatUsd(searchUsd)));
 }
 
-/** The shapes `bill` can tell apart from a file's own text. */
-type UsageSource =
-  | 'claude-code'
-  | 'codex'
-  | 'gemini-cli'
-  | 'otel'
-  | 'litellm'
-  | 'helicone'
-  | 'langsmith'
-  | 'anthropic-usage'
-  | 'openai-usage'
-  | 'batch-results'
-  | 'openrouter'
-  | 'usage-log';
-
-/**
- * Which shapes claim a text. Every sniffer is asked, not the first that says
- * yes: a file two shapes claim is a file this must not convert, because
- * whichever it picked would be a guess wearing a result's clothes.
- */
-function usageSourcesOf(text: string): UsageSource[] {
-  const claims: UsageSource[] = [];
-  if (looksLikeCodexTranscript(text)) claims.push('codex');
-  if (looksLikeGeminiCliSession(text)) claims.push('gemini-cli');
-  if (looksLikeClaudeCodeTranscript(text)) claims.push('claude-code');
-  if (looksLikeOtel(text)) claims.push('otel');
-  if (looksLikeAnthropicUsage(text)) claims.push('anthropic-usage');
-  if (looksLikeOpenaiUsage(text)) claims.push('openai-usage');
-  if (looksLikeBatchResults(text)) claims.push('batch-results');
-  if (looksLikeOpenrouterActivity(text)) claims.push('openrouter');
-  if (looksLikeHelicone(text)) claims.push('helicone');
-  if (looksLikeLangsmith(text)) claims.push('langsmith');
-  if (looksLikeLiteLlm(text)) claims.push('litellm');
-  if (claims.length > 0) return claims;
-  /* A plain usage log has no signature but its own lines: if the first
-     non-blank one parses as a usage line, that is what it is. */
-  const first = text.split('\n').find((line) => line.trim() !== '');
-  if (first !== undefined && parseUsageLine(first) !== null) claims.push('usage-log');
-  return claims;
-}
-
-/*
-  The command that converts each shape on its own, and so says why rows were
-  left out. Not `from-${shape}`: that was the rule `bill` used, and it sent
-  people to `trazum from-anthropic-usage`, which answers "Unknown command".
-  Null where no dedicated command exists: batch results only `bill` reads,
-  and a usage log needs no converting.
-*/
-const SHAPE_COMMAND: Readonly<Record<UsageSource, string | null>> = {
-  'claude-code': 'from-claude-code',
-  codex: 'from-codex',
-  'gemini-cli': 'from-gemini-cli',
-  otel: 'from-otel',
-  litellm: 'from-litellm',
-  helicone: 'from-helicone',
-  langsmith: 'from-langsmith',
-  'anthropic-usage': 'from-anthropic',
-  'openai-usage': 'from-openai',
-  'batch-results': null,
-  openrouter: 'from-openrouter',
-  'usage-log': null,
-};
-
-/** The first line with anything on it, found without splitting a file that may be hundreds of megabytes. */
-function firstLineOf(text: string): string | undefined {
-  let start = 0;
-  while (start < text.length) {
-    const newline = text.indexOf('\n', start);
-    const end = newline === -1 ? text.length : newline;
-    const line = text.slice(start, end);
-    if (line.trim() !== '') return line;
-    start = end + 1;
-  }
-  return undefined;
-}
-
 /**
  * A usage log, for a command that reads nothing else.
  *
@@ -3686,7 +3605,7 @@ async function readUsageLogOnly(file: string, t: CliMessages, billPath: string =
   }
   const first = firstLineOf(text);
   if (first === undefined || parseUsageLine(first) !== null) return text;
-  const claims = usageSourcesOf(text).filter((shape) => shape !== 'usage-log');
+  const claims = usageShapesOf(text).filter((shape) => shape !== 'usage-log');
   const [only] = claims;
   if (claims.length === 1 && only !== undefined) {
     throw new Error(t.errors.logIsOtherShape(file, only, SHAPE_COMMAND[only], billPath));
@@ -3816,11 +3735,11 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   const unclaimed: string[] = [];
   /* The folders of the Claude Code sessions read, `<project>/<session>`, where the session keeps its other files. */
   const sessionFolders = new Set<string>();
-  const byShape = new Map<UsageSource, { files: number; records: number | null; leftOut: number }>();
+  const byShape = new Map<UsageShape, { files: number; records: number | null; leftOut: number }>();
 
   for (const file of files) {
     const text = await readUsageLog(file, t);
-    const claims = usageSourcesOf(text);
+    const claims = usageShapesOf(text);
 
     if (claims.length === 0) {
       if (looksLikeAnthropicCost(text) || looksLikeOpenaiCost(text)) {

@@ -181,3 +181,42 @@ describe('the Bill tab ingests a folder in the browser', () => {
     assert.equal(/secret words here/.test(parts.join('\n')), false, 'transcript text crossed into the log');
   });
 });
+
+describe('the command the Bill tab names for left-out rows', () => {
+  /*
+    The tab built it as `trazum from-${shape}`, as the CLI's bill did, and so
+    told somebody whose Anthropic usage report lost a row to run
+    `from-anthropic-usage`, which answers "Unknown command". Both now read
+    SHAPE_COMMAND from core; this holds the tab's every pointer to a command
+    the CLI dispatches, read from the same list the CLI's own pages are held
+    to.
+  */
+  const cli = readFileSync(join(web, '../../packages/cli/src/index.ts'), 'utf8');
+  const start = cli.indexOf('const COMMAND_FLAGS');
+  const block = cli.slice(start, cli.indexOf('\n};', start));
+  const known = new Set([...block.matchAll(/^ {2}'?([a-z][a-z-]*)'?:\s*\[/gm)].map((m) => m[1]));
+
+  it('is a command the CLI has, for every shape, in both languages', async () => {
+    assert.ok(known.size >= 30, `only ${known.size} commands parsed out of COMMAND_FLAGS`);
+    const { SHAPE_COMMAND } = await import('@trazum/core');
+    const { en } = await import('../lib/i18n/en.ts');
+    const { es } = await import('../lib/i18n/es.ts');
+    for (const [shape, command] of Object.entries(SHAPE_COMMAND)) {
+      for (const messages of [en, es]) {
+        const said = messages.bill.shapeSummary(shape, 1, 3, 2, command);
+        const named = [...said.matchAll(/trazum ([a-z][a-z-]*)/g)].map((m) => m[1]);
+        for (const name of named) assert.ok(known.has(name), `${shape}: the tab names trazum ${name}, which the CLI does not have`);
+        assert.equal(named.length, command === null ? 0 : 1, `${shape}: ${said}`);
+      }
+    }
+    assert.match(en.bill.shapeSummary('anthropic-usage', 1, 3, 2, SHAPE_COMMAND['anthropic-usage']), /trazum from-anthropic on the file/);
+  });
+
+  it('is passed from SHAPE_COMMAND, not built from the shape', () => {
+    const bill = codeOf('components/Bill.tsx');
+    assert.match(bill, /t\.bill\.shapeSummary\(row\.shape, row\.files, row\.records, row\.leftOut, SHAPE_COMMAND\[row\.shape\]\)/);
+    for (const file of ['lib/i18n/en.ts', 'lib/i18n/es.ts']) {
+      assert.doesNotMatch(readFileSync(join(web, file), 'utf8'), /from-\$\{shape\}/, `${file} builds a command from the shape again`);
+    }
+  });
+});

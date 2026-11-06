@@ -510,7 +510,8 @@ export interface WebMessages {
     /** Rows flagged as a cache hit, with no token split behind the flag. */
     litellmCacheFlagged(count: number): string;
     /** One line per other shape the drop read, as `trazum bill` prints it. */
-    shapeSummary(shape: string, files: number, records: number, leftOut: number): string;
+    /** `command` explains the left-out rows; null where no CLI command converts the shape on its own. */
+    shapeSummary(shape: string, files: number, records: number, leftOut: number, command: string | null): string;
     /** A provider's cost report is a bill, not usage, and is named. */
     costReportsDropped(count: number): string;
     /** Files too large to hold whole, read line by line with their text set aside. */
