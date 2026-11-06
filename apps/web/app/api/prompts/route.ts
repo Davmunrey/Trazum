@@ -2,7 +2,7 @@ import { PROMPT_CREATE, readBody } from '../../../lib/body-schemas';
 import { privateJson, promptJson, requireCaller, summaryJson } from '../../../lib/prompts/api';
 import { MAX_PROMPTS_PER_OWNER } from '../../../lib/store/prompts';
 import { saysJson } from '../../../lib/request-body';
-import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
+import { logsRefusedInput, routeOf, securityEvent, unreadableBody } from '../../../lib/security-log';
 
 export const runtime = 'nodejs';
 
@@ -21,6 +21,7 @@ async function handleGet(request: Request): Promise<Response> {
   if (caller instanceof Response) return caller;
 
   const prompts = await caller.store.prompts.listPrompts(caller.user.id);
+  securityEvent('library.read', 'success', { userId: caller.user.id, route: routeOf(request) });
   return privateJson({ prompts: prompts.map(summaryJson) });
 }
 

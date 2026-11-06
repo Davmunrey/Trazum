@@ -41,14 +41,14 @@ gap is listed in the pack, and the summary below matches the rows.
 | V5 Validation, sanitisation and encoding | 30 | 17 | 0 | 0 | 0 | 13 |
 | V6 Stored cryptography | 13 | 6 | 0 | 0 | 3 | 4 |
 | V7 Error handling and logging | 12 | 11 | 0 | 0 | 1 | 0 |
-| V8 Data protection | 15 | 6 | 6 | 0 | 1 | 2 |
+| V8 Data protection | 15 | 7 | 5 | 0 | 1 | 2 |
 | V9 Communication | 7 | 4 | 0 | 0 | 3 | 0 |
 | V10 Malicious code | 5 | 2 | 1 | 0 | 1 | 1 |
 | V11 Business logic | 8 | 4 | 2 | 0 | 1 | 1 |
 | V12 Files and resources | 15 | 5 | 0 | 0 | 0 | 10 |
 | V13 API and web services | 13 | 8 | 1 | 0 | 0 | 4 |
 | V14 Configuration | 23 | 18 | 3 | 0 | 0 | 2 |
-| **Total** | **259** | **128** | **27** | **0** | **15** | **89** |
+| **Total** | **259** | **129** | **26** | **0** | **15** | **89** |
 
 Most of V2 is not applicable for one reason: Trazum has no passwords. Signing
 in is delegated to GitHub, so the password, its storage, its recovery and any
@@ -277,7 +277,7 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 8.3.2 | Users can export and delete their data | Met | `GET` and `DELETE /api/account` (`apps/web/app/api/account/route.ts`); tested in `apps/web/test/account-delete.test.mjs`. |
 | 8.3.3 | Clear language and consent for personal data | Owner | The accounts guide says what is kept; a privacy notice in the app, and consent where it is required, are the owner's. |
 | 8.3.4 | Sensitive data identified, with a policy | Partial | Identified (`docs/accounts.md`); the policy for handling it is the owner's. |
-| 8.3.5 | Access to sensitive data audited | Partial | Exports, deletions and admin access are logged (`apps/web/lib/security-log.ts`); a person reading their own library is not. |
+| 8.3.5 | Access to sensitive data audited | Met | Every read of a person's saved prompts or share links writes a `library.read` line with the account and the kind of route, never the text, the name or the id, and a guessed id is the same line with `not_found`; exports, deletions and admin access are recorded too (`apps/web/lib/security-log.ts`). A share link's public page records no view, by design: it is a publication to whoever holds the link, and a write caused by an anonymous request is a lever (`apps/web/app/c/[token]/page.tsx`). Tested, with a test that fails a handler answering with saved prompts and recording no read, in `apps/web/test/security-log.test.mjs`. |
 | 8.3.6 | Sensitive memory overwritten after use | N/A | JavaScript gives no control over memory; tokens are not kept beyond the request that carries them. |
 | 8.3.7 | Encryption with confidentiality and integrity | N/A | The app encrypts nothing itself; transport is TLS and storage encryption is the provider's. |
 | 8.3.8 | Retention: old data deleted on a schedule | Partial | Sessions and rate-limit rows are swept, share links expire (`apps/web/lib/store/shares.ts`); prompts stay until their owner deletes them, and log retention is the operator's. |

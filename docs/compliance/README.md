@@ -12,7 +12,7 @@ The control matrix is [controls.md](controls.md): 23 controls, each with the
 files and tests that prove it and its SOC 2, ISO 27001 and OWASP ASVS
 references. [asvs-l2.md](asvs-l2.md) goes the other way: every one of the 259
 requirements OWASP ASVS 4.0.3 sets at level 2, and where Trazum stands on each
-(128 met, 27 partly, 15 for the owner, 89 that do not apply, and no gaps).
+(129 met, 26 partly, 15 for the owner, 89 that do not apply, and no gaps).
 
 Three documents an auditor asks for sit beside them, each held to the code by
 `apps/web/test/threat-model.test.mjs`: the [threat model](threat-model.md),
@@ -85,19 +85,16 @@ after it:
 | A person could end this session or every session, and could not see any of them | *Your sessions* in the account menu lists every live session (when it started, when it was last used, which one is this device) and ends any one; ending another session, or all of them, needs a sign-in in the last fifteen minutes, so a stolen cookie alone cannot sign its owner out of anywhere. Signing in again from a browser replaces that browser's session. `apps/web/app/api/auth/sessions/route.ts`, `apps/web/test/sessions.test.mjs` | ASVS 3.3.4; SOC 2 CC6.1; ISO 27001 8.5 |
 | An error nothing caught left no line of the app's own, and nothing tied the digest on the error page to a record | `onRequestError` in `instrumentation.ts` writes one line per uncaught error with the route's pattern and the digest, never the message, path or headers; checked against the built server with the database unreachable. `apps/web/instrumentation.ts`, `apps/web/test/security-log.test.mjs` | ASVS 7.4.1, 7.4.3; SOC 2 CC7.2; ISO 27001 8.15 |
 | No threat model, no secure coding checklist and no written way to rotate a secret: each limit stated its risk beside its number, and nothing gathered them or noticed one go missing | The three documents above. The threat model's table holds every limit the server sets with its value and the risk that chose it; a test fails when a limit is added or changed without its row, when a variable the app reads or a secret a workflow reads is missing from the rotation page, and when any of the three cites a path that is gone. `docs/compliance/threat-model.md`, `docs/compliance/secure-coding.md`, `docs/compliance/secret-rotation.md`, `apps/web/test/threat-model.test.mjs` | ASVS 1.1.5, 1.1.7, 1.6.3, 11.1.5; SOC 2 CC3.2; ISO 27001 5.17, 8.25 |
+| A person reading their saved prompts, a prompt's history or their share links left no trace, so a stolen session's reading could not be told from its owner's | Each of those reads writes a `library.read` line with the account and the kind of route, never the text, the name or the id; asking for an id that is not the caller's writes the same line with `not_found`. A test fails any handler that answers with saved prompts and records no read. `apps/web/lib/security-log.ts`, `apps/web/test/security-log.test.mjs` | ASVS 8.3.5; SOC 2 CC7.2; ISO 27001 8.15 |
 | Each route read its body field by field, each in its own way: a body of `null` threw in seven of the nine handlers that read one, `llm.apiKey: 5` was sent to a provider as a key, `ttl: "toString"` threw while creating a share link, and a misspelt or mistyped field (`level: "medium"`, `reorder: "true"`, `disable_rules`) was quietly read as something else | Every body the API accepts has a declarative schema, all of them in one file, and a route reads nothing from a body but the language it asked for until its schema has passed it; a field it does not declare is refused by name, a value of the wrong type is refused without coercion, and the output is built from the schema's own keys. A test holds each route to the schema listed for its route and method and sends seven malformed bodies to every one of them. `apps/web/lib/schema.ts`, `apps/web/lib/body-schemas.ts`, `apps/web/test/body-schemas.test.mjs` | ASVS 5.1.2, 5.1.3, 5.1.4, 13.2.2; ISO 27001 8.28 |
 
 ## What remains, in code
 
-Things a pull request can still do, in the order they matter to an audit. The
-[ASVS mapping](asvs-l2.md) has no gaps left; each item here is a row it marks
-*Partial* that a change to this repository could close. The other partial rows
-wait on the owner or the platform, or record a trade-off made on purpose and
-explained in the row itself.
-
-1. **A record of a person reading their own library** (ASVS 8.3.5), if the
-   owner decides that is worth a line per read; today exports, deletions and
-   admin access are recorded and reads are not.
+Nothing a pull request can close. The [ASVS mapping](asvs-l2.md) has no gaps,
+and every row it still marks *Partial* waits on the owner or the platform, or
+records a trade-off made on purpose and explained in the row itself. The last
+item that was here, a record of a person reading their own library (ASVS
+8.3.5), shipped once the owner decided it was worth a line per read.
 
 ## What only the owner can do
 

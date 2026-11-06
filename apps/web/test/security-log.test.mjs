@@ -293,6 +293,108 @@ describe('a request refused for what it sent writes one line', () => {
   });
 });
 
+describe('reading one\u2019s own library writes one line per read', () => {
+  /**
+   * OWASP ASVS 4.0.3 8.3.5: access to sensitive data is recorded, without the
+   * data. Exports, deletions, shares and admin access already were; a person
+   * reading their saved prompts was not. The prompt, its name, its id and the
+   * share token are each planted and searched for in every line.
+   */
+  const NAME = 'secret-name-6d1c';
+  const RENAMED = 'secret-renamed-6d1c';
+  const json = (url, method, body, cookie) =>
+    new Request(url, { method, headers: headers({ 'content-type': 'application/json', cookie }), body: JSON.stringify(body) });
+  const get = (url, cookie) => new Request(url, { headers: headers(cookie ? { cookie } : {}) });
+  const reads = () => parsed().map((line) => `${line.event}:${line.outcome}:${line.reason ?? '-'}:${line.route}`);
+
+  it('names the account and the kind of read, for the list, one prompt, a rename and the links', async () => {
+    const me = await signIn();
+    const one = await import('../app/api/prompts/[id]/route.ts');
+    const created = await mod.prompts.POST(json(`${ORIGIN}/api/prompts`, 'POST', { name: NAME, text: SECRETS.prompt }, me.cookie));
+    assert.equal(created.status, 201);
+    const { prompt } = await created.json();
+    const made = await mod.shares.POST(json(`${ORIGIN}/api/shares`, 'POST', { before: SECRETS.prompt, after: `${SECRETS.prompt}!` }, me.cookie));
+    const { token: shareToken } = await made.json();
+    const params = (id) => ({ params: Promise.resolve({ id }) });
+    const nobody = '0f8fad5b-d9cb-469f-a165-70867728950e';
+    lines = [];
+
+    assert.equal((await mod.prompts.GET(get(`${ORIGIN}/api/prompts`, me.cookie))).status, 200);
+    assert.equal((await one.GET(get(`${ORIGIN}/api/prompts/${prompt.id}`, me.cookie), params(prompt.id))).status, 200);
+    assert.equal((await one.PATCH(json(`${ORIGIN}/api/prompts/${prompt.id}`, 'PATCH', { name: RENAMED }, me.cookie), params(prompt.id))).status, 200);
+    assert.equal((await mod.shares.GET(get(`${ORIGIN}/api/shares`, me.cookie))).status, 200);
+    assert.equal((await one.GET(get(`${ORIGIN}/api/prompts/${nobody}`, me.cookie), params(nobody))).status, 404);
+
+    assert.deepEqual(reads(), [
+      'library.read:success:-:/api/prompts',
+      'library.read:success:-:/api/prompts/:token',
+      'library.read:success:-:/api/prompts/:token',
+      'library.read:success:-:/api/shares',
+      'library.read:failure:not_found:/api/prompts/:token',
+    ]);
+    assert.ok(parsed().every((line) => line.userId === me.user.id), 'a read does not name the account that made it');
+    for (const value of [SECRETS.prompt, NAME, RENAMED, prompt.id, shareToken, SECRETS.login, SECRETS.ip, me.token]) {
+      assert.ok(!lines.join('\n').includes(value), `a read line carries ${value}`);
+    }
+  });
+
+  it('records another account reaching for a prompt as that account, and a stranger not at all', async () => {
+    const me = await signIn();
+    const created = await mod.prompts.POST(json(`${ORIGIN}/api/prompts`, 'POST', { name: NAME, text: SECRETS.prompt }, me.cookie));
+    const { prompt } = await created.json();
+    const store = await mod.store.getStore();
+    const now = new Date();
+    const other = await store.upsertUser({ provider: 'github', providerId: '5150', login: 'someone-curious', name: null, avatarUrl: null }, now);
+    const session = mod.session.issueSession(other.id, now, true);
+    await store.createSession(session.record);
+    const one = await import('../app/api/prompts/[id]/route.ts');
+    const params = { params: Promise.resolve({ id: prompt.id }) };
+    lines = [];
+
+    assert.equal((await one.GET(get(`${ORIGIN}/api/prompts/${prompt.id}`, `__Host-trazum_session=${session.token}`), params)).status, 404);
+    assert.equal((await one.GET(get(`${ORIGIN}/api/prompts/${prompt.id}`), params)).status, 401);
+
+    assert.deepEqual(reads(), [
+      'library.read:failure:not_found:/api/prompts/:token',
+      'access.refused:failure:not_signed_in:/api/prompts/:token',
+    ]);
+    assert.equal(parsed()[0].userId, other.id, 'the line names the owner instead of the account that asked');
+  });
+
+  it('is written by every handler that answers with saved prompt text', () => {
+    /**
+     * The rule as the source states it: a handler that serialises stored
+     * prompts (`promptJson`, `summaryJson`, called or passed to `map`) or a
+     * share's preview writes the
+     * line. Creating a prompt is the one exception, because its answer is the
+     * text the caller sent in the same request, not anything read back.
+     */
+    const EXCEPT = new Set(['POST /api/prompts']);
+    const API = fileURLToPath(new URL('../app/api/', import.meta.url));
+    const files = (dir) =>
+      readdirSync(dir).flatMap((name) => {
+        const path = join(dir, name);
+        return statSync(path).isDirectory() ? files(path) : name === 'route.ts' ? [path] : [];
+      });
+    let held = 0;
+    for (const path of files(API)) {
+      const source = readFileSync(path, 'utf8');
+      const route = `/api/${relative(API, path).split('\\').join('/').replace(/\/route\.ts$/, '')}`;
+      for (const [, method, handler] of source.matchAll(/^export const (GET|POST|PATCH|DELETE) = logsRefusedInput\((\w+)\);$/gm)) {
+        const start = source.search(new RegExp(`^async function ${handler}\\(`, 'm'));
+        const rest = source.slice(start + 1);
+        const end = rest.search(/^(?:export |async function |function )/m);
+        const body = end < 0 ? rest : rest.slice(0, end);
+        if (!/\b(?:promptJson|summaryJson)\b|\bpreview:/.test(body)) continue;
+        if (EXCEPT.has(`${method} ${route}`)) continue;
+        held += 1;
+        assert.match(body, /securityEvent\('library\.read', 'success'/, `${method} ${route} answers with saved prompts and records no read`);
+      }
+    }
+    assert.equal(held, 4, `expected the list, one prompt, a rename and the links; found ${held}`);
+  });
+});
+
 describe('a session cookie that opens nothing', () => {
   /**
    * OWASP ASVS 4.0.3 7.2.1: every authentication decision is logged, and a

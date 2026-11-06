@@ -24,6 +24,7 @@ when a file this page names no longer exists.
 | Read or write a record that belongs to someone | Put the owner in the query itself, never in a check after it; answer 404 for a record that is not the caller's, the same as one that does not exist | `apps/web/test/store-contract.test.mjs`, on memory and on PostgreSQL |
 | Count something before writing it | Count and write in one transaction, after locking the account's or the prompt's row | `apps/web/test/store-contract.test.mjs` |
 | Answer with somebody's data | Use `privateJson`, or set `cache-control: private, no-store` yourself | `apps/web/test/route-invariants.test.mjs` |
+| Answer with somebody's saved prompts or links | Write a `library.read` line with the account and `routeOf(request)`, success when the record was theirs and `not_found` when it was not | `apps/web/test/security-log.test.mjs` |
 | Make a security decision | Write it with `securityEvent`, the route through `routeOf`; never a token, a login, an address, a prompt or a message that quotes the input | `apps/web/test/security-log.test.mjs` (plants each and reads every line) |
 | Set a limit | Name it as a constant with the risk beside it, and add its row to the [threat model's table](threat-model.md#the-limits-and-the-risk-behind-each) | `apps/web/test/threat-model.test.mjs` |
 | Read a secret from the environment | Read it at run time, never at build; an error about it names the variable and its range, never its value | `apps/web/test/auth.test.mjs`, `apps/web/test/auth-routes.test.mjs` |

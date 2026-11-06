@@ -46,7 +46,15 @@ export type SecurityEvent =
   | 'admin.access'
   | 'access.refused'
   | 'input.refused'
-  | 'auth.session';
+  | 'auth.session'
+  /**
+   * A person reading their own saved prompts or share links (OWASP ASVS 4.0.3
+   * 8.3.5): the list, one prompt, or the links they made. The account and the
+   * route, never the prompt, its name or its id. A read of an id that is not
+   * theirs is the same line with `not_found`, which is what enumeration
+   * looks like.
+   */
+  | 'library.read';
 
 export type SecurityReason =
   | 'cancelled'
