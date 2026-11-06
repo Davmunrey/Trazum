@@ -595,7 +595,7 @@ async function usageIndexFrom(
 ): Promise<ReturnType<typeof indexUsage> | null> {
   const logPath = stringFlag(args, 'log');
   if (logPath === undefined) return null;
-  const text = await readUsageLog(logPath, t);
+  const text = await readUsageLogOnly(logPath, t);
   const records = text
     .split('\n')
     .filter((line) => line.trim() !== '')
@@ -2205,7 +2205,7 @@ async function commandInit(
               .sort()
               .map((name) => join(root, readable.where, name));
       if (files.length > 0) {
-        const texts = await Promise.all(files.map((file) => readUsageLog(file, t)));
+        const texts = await Promise.all(files.map((file) => readUsageLogOnly(file, t)));
         measured = profileUsage(texts.join('\n'), { catalogue: pricing });
       }
     } catch (error) {
@@ -3318,7 +3318,7 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
 }
 
 /**
- * `trazum receipt <usage.jsonl|dir>` — the bill's counts, with the provenance
+ * `trazum receipt <usage.jsonl>` — the bill's counts, with the provenance
  * of every figure attached.
  *
  * A profile answers a question on the terminal that ran it. The same figures
@@ -3519,7 +3519,7 @@ async function commandReceipt(
   if (file === undefined) throw new Error(t.receipt.noLog());
   const period = billingPeriod(args, t);
 
-  const text = await readUsageLog(file, t);
+  const text = await readUsageLogOnly(file, t);
   const report = profileUsage(text, {
     catalogue: pricing,
     ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
@@ -3621,6 +3621,79 @@ function usageSourcesOf(text: string): UsageSource[] {
   const first = text.split('\n').find((line) => line.trim() !== '');
   if (first !== undefined && parseUsageLine(first) !== null) claims.push('usage-log');
   return claims;
+}
+
+/*
+  The command that converts each shape on its own, and so says why rows were
+  left out. Not `from-${shape}`: that was the rule `bill` used, and it sent
+  people to `trazum from-anthropic-usage`, which answers "Unknown command".
+  Null where no dedicated command exists: batch results only `bill` reads,
+  and a usage log needs no converting.
+*/
+const SHAPE_COMMAND: Readonly<Record<UsageSource, string | null>> = {
+  'claude-code': 'from-claude-code',
+  codex: 'from-codex',
+  'gemini-cli': 'from-gemini-cli',
+  otel: 'from-otel',
+  litellm: 'from-litellm',
+  helicone: 'from-helicone',
+  langsmith: 'from-langsmith',
+  'anthropic-usage': 'from-anthropic',
+  'openai-usage': 'from-openai',
+  'batch-results': null,
+  openrouter: 'from-openrouter',
+  'usage-log': null,
+};
+
+/** The first line with anything on it, found without splitting a file that may be hundreds of megabytes. */
+function firstLineOf(text: string): string | undefined {
+  let start = 0;
+  while (start < text.length) {
+    const newline = text.indexOf('\n', start);
+    const end = newline === -1 ? text.length : newline;
+    const line = text.slice(start, end);
+    if (line.trim() !== '') return line;
+    start = end + 1;
+  }
+  return undefined;
+}
+
+/**
+ * A usage log, for a command that reads nothing else.
+ *
+ * `profile` handed a Claude Code session answered "No usage records in that
+ * file, 84 lines could not be read", which reads as a broken file, while
+ * `bill` reads the same file as it is. So the shapes `bill` tells apart are
+ * asked here too, and a file one of them claims is refused by name, with the
+ * two commands that do read it. A provider's cost report is pointed at
+ * `reconcile`, and a directory at `bill`, which walks one.
+ *
+ * Asked only when the first line is not already a usage line, so a usage log
+ * pays one parse for it. A file nothing claims is returned as before, and its
+ * unreadable lines are counted where they always were.
+ *
+ * `billPath` is what to name after `trazum bill`: the directory somebody
+ * gave, when the file came out of one.
+ */
+async function readUsageLogOnly(file: string, t: CliMessages, billPath: string = file): Promise<string> {
+  const handle = await open(file, 'r');
+  let text: string;
+  try {
+    if ((await handle.stat()).isDirectory()) throw new Error(t.errors.logIsDirectory(file));
+    text = await readUsageHandle(handle, file, t);
+  } finally {
+    await handle.close();
+  }
+  const first = firstLineOf(text);
+  if (first === undefined || parseUsageLine(first) !== null) return text;
+  const claims = usageSourcesOf(text).filter((shape) => shape !== 'usage-log');
+  const [only] = claims;
+  if (claims.length === 1 && only !== undefined) {
+    throw new Error(t.errors.logIsOtherShape(file, only, SHAPE_COMMAND[only], billPath));
+  }
+  if (claims.length > 1) throw new Error(t.errors.logIsAmbiguous(file, claims.join(', ')));
+  if (looksLikeAnthropicCost(text) || looksLikeOpenaiCost(text)) throw new Error(t.errors.logIsCostReport(file));
+  return text;
 }
 
 /**
@@ -3743,7 +3816,7 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   const unclaimed: string[] = [];
   /* The folders of the Claude Code sessions read, `<project>/<session>`, where the session keeps its other files. */
   const sessionFolders = new Set<string>();
-  const byShape = new Map<string, { files: number; records: number | null; leftOut: number }>();
+  const byShape = new Map<UsageSource, { files: number; records: number | null; leftOut: number }>();
 
   for (const file of files) {
     const text = await readUsageLog(file, t);
@@ -3869,7 +3942,7 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
     sources += 1;
     const count = shape === 'usage-log' ? null : records.length;
     if (perFile) {
-      console.error(t.bill.file(file, shape, count, leftOut));
+      console.error(t.bill.file(file, shape, count, leftOut, SHAPE_COMMAND[shape]));
     } else {
       const sum = byShape.get(shape) ?? { files: 0, records: count === null ? null : 0, leftOut: 0 };
       sum.files += 1;
@@ -3878,7 +3951,9 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
       byShape.set(shape, sum);
     }
   }
-  for (const [shape, sum] of byShape) console.error(t.bill.shapeSummary(shape, sum.files, sum.records, sum.leftOut));
+  for (const [shape, sum] of byShape) {
+    console.error(t.bill.shapeSummary(shape, sum.files, sum.records, sum.leftOut, SHAPE_COMMAND[shape]));
+  }
   /*
     A Claude Code session keeps more than its transcript in the folder named
     after it: each subagent's metadata and prompt prefix, each workflow's
@@ -4334,7 +4409,7 @@ async function commandSwitch(args: Args, pricing: PricingCatalogue, t: CliMessag
   const migrationUsd = optional('migration-usd');
   const cases = optional('cases');
 
-  const text = await readUsageLog(file, t);
+  const text = await readUsageLogOnly(file, t);
   const report = profileUsage(text, { catalogue: pricing });
   const analysis = switchAnalysis(report, target, {
     catalogue: pricing,
@@ -5039,7 +5114,7 @@ async function commandPosition(
   const file = args.positional[0];
   if (file === undefined) throw new Error(t.position.noLog());
 
-  const text = await readUsageLog(file, t);
+  const text = await readUsageLogOnly(file, t);
   const records = text
     .split('\n')
     .filter((line) => line.trim() !== '')
@@ -5891,7 +5966,7 @@ async function commandLadder(
   if (path === undefined) {
     throw new Error(t.errors.missingInputFile());
   }
-  const report = profileUsage(await readUsageLog(path, t), { catalogue: pricing });
+  const report = profileUsage(await readUsageLogOnly(path, t), { catalogue: pricing });
   const ladders = config.ladders ?? {};
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (value: number): string => `${(value * 100).toFixed(1)}%`;
@@ -6031,7 +6106,7 @@ async function commandExperiment(
     throw new Error(t.experiment.needsRule());
   }
 
-  const report = profileUsage(await readUsageLog(path, t), { catalogue: pricing });
+  const report = profileUsage(await readUsageLogOnly(path, t), { catalogue: pricing });
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (value: number): string => `${(value * 100).toFixed(1)}%`;
 
@@ -6170,7 +6245,7 @@ async function commandQuality(
    * this whole module exists to avoid: two files gathered under conditions
    * nobody wrote down.
    */
-  const raw = await readUsageLog(path, t);
+  const raw = await readUsageLogOnly(path, t);
   const sideOf = (since: number | undefined, until: number | undefined): GateSide => {
     const report = profileUsage(raw, { catalogue: pricing, label, sinceMs: since, untilMs: until });
     const slice = report.outcomeTallyByLabel.find((entry) => entry.label === label);
@@ -6424,7 +6499,7 @@ async function commandOwners(
     return;
   }
 
-  const report = profileUsage(await readUsageLog(path, t), { catalogue: pricing });
+  const report = profileUsage(await readUsageLogOnly(path, t), { catalogue: pricing });
   const result = allocate(
     report.byLabel.map((entry) => ({
       label: entry.label,
@@ -6571,7 +6646,7 @@ async function commandCommitment(
   const months = Number(stringFlag(args, 'months') ?? 12);
   const terms = { monthlyFloorUsd: floor, discount, months };
 
-  const report = profileUsage(await readUsageLog(path, t), { catalogue: pricing });
+  const report = profileUsage(await readUsageLogOnly(path, t), { catalogue: pricing });
   /**
    * Whole calendar months only.
    *
@@ -6721,7 +6796,7 @@ async function commandReport(
   const year = stringFlag(args, 'year');
   if (year === undefined || !/^\d{4}$/.test(year)) throw new Error(t.annual.needsYear());
 
-  const report = profileUsage(await readUsageLog(path, t), { catalogue: pricing });
+  const report = profileUsage(await readUsageLogOnly(path, t), { catalogue: pricing });
 
   /**
    * One period per calendar month, built from the day series.
@@ -7180,7 +7255,7 @@ async function commandOptimize(
     if (fromLogPath === undefined) throw new Error(t.errors.allLabelsNeedsLog());
     const labelsMap = config.labels ?? {};
     if (Object.keys(labelsMap).length === 0) throw new Error(t.errors.allLabelsNeedsMap());
-    const report = profileUsage(await readUsageLog(fromLogPath, t), { catalogue: pricing });
+    const report = profileUsage(await readUsageLogOnly(fromLogPath, t), { catalogue: pricing });
     const coverage = labelCoverage(report, labelsMap);
     const level = levelFlag(args, config, t);
 
@@ -7296,7 +7371,7 @@ async function commandOptimize(
         throw new Error(t.errors.fromLogConflict(flag));
       }
     }
-    const report = profileUsage(await readUsageLog(fromLog, t), { catalogue: pricing });
+    const report = profileUsage(await readUsageLogOnly(fromLog, t), { catalogue: pricing });
 
     /**
      * Which label this prompt is. `--label` says it outright; otherwise the
@@ -9098,9 +9173,12 @@ async function commandVerify(
       .filter((entry) => entry.isFile() && READABLE.some((ext) => entry.name.endsWith(ext)))
       .map((entry) => join(againstPath, entry.name))
       .sort((a, b) => a.localeCompare(b));
-    if (files.length === 0) throw new Error(t.profile.noLogsInDirectory(againstPath, READABLE.join(', ')));
+    if (files.length === 0) {
+      const folders = entries.some((entry) => entry.isDirectory());
+      throw new Error(t.profile.noLogsInDirectory(againstPath, READABLE.join(', '), folders));
+    }
   }
-  const texts = await Promise.all(files.map((file) => readUsageLog(file, t)));
+  const texts = await Promise.all(files.map((file) => readUsageLogOnly(file, t, againstPath)));
   const raw = texts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
   const report = profileUsage(raw, { catalogue: pricing });
 
@@ -11352,9 +11430,12 @@ async function commandPlan(
       .filter((entry) => entry.isFile() && READABLE.some((ext) => entry.name.endsWith(ext)))
       .map((entry) => join(path, entry.name))
       .sort((a, b) => a.localeCompare(b));
-    if (files.length === 0) throw new Error(t.profile.noLogsInDirectory(path, READABLE.join(', ')));
+    if (files.length === 0) {
+      const folders = entries.some((entry) => entry.isDirectory());
+      throw new Error(t.profile.noLogsInDirectory(path, READABLE.join(', '), folders));
+    }
   }
-  const texts = await Promise.all(files.map((file) => readUsageLog(file, t)));
+  const texts = await Promise.all(files.map((file) => readUsageLogOnly(file, t, path)));
   const raw = texts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
 
   const report = profileUsage(raw, { catalogue: pricing });
@@ -11517,7 +11598,9 @@ async function commandProfile(
       .map((entry) => join(entry.parentPath ?? path, entry.name))
       .sort((a, b) => a.localeCompare(b));
     if (logFiles.length === 0) {
-      throw new Error(t.profile.noLogsInDirectory(path, READABLE.join(', ')));
+      /* Folders only matter to the flat walk: --by-source went into them. */
+      const folders = !bySourceMode && entries.some((entry) => entry.isDirectory());
+      throw new Error(t.profile.noLogsInDirectory(path, READABLE.join(', '), folders));
     }
   }
   /**
@@ -11532,7 +11615,7 @@ async function commandProfile(
    * alternative — skipping it — is a total quietly missing a day, which is
    * the failure this repository refuses in every other place it can occur.
    */
-  const logTexts = await Promise.all(logFiles.map((file) => readUsageLog(file, t)));
+  const logTexts = await Promise.all(logFiles.map((file) => readUsageLogOnly(file, t, path)));
   // A file that does not end in a newline would otherwise glue its last record
   // to the next file's first one, and both would be reported as unreadable.
   const raw = logTexts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
@@ -11691,7 +11774,7 @@ async function commandProfile(
       // The same reader as the log itself, so `--against last-month.jsonl.gz`
       // works: a comparison that could only read one of the two formats would
       // be a flag that fails on exactly the rotated file it exists to read.
-      ? profileUsage(await readUsageLog(againstPath, t), {
+      ? profileUsage(await readUsageLogOnly(againstPath, t), {
           catalogue: pricing,
           label: onlyLabel,
           // The same window on both sides, for the same reason as the label:

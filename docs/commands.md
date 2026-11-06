@@ -2523,6 +2523,16 @@ trazum profile usage.jsonl
 The same report renders in the web app's **Your bill** tab, parsed entirely in
 the browser — nothing is uploaded.
 
+It reads a usage log, and refuses anything else by name. A coding agent's
+session, a provider's usage report or OTel spans handed to it is said to be
+what it is, with `trazum bill <file>` to read it as it is and the `from-`
+command that turns it into a usage log; a provider's cost report is pointed at
+`trazum reconcile`. The same holds for every command that reads one usage log
+(`plan`, `verify`, `receipt`, `report` and the rest), so none of them answers a
+Claude Code session with "no usage records" as if the file were broken. A
+directory of folders, such as `~/.claude/projects`, is pointed at `trazum
+bill`, which goes into them.
+
 ```
 Where the money went
   2,650 calls · $27.04
@@ -3225,7 +3235,8 @@ converter the dedicated command uses, prices it, and ends on the same receipt
 `trazum receipt` writes.
 
 **It is the dedicated commands composed, not a looser version of them.** Each
-file's rows go through `from-<shape>`'s converter, so every refusal that
+file's rows go through the dedicated command's converter (`from-claude-code`,
+`from-anthropic`, `from-openai` and the rest), so every refusal that
 converter makes is made here: a batch row is still left out, an unnamed model
 is still unpriced. What differs is how the refusals are told. Each file gets
 one line — its shape, the records it became, how many rows were left out —

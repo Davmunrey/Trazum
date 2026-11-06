@@ -65,7 +65,7 @@ ${bold('USAGE')}
   trazum schema <contract>
   trazum rollup <document...|dir> [--json] [--html-out <file>]
   trazum position <usage.jsonl>
-  trazum receipt <usage.jsonl|dir> [--stamp] [--since <when>] [--until <when>] [-o <file>]
+  trazum receipt <usage.jsonl> [--stamp] [--since <when>] [--until <when>] [-o <file>]
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
               [--since <when>] [--until <when>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
@@ -1204,6 +1204,14 @@ ${bold('EXAMPLES')}
       'that path is a directory, and this command reads a file. Name the file inside it, or use a command that walks a folder.',
     fileNotReadable: (path) =>
       `${path}: no permission to read it. Check the file's owner and mode, then run this again.`,
+    logIsDirectory: (path) =>
+      `${path} is a directory, and this command reads one usage log. trazum bill ${path} reads every usage log and coding-agent session under it.`,
+    logIsOtherShape: (path, shape, command, billPath) =>
+      `${path} is ${shape} data, not a usage log, so this command would find no calls in it. trazum bill ${billPath} reads it as it is${command === null ? '.' : `, and trazum ${command} ${path} -o usage.jsonl writes a usage log this command reads.`}`,
+    logIsAmbiguous: (path, shapes) =>
+      `${path} is not a usage log, and more than one shape claims it (${shapes}). Convert it with the from- command for the one it is, then point this command at the usage log that writes.`,
+    logIsCostReport: (path) =>
+      `${path} is a provider's cost report, a bill rather than usage, so this command would find no calls in it. Set it beside a receipt with trazum reconcile.`,
     livePricingFailed: (url: string, detail: string) =>
       `Could not load live prices from ${url}: ${detail}. The bundled prices are still there. Drop --pricing-live to use them.`,
     optionNeedsValue: (name) => `Option --${name} needs a value.`,
@@ -2133,8 +2141,8 @@ ${bold('EXAMPLES')}
     unknownMore: (count) => `${count} more file(s) no shape claims, not guessed at and not in the bill.`,
     sessionSideFiles: (count) =>
       `${count} file(s) Claude Code keeps inside its sessions' folders (subagent metadata, workflow journals, long tool output) are not usage, and were passed over.`,
-    shapeSummary: (shape, files, records, leftOut) =>
-      `${files} file(s): ${shape}${records === null ? ', read as they are' : `, ${records} record(s)`}${leftOut > 0 ? `, ${leftOut} row(s) left out. trazum from-${shape} on a file says why.` : '.'}`,
+    shapeSummary: (shape, files, records, leftOut, command) =>
+      `${files} file(s): ${shape}${records === null ? ', read as they are' : `, ${records} record(s)`}${leftOut > 0 ? `, ${leftOut} row(s) left out${command === null ? '.' : `. trazum ${command} on a file says why.`}` : '.'}`,
     statementHeading: () => 'Your bill',
     statementTotal: (usd, calls) => `${usd} across ${calls.toLocaleString('en-US')} priced call(s)`,
     colProject: () => 'project',
@@ -2162,8 +2170,8 @@ ${bold('EXAMPLES')}
       'The receipt as data: --receipt, or -o receipt.json. The document for whoever pays: --pdf-out bill.pdf.',
     notFound: (path) => `${path}: not found`,
     noFiles: (path) => `${path}: no .json, .jsonl, .ndjson or .log files under it, plain or gzipped.`,
-    file: (path, shape, records, leftOut) =>
-      `${path}: ${shape}${records === null ? ', read as it is' : `, ${records} record(s)`}${leftOut > 0 ? `, ${leftOut} row(s) left out. Run trazum from-${shape} on it for the reasons.` : '.'}`,
+    file: (path, shape, records, leftOut, command) =>
+      `${path}: ${shape}${records === null ? ', read as it is' : `, ${records} record(s)`}${leftOut > 0 ? `, ${leftOut} row(s) left out${command === null ? '.' : `. Run trazum ${command} on it for the reasons.`}` : '.'}`,
     unknown: (path) =>
       `${path}: no shape this tool reads claims it, so it was not guessed at and is not in the bill.`,
     ambiguous: (path, shapes) =>
@@ -3150,8 +3158,8 @@ ${bold('EXAMPLES')}
       `95% of the answers that finished fit within ${p95} output tokens, so a cap around there would stop cutting them off. Measured on these calls, promised for nothing.`,
     readFiles: (files, directory) =>
       `Read ${count(files)} log files from ${directory}, in name order, as one bill. Every figure below covers all of them.`,
-    noLogsInDirectory: (directory, extensions) =>
-      `No usage logs in "${directory}". Looked for files ending in ${extensions}. A directory with nothing readable in it is an error rather than an empty report, which would read as "you spent nothing".`,
+    noLogsInDirectory: (directory, extensions, folders) =>
+      `No usage logs in "${directory}". Looked for files ending in ${extensions}. A directory with nothing readable in it is an error rather than an empty report, which would read as "you spent nothing".${folders ? ` It holds folders, which this command does not go into: trazum bill "${directory}" reads every usage log and coding-agent session under it.` : ''}`,
     sessionCostTail: (ratio) =>
       `The 95th percentile is ${ratio}x the median there: most sessions are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
     sessionSpendOnly: (sessions, max) =>

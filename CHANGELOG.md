@@ -13,6 +13,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **`bill` sent people to commands that do not exist.** Explaining rows it
+  left out of an Anthropic or OpenAI usage report, it built the command's name
+  from the shape's, `from-anthropic-usage` or `from-openai-usage`, and both
+  answer "Unknown command". It now names `from-anthropic` and `from-openai`, which
+  give the reasons, and names nothing for batch results, which no other
+  command reads. A test runs every command `bill` can point at.
+- **A coding agent's session handed to `profile` read as a broken file.**
+  `profile`, `plan`, `receipt` and the other commands that read one usage log
+  answered a Claude Code session with "No usage records in that file, 84
+  lines could not be read", while `bill` reads the same file as it is. They
+  now recognise the shapes `bill` reads, and refuse by name: what the file is,
+  `trazum bill <file>` to read it as it is, and the `from-` command that turns
+  it into a usage log they read. A provider's cost report is pointed at
+  `reconcile`, as `bill` points it. A usage log is read exactly as before, and
+  pays one parsed line for the check.
+- **A folder of agent sessions answered "No usage logs" and no more.** Handed
+  `~/.claude/projects`, which holds one folder per project, `profile`, `plan`
+  and `verify` now say they do not go into folders and that `trazum bill`
+  does. `receipt` handed a directory names `bill` too, and its help no longer
+  offers `<usage.jsonl|dir>`: it never read one. All found by running the CLI
+  on real Claude Code sessions.
 - **Sign-out was the one API route with no rate limit.** Every call looks up
   the hash of whatever cookie arrived, from a caller who need not be signed
   in, and nothing bounded how often. It now spends the session bucket (60 a
