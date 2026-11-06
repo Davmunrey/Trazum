@@ -424,6 +424,27 @@ describe('POST /api/auth/signout', () => {
     assert.equal(response.status, 204);
   });
 
+  it('is rate-limited like a session check, and a refusal ends nothing', async () => {
+    /**
+     * It was the one API route with no limit: every call is a lookup by the
+     * hash of whatever cookie arrived, from a caller who need not be signed in.
+     * A pinned address, outside the block `freshClient` cycles through, so the
+     * budget burnt here refuses nothing elsewhere in this file.
+     */
+    const ADDRESS = { 'x-forwarded-for': '198.51.100.19' };
+    const knock = (headers = {}) =>
+      signOut(new Request(`${ORIGIN}/api/auth/signout`, { method: 'POST', headers: { ...ADDRESS, ...headers } }));
+    for (let i = 1; i <= 60; i += 1) assert.equal((await knock()).status, 204, `call ${i} was refused inside the budget`);
+
+    const { token, cookie } = await signInFully();
+    const refused = await knock({ cookie });
+    assert.equal(refused.status, 429, 'the sixty-first sign-out was served');
+    assert.equal((await refused.json()).error, 'too many requests, try again in a minute');
+    assert.match(refused.headers.get('cache-control'), /no-store/);
+    assert.deepEqual(setCookies(refused), [], 'a refused sign-out cleared the cookie and left its session alive');
+    assert.ok(await (await getStore()).findSession(hashToken(token), new Date()), 'a refused sign-out ended the session');
+  });
+
   it('signs out one device by default, and leaves the others alone', async () => {
     /**
      * The default has to stay narrow. The common sign-out is one person

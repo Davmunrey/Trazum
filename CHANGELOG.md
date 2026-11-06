@@ -13,6 +13,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **Sign-out was the one API route with no rate limit.** Every call looks up
+  the hash of whatever cookie arrived, from a caller who need not be signed
+  in, and nothing bounded how often. It now spends the session bucket (60 a
+  minute per address), the same as a session check, which is the same work. A
+  refused sign-out clears nothing, because clearing the cookie without
+  deleting its row would leave a live session the browser had forgotten.
+  Found while writing the threat model, whose own sentence said every route
+  was limited; `apps/web/test/threat-model.test.mjs` now fails any API route
+  that answers without a limit.
 - **A body of the wrong shape threw instead of being refused.** A body of
   `null` threw in seven of the nine handlers that read one (`/api/optimize`,
   `/api/compare`, `/api/write`, saving and renaming a library prompt, and

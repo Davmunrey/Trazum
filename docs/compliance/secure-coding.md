@@ -16,6 +16,7 @@ when a file this page names no longer exists.
 | When you | Do this | Held by |
 | --- | --- | --- |
 | Add a route, or a method to one | Add it to `API_METHODS`; anything not listed is refused with 405 | `apps/web/test/api-methods.test.mjs` |
+| Add a route | Give every handler a rate limit: one of the shared buckets, `requireCaller` (which applies the library's), or a limiter of its own with a row in the threat model | `apps/web/test/threat-model.test.mjs` |
 | Read a request body | Refuse it with 415 unless `saysJson(request)`; parse it into `raw: unknown`; mark a parse failure with `unreadableBody`; read it only through `readBody` with a schema in `apps/web/lib/body-schemas.ts`, listed in `BODIES` for the route and method | `apps/web/test/request-body.test.mjs`, `apps/web/test/body-schemas.test.mjs`, `apps/web/test/security-log.test.mjs` |
 | Export a handler of a route that refuses input | Export it through `logsRefusedInput`, so every 400, 413, 415 and 422 writes a line | `apps/web/test/security-log.test.mjs` |
 | Change state | Refuse another origin: `requireCaller(request, { write: true })` on the library routes, `sameOrigin` on the others | `apps/web/test/route-invariants.test.mjs` |

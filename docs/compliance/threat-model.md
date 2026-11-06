@@ -91,7 +91,7 @@ of privilege.
 | An admin reading other people's prompts | Information disclosure | The overview shows counts, prompt names and logins, never prompt text | `docs/accounts.md`, `apps/web/app/api/admin/overview/route.ts` |
 | Pointing the server at an internal address | Elevation | A caller selects an endpoint the operator listed and never names one; private hosts and redirects are refused | `packages/core/src/net.ts`, [SECURITY.md](../../SECURITY.md#the-controls-and-what-each-is-actually-for) |
 | Spending the operator's model key | Elevation | The server never lends a key: the model-assisted passes need the caller's own | `apps/web/app/api/optimize/route.ts` |
-| Taking an instance down with work | Denial of service | Input caps, and a per-address rate limit on every API route but sign-out, which only ends the caller's own session (the table below) | `apps/web/lib/rate-limit.ts` |
+| Taking an instance down with work | Denial of service | Input caps, and a per-address rate limit on every API route (the table below); a test fails a route that has none | `apps/web/lib/rate-limit.ts`, `apps/web/test/threat-model.test.mjs` |
 | Filling the database | Denial of service | Per-account ceilings, each counted and written in one transaction under a row lock | `apps/web/lib/store/transaction.ts` |
 | A dependency or workflow that reaches production | Elevation | Zero runtime dependencies in the published packages, actions pinned to a commit, provenance-signed releases, a bill of materials on each | TRZ-16, TRZ-17, TRZ-18 |
 
@@ -133,7 +133,7 @@ Rate limits count per address, over one minute.
 | Interview requests | 60 a minute | Deterministic and small, but answered on every change a person makes; twice the engine routes, still far below a loop | `apps/web/app/api/write/route.ts` |
 | Share page views | 120 a minute | Guessing tokens, and scraping a page that is never cached because it holds somebody's prompt; far above a reader, far below a loop | `apps/web/middleware.ts` |
 | Sign-in, account export and deletion, and ending a session | 30 a minute, `authRateLimited` | Each starts an OAuth round trip, reads a whole account or ends something; counted across instances, because a limit each instance kept alone would multiply by the number of instances | `apps/web/lib/auth/routes.ts` |
-| Session checks | 60 a minute, `sessionRateLimited` | Every page load asks once; each answer is a database read | `apps/web/lib/auth/routes.ts` |
+| Session checks and sign-out | 60 a minute, `sessionRateLimited` | Every page load asks once, and each answer, like each sign-out, is a database read by the hash of a cookie the caller chose | `apps/web/lib/auth/routes.ts` |
 | Library, share and admin requests | 60 a minute, `libraryRateLimited` | Each is a database round trip; writes cost storage | `apps/web/lib/prompts/api.ts` |
 
 Sizes and counts.
