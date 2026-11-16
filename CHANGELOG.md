@@ -13,6 +13,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Every pull request carries a comment that names its next step and who
+  owns it** (#649). A `pr-guide` workflow keeps one comment per pull request,
+  edited in place: linked issue, draft state, failing checks by name, merge
+  conflicts, review, and one line saying what moves it next. The script is
+  owned by Davmunrey/Zolts and tested there; this repository fetches it at a
+  pinned commit and runs it only if its SHA-256 matches. The workflow uses no
+  third-party action, `pull_request` rather than `pull_request_target`, a
+  least-privilege token, skips forks, and cannot turn a pull request red.
 - **Google's Gemini 4 family and Gemini 3.5 Flash-Lite are priced.** Gemini 4
   Carbon and Argon at $2/$10 through 2026-11-30 and $4/$20 from 2026-12-01,
   Gemini 4 Hydrogen at $1.50/$7.50, each reading its cache at 5% of input,
