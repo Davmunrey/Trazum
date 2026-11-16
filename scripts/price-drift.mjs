@@ -70,14 +70,26 @@ export const PAGES = {
  */
 export const DELIBERATELY_UNPRICED = {
   openai: {
-    // Read 2026-11-05. Each is behind an approval programme and has no model
-    // page (each returned 404), so there is no context window to give a row,
-    // and a row without one would be a guess.
-    'gpt-5.5-cyber': 'Daybreak programme only, and no model page to read a context window from',
+    // Read 2026-11-05 and again 2026-11-16. Each is behind an approval
+    // programme and has no model page (each returned 404 both days), so there
+    // is no context window to give a row, and a row without one would be a
+    // guess. The page renamed `gpt-5.5-cyber` to `gpt-5.5-cyber-preview`
+    // between the two reads.
+    'gpt-5.5-cyber-preview': 'Daybreak programme only, and no model page to read a context window from',
     'gpt-6-rosalind': 'trusted-access programme only, and no model page to read a context window from',
     'gpt-rosalind-research': 'trusted-access programme only, and no model page to read a context window from',
     'gpt-rosalind-discovery': 'trusted-access programme only, and no model page to read a context window from',
-    // On the "Specialized models" table; its model page returned 404 the same day.
+    // Read 2026-11-16, under "Legal". No model page (404), and the pricing page
+    // calls the figure promotional: "available at least through December 31, 2026".
+    'gpt-6-astra-law': 'no model page to read a context window from, and a promotional price the page dates only "at least through December 31, 2026"',
+    // Read 2026-11-16. It has a model page and every short-context price. Over
+    // 272K input tokens the pricing page prints input, output and cached input
+    // and a dash for both cache writes, and the model page prices "short-context
+    // cache writes" only. A row prices a write in every band from the band's
+    // input rate, so a long-context write would be billed at a figure OpenAI
+    // does not publish.
+    'gpt-6-cyber': 'Daybreak programme only, and over 272K input tokens the page publishes no cache-write price, which a row would have to invent',
+    // On the "Specialized models" table; its model page returned 404 both days.
     'gpt-5-search-api': 'no model page to read a context window from',
   },
   anthropic: {},
@@ -317,6 +329,21 @@ function compareResidency(residency, models) {
 }
 
 /**
+ * A specialised-table model cell as an id and the band its row prices.
+ *
+ * Since 2026-11 the table prints a model that is priced by prompt length as
+ * two rows, `gpt-6-cyber (short context)` and `gpt-6-cyber (long context)`,
+ * where it used to print one row per id. Read literally, each was a model the
+ * catalogue did not have, and `gpt-5.6-cyber`, which it does have, read as
+ * gone from the page. Any other parenthesis is left in the name, so a suffix
+ * this does not know still surfaces as a model nobody priced.
+ */
+export function contextRow(cell) {
+  const banded = /^(.*?)\s*\((short|long) context\)$/i.exec(cell);
+  return banded === null ? { name: cell, context: undefined } : { name: banded[1].trim(), context: banded[2].toLowerCase() };
+}
+
+/**
  * OpenAI's pricing page as rows: one per model, short band and long.
  *
  * The text-token prices sit in tables under every "Standard pricing data"
@@ -352,12 +379,29 @@ export function readOpenAi(markdown) {
       const band = specialized ? 'service:fast' : 'base';
       if (specialized) specializedFast = true;
       specialized = true;
-      const at = { input: column(table.header, 'Input'), output: column(table.header, 'Output'), hit: column(table.header, 'Cached input') };
+      const at = {
+        input: column(table.header, 'Input'), output: column(table.header, 'Output'), hit: column(table.header, 'Cached input'),
+        write5m: column(table.header, '30m write'), write1h: column(table.header, '12h write'),
+      };
+      const read = (cells, index) => (index > 1 ? dollars(cells[index] ?? '') : undefined);
       for (const cells of table.rows) {
         const output = dollars(cells[at.output] ?? '');
         if (output === undefined) continue;
+        const { name, context } = contextRow(plainName(cells[specialModel]));
+        const rates = row(name, band);
+        if (context === 'long') {
+          Object.assign(rates, {
+            longInput: read(cells, at.input), longOutput: output, longHit: read(cells, at.hit),
+            longWrite5m: read(cells, at.write5m), longWrite1h: read(cells, at.write1h),
+          });
+          continue;
+        }
         if (band === 'base') standard += 1;
-        Object.assign(row(plainName(cells[specialModel]), band), { input: dollars(cells[at.input]), output, hit: dollars(cells[at.hit]) });
+        Object.assign(rates, { input: read(cells, at.input), output, hit: read(cells, at.hit) });
+        // Only where the table has the columns: the Fast one has none, and a
+        // key set to undefined would read as a column that printed a dash.
+        if (at.write5m > 1) rates.write5m = read(cells, at.write5m);
+        if (at.write1h > 1) rates.write1h = read(cells, at.write1h);
       }
       continue;
     }
@@ -384,6 +428,8 @@ export function readOpenAi(markdown) {
       longInput: pick('Long context input'),
       longOutput: pick('Long context output'),
       longHit: pick('Long context cached input'),
+      longWrite5m: pick('Long context 30m write'),
+      longWrite1h: pick('Long context 12h write'),
     };
     for (const cells of table.rows) {
       const name = plainName(cells[0]).replace(/\s*\(.*\)\s*$/, '').trim();
@@ -401,6 +447,8 @@ export function readOpenAi(markdown) {
           longInput: read(at.longInput),
           longOutput: read(at.longOutput),
           longHit: read(at.longHit),
+          longWrite5m: read(at.longWrite5m),
+          longWrite1h: read(at.longWrite1h),
         });
       } else {
         batch += 1;
@@ -504,6 +552,8 @@ export function compare(provider, page, core, now = new Date(), deliberately = D
         check(`${tier} long-context input`, rates.longInput, lengthy.inputPerMTok);
         check(`${tier} long-context output`, rates.longOutput, lengthy.outputPerMTok);
         check(`${tier} long-context cache hit`, rates.longHit, cached(lengthy.inputPerMTok));
+        check(`${tier} long-context 30-minute write`, rates.longWrite5m, lengthy.inputPerMTok * m.cacheWrite5m);
+        check(`${tier} long-context 12-hour write`, rates.longWrite1h, lengthy.inputPerMTok * m.cacheWrite1h);
       }
       continue;
     }
@@ -533,6 +583,8 @@ export function compare(provider, page, core, now = new Date(), deliberately = D
       check('long-context input', rates.longInput, priced?.inputPerMTok);
       check('long-context output', rates.longOutput, priced?.outputPerMTok);
       check('long-context cache hit', rates.longHit, priced && cached(priced.inputPerMTok));
+      check('long-context 30-minute write', rates.longWrite5m, priced && priced.inputPerMTok * m.cacheWrite5m);
+      check('long-context 12-hour write', rates.longWrite1h, priced && priced.inputPerMTok * m.cacheWrite1h);
       check('long-context batch input', rates.batchLongInput, priced && m.batch != null ? priced.inputPerMTok * m.batch : undefined);
       check('long-context batch output', rates.batchLongOutput, priced && m.batch != null ? priced.outputPerMTok * m.batch : undefined);
     }

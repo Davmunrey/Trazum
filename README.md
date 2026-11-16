@@ -466,7 +466,7 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 | | |
 |---|---|
-| Cache read | 10% of input on OpenAI (5% on GPT-6.1 Sol), Google, Mistral, Moonshot's Kimi K3 and Anthropic up to Opus 5 and Sonnet 5; **17% to 20%** on Moonshot's K2 series; **per model on xAI**, 15% on Grok 4.5, 16% on 4.3 and the 4.20 family, 20% on Build 0.1 and 25% on 4.6 and 4.7. Two providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.1 and Mythos 5.1 at **2.5%**, and DeepSeek V4.1 Flash reads at **2%** and V4 Pro at about **3%** where V3 read at 10% |
+| Cache read | 10% of input on OpenAI (5% on GPT-6.1 Sol), Google, Mistral, Moonshot's Kimi K3 and Anthropic up to Opus 5 and Sonnet 5; **17% to 20%** on Moonshot's K2 series; **per model on xAI**, 15% on Grok 4.5, 16% on 4.3 and the 4.20 family, 20% on Build 0.1 and 25% on 4.6 and 4.7. Two providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.2, Fable 5.1 and their Mythos twins at **2.5%**, and DeepSeek V4.1 Flash reads at **2%** and V4 Pro at about **3%** where V3 read at 10% |
 | Cache write | 125% of input on Anthropic and on OpenAI's GPT-5.6 and later, whose entry lives at least 30 minutes; Kimi K3 bills it **as its own line by TTL** like Anthropic, 100% for five minutes and 200% for an hour; 100% on earlier OpenAI models, Google, Kimi's K2 series, DeepSeek and xAI; Mistral publishes no write price and reports no write tokens |
 | Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI and DeepSeek; 4,096 on Gemini 3.6 Flash, 3.8 Flash and 3.1 Pro and 2,048 on the retired Gemini 2.5 models; Moonshot, xAI and Mistral publish none, so their cache is priced from your log and the advice that needs a minimum stays quiet |
 | How caching starts | You mark the prefix on Anthropic; it is **automatic** on OpenAI, Google, Moonshot, DeepSeek and xAI; Mistral does not say, so Trazum gives no caching advice for it |
@@ -475,7 +475,7 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 **The cache minimum is the row to read twice, and it used to be wrong here.** This
 table said *"512 on Anthropic"* flatly. Anthropic's floor is a property of the
-model: 512 on Fable 5.1, Fable 5, Mythos 5.1, Mythos 5, Opus 5.5, Opus 5,
+model: 512 on Fable 5.2, Fable 5.1, Fable 5, Mythos 5.2, Mythos 5.1, Mythos 5, Opus 5.5, Opus 5,
 Sonnet 5.5 and Haiku 5.5; 1,024 on Opus 4.8, Sonnet 5 and Sonnet 4.6; 2,048 on Opus 4.7;
 **4,096 on Opus 4.6, Opus 4.5 and Haiku 4.5**. A reader on
 Haiku 4.5 who trusted "512" would have built a prefix eight times too short and been
