@@ -11,7 +11,32 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Added
+
+- **Google's Gemini 4 family and Gemini 3.5 Flash-Lite are priced.** Gemini 4
+  Carbon and Argon at $2/$10 through 2026-11-30 and $4/$20 from 2026-12-01,
+  Gemini 4 Hydrogen at $1.50/$7.50, each reading its cache at 5% of input,
+  with batch at half and implicit caching from 4,096 tokens; Gemini 3.5
+  Flash-Lite at $0.30/$2.50, its cache at 10%. Every figure is from Google's
+  pricing page, the model pages and its caching page, read 2026-11-16. Until
+  now a call to any of them read as unpriced. On 2026-12-01 the introductory
+  price of Carbon and Argon ends, and `pricing-review.test.js` fails that day
+  until it is moved into the rows' history. Google's Flex and Priority
+  tiers are on the page and not in the table: a call on either is priced at
+  the standard rate, and each Gemini 4 row's note says so.
+  `per-request-tiers.test.js` holds the four rows to every figure the page
+  prints, standard, batch and cache, on both sides of 2026-12-01; six faults
+  planted in the rows were each caught.
+
+### Fixed
+
+- **The card for a shared link broke a project's name across two lines.**
+  `docs/assets/social-preview.png` shipped in 2.7.8 with
+  `home-me-etl-pipeline` wrapped, because the column it sits in was narrowed
+  to fit a longer dollar figure and the picture was not looked at again. The
+  column is wider, a row no longer wraps, and the image is redrawn. The
+  figures were right throughout; the test that holds them reads the page's
+  text and cannot see a line break.
 
 ## 2.7.8 — 2026-11-16
 
