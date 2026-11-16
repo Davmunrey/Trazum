@@ -98,20 +98,69 @@ describe('the price table says how old it is, once and accurately', () => {
    * here knew: on 2026-09-01 every Sonnet 5 figure would have risen 50% by
    * itself. This check would have asked the question on 2026-07-17.
    */
-  it('carries no promotion that expires before the next review is due', () => {
-    const horizon = new Date(Date.now() + STALE_PRICING_DAYS * 86_400_000)
-      .toISOString()
-      .slice(0, 10);
+  /**
+   * What "resolved" means, once the question has been asked.
+   *
+   * The check above this one's first version could not be satisfied by doing
+   * what it asks. It failed on 2026-11-16 for Gemini 3.6 and 3.8 Flash, whose
+   * introductory price ends 2026-12-31; the page was read that day and said
+   * the same thing; and the only ways to make the check pass were to delete a
+   * promotion Google still runs or to wait out 45 red days. So a promotion
+   * records the day its end was last confirmed on the provider's page
+   * (`promo.confirmedOn`), and the question is whether that day falls inside
+   * the window. A provider that cancels the rise after the confirmation is
+   * what the weekly re-reads are for; no offline check knows.
+   *
+   * A promotion whose window has closed is refused outright: the price moved
+   * on its own that morning, and the row should now say so plainly, with the
+   * old figures in `history` for the logs that predate it.
+   */
+  const day = (ms) => new Date(ms).toISOString().slice(0, 10);
+  const promotionProblem = (model, now) => {
+    const { until, confirmedOn } = model.promo;
+    const today = day(now);
+    if (until < today) {
+      return `${model.id}'s promotion ended ${until}. Its price changed on its own that day: move the `
+        + 'promotional figures to `history` and delete `promo`.';
+    }
+    if (until > day(now + STALE_PRICING_DAYS * 86_400_000)) return null;
+    const windowOpens = day(Date.parse(`${until}T00:00:00Z`) - STALE_PRICING_DAYS * 86_400_000);
+    if (confirmedOn !== undefined && confirmedOn > today) {
+      return `${model.id}'s promotion was confirmed on ${confirmedOn}, which has not happened yet.`;
+    }
+    if (confirmedOn === undefined || confirmedOn < windowOpens) {
+      return `${model.id}'s promotion ends ${until}, inside the ${STALE_PRICING_DAYS} `
+        + 'days this tool calls its table current. Ask the provider what it charges after '
+        + 'that and write the answer as the price — left alone, this record changes the '
+        + 'figure on its own. If the page still says the same, record the day it was read as '
+        + `\`promo.confirmedOn\` (on or after ${windowOpens}).`;
+    }
+    return null;
+  };
+
+  it('carries no promotion that expires before the next review is due, unless its end was just confirmed', () => {
     for (const model of MODELS) {
       if (!model.promo) continue;
-      assert.ok(
-        model.promo.until > horizon,
-        `${model.id}'s promotion ends ${model.promo.until}, inside the ${STALE_PRICING_DAYS} `
-          + 'days this tool calls its table current. Ask the provider what it charges after '
-          + 'that and write the answer as the price — left alone, this record changes the '
-          + 'figure on its own.',
-      );
+      assert.equal(promotionProblem(model, Date.now()), null);
     }
+  });
+
+  it('asks the question 45 days out, takes a dated answer, and refuses a promotion left to lapse', () => {
+    const promoted = (promo) => ({ id: 'model-x', promo: { inputPerMTok: 1, outputPerMTok: 2, ...promo } });
+    const at = (iso) => Date.parse(`${iso}T12:00:00Z`);
+    // Far from its end: nothing to ask yet.
+    assert.equal(promotionProblem(promoted({ until: '2026-12-31' }), at('2026-11-15')), null);
+    // 45 days out and nobody has looked: the alarm.
+    assert.match(promotionProblem(promoted({ until: '2026-12-31' }), at('2026-11-16')), /Ask the provider.*on or after 2026-11-16/);
+    // A confirmation from before the window is not an answer to the question.
+    assert.match(promotionProblem(promoted({ until: '2026-12-31', confirmedOn: '2026-10-10' }), at('2026-11-16')), /Ask the provider/);
+    // Read again inside the window: answered, until the day the promotion ends.
+    assert.equal(promotionProblem(promoted({ until: '2026-12-31', confirmedOn: '2026-11-16' }), at('2026-11-16')), null);
+    assert.equal(promotionProblem(promoted({ until: '2026-12-31', confirmedOn: '2026-11-16' }), at('2026-12-31')), null);
+    // A date nobody could have read the page on.
+    assert.match(promotionProblem(promoted({ until: '2026-12-31', confirmedOn: '2026-12-25' }), at('2026-11-20')), /has not happened yet/);
+    // The window closed: a confirmation does not keep a lapsed promotion.
+    assert.match(promotionProblem(promoted({ until: '2026-12-31', confirmedOn: '2026-11-16' }), at('2027-01-01')), /ended 2026-12-31.*history/);
   });
 });
 

@@ -336,6 +336,18 @@ export interface ModelPricing {
     outputPerMTok: number;
     /** ISO date (inclusive) the promotional price applies until. */
     until: string;
+    /**
+     * ISO date the provider's page was last read still stating this end date
+     * and the price after it.
+     *
+     * A promotion is the one price change this table can see coming, and the
+     * one a provider can cancel: Anthropic did, with Sonnet 5. So inside the
+     * last `STALE_PRICING_DAYS` of a promotion somebody has to read the page
+     * again, and this is where they write down that they did.
+     * `pricing-review.test.js` fails a promotion that close to its end without
+     * a confirmation that recent. It changes no price.
+     */
+    confirmedOn?: string;
   };
   /**
    * Rates that apply only under a stated condition.

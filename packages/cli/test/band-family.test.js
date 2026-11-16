@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
 
-import { BUNDLED_CATALOGUE, BAND_CALIBRATED_PROVIDER, bandGoverns } from '@trazum/core';
+import { BUNDLED_CATALOGUE, BAND_CALIBRATED_PROVIDER, PRICING_MODEL_KEYS, bandGoverns } from '@trazum/core';
 
 import { OPTIONAL_COUNTERS, countableLocally } from '../dist/optional-counters.js';
 import { canCount } from '@trazum/tokenizer-openai';
@@ -111,9 +111,16 @@ describe('--exact-tokens refuses a family its counter cannot count', () => {
      * model *"is not in the price catalogue at all"*, which is false in the one
      * case that can produce it. Found by running it rather than by reading it.
      */
-    const houseModel = JSON.parse(JSON.stringify(BUNDLED_CATALOGUE.models[0]));
-    delete houseModel.provider;
-    delete houseModel.id;
+    /*
+     * Only the keys an overlay accepts, taken from the overlay's own list. A
+     * whole bundled row was copied here until the catalogue's first row gained
+     * `tiers` (Claude Fable 5.2's fast mode), which an overlay refuses, and
+     * the test then failed on the fixture instead of the thing it tests.
+     * `provider` is not one of those keys, which is the case under test.
+     */
+    const bundled = JSON.parse(JSON.stringify(BUNDLED_CATALOGUE.models[0]));
+    const houseModel = Object.fromEntries(PRICING_MODEL_KEYS.filter((key) => key in bundled).map((key) => [key, bundled[key]]));
+    assert.ok(!('provider' in houseModel) && 'inputPerMTok' in houseModel);
     const pricing = join(dir, 'pricing.json');
     writeFileSync(
       pricing,
