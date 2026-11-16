@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.7**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.8**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,73 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.8 — Claude Fable 5.2 priced, and a wrong file named
+
+**Adoption, read 2026-11-16:** 2696 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.7.
+
+**If your agent runs Claude Fable 5.2, every bill since 2026-11-09 left it
+out. Run it again.**
+
+```bash
+npx -y @trazum/cli@2.7.8 bill
+```
+
+**Claude Fable 5.2 and Claude Mythos 5.2 are priced.** Both were released on
+2026-11-09 at $8/$40, with cache reads at $0.20, cache writes at $10 and $16,
+the Batch API at $4/$20 and fast mode at $16/$80. Each figure was read from
+Anthropic's pricing page and the two model pages on 2026-11-16. On this
+repository's own Claude Code session, 2.7.7 billed $20.38 across 194 calls and
+left 71 Fable 5.2 calls out of the total, more than half the money. The weekly
+price check flagged both models the day they were released, and nobody acted
+on it for a week.
+
+**That check had also been reading a table OpenAI reshaped as nine new
+models.** The "Specialized models" table now prints a model priced by prompt
+length as two rows, and each row read as a model the catalogue lacked. The
+check reads the two rows as one model's two bands, and for the first time
+compares the long-context cache writes every OpenAI model page prints; each
+agreed. Six OpenAI ids stay unpriced on purpose, each listed with its reason:
+five have no model page, and `gpt-6-cyber` has no published cache-write price
+over 272K input tokens, which a row would have had to invent.
+
+**A file handed to the wrong command is named, with the command that reads
+it.** `profile`, `plan`, `receipt` and the others that read one usage log
+answered a Claude Code session with "No usage records in that file". They now
+say what the file is, that `trazum bill <file>` reads it as it is, and which
+`from-` command converts it. The MCP server and the local HTTP API give the
+same answer through `import_usage`. And `bill` no longer points at
+`from-anthropic-usage` or `from-openai-usage`, which never existed.
+
+**A promotional price near its end can be confirmed.** Gemini 3.6 and 3.8
+Flash are $0.75/$3.75 through 2026-12-31. The check that asks somebody to
+re-read a promotion in its last 45 days had no way to take "read today, still
+stands" for an answer; a promotion now records the day its end was last
+confirmed.
+
+**The hosted web app, hardened against OWASP ASVS level 2.** Since 2.7.7 the
+app that runs at trazum.vercel.app gained a security event log, declared
+schemas for every request body, idle session expiry, a list of your sessions
+with a way to end any one, rate limits counted across instances, a data
+export, and a CycloneDX bill of materials on every GitHub release.
+`docs/compliance/` maps all 259 level 2 requirements and says first that
+Trazum is **not certified** against any standard. None of this changes the
+CLI, the MCP server or the libraries, which run on your machine.
+
+**The README opens on what the tool does for you,** and says in four points
+why a figure it prints can be trusted.
+
+**Not in this release:** Google's Gemini 4 family is on Google's pricing page
+and not yet in the catalogue; calls to it read as unpriced, named, until the
+re-read due by 2026-11-24. **Still waiting on a person:** 2.7.2's tag and
+GitHub release, as 2.7.3 said.
+
+No breaking change for the CLI, the MCP server or the libraries. The hosted
+web API is stricter: a request body with a field an endpoint does not take is
+now a `400` that names it, and a session ends after a day without use. All
+packages, the plugin and MCP discovery advance together to 2.7.8.
 
 ---
 

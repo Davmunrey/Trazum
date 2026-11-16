@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.8 — 2026-11-16
+
 ### Fixed
 
 - **The weekly price check read a table OpenAI had reshaped as nine new
@@ -153,6 +157,16 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **A card for when the repository's link is shared.**
+  `docs/assets/social-preview.png` is the 1280 by 640 image GitHub shows on a
+  timeline or in a chat: the first line of the README, the command, and the
+  bill `trazum bill` prints for the two example projects, marked as sample
+  data. Only the owner can set it, in the repository's settings. It is a
+  screenshot of `docs/assets/social-preview.html`, and
+  `packages/cli/test/bill-image.test.js` holds that page to the CLI's output:
+  the total, the number of calls, and each project's and model's figure and
+  bar on the row of the same name. Six faults planted in the page were each
+  caught.
 - **Claude Fable 5.2 and Claude Mythos 5.2 are priced.** Released 2026-11-09
   at $8/$40, cache reads at $0.20 (2.5% of input), writes at $10 and $16, the
   Batch API at $4/$20 and fast mode at $16/$80, each figure read from
@@ -358,6 +372,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The README opens on what the tool does for the person reading it.** The
+  first line was "Understand your AI spend. Decide what to change."; it is now
+  "Know what your AI agents cost, per project, without your prompts leaving
+  the machine.", followed by what one command reads and prints. A new section,
+  *Why the number holds up*, says in four points what stands behind a figure:
+  the weekly comparison with each provider's pricing page, the billing rules
+  applied call by call, that a model with no published price is named rather
+  than counted as $0, and that the analysis runs on the reader's machine with
+  no third-party package installed by the CLI. Each point was checked against
+  the code before it was written. The header gains npm version and download
+  badges. `scripts/build-wiki.mjs` finds the introduction by its new heading.
 - **Every body the web API accepts is checked against a declared schema,
   and anything else is refused by name** (OWASP ASVS 4.0.3 5.1.4, 13.2.2).
   The nine bodies are listed in one file, `apps/web/lib/body-schemas.ts`,
