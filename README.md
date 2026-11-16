@@ -2,16 +2,18 @@
 
 # Trazum
 
-### Understand your AI spend. Decide what to change.
+### Know what your AI agents cost, per project, without your prompts leaving the machine.
 
-Find where your AI usage costs money, choose a change, and check the result.
-Trazum analyses local usage logs and prompts, ranks opportunities such as caching
-and model changes, and keeps estimates separate from measured outcomes.
+One command reads the sessions **Claude Code, Codex and Gemini CLI** already keep
+on your disk and prints the bill: by project, by model, by day. Then it ranks
+what to change and checks whether the change arrived.
 
 **Open source · Local analysis · No provider key needed to get started**
 
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
+[![npm](https://img.shields.io/npm/v/%40trazum%2Fcli.svg?label=npm)](https://www.npmjs.com/package/@trazum/cli)
+[![npm downloads](https://img.shields.io/npm/dm/%40trazum%2Fcli.svg)](https://www.npmjs.com/package/@trazum/cli)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-3c873a.svg)](package.json)
 [![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-2f855a.svg)](#layout)
@@ -50,6 +52,23 @@ npx @trazum/cli bill ./usage-export.jsonl
 
 [Supported inputs](docs/usage-logs.md) ·
 [Try sample data in your browser](https://trazum.vercel.app/?tab=playground)
+
+## Why the number holds up
+
+- **Published rates, checked against the provider every week.** A scheduled
+  job compares every Anthropic and OpenAI price here with the provider's own
+  pricing page and fails the build when one moves or a model is missing.
+  Every figure on the bill carries the rate behind it and the date that rate
+  was reviewed.
+- **Billed the way the provider bills.** Cache reads, both cache-write
+  lifetimes, long-prompt bands, fast mode, the Batch API, web searches and
+  US-only inference each get their own published rate, call by call.
+- **Nothing is guessed.** A model with no published price is named and kept
+  out of the total, never counted as $0. A projected saving is never added to a
+  measured one.
+- **Your files stay where they are.** The analysis runs on your machine, on
+  logs your tools already wrote. The CLI installs nothing from third parties:
+  its one dependency is Trazum's own core, which has none.
 
 ## Turn a report into a decision
 

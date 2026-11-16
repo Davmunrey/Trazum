@@ -49,6 +49,42 @@ describe('the bill picture in the README', () => {
   });
 });
 
+/**
+ * The card GitHub shows when the repository's link is shared.
+ *
+ * `docs/assets/social-preview.png` is a screenshot of the HTML beside it, and a
+ * PNG cannot be read here. The HTML can: every figure in its bill panel has to
+ * be one the CLI prints for the same examples, on the row of the same name, so
+ * a price change that redraws the picture above fails here until the card is
+ * redrawn too. It is the first thing somebody sees of this project on a
+ * timeline, and it is a bill.
+ */
+describe('the social preview card', () => {
+  const lines = statementLines();
+  const card = readFileSync(join(ROOT, 'docs/assets/social-preview.html'), 'utf8');
+
+  it('states the total and the number of calls the CLI prints', () => {
+    const [, usd, calls] = lines[1].match(/(\$[\d,.]+) across (\d+)/);
+    assert.match(card, /<div class="total">(\$[\d,.]+)<\/div>/, 'the card no longer has a total');
+    assert.equal(card.match(/<div class="total">(\$[\d,.]+)<\/div>/)[1], usd, 'the card total is not the bill total');
+    assert.ok(card.includes(`across ${calls} priced calls`), `the card does not say ${calls} priced calls`);
+    assert.ok(card.includes('sample data'), 'the card no longer says its figures are sample data');
+  });
+
+  it('gives each project and model the figures on its own row of the bill', () => {
+    const rows = [...card.matchAll(/<div class="row"><span>([^<]+)<\/span><span class="usd">([^<]+)<\/span><span class="bar"><i style="width:([\d.]+)%"><\/i><\/span><span class="pct">([^<]+)<\/span><\/div>/g)];
+    assert.ok(rows.length >= 4, `the card shows ${rows.length} row(s); a project table and a model table are at least four`);
+    for (const [, name, usd, width, share] of rows) {
+      const line = lines.find((candidate) => candidate.trim().split(/\s+/)[0] === name);
+      assert.ok(line !== undefined, `the card names ${name}, which the bill does not print`);
+      const cells = line.trim().split(/\s+/);
+      assert.ok(cells.includes(usd), `${name}: the card says ${usd}, the bill says "${line.trim()}"`);
+      assert.ok(cells.includes(share), `${name}: the card says ${share}, the bill says "${line.trim()}"`);
+      assert.equal(`${width}%`, share, `${name}: the bar is drawn at ${width}% beside a share of ${share}`);
+    }
+  });
+});
+
 describe('the example projects behind it', () => {
   const dir = join(ROOT, 'examples/claude-projects');
   const files = readdirSync(dir, { recursive: true }).filter((name) => String(name).endsWith('.jsonl'));
