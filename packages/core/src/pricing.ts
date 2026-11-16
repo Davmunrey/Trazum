@@ -47,8 +47,15 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * are gone, and the context-windows page gives each the 200k window every
    * Claude model outside its 1M list has. Claude Sonnet 3.7 and Haiku 3 are
    * retired and absent from the pricing page, so they stay unpriced.
+   *
+   * Re-read 2026-11-16 (pricing, the models overview, deprecations,
+   * prompt-caching, fast-mode and the Fable and Mythos model pages), after
+   * `scripts/price-drift.mjs` failed the weekly run of 2026-11-09. Every
+   * existing price matched. New: Claude Fable 5.2 and Claude Mythos 5.2,
+   * released 2026-11-09 at $8/$40 with fast mode at $16/$80, both unpriced
+   * for a week. Fable 5.1's page now opens "Legacy"; its prices are the same.
    */
-  anthropic: '2026-11-05',
+  anthropic: '2026-11-16',
   /*
    * developers.openai.com/api/docs/pricing, read 2026-08-31.
    *
@@ -77,8 +84,21 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * priced as one, at half its cost; and sixteen earlier models that are still
    * billed and still in logs (GPT-5.5, 5.4, 5.2, 5.1 and their mini, nano and
    * pro siblings, GPT-5 pro, GPT-4.1, GPT-4o and o3), none of which was priced.
+   *
+   * Re-read 2026-11-16: pricing.md and the model pages of every row, after
+   * the same weekly run. Every existing price matched, and no row was added.
+   * What changed is the "Specialized models" table, which now prints a model
+   * priced by prompt length as two rows, "(short context)" and "(long
+   * context)", so `price-drift.mjs` read `gpt-5.6-cyber` as gone and nine
+   * rows as new. Six ids are on the page and unpriced on purpose, each with
+   * its reason in `DELIBERATELY_UNPRICED`: five have no model page, so no
+   * context window (`gpt-5.5-cyber-preview`, `gpt-6-rosalind`, the two
+   * `gpt-rosalind` models, `gpt-6-astra-law`), and `gpt-6-cyber` has one, but
+   * no published cache-write price over 272K input tokens. The long-context
+   * cache writes the page prints for every other model were compared for the
+   * first time, and each is the long input rate times the row's multiplier.
    */
-  openai: '2026-11-05',
+  openai: '2026-11-16',
   /*
    * ai.google.dev/gemini-api/docs/pricing, docs/caching and the model pages,
    * read 2026-10-10. Every price matched; what changed is how caching starts
@@ -345,11 +365,79 @@ const ANTHROPIC_WEB_SEARCH_USD_PER_1K = 10;
 export const MODELS: ModelPricing[] = [
   {
     /*
+     * platform.claude.com/docs/en/about-claude/pricing and the Fable 5.2 model
+     * page (models/fable-5-2/overview), read 2026-11-16: "Latest. Released
+     * November 9, 2026". Cheaper than Fable 5.1 at both ends, $8/$40. The
+     * cache read is $0.20, the same 0.025x ("priced at 0.025x the base input
+     * price"); writes are $10 and $16, 1.25x and 2x; the Batch API table has
+     * $4/$20. A 1M context window, and the prompt-caching page lists it among
+     * the models with a 512-token minimum.
+     *
+     * Found by `scripts/price-drift.mjs` on the weekly run of 2026-11-09, the
+     * day it was released, as a model on the pricing page that read as
+     * unpriced. That included this repository's own Claude Code sessions.
+     */
+    id: 'claude-fable-5-2',
+    provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
+    displayName: 'Claude Fable 5.2',
+    inputPerMTok: 8,
+    outputPerMTok: 40,
+    contextWindow: 1_000_000,
+    cacheMinTokens: 512,
+    multipliers: { cacheRead: 0.025, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
+    /*
+     * Fast mode, read 2026-11-16 from the pricing page's "Fast mode pricing"
+     * table and build-with-claude/fast-mode: $16/$80, "a multiplier on
+     * standard rates across the full context window", with the caching
+     * multipliers "on top". The response's `usage.speed` says which speed ran.
+     */
+    tiers: [{ id: 'fast', when: { kind: 'speed', speed: 'fast' }, inputPerMTok: 16, outputPerMTok: 80 }],
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: 'Cache hits cost 2.5% of the input price ($0.20). Fast mode (usage.speed "fast") bills $16/$80.'
+      + ' Requires 30-day data retention.',
+  },
+  {
+    /*
+     * The same pages, read 2026-11-16. Its own page (models/mythos-5-2/
+     * overview): "the same model as Claude Fable 5.2, available only to
+     * organizations verified through Anthropic's verification programs", with
+     * "the same specifications and pricing". The pricing page prints its row
+     * beside Fable 5.2's in the model, batch and fast-mode tables, each figure
+     * the same. Priced for the logs that carry it and never offered as
+     * somebody's cheaper alternative.
+     */
+    id: 'claude-mythos-5-2',
+    provider: 'anthropic',
+    webSearchPerThousandUsd: ANTHROPIC_WEB_SEARCH_USD_PER_1K,
+    inferenceGeoMultipliers: US_ONLY_INFERENCE,
+    displayName: 'Claude Mythos 5.2',
+    recommendable: false,
+    inputPerMTok: 8,
+    outputPerMTok: 40,
+    contextWindow: 1_000_000,
+    cacheMinTokens: 512,
+    multipliers: { cacheRead: 0.025, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
+    tiers: [{ id: 'fast', when: { kind: 'speed', speed: 'fast' }, inputPerMTok: 16, outputPerMTok: 80 }],
+    capability: 'frontier',
+    tier: 'frontier',
+    notes:
+      'Available only to organizations verified through Anthropic\'s verification programs.'
+      + ' Fast mode (usage.speed "fast") bills $16/$80. Requires 30-day data retention.',
+  },
+  {
+    /*
      * platform.claude.com/docs/en/about-claude/pricing and the Fable 5.1 model
      * page, read 2026-10-10. The same $10/$50 as Fable 5; what moved is the
      * cache read, $0.25 against $10 of input, a quarter of the 0.1x every
      * earlier Claude model pays. Writes stay at 1.25x and 2x ($12.50, $20),
      * and the Batch API halves both sides ($5/$25).
+     *
+     * Its page, re-read 2026-11-16, opens "Legacy. Released September 1,
+     * 2026" and says "Claude Fable 5.2 is the current Fable model". Still
+     * served ("Active (legacy)") at the same prices.
      */
     id: 'claude-fable-5-1',
     provider: 'anthropic',
@@ -363,7 +451,8 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.025, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
     capability: 'frontier',
     tier: 'frontier',
-    notes: 'Cache hits cost 2.5% of the input price ($0.25). Requires 30-day data retention.',
+    notes: 'Legacy: superseded by Claude Fable 5.2, which costs less ($8/$40). Cache hits cost 2.5% of the input'
+      + ' price ($0.25). Requires 30-day data retention.',
   },
   {
     /*
@@ -1681,13 +1770,18 @@ export const MODELS: ModelPricing[] = [
      * which is exactly what `promo` is for and is the shape the catalogue nearly
      * shipped Sonnet 5 wrong on: on 2027-01-01 every figure here doubles with no
      * code change, and `pricing-review.test.js` fails before that arrives.
+     *
+     * It failed on 2026-11-16, 45 days before the end, and the page was read
+     * again that day: "$0.75 through December 31, 2026. $1.50 starting January
+     * 1, 2027", "$3.75 ... $7.50" for output and "$0.075 ... $0.15" for the
+     * cache, word for word what it said in October. The rise stands.
      */
     id: 'gemini-3.6-flash',
     provider: 'google',
     displayName: 'Gemini 3.6 Flash',
     inputPerMTok: 1.5,
     outputPerMTok: 7.5,
-    promo: { inputPerMTok: 0.75, outputPerMTok: 3.75, until: '2026-12-31' },
+    promo: { inputPerMTok: 0.75, outputPerMTok: 3.75, until: '2026-12-31', confirmedOn: '2026-11-16' },
     contextWindow: 1_048_576,
     cacheMinTokens: 4096,
     caching: 'automatic',
@@ -1710,14 +1804,16 @@ export const MODELS: ModelPricing[] = [
      * page and docs/caching, read 2026-10-10. The same rates and the same
      * introductory window as 3.6 Flash, published as one table each: $0.75
      * and $3.75 through 2026-12-31, $1.50 and $7.50 from 2027-01-01, and the
-     * cache price scales with them ($0.075, then $0.15).
+     * cache price scales with them ($0.075, then $0.15). Read again on
+     * 2026-11-16, inside the promotion's last 45 days: the same six figures
+     * and the same two dates.
      */
     id: 'gemini-3.8-flash',
     provider: 'google',
     displayName: 'Gemini 3.8 Flash',
     inputPerMTok: 1.5,
     outputPerMTok: 7.5,
-    promo: { inputPerMTok: 0.75, outputPerMTok: 3.75, until: '2026-12-31' },
+    promo: { inputPerMTok: 0.75, outputPerMTok: 3.75, until: '2026-12-31', confirmedOn: '2026-11-16' },
     contextWindow: 1_048_576,
     cacheMinTokens: 4096,
     caching: 'automatic',

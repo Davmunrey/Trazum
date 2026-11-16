@@ -303,6 +303,14 @@
     {
       "id": "grok-build-0.1",
       "because": "no probe is written for xai; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "claude-fable-5-2",
+      "because": "added to the catalogue on 2026-11-16 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "claude-mythos-5-2",
+      "because": "added to the catalogue on 2026-11-16 from the provider page, after this record was written; no key was available to ask"
     }
   ]
 }

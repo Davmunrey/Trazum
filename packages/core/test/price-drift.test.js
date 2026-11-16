@@ -10,6 +10,7 @@ import {
   compare,
   compareLifecycle,
   claudeGeneration,
+  contextRow,
   dollars,
   markdownTables,
   plainName,
@@ -25,8 +26,9 @@ import {
  * `scripts/price-drift.mjs`: the catalogue against the providers' own pages.
  *
  * The pages here are written for the test, in the shape Anthropic's and
- * OpenAI's Markdown pricing pages had on 2026-11-05, with the figures the
- * catalogue holds. A planted figure has to come back as drift, a model the
+ * OpenAI's Markdown pricing pages had on 2026-11-05, and OpenAI's specialised
+ * table in the shape it had on 2026-11-16, with the figures the catalogue
+ * holds. A planted figure has to come back as drift, a model the
  * catalogue lacks as missing, and a page whose tables moved as unread: the
  * last is the one that matters most, because a check that reads nothing and
  * passes is worse than no check.
@@ -35,7 +37,7 @@ import {
 const NOW = new Date('2026-11-05T12:00:00Z');
 
 const anthropicPage = ({
-  opus41Output = '$75 / MTok', withFast = true, withBatch = true, residency = '1.1x', residencySince = '4.6', withResidency = true,
+  opus41Output = '$75 / MTok', fableFastOutput = '$80 USD / MTok', withFast = true, withBatch = true, residency = '1.1x', residencySince = '4.6', withResidency = true,
   webSearch = '$10', withWebSearch = true,
 } = {}) => `
 # Pricing
@@ -48,6 +50,8 @@ Web search is available on the Claude API for **${webSearch} USD per 1,000 searc
 
 | Model | Base input tokens | 5m cache writes | 1h cache writes | Cache hits and refreshes | Output tokens |
 | ----- | ----------------- | --------------- | --------------- | ------------------------ | ------------- |
+| Claude Fable 5.2 | $8 / MTok | $10 / MTok | $16 / MTok | $0.20 / MTok<sup>1</sup> | $40 / MTok |
+| Claude Mythos 5.2 ([limited availability](https://support.claude.com/en/articles/14604842)) | $8 / MTok | $10 / MTok | $16 / MTok | $0.20 / MTok<sup>1</sup> | $40 / MTok |
 | Claude Opus 5.5 | $4 / MTok | $5 / MTok | $8 / MTok | $0.20 / MTok<sup>2</sup> | $20 / MTok |
 | Claude Opus 4.1 ([retired, except on Bedrock](https://platform.claude.com/docs/en/about-claude/model-deprecations)) | $15 / MTok | $18.75 / MTok | $30 / MTok | $1.50 / MTok | ${opus41Output} |
 | Claude Sonnet 5 | $2 / MTok<sup>3</sup> | $2.50 / MTok | $4 / MTok | $0.20 / MTok | $10 / MTok |
@@ -59,6 +63,8 @@ ${withFast ? `
 
 | Model                           | Input          | Output         |
 | ------------------------------- | -------------- | -------------- |
+| Claude Fable 5.2                | $16 USD / MTok | ${fableFastOutput} |
+| Claude Mythos 5.2               | $16 USD / MTok | $80 USD / MTok |
 | Claude Opus 5.5                 | $8 USD / MTok  | $40 USD / MTok |
 | Claude Opus 5 / Claude Opus 4.8 | $10 USD / MTok | $50 USD / MTok |
 ` : ''}${withBatch ? `
@@ -66,13 +72,18 @@ ${withFast ? `
 
 | Model | Batch input | Batch output |
 | ----- | ----------- | ------------ |
+| Claude Fable 5.2 | $4 / MTok | $20 / MTok |
+| Claude Mythos 5.2 ([limited availability](https://support.claude.com/en/articles/14604842)) | $4 / MTok | $20 / MTok |
 | Claude Opus 5.5 | $2 / MTok | $10 / MTok |
 | Claude Opus 4.1 ([retired](https://example.com)) | $7.50 / MTok | $37.50 / MTok |
 | Claude Haiku 5.5 (for prompts up to 100,000 tokens) | $0.05 / MTok | $0.25 / MTok |
 | Claude Haiku 5.5 (for prompts over 100,000 tokens) | $0.25 / MTok | $1.25 / MTok |
 ` : ''}`;
 
-const openAiPage = ({ astraLongOutput = '$75.00', gpt4oCached = '$1.25', codexInput = '$1.75', astraFlexInput = '$5.00' } = {}) => `
+const openAiPage = ({
+  astraLongOutput = '$75.00', astraLongWrite = '$25.00', gpt4oCached = '$1.25', codexInput = '$1.75', astraFlexInput = '$5.00',
+  cyberWrite = '$15.625', cyberLong = '| - | - | - | - | - |',
+} = {}) => `
 # Pricing
 
 Flagship models
@@ -81,7 +92,7 @@ Flagship models
 
 | Model | Short context input | Short context output | Short context cached input | Short context 30m write | Short context 12h write | Long context input | Long context output | Long context cached input | Long context 30m write | Long context 12h write |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| gpt-6-astra | $10.00 | $50.00 | $1.00 | $12.50 | $25.00 | $20.00 | ${astraLongOutput} | $2.00 | $25.00 | $50.00 |
+| gpt-6-astra | $10.00 | $50.00 | $1.00 | $12.50 | $25.00 | $20.00 | ${astraLongOutput} | $2.00 | ${astraLongWrite} | $50.00 |
 | gpt-5.5-pro (<272K context length) | $30.00 | $180.00 | - | - | - | $60.00 | $270.00 | - | - | - |
 
 | Model | Input | Output | Cached input |
@@ -127,12 +138,18 @@ Standard
 
 ### Grouped Pricing Table data
 
-| Category | Model | Input | Output | Cached input |
-| --- | --- | --- | --- | --- |
-| ChatGPT | chat-latest | $5.00 | $30.00 | $0.50 |
-| Codex | gpt-5.3-codex | ${codexInput} | $14.00 | $0.175 |
-| Embedding | text-embedding-3-small | $0.02 | - | - |
-| Moderation | omni-moderation-latest | Free | - | - |
+| Category | Model | Input | Output | Cached input | 30m write | 12h write |
+| --- | --- | --- | --- | --- | --- | --- |
+| <a id="cyber-models"></a>Cyber — Trusted Access: [Daybreak](https://openai.com/daybreak/) | gpt-6-cyber (short context) | $20.00 | $100.00 | $2.00 | $25.00 | $50.00 |
+| Cyber — Trusted Access: [Daybreak](https://openai.com/daybreak/) | gpt-6-cyber (long context) | $40.00 | $150.00 | $4.00 | - | - |
+| Cyber — Trusted Access: [Daybreak](https://openai.com/daybreak/) | gpt-5.6-cyber (short context) | $12.50 | $75.00 | $1.25 | ${cyberWrite} | $31.25 |
+| Cyber — Trusted Access: [Daybreak](https://openai.com/daybreak/) | gpt-5.6-cyber (long context) ${cyberLong}
+| Cyber — Trusted Access: [Daybreak](https://openai.com/daybreak/) | gpt-5.5-cyber-preview (short context) | $12.50 | $75.00 | $1.25 | - | - |
+| Cyber — Trusted Access: [Daybreak](https://openai.com/daybreak/) | gpt-5.5-cyber-preview (long context) | - | - | - | - | - |
+| ChatGPT | chat-latest | $5.00 | $30.00 | $0.50 | - | - |
+| Codex | gpt-5.3-codex | ${codexInput} | $14.00 | $0.175 | - | - |
+| Embedding | text-embedding-3-small | $0.02 | - | - | - | - |
+| Moderation | omni-moderation-latest | Free | - | - | - | - |
 
 Fast
 
@@ -141,14 +158,6 @@ Fast
 | Category | Model | Input | Output | Cached input |
 | --- | --- | --- | --- | --- |
 | Codex | gpt-5.3-codex | $3.50 | $28.00 | $0.35 |
-
-Cyber models
-
-### Standard pricing data
-
-| Model | Short context input | Short context output | Short context cached input | Short context 30m write | Short context 12h write | Long context input | Long context output | Long context cached input | Long context 30m write | Long context 12h write |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| gpt-5.5-cyber | $12.50 | $75.00 | $1.25 | - | - | - | - | - | - | - |
 `;
 
 const kinds = (findings, kind) => findings.filter((finding) => finding.kind === kind);
@@ -192,7 +201,29 @@ describe('Anthropic', () => {
       ['long', 0.5, 0.05, 1.25],
     ]);
     const fast = page.rows.filter((row) => row.band === 'fast').map((row) => [row.name, row.rates.input, row.rates.output]);
-    assert.deepEqual(fast, [['Claude Opus 5.5', 8, 40], ['Claude Opus 5', 10, 50], ['Claude Opus 4.8', 10, 50]]);
+    assert.deepEqual(fast, [
+      ['Claude Fable 5.2', 16, 80], ['Claude Mythos 5.2', 16, 80],
+      ['Claude Opus 5.5', 8, 40], ['Claude Opus 5', 10, 50], ['Claude Opus 4.8', 10, 50],
+    ]);
+  });
+
+  it('holds Fable 5.2 and Mythos 5.2 to every figure the page prints for them', () => {
+    /*
+     * The two rows the weekly run of 2026-11-09 found missing, the day they
+     * were released. Each figure of each row is on the page, so the fixture
+     * prints them and a changed one has to come back as drift.
+     */
+    const page = readAnthropic(anthropicPage());
+    for (const name of ['Claude Fable 5.2', 'Claude Mythos 5.2']) {
+      const base = page.rows.find((row) => row.name === name && row.band === 'base')?.rates;
+      assert.deepEqual(base, { input: 8, output: 40, write5m: 10, write1h: 16, hit: 0.2, batchInput: 4, batchOutput: 20 }, name);
+    }
+    const findings = anthropicFindings(anthropicPage());
+    assert.ok(!kinds(findings, 'missing').some((finding) => /5\.2/.test(finding.model)), 'a 5.2 model read as missing');
+    const drift = kinds(anthropicFindings(anthropicPage({ fableFastOutput: '$100 USD / MTok' })), 'drift');
+    assert.deepEqual(drift.map((finding) => [finding.model, finding.detail]), [
+      ['claude-fable-5-2', 'fast output: the page says $100, the catalogue prices $80'],
+    ]);
   });
 
   it('reports a changed price as drift, naming the model, the field and both figures', () => {
@@ -228,6 +259,7 @@ describe('Anthropic', () => {
     assert.deepEqual(kinds(anthropicFindings(anthropicPage()), 'drift'), []);
     assert.equal(claudeGeneration('claude-opus-4-6'), 406);
     assert.equal(claudeGeneration('claude-fable-5-1'), 501);
+    assert.equal(claudeGeneration('claude-fable-5-2'), 502);
     assert.equal(claudeGeneration('claude-opus-4-20250514'), 400);
     assert.equal(claudeGeneration('claude-opus-4-1-20250805'), 401);
     assert.equal(claudeGeneration('claude-3-5-haiku-20241022'), 305);
@@ -297,14 +329,63 @@ describe('OpenAI', () => {
   it('reads every family\'s standard table, and holds a deliberate omission as a note with its reason', () => {
     const findings = openAiFindings(openAiPage());
     assert.deepEqual(kinds(findings, 'missing').map((finding) => finding.model), ['gpt-9-nova']);
-    const cyber = findings.find((finding) => finding.model === 'gpt-5.5-cyber');
+    const cyber = findings.find((finding) => finding.model === 'gpt-5.5-cyber-preview');
     assert.equal(cyber?.kind, 'note');
     assert.match(cyber.detail, /left unpriced on purpose: Daybreak/);
   });
 
+  it('reads a model the specialised table splits by context length as one model, not two it never heard of', () => {
+    /*
+     * The table's shape from 2026-11-16. Read literally, "gpt-5.6-cyber (short
+     * context)" was a model missing from the catalogue and `gpt-5.6-cyber`,
+     * which the catalogue prices, a model gone from the page: eleven findings
+     * on the weekly run, nine of them this.
+     */
+    assert.deepEqual(contextRow('gpt-6-cyber (short context)'), { name: 'gpt-6-cyber', context: 'short' });
+    assert.deepEqual(contextRow('gpt-6-cyber (long context)'), { name: 'gpt-6-cyber', context: 'long' });
+    assert.deepEqual(contextRow('gpt-5.3-codex'), { name: 'gpt-5.3-codex', context: undefined });
+    assert.deepEqual(contextRow('gpt-7 (preview)'), { name: 'gpt-7 (preview)', context: undefined }, 'an unknown suffix was read as a band');
+
+    const rows = readOpenAi(openAiPage()).rows;
+    assert.deepEqual(rows.filter((row) => row.name.startsWith('gpt-6-cyber')).map((row) => [row.name, row.band, row.rates]), [
+      ['gpt-6-cyber', 'base', {
+        input: 20, output: 100, hit: 2, write5m: 25, write1h: 50,
+        longInput: 40, longOutput: 150, longHit: 4, longWrite5m: undefined, longWrite1h: undefined,
+      }],
+    ]);
+    const cyber56 = rows.find((row) => row.name === 'gpt-5.6-cyber')?.rates;
+    assert.deepEqual(cyber56, { input: 12.5, output: 75, hit: 1.25, write5m: 15.625, write1h: 31.25 }, 'a long row of dashes was read as a band');
+
+    const findings = openAiFindings(openAiPage());
+    assert.ok(!findings.some((finding) => finding.model === 'gpt-5.6-cyber'), 'a priced model on the page was reported');
+    assert.deepEqual(findings.filter((finding) => finding.model === 'gpt-6-cyber').map((finding) => finding.kind), ['note'], 'named once, as the deliberate omission it is');
+    assert.match(findings.find((finding) => finding.model === 'gpt-6-cyber').detail, /publishes no cache-write price/);
+  });
+
+  it('compares the cache writes the specialised table prints, and a long band the catalogue does not have', () => {
+    const write = kinds(openAiFindings(openAiPage({ cyberWrite: '$20.00' })), 'drift');
+    assert.deepEqual(write.map((finding) => [finding.model, finding.detail]), [
+      ['gpt-5.6-cyber', '30-minute write: the page says $20, the catalogue prices $15.625'],
+    ]);
+    const long = kinds(openAiFindings(openAiPage({ cyberLong: '| $25.00 | $112.50 | $2.50 | - | - |' })), 'drift');
+    assert.deepEqual(long.map((finding) => [finding.model, finding.detail]), [
+      ['gpt-5.6-cyber', 'long-context input: the page publishes $25, the catalogue has no such rate'],
+      ['gpt-5.6-cyber', 'long-context output: the page publishes $112.5, the catalogue has no such rate'],
+      ['gpt-5.6-cyber', 'long-context cache hit: the page publishes $2.5, the catalogue has no such rate'],
+    ]);
+  });
+
+  it('compares the long-context cache writes, which the page prints and nothing read', () => {
+    const drift = kinds(openAiFindings(openAiPage({ astraLongWrite: '$30.00' })), 'drift');
+    assert.deepEqual(drift.map((finding) => [finding.model, finding.detail]), [
+      ['gpt-6-astra', 'long-context 30-minute write: the page says $30, the catalogue prices $25'],
+    ]);
+  });
+
   it('reads the Codex and ChatGPT rows of the specialized table, its standard half only', () => {
     const rows = readOpenAi(openAiPage()).rows;
-    assert.deepEqual(rows.find((row) => row.name === 'gpt-5.3-codex')?.rates, { input: 1.75, output: 14, hit: 0.175 });
+    assert.deepEqual(rows.find((row) => row.name === 'gpt-5.3-codex' && row.band === 'base')?.rates, { input: 1.75, output: 14, hit: 0.175, write5m: undefined, write1h: undefined });
+    assert.deepEqual(rows.find((row) => row.name === 'gpt-5.3-codex' && row.band === 'service:fast')?.rates, { input: 3.5, output: 28, hit: 0.35 }, 'the Fast half has no write columns');
     assert.ok(!rows.some((row) => row.name.startsWith('text-embedding') || row.name.startsWith('omni-moderation')), 'an embedding or moderation row was read as a chat model');
     const drift = kinds(openAiFindings(openAiPage({ codexInput: '$2.00' })), 'drift');
     assert.deepEqual(drift.map((finding) => [finding.model, finding.detail]), [

@@ -2842,9 +2842,23 @@ turn by turn, through an optional `thread` field, while what a session costs
 still counts them; the growth ceiling on this repository fell from $412.48 to
 $366.74. The growth and session-cost sentences say which one they mean.
 
+## 2.7.8 — Claude Fable 5.2 priced, and a wrong file named — released
+
+Claude Fable 5.2 and Mythos 5.2 are priced from Anthropic's pages, a week
+after the weekly price check first flagged them: on this repository's own
+session 2.7.7 left 71 Fable 5.2 calls, more than half the money, out of the
+total. The check now reads OpenAI's reshaped "Specialized models" table as
+bands of one model rather than nine new ones, and compares long-context cache
+writes. A coding agent's session handed to a command that reads a usage log
+is named, with the command that reads or converts it, in the CLI, the MCP
+server and the HTTP API alike. A promotion near its end records the day it was
+last confirmed. The hosted web app carries the OWASP ASVS level 2 work done
+since 2.7.7, and the README opens on what the tool does for its reader. The
+repeated-task evaluation this number had been reserved for did not ship in it.
+
 ## Next
 
-**Target: 2.7.8, repeated-task evaluation.**
+**Target: 2.7.9, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,

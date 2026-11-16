@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Trazum social preview</title>
+<!--
+  The source of docs/assets/social-preview.png, the image GitHub shows when the
+  repository's link is shared (Settings, General, Social preview: only the
+  owner can upload it). 1280 by 640 pixels.
+
+  Every figure in the bill panel is what `trazum bill examples/claude-projects`
+  prints, and packages/cli/test/bill-image.test.js fails when one stops being
+  that. To redraw after `npm ci`, open this file in Chromium at 1280 by 640 and
+  save a screenshot over the PNG; the font is read from node_modules.
+-->
+<style>
+@font-face { font-family: "Space Grotesk"; src: url("../../node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2") format("woff2"); font-weight: 300 700; }
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1280px; height: 640px; }
+body { background: #f6f4ec; color: #20231e; font-family: "Space Grotesk", sans-serif; padding: 52px 64px 50px; display: flex; flex-direction: column; justify-content: space-between; }
+.top { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #20231e; padding-bottom: 22px; }
+.brand { display: flex; align-items: center; gap: 16px; font-size: 40px; font-weight: 700; letter-spacing: -0.04em; }
+.brand svg { width: 44px; height: 44px; }
+.facts { font-size: 19px; font-weight: 500; }
+.mid { display: flex; gap: 48px; align-items: center; }
+.say { flex: 1; display: flex; flex-direction: column; gap: 22px; }
+h1 { font-size: 66px; line-height: 1.0; letter-spacing: -0.04em; font-weight: 700; }
+p { font-size: 24px; line-height: 1.4; max-width: 560px; }
+.bill { width: 478px; background: #20231e; color: #f0f1e5; padding: 24px 26px 22px; font-family: ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; font-size: 16px; font-variant-numeric: tabular-nums; }
+.total { font-family: "Space Grotesk", sans-serif; font-size: 50px; font-weight: 700; letter-spacing: -0.04em; color: #dce94d; line-height: 1; }
+.sub { color: #c0c6af; margin: 8px 0 18px; font-size: 15px; }
+.row { display: grid; grid-template-columns: 186px 72px 1fr 50px; align-items: center; gap: 10px; padding: 5px 0; }
+.row.h { color: #bac2a8; font-size: 13px; padding-top: 0; }
+.usd, .pct { text-align: right; }
+.bar { height: 11px; border: 1.5px solid #aab39a; }
+.bar i { display: block; height: 100%; background: #dce94d; }
+.gap { height: 12px; }
+.foot { display: flex; align-items: stretch; gap: 18px; }
+.cmd { border: 2px solid #20231e; background: #dce94d; padding: 15px 22px; font-family: ui-monospace, "DejaVu Sans Mono", Menlo, monospace; font-size: 23px; font-weight: 700; }
+.note { display: flex; align-items: center; font-size: 19px; font-weight: 500; }
+</style></head>
+<body>
+<div class="top">
+  <div class="brand">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><path fill="#dce94d" stroke="#20231e" stroke-width="3" d="M1.5 1.5h37v37h-37z"/><path d="M9 10h22v6h-8v15h-6V16H9z" fill="#20231e"/></svg>
+    Trazum
+  </div>
+  <div class="facts">Claude Code · Codex · Gemini CLI</div>
+</div>
+<div class="mid">
+  <div class="say">
+    <h1>Know what your AI agents cost, per project.</h1>
+    <p>One command reads the sessions already on your disk. Published rates, checked every week. Nothing uploaded.</p>
+  </div>
+  <div class="bill">
+    <div class="total">$12.70</div>
+    <div class="sub">across 126 priced calls · sample data</div>
+    <div class="row h"><span>project</span><span class="usd">USD</span><span></span><span class="pct">share</span></div>
+    <div class="row"><span>home-me-etl-pipeline</span><span class="usd">$9.05</span><span class="bar"><i style="width:71.2%"></i></span><span class="pct">71.2%</span></div>
+    <div class="row"><span>home-me-webapp</span><span class="usd">$3.66</span><span class="bar"><i style="width:28.8%"></i></span><span class="pct">28.8%</span></div>
+    <div class="gap"></div>
+    <div class="row h"><span>model</span><span class="usd">USD</span><span></span><span class="pct">share</span></div>
+    <div class="row"><span>claude-fable-5-1</span><span class="usd">$9.00</span><span class="bar"><i style="width:70.9%"></i></span><span class="pct">70.9%</span></div>
+    <div class="row"><span>claude-opus-5-5</span><span class="usd">$2.95</span><span class="bar"><i style="width:23.2%"></i></span><span class="pct">23.2%</span></div>
+    <div class="row"><span>claude-sonnet-5-5</span><span class="usd">$0.7077</span><span class="bar"><i style="width:5.6%"></i></span><span class="pct">5.6%</span></div>
+  </div>
+</div>
+<div class="foot">
+  <div class="cmd">npx @trazum/cli bill</div>
+  <div class="note">Open source · MIT · runs on your machine</div>
+</div>
+</body></html>

@@ -11,7 +11,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.8 — 2026-11-16
+
 ### Fixed
+
+- **The weekly price check read a table OpenAI had reshaped as nine new
+  models.** The "Specialized models" table now prints a model priced by
+  prompt length as two rows, `gpt-6-cyber (short context)` and
+  `gpt-6-cyber (long context)`. Read literally, each was a model missing from
+  the catalogue and `gpt-5.6-cyber`, which the catalogue prices, a model gone
+  from the page, so the scheduled run on `main` failed for a week on findings
+  that were mostly this. The script reads the two rows as one model's two
+  bands, compares the table's cache-write columns, and for the first time
+  compares the **long-context cache writes** every per-model table prints
+  (each agreed with the catalogue). No OpenAI row was added: five ids on the
+  page have no model page, so no context window, and `gpt-6-cyber` has one but
+  no published cache-write price over 272K input tokens, which a row would
+  have to invent. Each is listed in `DELIBERATELY_UNPRICED` with its reason
+  and reported on every run.
+- **A promotion in its last 45 days could not be answered.**
+  `pricing-review.test.js` fails a promotional price that ends inside the
+  window this tool calls its table current, so that somebody asks the
+  provider whether the rise still stands. It failed on 2026-11-16 for Gemini
+  3.6 and 3.8 Flash ($0.75/$3.75 through 2026-12-31); Google's page was read
+  that day and says the same, and the only ways to pass were to delete a
+  promotion that is still running or to stay red until January. A promotion
+  now records the day its end was last confirmed (`promo.confirmedOn`), the
+  check asks for a confirmation from inside the window, and a promotion whose
+  window has closed is refused whatever it records.
 
 - **The MCP server and the local HTTP API read an agent's session as a broken
   log.** An agent asked what its own work cost reaches for the session it is
@@ -127,6 +156,27 @@ merged commit with no entry is a change only `git log` remembers.
   session check found somebody signed in. Found by the REA audit below.
 
 ### Added
+
+- **A card for when the repository's link is shared.**
+  `docs/assets/social-preview.png` is the 1280 by 640 image GitHub shows on a
+  timeline or in a chat: the first line of the README, the command, and the
+  bill `trazum bill` prints for the two example projects, marked as sample
+  data. Only the owner can set it, in the repository's settings. It is a
+  screenshot of `docs/assets/social-preview.html`, and
+  `packages/cli/test/bill-image.test.js` holds that page to the CLI's output:
+  the total, the number of calls, and each project's and model's figure and
+  bar on the row of the same name. Six faults planted in the page were each
+  caught.
+- **Claude Fable 5.2 and Claude Mythos 5.2 are priced.** Released 2026-11-09
+  at $8/$40, cache reads at $0.20 (2.5% of input), writes at $10 and $16, the
+  Batch API at $4/$20 and fast mode at $16/$80, each figure read from
+  Anthropic's pricing page and the two model pages on 2026-11-16. Until now
+  every call to either read as unpriced: on this repository's own Claude Code
+  session, 2.7.7 billed $20.38 across 194 calls and left 71 Fable 5.2 calls
+  out of the total, more than half the money. `scripts/price-drift.mjs` found
+  both on the weekly run the day they were released. Fable 5.1 is still
+  served at the same prices; its page now calls it legacy, and so does its
+  note.
 
 - **Every read of a person's saved prompts or share links is recorded**
   (OWASP ASVS 4.0.3 8.3.5). The library list, one prompt, a rename (which
@@ -322,6 +372,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The README opens on what the tool does for the person reading it.** The
+  first line was "Understand your AI spend. Decide what to change."; it is now
+  "Know what your AI agents cost, per project, without your prompts leaving
+  the machine.", followed by what one command reads and prints. A new section,
+  *Why the number holds up*, says in four points what stands behind a figure:
+  the weekly comparison with each provider's pricing page, the billing rules
+  applied call by call, that a model with no published price is named rather
+  than counted as $0, and that the analysis runs on the reader's machine with
+  no third-party package installed by the CLI. Each point was checked against
+  the code before it was written. The header gains npm version and download
+  badges. `scripts/build-wiki.mjs` finds the introduction by its new heading.
 - **Every body the web API accepts is checked against a declared schema,
   and anything else is refused by name** (OWASP ASVS 4.0.3 5.1.4, 13.2.2).
   The nine bodies are listed in one file, `apps/web/lib/body-schemas.ts`,

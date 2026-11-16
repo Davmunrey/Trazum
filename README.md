@@ -2,16 +2,18 @@
 
 # Trazum
 
-### Understand your AI spend. Decide what to change.
+### Know what your AI agents cost, per project, without your prompts leaving the machine.
 
-Find where your AI usage costs money, choose a change, and check the result.
-Trazum analyses local usage logs and prompts, ranks opportunities such as caching
-and model changes, and keeps estimates separate from measured outcomes.
+One command reads the sessions **Claude Code, Codex and Gemini CLI** already keep
+on your disk and prints the bill: by project, by model, by day. Then it ranks
+what to change and checks whether the change arrived.
 
 **Open source · Local analysis · No provider key needed to get started**
 
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
+[![npm](https://img.shields.io/npm/v/%40trazum%2Fcli.svg?label=npm)](https://www.npmjs.com/package/@trazum/cli)
+[![npm downloads](https://img.shields.io/npm/dm/%40trazum%2Fcli.svg)](https://www.npmjs.com/package/@trazum/cli)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-3c873a.svg)](package.json)
 [![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-2f855a.svg)](#layout)
@@ -50,6 +52,23 @@ npx @trazum/cli bill ./usage-export.jsonl
 
 [Supported inputs](docs/usage-logs.md) ·
 [Try sample data in your browser](https://trazum.vercel.app/?tab=playground)
+
+## Why the number holds up
+
+- **Published rates, checked against the provider every week.** A scheduled
+  job compares every Anthropic and OpenAI price here with the provider's own
+  pricing page and fails the build when one moves or a model is missing.
+  Every figure on the bill carries the rate behind it and the date that rate
+  was reviewed.
+- **Billed the way the provider bills.** Cache reads, both cache-write
+  lifetimes, long-prompt bands, fast mode, the Batch API, web searches and
+  US-only inference each get their own published rate, call by call.
+- **Nothing is guessed.** A model with no published price is named and kept
+  out of the total, never counted as $0. A projected saving is never added to a
+  measured one.
+- **Your files stay where they are.** The analysis runs on your machine, on
+  logs your tools already wrote. The CLI installs nothing from third parties:
+  its one dependency is Trazum's own core, which has none.
 
 ## Turn a report into a decision
 
@@ -466,7 +485,7 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 | | |
 |---|---|
-| Cache read | 10% of input on OpenAI (5% on GPT-6.1 Sol), Google, Mistral, Moonshot's Kimi K3 and Anthropic up to Opus 5 and Sonnet 5; **17% to 20%** on Moonshot's K2 series; **per model on xAI**, 15% on Grok 4.5, 16% on 4.3 and the 4.20 family, 20% on Build 0.1 and 25% on 4.6 and 4.7. Two providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.1 and Mythos 5.1 at **2.5%**, and DeepSeek V4.1 Flash reads at **2%** and V4 Pro at about **3%** where V3 read at 10% |
+| Cache read | 10% of input on OpenAI (5% on GPT-6.1 Sol), Google, Mistral, Moonshot's Kimi K3 and Anthropic up to Opus 5 and Sonnet 5; **17% to 20%** on Moonshot's K2 series; **per model on xAI**, 15% on Grok 4.5, 16% on 4.3 and the 4.20 family, 20% on Build 0.1 and 25% on 4.6 and 4.7. Two providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.2, Fable 5.1 and their Mythos twins at **2.5%**, and DeepSeek V4.1 Flash reads at **2%** and V4 Pro at about **3%** where V3 read at 10% |
 | Cache write | 125% of input on Anthropic and on OpenAI's GPT-5.6 and later, whose entry lives at least 30 minutes; Kimi K3 bills it **as its own line by TTL** like Anthropic, 100% for five minutes and 200% for an hour; 100% on earlier OpenAI models, Google, Kimi's K2 series, DeepSeek and xAI; Mistral publishes no write price and reports no write tokens |
 | Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI and DeepSeek; 4,096 on Gemini 3.6 Flash, 3.8 Flash and 3.1 Pro and 2,048 on the retired Gemini 2.5 models; Moonshot, xAI and Mistral publish none, so their cache is priced from your log and the advice that needs a minimum stays quiet |
 | How caching starts | You mark the prefix on Anthropic; it is **automatic** on OpenAI, Google, Moonshot, DeepSeek and xAI; Mistral does not say, so Trazum gives no caching advice for it |
@@ -475,7 +494,7 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 **The cache minimum is the row to read twice, and it used to be wrong here.** This
 table said *"512 on Anthropic"* flatly. Anthropic's floor is a property of the
-model: 512 on Fable 5.1, Fable 5, Mythos 5.1, Mythos 5, Opus 5.5, Opus 5,
+model: 512 on Fable 5.2, Fable 5.1, Fable 5, Mythos 5.2, Mythos 5.1, Mythos 5, Opus 5.5, Opus 5,
 Sonnet 5.5 and Haiku 5.5; 1,024 on Opus 4.8, Sonnet 5 and Sonnet 4.6; 2,048 on Opus 4.7;
 **4,096 on Opus 4.6, Opus 4.5 and Haiku 4.5**. A reader on
 Haiku 4.5 who trusted "512" would have built a prefix eight times too short and been

@@ -4,16 +4,18 @@
 
 # Trazum
 
-### Understand your AI spend. Decide what to change.
+### Know what your AI agents cost, per project, without your prompts leaving the machine.
 
-Find where your AI usage costs money, choose a change, and check the result.
-Trazum analyses local usage logs and prompts, ranks opportunities such as caching
-and model changes, and keeps estimates separate from measured outcomes.
+One command reads the sessions **Claude Code, Codex and Gemini CLI** already keep
+on your disk and prints the bill: by project, by model, by day. Then it ranks
+what to change and checks whether the change arrived.
 
 **Open source · Local analysis · No provider key needed to get started**
 
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
+[![npm](https://img.shields.io/npm/v/%40trazum%2Fcli.svg?label=npm)](https://www.npmjs.com/package/@trazum/cli)
+[![npm downloads](https://img.shields.io/npm/dm/%40trazum%2Fcli.svg)](https://www.npmjs.com/package/@trazum/cli)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue.svg)](https://github.com/Davmunrey/Trazum/blob/main/LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-3c873a.svg)](https://github.com/Davmunrey/Trazum/blob/main/package.json)
 [![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-2f855a.svg)](https://github.com/Davmunrey/Trazum/blob/main/README.md#layout)

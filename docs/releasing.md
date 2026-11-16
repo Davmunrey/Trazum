@@ -274,8 +274,9 @@ failing, so a stale price review never blocks unrelated work.
 **The same weekly run reads the pricing pages themselves.**
 `node scripts/price-drift.mjs` fetches Anthropic's and OpenAI's pricing pages
 in their Markdown form and compares every published figure with the catalogue:
-input, output, cache hits, both cache writes, batch, the long-prompt bands,
-Anthropic's fast mode, its data residency multiplier (the generation it
+input, output, cache hits, both cache writes, batch, the long-prompt bands
+with their own cache writes, the rows OpenAI's specialised table splits into
+"(short context)" and "(long context)", Anthropic's fast mode, its data residency multiplier (the generation it
 starts at and the multiple, against every Claude row) and its web search fee
 (the dollars per 1,000 searches, against every Claude row). A changed price is
 **drift**, a model on the page that
