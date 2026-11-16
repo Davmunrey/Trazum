@@ -368,6 +368,49 @@ describe('a price that changed is priced as it was billed then', () => {
   });
 });
 
+describe('gemini-2.5-pro, before and after Google routes it to 3.8 Flash', () => {
+  /**
+   * "Effective December 1, 2026, all API requests to `gemini-2.5-pro` will
+   * automatically route to Gemini 3.8 Flash (`gemini-3.8-flash`) and be billed
+   * at Gemini 3.8 Flash rates" (aistudio.google.com/docs/pricing, read
+   * 2026-11-16). 3.8 Flash is itself introductory until 2026-12-31, so the
+   * one id bills three ways in five weeks. Read as UTC days, as the
+   * catalogue reads every Google date.
+   */
+  const row = (id) => MODELS.find((entry) => entry.id === id);
+  const rates = (id, iso) => {
+    const r = effectivePricing(row(id), new Date(iso));
+    return [r.inputPerMTok, r.outputPerMTok];
+  };
+
+  it('bills its own $1.25/$10 up to the day, and exactly what 3.8 Flash bills from it', () => {
+    assert.deepEqual(rates('gemini-2.5-pro', '2026-11-30T23:59:59.999Z'), [1.25, 10]);
+    assert.deepEqual(rates('gemini-2.5-pro', '2026-12-01T00:00:00.000Z'), [0.75, 3.75]);
+    assert.deepEqual(rates('gemini-2.5-pro', '2027-01-01T00:00:00.000Z'), [1.5, 7.5]);
+    for (const iso of ['2026-12-01T00:00:00.000Z', '2026-12-31T23:59:59.999Z', '2027-01-01T00:00:00.000Z']) {
+      assert.deepEqual(rates('gemini-2.5-pro', iso), rates('gemini-3.8-flash', iso), iso);
+    }
+  });
+
+  it('reads the cache at 10% of input and batches at half on both sides of the day', () => {
+    for (const iso of ['2026-11-15T12:00:00Z', '2026-12-15T12:00:00Z', '2027-02-01T12:00:00Z']) {
+      const m = multipliersFor(row('gemini-2.5-pro'), new Date(iso));
+      assert.deepEqual([m.cacheRead, m.batch], [0.1, 0.5], iso);
+    }
+  });
+
+  it('prices a log that straddles the day, each call at its own rate', () => {
+    const line = (ts) => JSON.stringify({
+      model: 'gemini-2.5-pro', ts, usageMetadata: { promptTokenCount: 1_000_000, candidatesTokenCount: 0 },
+    });
+    // A million input tokens each side: $1.25 on 2026-11-30, $0.75 on 2026-12-02.
+    const report = profileUsage([line('2026-11-30T12:00:00Z'), line('2026-12-02T12:00:00Z')].join('\n'), {
+      catalogue: BUNDLED_CATALOGUE,
+    });
+    assert.equal(Math.round(report.total.totalUsd * 100) / 100, 2);
+  });
+});
+
 describe('the id a provider log carries is the id that prices', () => {
   it('prices OpenAI\'s dated GPT-5 snapshots, which is what a usage export names', () => {
     /*

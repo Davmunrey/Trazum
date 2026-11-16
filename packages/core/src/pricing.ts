@@ -109,8 +109,24 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * the 25% this table carried. Gemini 3.8 Flash was added, and Gemini 3.1
    * Pro Preview on 2026-10-11 with per-request pricing, which its prompts
    * over 200k need. 2.5 Pro's own long-context rate is named in its note.
+   *
+   * Re-read 2026-11-16. The docs moved: ai.google.dev/gemini-api/docs/pricing
+   * now 301s to aistudio.google.com/docs/pricing, which serves Markdown, and
+   * the review of 2026-11-05 could not reach it. Read there with
+   * docs/deprecations, docs/caching and the model pages of every row and of
+   * 3.5 Flash-Lite. Every price, cache price, batch price, storage price,
+   * context window and cache minimum matched, and 3.6 and 3.8 Flash still
+   * rise to $1.50/$7.50 on 2027-01-01. What changed is the two retired 2.5
+   * models: "Effective December 1, 2026" Google routes `gemini-2.5-pro` to
+   * 3.8 Flash and `gemini-2.5-flash` to 3.5 Flash-Lite, each "billed at" its
+   * target's rates. 2.5 Pro carries that as a second period; 2.5 Flash's text
+   * rates are 3.5 Flash-Lite's, so its price does not move. The page's other
+   * models, the Gemini 4 family released from 2026-10-13 among them, are
+   * still unpriced. Not modelled: the Batch tabs of 3.1 Pro Preview and both
+   * 2.5 models charge the standard cache price, and this table bills a batch
+   * call's cache reads at half of it, as it does every other rate.
    */
-  google: '2026-10-10',
+  google: '2026-11-16',
   /*
    * platform.kimi.ai/docs/pricing/chat, models and pricing/batch, read
    * 2026-10-11 in their Markdown form; the HTML renders its tables in the
@@ -1715,15 +1731,35 @@ export const MODELS: ModelPricing[] = [
   // Google
   // ------------------------------------------------------------------------
   {
+    /*
+     * From aistudio.google.com/docs/pricing, docs/deprecations and the model
+     * page, read 2026-11-16: "Effective December 1, 2026, all API requests to
+     * `gemini-2.5-pro` will automatically route to Gemini 3.8 Flash
+     * (`gemini-3.8-flash`) and be billed at Gemini 3.8 Flash rates." So the id
+     * has two periods, as `grok-4` does. Up to that day it bills its own
+     * $1.25/$10, read 2026-10-10 and again 2026-11-16. From it, 3.8 Flash's:
+     * $0.75/$3.75 through 2026-12-31 and $1.50/$7.50 from 2027-01-01, with
+     * the same promotion and the same confirmation as the 3.8 Flash row.
+     *
+     * Google gives a day, not an instant, so the period ends at 00:00 UTC, the
+     * reading this table gives every Google date. The cache minimum stays
+     * 2,048, which docs/caching still lists for 2.5 Pro; a request routed to
+     * 3.8 Flash caches from 4,096.
+     */
     id: 'gemini-2.5-pro',
     provider: 'google',
     displayName: 'Gemini 2.5 Pro',
-    inputPerMTok: 1.25,
-    outputPerMTok: 10,
+    inputPerMTok: 1.5,
+    outputPerMTok: 7.5,
+    promo: { inputPerMTok: 0.75, outputPerMTok: 3.75, until: '2026-12-31', confirmedOn: '2026-11-16' },
+    history: [
+      /* Its own price: $0.125 cached (10%) and batch half, the ratios 3.8 Flash also has. */
+      { until: '2026-12-01T00:00:00Z', inputPerMTok: 1.25, outputPerMTok: 10 },
+    ],
     contextWindow: 1_048_576,
     cacheMinTokens: 2048,
     caching: 'automatic',
-    /* $0.125 cached against $1.25 input for prompts up to 200k, read 2026-10-10. */
+    /* 10% cached and batch half on both sides: $0.125 against $1.25, then $0.075 against $0.75. */
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     /* Refused on 2026-08-28: still in `GET /v1beta/models`, and a 404 to a request. */
     retired: {
@@ -1734,11 +1770,21 @@ export const MODELS: ModelPricing[] = [
     capability: 'large',
     tier: 'opus',
     notes:
-      'Prompts over 200k tokens are billed $2.50 in and $15.00 out; this row prices every prompt at the up-to-200k rate,'
-      + ' because no log Trazum prices says how long each prompt was. Implicit caching is automatic; explicit caching is'
-      + ' also billed for storage per hour.',
+      'From 2026-12-01 Google routes this id to Gemini 3.8 Flash and bills it at 3.8 Flash rates.'
+      + ' Before then it bills $1.25/$10, and $2.50/$15.00 for a prompt over 200k tokens; this row prices every prompt'
+      + ' before then at the up-to-200k rate, because no log Trazum prices says how long each prompt was. Implicit caching'
+      + ' is automatic; explicit caching is also billed for storage per hour.',
   },
   {
+    /*
+     * From aistudio.google.com/docs/pricing and docs/deprecations, read
+     * 2026-11-16: "Effective December 1, 2026, all API requests to
+     * `gemini-2.5-flash` will automatically route to Gemini 3.5 Flash-Lite
+     * (`gemini-3.5-flash-lite`) and be billed at Gemini 3.5 Flash-Lite rates."
+     * Those are $0.30/$2.50 and $0.03 cached for text, this row's own, so it
+     * needs no second period. Audio input, which this row does not price,
+     * falls from $1.00 to $0.30.
+     */
     id: 'gemini-2.5-flash',
     provider: 'google',
     displayName: 'Gemini 2.5 Flash',
@@ -1747,7 +1793,7 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_048_576,
     cacheMinTokens: 2048,
     caching: 'automatic',
-    /* $0.03 cached against $0.30 input (text), read 2026-10-10. */
+    /* $0.03 cached against $0.30 input (text), read 2026-10-10 and again 2026-11-16. */
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     /* Refused on 2026-08-28: still in `GET /v1beta/models`, and a 404 to a request. */
     retired: {
@@ -1757,6 +1803,9 @@ export const MODELS: ModelPricing[] = [
     },
     capability: 'mid',
     tier: 'sonnet',
+    notes:
+      'From 2026-12-01 Google routes this id to Gemini 3.5 Flash-Lite and bills it at 3.5 Flash-Lite rates,'
+      + ' which for text are the $0.30/$2.50 and $0.03 cached this row carries.',
   },
 
   {
@@ -1775,6 +1824,10 @@ export const MODELS: ModelPricing[] = [
      * again that day: "$0.75 through December 31, 2026. $1.50 starting January
      * 1, 2027", "$3.75 ... $7.50" for output and "$0.075 ... $0.15" for the
      * cache, word for word what it said in October. The rise stands.
+     *
+     * The page now lives at aistudio.google.com/docs/pricing, where the old
+     * address redirects. Read there the same day: batch $0.375/$1.875, then
+     * $0.75/$3.75, and storage $0.50, then $1.00 per 1M tokens per hour.
      */
     id: 'gemini-3.6-flash',
     provider: 'google',
@@ -1806,7 +1859,9 @@ export const MODELS: ModelPricing[] = [
      * and $3.75 through 2026-12-31, $1.50 and $7.50 from 2027-01-01, and the
      * cache price scales with them ($0.075, then $0.15). Read again on
      * 2026-11-16, inside the promotion's last 45 days: the same six figures
-     * and the same two dates.
+     * and the same two dates, at aistudio.google.com/docs/pricing, where the
+     * old address now redirects. From 2026-12-01 `gemini-2.5-pro` bills at
+     * these rates too.
      */
     id: 'gemini-3.8-flash',
     provider: 'google',
@@ -1834,6 +1889,9 @@ export const MODELS: ModelPricing[] = [
      * $0.20 and $0.40 (10% in both bands), batch $1/$6 and $2/$9 (half in
      * both). 1,048,576 tokens in, 65,536 out, implicit caching from 4,096.
      * The `-customtools` endpoint is "same as Gemini 3.1 Pro Preview pricing".
+     * Read again 2026-11-16 at aistudio.google.com/docs/pricing, where the old
+     * address now redirects: every figure the same, storage $4.50 per 1M
+     * tokens per hour, and the deprecations page announces no shutdown date.
      *
      * A preview, and priced because a log carries it: Google's 2.5 Pro
      * refusal sends every caller here.
