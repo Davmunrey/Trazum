@@ -109,17 +109,8 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * the 25% this table carried. Gemini 3.8 Flash was added, and Gemini 3.1
    * Pro Preview on 2026-10-11 with per-request pricing, which its prompts
    * over 200k need. 2.5 Pro's own long-context rate is named in its note.
-   *
-   * Re-read 2026-11-16, the pricing page, docs/caching, docs/deprecations and
-   * four model pages. Every price here matched. The page now opens on a
-   * Gemini 4 family, Carbon, Argon and Hydrogen, which are added, and prices
-   * Gemini 3.5 Flash-Lite, added because Google names it as where requests to
-   * 2.5 Flash go from 2026-12-01 (2.5 Pro goes to 3.8 Flash the same day).
-   * That rerouting is written in the two rows' notes and not yet in their
-   * prices: it has a day and no instant, and `pricing-review.test.js` fails
-   * from that day until it is made.
    */
-  google: '2026-11-16',
+  google: '2026-10-10',
   /*
    * platform.kimi.ai/docs/pricing/chat, models and pricing/batch, read
    * 2026-10-11 in their Markdown form; the HTML renders its tables in the
@@ -1751,9 +1742,7 @@ export const MODELS: ModelPricing[] = [
     notes:
       'Prompts over 200k tokens are billed $2.50 in and $15.00 out; this row prices every prompt at the up-to-200k rate,'
       + ' because no log Trazum prices says how long each prompt was. Implicit caching is automatic; explicit caching is'
-      + ' also billed for storage per hour.'
-      + ' Google says that from 2026-12-01 every request to this id is routed to Gemini 3.8 Flash and billed at its'
-      + ' rates; this row is the price until then.',
+      + ' also billed for storage per hour.',
   },
   {
     id: 'gemini-2.5-flash',
@@ -1774,9 +1763,6 @@ export const MODELS: ModelPricing[] = [
     },
     capability: 'mid',
     tier: 'sonnet',
-    notes:
-      'Google says that from 2026-12-01 every request to this id is routed to Gemini 3.5 Flash-Lite and billed at its'
-      + ' rates, which are the same $0.30 and $2.50; this row is the price until then.',
   },
 
   {

@@ -19,7 +19,9 @@ merged commit with no entry is a change only `git log` remembers.
   with batch at half and implicit caching from 4,096 tokens; Gemini 3.5
   Flash-Lite at $0.30/$2.50, its cache at 10%. Every figure is from Google's
   pricing page, the model pages and its caching page, read 2026-11-16. Until
-  now a call to any of them read as unpriced. Google's Flex and Priority
+  now a call to any of them read as unpriced. On 2026-12-01 the introductory
+  price of Carbon and Argon ends, and `pricing-review.test.js` fails that day
+  until it is moved into the rows' history. Google's Flex and Priority
   tiers are on the page and not in the table: a call on either is priced at
   the standard rate, and each Gemini 4 row's note says so.
   `per-request-tiers.test.js` holds the four rows to every figure the page
@@ -35,21 +37,6 @@ merged commit with no entry is a change only `git log` remembers.
   column is wider, a row no longer wraps, and the image is redrawn. The
   figures were right throughout; the test that holds them reads the page's
   text and cannot see a line break.
-
-### Changed
-
-- **Google's prices were re-read on 2026-11-16, and every one matched.** The
-  review date moves from 2026-10-10, eight days before this tool would have
-  begun warning its readers that the Google figures were old.
-- **A change a provider has announced for a day is now held to that day.**
-  Google's pages say that from 2026-12-01 every request to `gemini-2.5-pro`
-  is routed to Gemini 3.8 Flash and billed at its rates, and every request to
-  `gemini-2.5-flash` to Gemini 3.5 Flash-Lite. The announcement gives a day
-  and no instant, so the two rows keep today's price and say in their notes
-  what happens and when. `pricing-review.test.js` lists both: the row's note
-  has to name the day, the model it will be billed as has to have a price,
-  and from the day itself the check fails until the row is changed. Five
-  faults planted against it were each caught.
 
 ## 2.7.8 — 2026-11-16
 
