@@ -88,6 +88,62 @@ describe('Gemini 3.1 Pro Preview, as Google publishes it', () => {
   });
 });
 
+/**
+ * Google's pricing page prints a standard table and a batch table per model,
+ * each with its own cache line. The catalogue holds two prices and two ratios,
+ * so every other figure on the page is arithmetic on them: these are the
+ * page's figures, read 2026-11-16, and the arithmetic has to land on each.
+ */
+describe('the Gemini 4 family and Gemini 3.5 Flash-Lite, as Google publishes them', () => {
+  const during = new Date('2026-11-20T12:00:00Z');
+  const after = new Date('2026-12-01T00:00:00Z');
+  const page = (id, at) => {
+    const row = BUNDLED_CATALOGUE.byId.get(id);
+    assert.ok(row, `${id} is not in the catalogue`);
+    const rates = effectivePricing(row, at);
+    const m = multipliersFor(row, at);
+    return {
+      input: rates.inputPerMTok,
+      output: rates.outputPerMTok,
+      cache: rates.inputPerMTok * m.cacheRead,
+      batchInput: rates.inputPerMTok * m.batch,
+      batchOutput: rates.outputPerMTok * m.batch,
+      batchCache: rates.inputPerMTok * m.cacheRead * m.batch,
+    };
+  };
+  const same = (actual, expected, label) => {
+    for (const [key, value] of Object.entries(expected)) close(actual[key], value, `${label}, ${key}`);
+  };
+
+  it('prices Carbon and Argon at the introductory rate through 2026-11-30 and at twice it after', () => {
+    for (const id of ['gemini-4-carbon', 'gemini-4-argon']) {
+      same(page(id, during), { input: 2, output: 10, cache: 0.1, batchInput: 1, batchOutput: 5, batchCache: 0.05 }, `${id}, November`);
+      same(page(id, new Date('2026-11-30T23:59:00Z')), { input: 2, output: 10 }, `${id}, the last day`);
+      same(page(id, after), { input: 4, output: 20, cache: 0.2, batchInput: 2, batchOutput: 10, batchCache: 0.1 }, `${id}, December`);
+    }
+  });
+
+  it('prices Hydrogen and 3.5 Flash-Lite at one rate, each with its own cache ratio', () => {
+    for (const at of [during, after]) {
+      same(page('gemini-4-hydrogen', at), { input: 1.5, output: 7.5, cache: 0.075, batchInput: 0.75, batchOutput: 3.75, batchCache: 0.0375 }, 'gemini-4-hydrogen');
+      same(page('gemini-3.5-flash-lite', at), { input: 0.3, output: 2.5, cache: 0.03, batchInput: 0.15, batchOutput: 1.25, batchCache: 0.015 }, 'gemini-3.5-flash-lite');
+    }
+  });
+
+  it('gives each the window and the cache minimum its pages give', () => {
+    for (const id of ['gemini-4-carbon', 'gemini-4-argon', 'gemini-4-hydrogen']) {
+      const row = BUNDLED_CATALOGUE.byId.get(id);
+      assert.equal(row.contextWindow, 1_048_576, id);
+      assert.equal(row.cacheMinTokens, 4096, id);
+      assert.equal(row.caching, 'automatic', id);
+    }
+    const lite = BUNDLED_CATALOGUE.byId.get('gemini-3.5-flash-lite');
+    assert.equal(lite.contextWindow, 1_048_576);
+    // Google's table of minimums has no row for it, so none is written.
+    assert.equal(lite.cacheMinTokens, null);
+  });
+});
+
 describe('a bound decides when it can and says so when it cannot', () => {
   const at = new Date('2026-10-05T12:00:00Z');
 
