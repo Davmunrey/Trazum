@@ -26,6 +26,16 @@ merged commit with no entry is a change only `git log` remembers.
   prints, standard, batch and cache, on both sides of 2026-12-01; six faults
   planted in the rows were each caught.
 
+### Fixed
+
+- **The card for a shared link broke a project's name across two lines.**
+  `docs/assets/social-preview.png` shipped in 2.7.8 with
+  `home-me-etl-pipeline` wrapped, because the column it sits in was narrowed
+  to fit a longer dollar figure and the picture was not looked at again. The
+  column is wider, a row no longer wraps, and the image is redrawn. The
+  figures were right throughout; the test that holds them reads the page's
+  text and cannot see a line break.
+
 ### Changed
 
 - **Google's prices were re-read on 2026-11-16, and every one matched.** The
