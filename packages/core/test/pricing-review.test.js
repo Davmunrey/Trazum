@@ -165,6 +165,74 @@ describe('the price table says how old it is, once and accurately', () => {
 });
 
 /**
+ * A change a provider has announced for a day, and this table has not made.
+ *
+ * A promotion is one kind of dated change and `promo` holds it. Google
+ * announced another on its pricing and deprecation pages, read 2026-11-16:
+ * "Effective December 1, 2026, all API requests to `gemini-2.5-pro` will
+ * automatically route to Gemini 3.8 Flash and be billed at Gemini 3.8 Flash
+ * rates", and `gemini-2.5-flash` to Gemini 3.5 Flash-Lite the same way. That
+ * is a day with no instant, so it cannot be written as a period of `history`
+ * yet, and a row that changed early would misprice every call until then.
+ *
+ * So it is written down here, where the calendar can reach it. Each entry
+ * names a row, the day, and what the provider said; the row's note has to say
+ * it too, so a reader of the bill is told before the day; and from the day
+ * itself this fails until somebody re-reads the page, changes the row and
+ * removes the entry. An announcement nobody acts on is a wrong price with a
+ * date on it.
+ */
+describe('a change a provider announced for a day', () => {
+  const ANNOUNCED = [
+    {
+      id: 'gemini-2.5-pro',
+      on: '2026-12-01',
+      what: 'Google routes every request to gemini-3.8-flash and bills it at that model\'s rates',
+      billedAs: 'gemini-3.8-flash',
+    },
+    {
+      id: 'gemini-2.5-flash',
+      on: '2026-12-01',
+      what: 'Google routes every request to gemini-3.5-flash-lite and bills it at that model\'s rates',
+      billedAs: 'gemini-3.5-flash-lite',
+    },
+  ];
+  const announcementProblem = (entry, now, models = MODELS) => {
+    const row = models.find((model) => model.id === entry.id);
+    if (row === undefined) return `${entry.id} is announced to change on ${entry.on} and is not in the catalogue.`;
+    if (!models.some((model) => model.id === entry.billedAs)) {
+      return `${entry.id} will be billed as ${entry.billedAs} from ${entry.on}, and the catalogue has no price for ${entry.billedAs}.`;
+    }
+    if (!(row.notes ?? '').includes(entry.on)) {
+      return `${entry.id} changes on ${entry.on} (${entry.what}) and its note does not name that day.`;
+    }
+    if (new Date(now).toISOString().slice(0, 10) >= entry.on) {
+      return `${entry.id}: ${entry.what} since ${entry.on}. Re-read the provider's page, change the row `
+        + '(the old price goes into `history`), and remove this entry.';
+    }
+    return null;
+  };
+
+  it('is named in the row it changes, has a price to change to, and has not arrived unanswered', () => {
+    for (const entry of ANNOUNCED) assert.equal(announcementProblem(entry, Date.now()), null);
+  });
+
+  it('waits until the day, then fails until the row is changed', () => {
+    const at = (date) => Date.parse(`${date}T12:00:00Z`);
+    const entry = { id: 'old', on: '2026-12-01', what: 'it is billed as new', billedAs: 'new' };
+    const rows = [{ id: 'old', notes: 'Billed as new from 2026-12-01.' }, { id: 'new' }];
+    assert.equal(announcementProblem(entry, at('2026-11-30'), rows), null);
+    assert.match(announcementProblem(entry, at('2026-12-01'), rows), /since 2026-12-01\. Re-read/);
+    assert.match(announcementProblem(entry, at('2027-02-01'), rows), /since 2026-12-01/);
+    // The reader of a bill is told before the day, by the row's own note.
+    assert.match(announcementProblem(entry, at('2026-11-20'), [{ id: 'old', notes: 'Retired.' }, { id: 'new' }]), /does not name that day/);
+    // A model cannot be billed as one this table cannot price.
+    assert.match(announcementProblem(entry, at('2026-11-20'), [rows[0]]), /no price for new/);
+    assert.match(announcementProblem(entry, at('2026-11-20'), [rows[1]]), /not in the catalogue/);
+  });
+});
+
+/**
  * The one table in the documentation that is arithmetic on the price list.
  *
  * `docs/commands.md` and the doc comment on `levers.ts` both print what moving

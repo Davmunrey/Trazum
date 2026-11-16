@@ -109,8 +109,17 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * the 25% this table carried. Gemini 3.8 Flash was added, and Gemini 3.1
    * Pro Preview on 2026-10-11 with per-request pricing, which its prompts
    * over 200k need. 2.5 Pro's own long-context rate is named in its note.
+   *
+   * Re-read 2026-11-16, the pricing page, docs/caching, docs/deprecations and
+   * four model pages. Every price here matched. The page now opens on a
+   * Gemini 4 family, Carbon, Argon and Hydrogen, which are added, and prices
+   * Gemini 3.5 Flash-Lite, added because Google names it as where requests to
+   * 2.5 Flash go from 2026-12-01 (2.5 Pro goes to 3.8 Flash the same day).
+   * That rerouting is written in the two rows' notes and not yet in their
+   * prices: it has a day and no instant, and `pricing-review.test.js` fails
+   * from that day until it is made.
    */
-  google: '2026-10-10',
+  google: '2026-11-16',
   /*
    * platform.kimi.ai/docs/pricing/chat, models and pricing/batch, read
    * 2026-10-11 in their Markdown form; the HTML renders its tables in the
@@ -317,6 +326,12 @@ const OPENAI_EARLIER_LONG_NOTE =
 const OPENAI_EARLIER_NO_CACHE_NOTE = 'OpenAI publishes no cached-input price for this model, so caching is not priced.';
 const OPENAI_DEPRECATED_SUFFIX = ' Deprecated by OpenAI: priced for the logs that hold it, never recommended.';
 const OPENAI_SHUT_DOWN_SUFFIX = ' Shut down by OpenAI: priced for the logs that hold it, never recommended.';
+/** What the three Gemini 4 rows share, from Google's pricing page and docs/caching, read 2026-11-16. */
+const GEMINI_4_NOTE =
+  'Implicit caching is automatic above 4,096 tokens and is the only kind: Google does not support explicit caching'
+  + ' on Gemini 4. In a multi-turn conversation the previous request is cached only when the new one adds at least'
+  + ' 2,050 tokens. Google also sells a Flex tier at half this price and a Priority tier at 1.8 times it; a call on'
+  + ' either is priced here at the standard rate.';
 const OPENAI_CODEX_NOTE =
   'Caching is automatic; a write costs what input costs. Responses API only, and no batch. OpenAI says the minimum for'
   + ' models before GPT-5.6 varies by request settings, so 1,024 here is the nearest published floor.';
@@ -1736,7 +1751,9 @@ export const MODELS: ModelPricing[] = [
     notes:
       'Prompts over 200k tokens are billed $2.50 in and $15.00 out; this row prices every prompt at the up-to-200k rate,'
       + ' because no log Trazum prices says how long each prompt was. Implicit caching is automatic; explicit caching is'
-      + ' also billed for storage per hour.',
+      + ' also billed for storage per hour.'
+      + ' Google says that from 2026-12-01 every request to this id is routed to Gemini 3.8 Flash and billed at its'
+      + ' rates; this row is the price until then.',
   },
   {
     id: 'gemini-2.5-flash',
@@ -1757,6 +1774,9 @@ export const MODELS: ModelPricing[] = [
     },
     capability: 'mid',
     tier: 'sonnet',
+    notes:
+      'Google says that from 2026-12-01 every request to this id is routed to Gemini 3.5 Flash-Lite and billed at its'
+      + ' rates, which are the same $0.30 and $2.50; this row is the price until then.',
   },
 
   {
@@ -1862,6 +1882,105 @@ export const MODELS: ModelPricing[] = [
       'Priced per request by prompt length: $2/$12 up to 200,000 input tokens and $4/$18 over it.'
       + ' Implicit caching is automatic above 4,096 tokens; explicit caching is also billed for storage,'
       + ' $4.50 per 1M tokens per hour.',
+  },
+  /*
+   * The Gemini 4 family, from ai.google.dev/gemini-api/docs/pricing, the three
+   * model pages and docs/caching, read 2026-11-16.
+   *
+   * Carbon ("our most capable reasoning model") and Argon ("our efficient
+   * Gemini 4 frontier reasoning model") carry one table: "$2.00 through
+   * November 30, 2026. $4.00 starting December 1, 2026" in, "$10.00 ...
+   * $20.00" out, and the cache at "$0.10 ... $0.20", which is 5% of input on
+   * both sides of the date, so one ratio serves. Batch is half of each
+   * ($1.00/$5.00, then $2.00/$10.00). Hydrogen has no introductory price:
+   * $1.50/$7.50, the cache at $0.075 (5% again), batch $0.75/$3.75.
+   *
+   * All three: a 1,048,576-token window that input and output share,
+   * implicit caching from 4,096 tokens, and "implicit caching only (explicit
+   * caching is not supported)", so there is no storage price to name.
+   *
+   * The introductory window was fourteen days from its end when these rows
+   * were written, inside the 45 days `pricing-review.test.js` asks about, so
+   * each records the day the page was read. On 2026-12-01 that test fails
+   * until $2/$10 is moved into `history` and the promotion removed.
+   *
+   * Not here, and on the page: the Flex tier (the batch figures) and the
+   * Priority tier (1.8 times standard, $3.60/$18.00 then $7.20/$36.00 on
+   * Carbon and Argon, $2.70/$13.50 on Hydrogen). No Google row in this table
+   * carries a service tier yet, and a tier whose price also changes on a date
+   * needs a shape `serviceTiers` does not have. A call on either is priced at
+   * the standard rate, and the note says so.
+   */
+  {
+    id: 'gemini-4-carbon',
+    provider: 'google',
+    displayName: 'Gemini 4 Carbon',
+    inputPerMTok: 4,
+    outputPerMTok: 20,
+    promo: { inputPerMTok: 2, outputPerMTok: 10, until: '2026-11-30', confirmedOn: '2026-11-16' },
+    contextWindow: 1_048_576,
+    cacheMinTokens: 4096,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.05, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: GEMINI_4_NOTE,
+  },
+  {
+    id: 'gemini-4-argon',
+    provider: 'google',
+    displayName: 'Gemini 4 Argon',
+    inputPerMTok: 4,
+    outputPerMTok: 20,
+    promo: { inputPerMTok: 2, outputPerMTok: 10, until: '2026-11-30', confirmedOn: '2026-11-16' },
+    contextWindow: 1_048_576,
+    cacheMinTokens: 4096,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.05, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: GEMINI_4_NOTE,
+  },
+  {
+    id: 'gemini-4-hydrogen',
+    provider: 'google',
+    displayName: 'Gemini 4 Hydrogen',
+    inputPerMTok: 1.5,
+    outputPerMTok: 7.5,
+    contextWindow: 1_048_576,
+    cacheMinTokens: 4096,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.05, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: GEMINI_4_NOTE,
+  },
+  {
+    /*
+     * The pricing page and the model page, read 2026-11-16: $0.30 in for
+     * text, image, video and audio alike, $2.50 out, the cache at $0.03 (10%),
+     * batch $0.15/$1.25. 1,048,576 tokens in, 65,536 out. Added because
+     * Google's deprecation page names it as where every request to
+     * `gemini-2.5-flash` goes from 2026-12-01.
+     *
+     * No cache minimum: docs/caching says implicit caching is on "for all
+     * Gemini 2.5 and newer models" and its table of minimums has no row for
+     * this one, so none is written.
+     */
+    id: 'gemini-3.5-flash-lite',
+    provider: 'google',
+    displayName: 'Gemini 3.5 Flash-Lite',
+    inputPerMTok: 0.3,
+    outputPerMTok: 2.5,
+    contextWindow: 1_048_576,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'small',
+    tier: 'haiku',
+    notes:
+      'Implicit caching is automatic, and no minimum prefix length is published for this model. Explicit caching is'
+      + ' also billed for storage, $1.00 per 1M tokens per hour.',
   },
 
   // ------------------------------------------------------------------------
