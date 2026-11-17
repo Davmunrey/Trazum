@@ -1,0 +1,61 @@
+name: Feature request
+description: Something Trazum should do that it does not do today.
+labels: [enhancement, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Start with the problem, not the feature.** "I find out a run was expensive
+        only when the invoice arrives" is something to work from; "add a flag" is
+        one answer to it, and often not the best one.
+
+        Check [ROADMAP.md](../blob/main/ROADMAP.md) first. It lists what is planned
+        and, under *Under consideration*, what was considered and left out, with the
+        reason. If your idea is there, say what changed since.
+
+        Not sure it belongs here at all? [Discussions](https://github.com/Davmunrey/Trazum/discussions)
+        is the place for a question or a half-formed idea. Please write in English.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you were trying to do, and where Trazum stopped you.
+      placeholder: |
+        What you were doing, what you expected Trazum to tell you or do, and
+        where it stopped.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would solve it
+      description: Optional. Your idea of the change, if you have one.
+    validations:
+      required: false
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today instead
+      description: >
+        Optional. The workaround, if there is one. It says how much the feature is
+        worth, and sometimes it is the feature.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      multiple: true
+      options:
+        - CLI
+        - MCP server
+        - GitHub Action
+        - Library (@trazum/core)
+        - Web app
+        - VS Code extension
+    validations:
+      required: true

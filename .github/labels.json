@@ -1,0 +1,16 @@
+[
+  { "name": "bug", "color": "d73a4a", "description": "Trazum did something wrong, or did not do something it says it does" },
+  { "name": "correctness", "color": "b60205", "description": "A rule moved what a prompt asks for, or a figure is not reproducible from the log" },
+  { "name": "enhancement", "color": "a2eeef", "description": "Something Trazum should do that it does not do today" },
+  { "name": "pricing", "color": "fbca04", "description": "A price is wrong or dated, or a model is missing from the catalogue" },
+  { "name": "documentation", "color": "0075ca", "description": "A page is wrong, missing, or cannot be followed" },
+  { "name": "dependencies", "color": "0366d6", "description": "A dependency update, usually opened by Dependabot" },
+  { "name": "ci", "color": "5319e7", "description": "Workflows, CI and release automation" },
+  { "name": "needs-triage", "color": "ededed", "description": "New: nobody has decided what to do with it yet" },
+  { "name": "needs-info", "color": "fef2c0", "description": "Waiting on the reporter for a reproduction or a source" },
+  { "name": "accepted", "color": "0e8a16", "description": "Triaged: it will be done, by whoever picks it up" },
+  { "name": "wontfix", "color": "ffffff", "description": "Triaged: it will not be done; the closing comment says why" },
+  { "name": "duplicate", "color": "cfd3d7", "description": "Already reported; the closing comment links the original" },
+  { "name": "good first issue", "color": "7057ff", "description": "Accepted, small and fully specified: a good first contribution" },
+  { "name": "help wanted", "color": "008672", "description": "Accepted, and a pull request from anyone is welcome" }
+]

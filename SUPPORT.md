@@ -9,7 +9,10 @@ see [No telemetry](#no-telemetry) below.
 | What | Where |
 | --- | --- |
 | **A rule changed what my prompt asks for** | [Open the report](https://github.com/Davmunrey/Trazum/issues/new?template=wrong_optimisation.yml) — this is the one that matters most |
+| A wrong or dated price, or a model read as unpriced | [Price report](https://github.com/Davmunrey/Trazum/issues/new?template=price_report.yml) — quote the provider's own page and the day you read it |
 | Anything else that is wrong | [Bug report](https://github.com/Davmunrey/Trazum/issues/new?template=bug_report.yml) |
+| Something Trazum should do and does not | [Feature request](https://github.com/Davmunrey/Trazum/issues/new?template=feature_request.yml) — start with the problem |
+| A page that is wrong or missing | [Documentation report](https://github.com/Davmunrey/Trazum/issues/new?template=documentation.yml) |
 | A question, or an idea you are not sure about | [Discussions](https://github.com/Davmunrey/Trazum/discussions) |
 | A security problem | [Privately, as an advisory](https://github.com/Davmunrey/Trazum/security/advisories/new) — never a public issue. [SECURITY.md](SECURITY.md) says what is in scope |
 | What is planned, and what was deliberately not | [ROADMAP.md](ROADMAP.md) — including the entries under *Under consideration* that were considered and left out |

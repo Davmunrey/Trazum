@@ -291,6 +291,52 @@ vulnerability privately. The [secure coding checklist](docs/compliance/secure-co
 gathers these with the web app's rules in one table, each naming the test that
 holds it.
 
+## Issues
+
+Open one with the form that fits. Each form asks for the facts that case needs,
+and each starts the issue with its labels:
+
+| You found | Form | Starts with |
+| --- | --- | --- |
+| Something Trazum did wrong | Bug report | `bug`, `needs-triage` |
+| A rule that moved what a prompt asks for | A rule changed what my prompt asks for | `bug`, `correctness`, `needs-triage` |
+| A wrong or dated price, or a model read as unpriced | A price is wrong, or a model is missing | `pricing`, `needs-triage` |
+| Something Trazum should do and does not | Feature request | `enhancement`, `needs-triage` |
+| A page that is wrong, missing or cannot be followed | Documentation is wrong or missing | `documentation`, `needs-triage` |
+
+A security problem is never an issue: report it privately, as
+[SECURITY.md](SECURITY.md) says. A question goes to Discussions. Blank issues
+stay on for the report no form anticipated.
+
+### Triage
+
+Every new issue carries `needs-triage`, meaning nobody has decided anything
+about it yet. Triage replaces it with one state:
+
+| State | Means | Then |
+| --- | --- | --- |
+| `accepted` | It will be done | Anyone may pick it up. `good first issue` marks the small, fully specified ones; `help wanted` says a pull request from anyone is welcome |
+| `needs-info` | Waiting on the reporter | The comment says what is missing: a reproduction, a price's source, a version |
+| `wontfix` | It will not be done | Closed, with the reason in the closing comment |
+| `duplicate` | Already reported | Closed, with a link to the original |
+
+The maintainer triages. With one maintainer there is no promised response time,
+and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) says what a single-maintainer
+project can honestly promise. An issue is never closed for going quiet: an
+unanswered report is still a report.
+
+The other labels say what kind of work an issue or pull request is: `bug`,
+`correctness`, `pricing`, `enhancement`, `documentation`, `dependencies` (what
+Dependabot opens) and `ci`.
+
+### Labels live in the repository
+
+`.github/labels.json` is the list of labels and what each one means. The
+`Labels` workflow makes GitHub's list match it on every push to `main` that
+changes it. Add or reword a label in the file, not in GitHub's settings: a label
+made there is invisible to `issue-intake.test.js`, which holds the file to every
+form, to `dependabot.yml` and to this section.
+
 ## Pull requests
 
 Release candidates must pass the synthetic stress probes in `npm run test:agents`

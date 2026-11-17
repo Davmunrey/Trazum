@@ -1,0 +1,36 @@
+name: Documentation is wrong or missing
+description: A page says something Trazum does not do, leaves out something it does, or cannot be followed.
+labels: [documentation, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A document that disagrees with the code is a bug in one of the two, and this
+        repository corrects the document when a measurement contradicts it. Say what
+        you ran, if you ran something. Please write in English.
+
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The file path or URL, with the heading if the page is long.
+      placeholder: docs/commands.md#updating-prices
+    validations:
+      required: true
+
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What is wrong or missing
+      description: Quote the sentence if it is wrong; say what you looked for if it is missing.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: What you ran
+      description: Optional. The command and its output, if the page and the program disagree.
+      render: text
+    validations:
+      required: false

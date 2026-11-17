@@ -1,6 +1,6 @@
 name: A rule changed what my prompt asks for
 description: Trazum shortened or rearranged a prompt and the meaning moved with it.
-labels: [bug, correctness]
+labels: [bug, correctness, needs-triage]
 body:
   - type: markdown
     attributes:
