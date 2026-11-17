@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.11**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.12**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,69 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.7.12 — A safe level that leaves a thanks, a quotation and three ordinary words alone
+
+**Adoption, read 2026-11-17:** 2836 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.11.
+
+**The safe level was changing instructions.** It promises not to change what a
+prompt asks for, and measured on 2026-11-17 it did: "Speak kindly to the
+customer." came back as "Speak to the customer.", "If the user says thanks,
+reply politely." as "If the user says reply politely.", and
+`Reply "Please hold on" when the line is busy.` as `Reply " hold on" when the
+line is busy.` Each courtesy phrase was deleted wherever it stood, inside
+quotation marks included. If you have run `optimize` on a prompt that quotes
+text, tells the model what to say, or thanks somebody for something, run it
+again and read the diff:
+
+```bash
+npx -y @trazum/cli@2.7.12 optimize prompt.txt --diff
+```
+
+A thanks is now removed only as a whole sentence that does nothing but thank.
+"please" after "to", "kindly" away from the front of a clause and German
+"Bitte" after a determiner are left alone. **Text inside quotation marks is
+protected**, the way code, URLs and placeholders already were. One courtesy is
+deliberately no longer removed: a thanks hung on the end of a clause by a
+comma, which cannot be told from the last item of a list of things to say.
+
+**A batch call's cache reads on three Google models were billed too low.**
+Google's Batch tabs for Gemini 3.1 Pro Preview, 2.5 Pro and 2.5 Flash charge
+the standard cache price, and a batch call's cache reads were billed here at
+half of it. 2.7.11's notes named this as not changed; it is changed now. One
+batch call on 3.1 Pro Preview with 50,000 fresh input tokens, 100,000 read
+from the cache and 2,000 out was billed $0.072 and is $0.082. The other six
+Google rows and every other provider are unchanged.
+
+**A figure this project published about itself was wrong.**
+`docs/our-own-medicine.md` said the rules recover 12 tokens from the four
+system prompts the package ships. All 12 were the rules rewriting `"..."` to
+`"."` inside the JSON example in two of those prompts. With quotation marks
+protected the figure is 0, and the page says how it came to say 12.
+
+**The pictures are what the CLI prints.** The README's `optimize` picture was
+typed by hand under a comment calling it a transcript, for a prompt that was
+in no directory of the repository, and the report had since moved on. It is
+drawn by a script from a run on `examples/support-prompt.txt` now, and a test
+fails when it is not that output. The three README pictures, the extension's
+icon and the web app's icons share one palette and one mark. The web app
+answers for `/favicon.ico`, an Apple touch icon and a web manifest, each of
+which answered 404 before.
+
+**The command reference covers every command.** `docs/commands.md` had no
+chapter for `init`, `where`, `schema`, `rules`, `filter` or `models`.
+
+**For contributors.** Every new issue gets a triage state whatever opened it,
+and a pull request is labelled with its area and its issue's kind. The
+roadmap lists the accepted open issues, drawn from the issue list.
+`CONTRIBUTING.md` says what a review here looks for. Five issues are open for
+a first contribution: the French, German, Portuguese, Italian and Dutch
+dictionaries each need one afternoon from somebody who reads the language.
+
+**Not changed:** no price other than the three Google batch cache rows, no
+command, and no output format. `ProtectionKind` gains one member, `quoted`.
+
+No breaking change, and nothing to migrate.
 
 ## 2.7.11 — Google's prices re-read, and the release 2.7.10 could not be
 

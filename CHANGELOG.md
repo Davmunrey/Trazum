@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.12 — 2026-11-17
+
 ### Added
 
 - **Triage that happens whatever opened the issue, and a roadmap made of the
