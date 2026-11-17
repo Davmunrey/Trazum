@@ -229,12 +229,14 @@ That is also why it never gates. A gate built on a guess would one day block a
 release that would have worked, and that is worse than the failure it prevents.
 What it buys is a chance of knowing before you tag, not a verdict.
 
-There is **no token to paste and none to rotate.** That is the whole design: a
-long-lived `NPM_TOKEN` would be the highest-value credential this project holds,
-sitting in repository secrets permanently for something used a few times a year,
-and unlike every other secret a leak is not recoverable by rotation alone —
-whatever was published under it stays published. A test in `security.test.js`
-asserts no workflow reaches for one.
+With a working trusted publisher there would be **no token to paste and none
+to rotate**, and that was the whole design: a long-lived `NPM_TOKEN` is the
+highest-value credential this project holds, and unlike every other secret a
+leak is not recoverable by rotation alone, because whatever was published
+under it stays published. That is not where this repository is. A token on the
+`release` environment is what uploads today, it expires, and
+[The token fallback](#the-token-fallback) is the section to read: what holds
+it, how its expiry is known in advance, and what to do the day it lapses.
 
 ## Cutting a release
 
@@ -579,6 +581,13 @@ up, once:
    90 days is a fine default. Do not create a classic automation token; granular
    is the one whose blast radius is those packages instead of the account.
 
+   **It must be allowed to publish without a one-time code.** The account
+   protects publishing with two-factor authentication, a workflow has no
+   authenticator, and a token made without that allowance authenticates and
+   is then refused the upload with `EOTP`. The first replacement token on
+   2026-11-17 was one of those. npm's token form has an option to bypass
+   two-factor authentication for the token; that is the one.
+
    **A package added after the token was made is not in its scope.** A token
    listing packages by name cannot publish a fifth one and cannot create it,
    and the failure is the same `E404` as a missing trusted publisher, on the
@@ -589,6 +598,12 @@ up, once:
    secret*, name **`NPM_TOKEN`**, value the token. An *environment* secret on
    purpose: only jobs that enter the `release` environment can read it, which
    is exactly one job in one workflow.
+3. In this repository: write the expiry date npm showed into
+   `.github/release-credentials.json`, as `"expires": "YYYY-MM-DD"`, in a pull
+   request of its own. The date is not a secret and the token never goes
+   there. It is the only way anything here learns when the token lapses: npm
+   shows the date when the token is made and this repository cannot ask for it
+   afterwards.
 
 What the trade costs, honestly: a long-lived credential now exists, and a
 leak of it is not recoverable by rotation alone — whatever was published
@@ -596,13 +611,69 @@ under it stays published. What it does **not** cost is provenance: the
 attestation is signed with the job's OIDC identity, which is independent of
 how the upload authenticates, so releases through the workflow carry
 provenance with either auth. `security.test.js` pins the containment: only
-`release.yml` may reference the secret, only in the one shape, and token
-material committed anywhere fails the build.
+`release.yml` may reference the secret, only in the one shape, only in the
+four upload steps and the two that ask npm about it, and token material
+committed anywhere fails the build.
 
-When the token expires, a release fails with the same `E404` as a missing
-trusted publisher — generate a new token and update the secret. When trusted
-publishing finally works, delete the secret; the same workflow reverts to
-pure OIDC with no edit.
+When trusted publishing finally works, delete the secret and set `"expires"`
+back to `null`; the same workflow reverts to pure OIDC with no edit.
+
+### When the token expires
+
+npm stopped accepting it on the day of 2.7.10. The release pull request
+merged on 2026-11-17, the job verified, packed and stressed the release for
+five minutes, and the first upload answered `E404 Not Found - PUT`, under a
+note that said a job holding the token had failed for some other reason.
+Nothing was half-published, and `main` named a version npm did not have. npm's
+answer does not say whether a token expired or was revoked; the fix is the
+same. Three things now stand between a lapsing token and that state:
+
+- **Two weeks ahead.** `node scripts/freshness.mjs` reads the recorded date
+  and calls it overdue from fourteen days before, which turns the weekly
+  scheduled CI run red on `main`, where GitHub notifies the owner. A date
+  nobody recorded is printed as a note that says so, on every run.
+- **Before the release is prepared.** `node scripts/prepare-release.mjs`
+  refuses to prepare a release once the recorded date has come, and lists a
+  near or unrecorded date among what is still yours. A dry run says what a
+  real run would refuse.
+- **At the start of the job.** *Is the stored npm token still alive?* asks npm
+  `whoami` with the token before `verify`, and on a manual dry run too, so a
+  dry run from a release pull request's branch answers before the merge. A
+  refusal is an error on the run page and in the job summary, with the steps
+  below, and the failure note at the end of the job asks again and ends on the
+  answer.
+
+  It reports and does not fail. Measured against the live registry on
+  2026-11-17: a token npm does not know is answered `401`, and so was the
+  token stored on the `release` environment, 42 minutes after it failed
+  2.7.10's upload
+  ([the dry run](https://github.com/Davmunrey/Trazum/actions/runs/44057560003)).
+  The token that replaced it was answered `200` the same afternoon. What keeps
+  the step a report is the trusted publisher: if npm ever accepts it, an
+  upload needs no token, and a gate on a dead one would stop a release that
+  would have gone out.
+
+  An accepted token is not a promise, and that was measured the same day too.
+  Thirteen minutes after that `200`, the first upload with the new token
+  answered `EOTP`, "This operation requires a one-time password from your
+  authenticator": the account asks for a code to publish and the token had not
+  been made to publish without one. `whoami` cannot be asked that, nor whether
+  the token may write to each package.
+
+**Renewing it**, which only the owner of the npm account can do:
+
+1. Generate a new granular token as in step 1 above, with all the `@trazum`
+   packages in its scope.
+2. Replace the `NPM_TOKEN` secret on the `release` environment.
+3. Record the new expiry date in `.github/release-credentials.json`.
+
+**If a release pull request has already merged**, do not merge anything else
+first. Re-run the failed jobs of that release's run: it is pinned to the
+release commit, so it uploads exactly the tree its notes describe. Every push
+to `main` starts a publish attempt for whatever version the manifests name, so
+a merge between the failure and the re-run is tried again with the dead token,
+and re-running that later attempt once the token is renewed would upload the
+later tree under the release's number and notes.
 
 ## Releasing by hand
 
@@ -645,15 +716,34 @@ every publish step is gated on a tag, so a manual run does the install, the
 `verify`, the `npm pack --dry-run` and the bill of materials, and stops. A publish reachable without a
 tag would be a release with no version to check against.
 
+Two of its first steps are about credentials and are worth a dry run on their
+own: *Can this workflow authenticate to npm?* (the trusted publisher) and *Is
+the stored npm token still alive?* (the token that actually uploads). Run it
+from a release pull request's branch before merging and the second one says
+whether the merge can publish. The run page shows it as an annotation, and the
+last line of the job's own script repeats it as one word (`accepted`,
+`refused`, `absent` or `unknown`), because the end of the log is what the API
+returns and the step itself is forty thousand lines above it.
+
 ## If something goes wrong
 
 - **The tag was wrong** — nothing was published, because the version check runs
   before `verify`. Delete the tag, fix it, tag again.
 - **`E404 Not Found - PUT`** — an authentication failure, not a missing package.
   npm reports a write you are not authorised for as "not found", which is why
-  this cost an hour at the first publish and reappeared at 1.9.0. Go to step 3.
-  The workflow now says this itself on any publish failure rather than leaving it
-  in a document you have to already know to read.
+  this cost an hour at the first publish and reappeared at 1.9.0 and at 2.7.10.
+  The failed job ends on how npm answers each credential. If it says npm
+  refuses the stored token, the token has expired or been revoked: go to
+  [When the token expires](#when-the-token-expires). If it says npm accepts
+  the token, the package that failed is outside the token's scope: regenerate
+  it with every package included. Step 3 is for the trusted publisher, which
+  has not authenticated an upload yet.
+- **`EOTP`, "This operation requires a one-time password"** — the token
+  authenticates and may not publish without a two-factor code, which a
+  workflow cannot supply. Generate it again with the option that lets the
+  token bypass two-factor authentication
+  ([The token fallback](#the-token-fallback), step 1) and re-run the failed
+  job. Nothing was uploaded.
 - **`@trazum/core` published and `@trazum/cli` or `@trazum/mcp` failed** — the core version is
   spent. Bump to the next patch across all manifests and release again rather
   than trying to reuse the number; npm will not let you, and a `--force` that

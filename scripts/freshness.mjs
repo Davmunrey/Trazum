@@ -5,7 +5,7 @@
  *   node scripts/freshness.mjs           # report; exit 1 when something is overdue
  *   node scripts/freshness.mjs --report  # report only, always exit 0
  *
- * Three things here are true on the day they are written and false some
+ * Four things here are true on the day they are written and false some
  * weeks later without a single commit touching them, which is exactly the
  * kind of failure nobody sees until a stranger does:
  *
@@ -19,6 +19,11 @@
  * - **Unreleased work.** Changes merged but not on npm are invisible to
  *   everybody who installs with npx. Reported, never a failure: when to cut a
  *   release is a decision, not a deadline.
+ * - **The npm token.** The granular token that uploads a release has an
+ *   expiry, and 2.7.10 merged on the day it no longer worked: `main` named a
+ *   version npm did not have. The date is recorded by hand (see
+ *   `npm-token-expiry.mjs`), and it is overdue here two weeks before it
+ *   comes. A date nobody recorded is a note, not a pass.
  *
  * The scheduled CI run calls this weekly, so an overdue item fails on main,
  * where GitHub notifies the owner, before it fails on somebody's pull request.
@@ -28,6 +33,8 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { npmTokenStanding, recordedNpmTokenExpiry } from './npm-token-expiry.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const reportOnly = process.argv.includes('--report');
@@ -88,6 +95,11 @@ if (tags.length > 0) {
   const since = git('rev-list', '--count', `v${tags[0]}..HEAD`).trim();
   say('note', `${since} commit(s) on this branch since v${tags[0]}${Number(since) > 0 ? ': not on npm until the next release' : ''}`);
 }
+
+// 4. The token that uploads a release.
+// FRESHNESS_CREDENTIALS_ROOT lets the tests record a date without touching the real one.
+const token = npmTokenStanding(recordedNpmTokenExpiry(process.env.FRESHNESS_CREDENTIALS_ROOT ?? ROOT), now);
+say(token.status === 'ok' ? 'ok' : token.status === 'unrecorded' ? 'note' : 'overdue', token.text);
 
 const text = lines.join('\n');
 console.log(text);

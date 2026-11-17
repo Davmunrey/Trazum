@@ -2878,11 +2878,26 @@ every line, and the batch lever leaves those calls out and says how much it
 left out. On the example projects the projection went from $9.13 to $7.34,
 and on this repository's own sessions from $42.69 to $38.83. A log that marks
 nothing is read as before. The repeated-task evaluation this number had been
-reserved for did not ship in it.
+reserved for did not ship in it. Nor did the release itself: it was merged and
+its upload to npm was refused, so 2.7.10 exists in this repository and not on
+the registry, and its changes first shipped in 2.7.11.
+
+## 2.7.11 — Google's prices re-read, and the release 2.7.10 could not be — released
+
+The first version on npm since 2.7.9, carrying 2.7.10's `plan` fix with it.
+Google's prices were re-read on 2026-11-16 after its docs moved, every figure
+matched and the review date moved; `gemini-2.5-pro` carries the price Google
+bills it at from 2026-12-01, when its requests route to Gemini 3.8 Flash. The
+release job now asks npm whether the token it uploads with is still accepted
+before it runs its checks, which is what 2.7.10 found out at its last step,
+and the token's expiry has a recorded date that the weekly check watches.
+Issues gained forms and labels, and every pull request is checked for its
+issue and for where its changelog line landed. The repeated-task evaluation
+this number had been reserved for did not ship in it.
 
 ## Next
 
-**Target: 2.7.11, repeated-task evaluation.**
+**Target: 2.7.12, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,

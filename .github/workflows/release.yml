@@ -133,6 +133,27 @@ jobs:
       - name: Can this workflow authenticate to npm?
         run: node scripts/npm-publish-preflight.mjs auth
 
+      # The step above asks about the credential this workflow would prefer. It
+      # answered "refused" at 1.86.0 and answers it still, and the uploads go
+      # through on the token below. Nothing asked about the token, and it has
+      # an expiry: 2.7.10's release pull request merged, this job ran five
+      # minutes of checks, and the first upload answered `E404 Not Found - PUT`
+      # with `main` already naming a version npm did not have.
+      #
+      # So npm is asked `whoami` with it here, before `verify`, and on
+      # `workflow_dispatch` too: a dry run from a release pull request's branch
+      # says whether the token is alive before it is merged. It reports and
+      # does not fail: a trusted publisher npm accepted would need no token,
+      # and an accepted token can still be refused the upload (EOTP, the same
+      # afternoon). The script's header has both measurements. The token
+      # reaches this one script, which has no dependency and sends it to npm's
+      # registry or nowhere.
+      - name: Is the stored npm token still alive?
+        id: token
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: node scripts/npm-publish-preflight.mjs token
+
       # The tag says what is being released. The manifests say what would
       # actually be published. A tag reading v1.2.0 against manifests reading
       # 1.1.0 publishes 1.1.0 under a release note for 1.2.0, and that is the
@@ -294,17 +315,26 @@ jobs:
       # `failure()` rather than a specific step id: any publish failing here is
       # worth this note, and naming one step would go quiet the moment the
       # failure moved to the next package.
+      #
+      # This note used to end "if the release environment carries the npm
+      # token secret, auth came from it and this failure is something else".
+      # 2.7.10 failed with the secret set and the token no longer accepted,
+      # so the note sent its reader away from the cause. Two credentials can
+      # authenticate an upload, and the script asks npm about both again here,
+      # the token last: a failed job ends on the line that most often explains
+      # it. Hence the token in this step's environment.
       - name: What that failure probably means
         if: failure()
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          echo "::error::A publish step failed. If the log says 'E404 Not Found - PUT', that is"
-          echo "::error::an authentication failure, not a missing package — npm reports them the same way."
-          echo "::error::Check the trusted publisher on each package: npm settings -> Publishing access"
-          echo "::error::-> Trusted publisher, with Environment set to 'release'. It is the field people"
-          echo "::error::leave blank, and this workflow declares 'environment: release', so a blank one"
-          echo "::error::is a claims mismatch. Full procedure in docs/releasing.md."
-          echo "::error::If the release environment carries the npm token secret, auth came from it"
-          echo "::error::and this failure is something else - read the npm error above, not this note."
+          echo "::error::A step failed. If the log says 'E404 Not Found - PUT', that is an"
+          echo "::error::authentication failure, not a missing package: npm reports them the same way."
+          echo "::error::Two credentials can authenticate an upload. The trusted publisher: npm settings"
+          echo "::error::-> Publishing access -> Trusted publisher on each package, with Environment set"
+          echo "::error::to 'release', the field people leave blank. And the npm token stored on the"
+          echo "::error::release environment, which is the one that has uploaded every release so far"
+          echo "::error::and which expires. The lines below say how npm answers each of them now."
           echo "::error::Nothing is half-published: the preflight checks all versions before the first upload."
           node scripts/npm-publish-preflight.mjs claims
 
@@ -377,11 +407,21 @@ jobs:
 
       # Checked on manual runs, so a missing notes section is caught by the
       # dry run rather than discovered while releasing.
+      #
+      # It ends on what npm said about the stored token, because a dry run from
+      # a release branch is how that is known before the merge and the end of
+      # the log is what the API returns: the verdict is printed forty thousand
+      # lines earlier, above `verify`. One of four words the preflight wrote
+      # (accepted, refused, absent, unknown), passed through the environment
+      # and never spliced into the script.
       - name: Dry run finished
         if: github.event_name == 'workflow_dispatch'
+        env:
+          TOKEN_VERDICT: ${{ steps.token.outputs.token }}
         run: |
           node scripts/release-notes.mjs "$(node -p "require('./package.json').version")" > /dev/null
           echo "Dry run — nothing published. Release notes present."
+          echo "The npm token stored for uploads: ${TOKEN_VERDICT:-not checked}. See the step that asked, or the job summary, for what that means."
 
   # The listing on the official MCP registry, which is a separate publish to a
   # separate service and was a manual step until it failed twice in a row.
