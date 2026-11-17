@@ -19,7 +19,7 @@
         "require_code_owner_review": true,
         "require_last_push_approval": false,
         "required_review_thread_resolution": true,
-        "allowed_merge_methods": ["merge", "squash"]
+        "allowed_merge_methods": ["squash"]
       }
     },
     {
@@ -31,11 +31,21 @@
           { "context": "GitHub Action self-test (examples/sample-prompt.en.txt)" },
           { "context": "GitHub Action self-test (examples/sample-prompt.es.txt)" },
           { "context": "CodeQL" },
-          { "context": "npm audit" }
+          { "context": "npm audit" },
+          { "context": "PR readiness" }
         ]
       }
     },
-    { "type": "required_linear_history" }
+    { "type": "required_linear_history" },
+    {
+      "type": "code_scanning",
+      "parameters": {
+        "code_scanning_tools": [
+          { "tool": "CodeQL", "security_alerts_threshold": "all", "alerts_threshold": "all" }
+        ]
+      }
+    },
+    { "type": "code_quality", "parameters": { "severity": "all" } }
   ],
   "bypass_actors": []
 }

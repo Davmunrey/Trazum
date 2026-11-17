@@ -329,6 +329,11 @@ The other labels say what kind of work an issue or pull request is: `bug`,
 `correctness`, `pricing`, `enhancement`, `documentation`, `dependencies` (what
 Dependabot opens) and `ci`.
 
+Two labels are for pull requests, and only a maintainer applies them, because
+each lets a pull request past a check in `PR readiness`: `no-issue` for a pull
+request that truly needs no issue, and `changelog-history` for one that
+deliberately corrects an entry in a released version.
+
 ### Labels live in the repository
 
 `.github/labels.json` is the list of labels and what each one means. The
@@ -363,6 +368,35 @@ If it breaks the API, that entry goes first in its version and carries the
 migration.
 
 Run `npm run verify` before pushing and read its exit code, not its output.
+
+### Issue first
+
+A pull request names the issue it resolves: `Fixes #<n>` in its description.
+Open the issue first if there is none. The issue records the problem apart from
+the solution, so a reviewer can judge whether the change answers it, and so the
+problem outlives a pull request that is closed. The `PR readiness` check refuses
+a description with no closing keyword. Dependabot is exempt, and a maintainer
+can label a pull request `no-issue` when it truly needs none.
+
+### How a pull request lands
+
+- **Squash only.** `main` keeps a linear history, so a merge commit is refused;
+  the squash commit carries the pull request's title and its `Signed-off-by`.
+- **Current with `main`, and green on that.** The branch ruleset requires every
+  check to have passed on a branch that contains `main`'s latest commit. When
+  `main` moves, bring it in: merge `main` into the branch, or use GitHub's
+  *Update branch* button. `dco.yml` skips merge commits, so either way the
+  sign-off check still passes. Rebasing works too, but never on a branch somebody
+  else has pushed to.
+- **After a release, look at your changelog line.** A release moves `Unreleased`
+  into a version and leaves `No changes yet.` behind. Merging that into your
+  branch can put your line inside the released version without a conflict; it
+  happened on 2026-11-17 (#666). `PR readiness` refuses a line added inside a
+  released version, and the fix is to move it back under `## Unreleased`.
+- **Required checks:** `Build and tests`, both `GitHub Action self-test` jobs,
+  `CodeQL`, `npm audit` and `PR readiness`, listed in
+  `.github/rulesets/main-branch.json`. The `pr-guide` comment on every pull
+  request says which one is next.
 
 ## Measuring the token band
 

@@ -12,5 +12,7 @@
   { "name": "wontfix", "color": "ffffff", "description": "Triaged: it will not be done; the closing comment says why" },
   { "name": "duplicate", "color": "cfd3d7", "description": "Already reported; the closing comment links the original" },
   { "name": "good first issue", "color": "7057ff", "description": "Accepted, small and fully specified: a good first contribution" },
-  { "name": "help wanted", "color": "008672", "description": "Accepted, and a pull request from anyone is welcome" }
+  { "name": "help wanted", "color": "008672", "description": "Accepted, and a pull request from anyone is welcome" },
+  { "name": "no-issue", "color": "c5def5", "description": "Maintainer-applied: this pull request needs no linked issue" },
+  { "name": "changelog-history", "color": "c5def5", "description": "Maintainer-applied: this pull request corrects an entry in a released version" }
 ]
