@@ -1,6 +1,6 @@
 name: Bug report
 description: Trazum did something wrong, or did not do something it says it does.
-labels: [bug]
+labels: [bug, needs-triage]
 body:
   - type: markdown
     attributes:
@@ -62,9 +62,9 @@ body:
     attributes:
       label: Version
       description: >
-        `git rev-parse --short HEAD` if you cloned the repository, or the version
-        from `package.json`. There is no published npm package yet.
-      placeholder: 588f9e7 (or 1.0.0)
+        `trazum --version`, or `git rev-parse --short HEAD` if you run Trazum from a
+        clone of this repository.
+      placeholder: 2.7.10 (or 588f9e7)
     validations:
       required: true
 

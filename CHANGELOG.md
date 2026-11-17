@@ -11,6 +11,32 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **An issue comes in with a form, labels and a triage state.** Three new forms
+  cover what had none:
+  - a wrong price or a missing model, which asks for the provider's own page,
+    the quote and the day it was read;
+  - a feature request, which starts with the problem;
+  - a documentation fault.
+
+  Every form, including the two existing ones, starts its issue as
+  `needs-triage`. The labels and what each means now live in
+  `.github/labels.json`, and a `Labels` workflow makes GitHub's list match it
+  using only the `gh` CLI. Until now the only list was GitHub's settings page,
+  and no issue carried a label. CONTRIBUTING.md gains an `Issues` section:
+  which form to use, the four triage states, and that an issue is never closed
+  for going quiet. SUPPORT.md links every form. `issue-intake.test.js` holds it
+  together:
+  - every label a form or `dependabot.yml` applies exists;
+  - every label is explained in CONTRIBUTING.md;
+  - every form is linked from SUPPORT.md;
+  - every page a form links to exists;
+  - the workflow never deletes a label.
+
+  Eight faults planted one at a time were each caught. The bug form's version
+  hint no longer says there is no npm package. (#665)
+
 ### Fixed
 
 - **Google's prices were re-read, and `gemini-2.5-pro` bills at Gemini 3.8

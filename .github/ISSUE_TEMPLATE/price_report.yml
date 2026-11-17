@@ -1,0 +1,101 @@
+name: A price is wrong, or a model is missing
+description: The catalogue charges a figure the provider does not, or reads a model as unpriced.
+labels: [pricing, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **A price is changed from the provider's own page and nothing else.** Not a
+        blog post, not an aggregator, not a figure from memory: the page, the quote
+        and the day it was read. That is what this form asks for, and a report with
+        all three is usually repriced in the next patch release.
+
+        **You do not have to wait for that release.** A local price overlay corrects
+        a figure today: `--pricing <file>` on any pricing command, or the `pricing`
+        key in `trazum.config.json`. [docs/commands.md](../blob/main/docs/commands.md#updating-prices)
+        describes the table it overrides.
+
+        Please write in English, and **do not paste a usage log** — an issue is a
+        public page, and a log names your workloads and your spend.
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - Anthropic
+        - OpenAI
+        - Google
+        - DeepSeek
+        - xAI
+        - Mistral
+        - Moonshot
+        - Another provider (say which below)
+    validations:
+      required: true
+
+  - type: input
+    id: model
+    attributes:
+      label: Model id
+      description: The id exactly as it appears in your usage log or the provider's API.
+      placeholder: gemini-2.5-pro
+    validations:
+      required: true
+
+  - type: textarea
+    id: trazum-says
+    attributes:
+      label: What Trazum charges
+      description: >
+        The line from `trazum models` for this id, or "unpriced" if a bill lists it
+        as an unpriced model. Include `trazum --version`.
+      render: text
+      placeholder: |
+        $ trazum --version
+        2.7.10
+        $ trazum models | grep gemini-2.5-pro
+        gemini-2.5-pro  1.25  10
+    validations:
+      required: true
+
+  - type: textarea
+    id: provider-says
+    attributes:
+      label: What the provider's page says
+      description: >
+        Quote the figures as the page prints them: input, output, and cache or batch
+        prices if those are what differ. Copy the words, not your reading of them.
+      placeholder: |
+        "$1.25, prompts <= 200k tokens" (input)
+        "$10.00, prompts <= 200k tokens" (output)
+    validations:
+      required: true
+
+  - type: input
+    id: source
+    attributes:
+      label: Source URL
+      description: The provider's own pricing or model page, with the anchor if it has one.
+      placeholder: https://aistudio.google.com/docs/pricing#gemini-2.5-pro
+    validations:
+      required: true
+
+  - type: input
+    id: read-on
+    attributes:
+      label: Date you read it
+      description: Providers change prices on a date; the date you read the page is part of the evidence.
+      placeholder: 2026-11-16
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: The figures above are quoted from the provider's own page, not from a third party.
+          required: true
+        - label: Nothing above is private — no usage log, no key, no account id.
+          required: true
