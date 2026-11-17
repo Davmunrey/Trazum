@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.9 — 2026-11-17
+
 ### Added
 
 - **Every pull request carries a comment that names its next step and who
