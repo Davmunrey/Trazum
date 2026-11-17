@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.8**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.9**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,54 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.9 — Gemini 4 priced
+
+**Adoption, read 2026-11-16:** 2696 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.8.
+
+**If your agent runs Gemini 4, every bill until now left it out. Run it
+again.**
+
+```bash
+npx -y @trazum/cli@2.7.9 bill
+```
+
+**Google's Gemini 4 family is priced.** Gemini 4 Carbon and Argon cost $2/$10
+per million tokens through 2026-11-30 and $4/$20 from 2026-12-01; Gemini 4
+Hydrogen costs $1.50/$7.50. All three read their cache at 5% of input, halve
+in batch, share a 1,048,576-token window between input and output, and cache
+implicitly from 4,096 tokens. Gemini 3.5 Flash-Lite is priced too, at
+$0.30/$2.50 with its cache at 10%. Every figure is from Google's pricing page,
+the model pages and its caching page, read 2026-11-16. A Carbon call of 1M
+input, 100K output and 1M cached is billed $3.10 on 2026-11-20 and $6.20 on
+2026-12-02, each side of the date at its own price.
+
+**What the Gemini 4 rows do not do.** Google sells a Flex tier at half the
+standard price and a Priority tier at 1.8 times it; a call on either is priced
+here at the standard rate, and each row's note says so. Three text models on
+Google's page are still unpriced and read as gaps, named:
+`gemini-3.1-flash-lite`, `gemini-3-flash-preview` and `gemini-2.5-flash-lite`.
+
+**Not in this release.** Google's review date is still 2026-10-10, and from
+2026-12-01 Google routes `gemini-2.5-pro` to Gemini 3.8 Flash and bills it at
+that model's rates; both are in a pull request under review (#654) and will
+follow. The prices of the Google rows already in the table were read on
+2026-11-16 and each matched.
+
+**The card for a shared link is fixed.** The image added in 2.7.8 for when the
+repository's link is shared broke a project's name across two lines. It is
+redrawn; its figures were right throughout.
+
+**For whoever hosts the web app:** its PostgreSQL driver moves from 3.4.9 to
+4.1.1. The store's contract passes against a real PostgreSQL with every
+migration applied. No published package uses the driver.
+
+**Still waiting on a person:** 2.7.2's tag and GitHub release, as 2.7.3 said.
+
+No breaking change. All packages, the plugin and MCP discovery advance
+together to 2.7.9.
 
 ---
 
