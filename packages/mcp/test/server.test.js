@@ -213,7 +213,10 @@ describe('check_prompt', () => {
      * The third outcome is why this tool exists. A boolean would collapse two
      * different instructions — optimise, or cut — into one unhelpful "no".
      */
-    const optimisable = await client.call('check_prompt', { prompt: wordy, maxTokens: 34 });
+    // 46 tokens as written, 39 once the rules have run: 42 sits between them.
+    // (It was 34 while the rules still cut ", thank you very much" off the end
+    // of a clause, which they no longer do: see courtesy.test.js.)
+    const optimisable = await client.call('check_prompt', { prompt: wordy, maxTokens: 42 });
     assert.match(bodyOf(optimisable), /Optimise rather than cut/);
 
     const hopeless = await client.call('check_prompt', { prompt: wordy, maxTokens: 3 });

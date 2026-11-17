@@ -137,6 +137,79 @@ interface Match {
   kind: ProtectionKind;
 }
 
+/**
+ * Text inside quotation marks, which a prompt quotes because the words matter.
+ *
+ * `Start every reply with "Thank you for contacting us".` is an instruction
+ * about a string, and the string is the one part of it that must not change.
+ * Before this the rules read it as prose. Measured on 2026-11-17, at the safe
+ * level:
+ *
+ *   Reply "Please hold on" when the line is busy.  ->  Reply " hold on" when ...
+ *   If the customer writes "basically nothing works", escalate.  ->  ... " nothing works" ...
+ *   Say «por favor espere» while loading.  ->  Say « espere» while loading.
+ *
+ * The model was being told to output, or to match, a different string, and
+ * the report counted the difference as tokens saved.
+ *
+ * **One line, and bounded.** A quotation mark with no partner on its line is
+ * an inch sign, a typo or a paragraph-long quotation, and none of those is a
+ * string somebody will compare against; the bound also keeps every pattern
+ * linear, which this file has learnt twice to check.
+ *
+ * **Apostrophes are not quotation marks.** A straight single quote opens a
+ * quotation only when no letter or digit comes before it, and closes one only
+ * when none comes after, so "don't" and "the customers' orders" open nothing.
+ */
+const QUOTED = new RegExp(
+  [
+    '"[^"\\n]{1,400}"',
+    '“[^”\\n]{1,400}”',
+    '„[^“”\\n]{1,400}[“”]',
+    '«[^»\\n]{1,400}»',
+    "(?<![\\p{L}\\p{N}])'[^'\\n]{1,400}'(?![\\p{L}\\p{N}])",
+    '(?<![\\p{L}\\p{N}])‘[^’\\n]{1,400}’(?![\\p{L}\\p{N}])',
+  ].join('|'),
+  'gu',
+);
+
+/** Stands in for a character somebody else already protects. Not a quotation mark, not a line end. */
+const TAKEN = '\uE002';
+
+/**
+ * Quoted spans, found with the earlier protections already in place.
+ *
+ * Run as an ordinary pattern it would lose either way round. After the
+ * others, a quotation holding a placeholder overlaps a reservation and is
+ * skipped, so `"Hello {{name}}, please hold"` stays editable. Before them, a
+ * quotation mark inside a code fence or a tag's attribute reserves a slice of
+ * it and the fence or the tag is the one skipped.
+ *
+ * So the text is scanned with every reserved character replaced by one that
+ * is neither a quotation mark nor a line end. A span on one line is swallowed
+ * whole by the quotation around it, a reservation that spans lines cannot be
+ * crossed, and a quotation mark inside a reservation is not seen at all.
+ */
+function quotedSpans(text: string, reserved: readonly Match[]): Match[] {
+  if (!/["“„«'‘]/.test(text)) return [];
+  let skeleton = text;
+  if (reserved.length > 0) {
+    // By UTF-16 unit, the unit every offset in this file is in.
+    const units = text.split('');
+    for (const { start, end } of reserved) {
+      for (let index = start; index < end; index++) {
+        if (units[index] !== '\n') units[index] = TAKEN;
+      }
+    }
+    skeleton = units.join('');
+  }
+  const found: Match[] = [];
+  for (const match of skeleton.matchAll(QUOTED)) {
+    found.push({ start: match.index, end: match.index + match[0].length, kind: 'quoted' });
+  }
+  return found;
+}
+
 /** Splits the text into segments, marking what must not be modified. */
 export function segment(text: string): Segment[] {
   /*
@@ -183,6 +256,17 @@ export function segment(text: string): Segment[] {
       }
       kept.push({ start, end, kind });
     }
+  }
+
+  // Quotations last, around whatever is already reserved inside them: a
+  // reservation a quotation swallows is dropped in favour of the quotation.
+  const quoted = quotedSpans(text, kept);
+  if (quoted.length > 0) {
+    const inside = (range: Match): boolean =>
+      quoted.some((quote) => range.start >= quote.start && range.end <= quote.end);
+    const outside = kept.filter((range) => !inside(range));
+    kept.length = 0;
+    kept.push(...outside, ...quoted);
   }
 
   // Order for emission; within one pattern matches never overlap, and across

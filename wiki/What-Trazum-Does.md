@@ -55,7 +55,7 @@ reported that way rather than dressed up.
 
 **3. And never touches what would break the prompt.** Code fences, indented code
 blocks, inline code, URLs, email addresses, template placeholders (`{{x}}`,
-`${x}`, `{x}`, `{% %}`) and XML/HTML tags are isolated before any rule runs. If a rule ever did make one of those
+`${x}`, `{x}`, `{% %}`), XML/HTML tags and text inside quotation marks are isolated before any rule runs. If a rule ever did make one of those
 disappear, that rule is discarded and the rest carry on.
 
 **Reviewing an aggressive run.** Every rule reports what it actually changed,

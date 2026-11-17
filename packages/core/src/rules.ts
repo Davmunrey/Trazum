@@ -6,6 +6,10 @@ import {
   POLITENESS,
   SELF_CHECK,
   SHOUTED_WORDS,
+  THANKS,
+  THANKS_DEGREE,
+  THANKS_FOR,
+  THANKS_NOT_A_THANKS,
   VERBOSE_PHRASES,
 } from './phrases.js';
 import { jaccard, normalizeForCompare } from './similarity.js';
@@ -70,10 +74,40 @@ function dropRegex(phrase: string): RegExp {
   // The boundary check goes AFTER the optional comma: in front of it, the "y"
   // of "y, si no te importa," would fail the match and the comma would stay.
   return new RegExp(
-    `(?:,[^\\S\\n]*)?(?<![\\p{L}\\p{N}_])${body}[^\\S\\n]*,?(?![\\p{L}\\p{N}_])`,
+    `(?:,[^\\S\\n]*)?(?<![\\p{L}\\p{N}_])${body}${WHERE_ONLY[phrase]?.(body) ?? ''}[^\\S\\n]*,?(?![\\p{L}\\p{N}_])`,
     'giu',
   );
 }
+
+/**
+ * Three courtesy words that are also ordinary words, and where each one is
+ * the courtesy.
+ *
+ * Deleting them wherever they stood changed instructions at the safe level,
+ * measured on 2026-11-17:
+ *
+ *   Aim to please the customer.     ->  Aim to the customer.
+ *   Speak kindly to the customer.   ->  Speak to the customer.
+ *   Die Bitte des Kunden steht ...  ->  Die des Kunden steht ...
+ *
+ * "please" after "to" is the verb. "kindly" is a courtesy only in front of
+ * what is being asked, which puts it at the start of a clause or right after
+ * "you" or "and"; anywhere else it says how to treat somebody. German "bitte"
+ * after a determiner is the noun, a request.
+ *
+ * **Each check is a lookbehind placed after the word, looking back across
+ * it.** In front of the word it would run at every position in the text, and
+ * each run walks back over the whitespace before it: quadratic on a long run
+ * of spaces, 47 seconds on 200,000 characters, which `security.test.js` caught
+ * on the first try. Behind the word it runs only where the word is.
+ */
+const WS = '[^\\S\\n]';
+const WHERE_ONLY: Readonly<Record<string, (body: string) => string>> = {
+  please: (body) => `(?<!\\bto${WS}+${body})`,
+  kindly: (body) => `(?<=(?:^|[\\n.!?;:,(]|\\byou|\\band)${WS}*${body})`,
+  bitte: (body) =>
+    `(?<!\\b(?:die|der|eine|einer|diese|dieser|ihre|ihrer|seine|seiner|meine|unsere|jede|keine)${WS}+${body})`,
+};
 
 /** A rule that deletes a set of phrases. */
 function dropRule(id: RuleId, level: Rule['level'], phrases: readonly string[]): Rule {
@@ -185,7 +219,106 @@ const verbosePhrasesRule: Rule = {
   },
 };
 
-const politenessRule = dropRule('politeness', 'safe', POLITENESS);
+const NOT_SPACE_OR_BREAK = '[^\\S\\n]';
+/** Longest first, spaces loosened to any run that stays on the line. */
+const anyOf = (phrases: readonly string[]): string =>
+  [...phrases]
+    .sort((a, b) => b.length - a.length)
+    .map((phrase) => escapeRe(phrase).replace(/\s+/g, `${NOT_SPACE_OR_BREAK}+`))
+    .join('|');
+
+const WORD_END = '(?![\\p{L}\\p{N}_])';
+
+/**
+ * A sentence that does nothing but thank.
+ *
+ *   1  what comes before it: the start of a line, or the space after the
+ *      punctuation that ended the previous sentence
+ *   the thanks, then how much ("so much", "de antemano"), any number of times
+ *   2  optionally what it is for: "for" and up to eighty characters holding no
+ *      punctuation, no quotation mark and no protected span
+ *   then the end of the sentence: its punctuation, or the end of the line
+ *
+ * A thanks followed by anything else does not match, and that is the point:
+ * "thanks to the new policy", "thank you messages should be short" and
+ * "thanks, John" are all left for a reader to deal with.
+ */
+const THANKS_SENTENCE = new RegExp(
+  `(^${NOT_SPACE_OR_BREAK}*|(?<=[.!?…])${NOT_SPACE_OR_BREAK}+)`
+    + `[¡¿]*(?:${anyOf(THANKS)})${WORD_END}`
+    + `(?:${NOT_SPACE_OR_BREAK}+(?:${anyOf(THANKS_DEGREE)})${WORD_END})*`
+    + `(?:${NOT_SPACE_OR_BREAK}+(?:${anyOf(THANKS_FOR)})${NOT_SPACE_OR_BREAK}+`
+    + `([^.!?…\\n,;:"'“”‘’«»„()\\uE000\\uE001]{1,80}))?`
+    + `${NOT_SPACE_OR_BREAK}*(?:[.!?…]+|$)`,
+  'gimu',
+);
+
+const NOT_A_THANKS = new RegExp(`(?<![\\p{L}\\p{N}_])(?:${anyOf(THANKS_NOT_A_THANKS)})${WORD_END}`, 'iu');
+/** A list marker with nothing after it yet: "1.", "a)", "-". */
+const LIST_MARKER = /^[^\S\n]*(?:\p{N}+[.)]|\p{L}[.)]|[-*•])[^\S\n]*$/u;
+
+/**
+ * Removes the sentences that only thank, and leaves every other thanks alone.
+ *
+ * The regex finds a candidate; four checks then decide whether it is a
+ * courtesy the author added or text the prompt is about. Each is a case that
+ * was measured going wrong, and each resolves the doubt the same way: the text
+ * stays.
+ */
+function removeThanks(text: string): { text: string; hits: number } {
+  let hits = 0;
+  const out = text.replace(THANKS_SENTENCE, (whole: string, lead: string, what: string | undefined, offset: number) => {
+    const lineStart = text.lastIndexOf('\n', offset - 1) + 1;
+    const before = text.slice(lineStart, offset);
+    const sentence = whole.slice(lead.length);
+
+    if (before.trim() === '') {
+      // On a line of its own, under a line that ends in a colon, it is what
+      // that line introduced: a template, an example, the text to send.
+      const above = text.slice(0, lineStart).trimEnd();
+      if (above.endsWith(':')) return whole;
+    } else {
+      // After a full stop in the middle of a line, a sentence begins with a
+      // capital. A lower-case "thanks" there follows an abbreviation: "e.g.
+      // thanks for your time."
+      const first = sentence.replace(/^[¡¿]+/, '')[0] ?? '';
+      if (first === first.toLowerCase()) return whole;
+      // "1. Thank you for your order." is an item in a list, not a closing.
+      if (LIST_MARKER.test(before)) return whole;
+    }
+    // "Thank you for your order is the subject line" is about the phrase.
+    if (what !== undefined && NOT_A_THANKS.test(what)) return whole;
+
+    hits++;
+    return '';
+  });
+  return { text: out, hits };
+}
+
+const THANKING = new Set(THANKS.map((phrase) => phrase.toLowerCase()));
+const softeners = dropRule(
+  'politeness',
+  'safe',
+  POLITENESS.filter((phrase) => !THANKING.has(phrase.toLowerCase())),
+);
+
+/**
+ * Courtesy, in two halves that used to be one.
+ *
+ * A softener ("please", "por favor", "if you don't mind") is deleted where it
+ * stands, as before. A thanks is deleted only as a whole sentence; see
+ * `THANKS` in `phrases.ts` for what deleting the phrase alone did.
+ */
+const politenessRule: Rule = {
+  id: 'politeness',
+  level: 'safe',
+  apply(text) {
+    const thanks = removeThanks(text);
+    const rest = softeners.apply(thanks.text);
+    const hits = thanks.hits + rest.hits;
+    return { text: hits > 0 ? tidyAfterRemoval(rest.text) : text, hits };
+  },
+};
 const fillerRule = dropRule('filler', 'safe', FILLER);
 const intensifiersRule = dropRule('intensifiers', 'aggressive', INTENSIFIERS);
 const hedgesRule = dropRule('hedges', 'aggressive', HEDGES);

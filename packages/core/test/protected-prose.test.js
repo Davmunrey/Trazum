@@ -55,6 +55,7 @@ const NAMED_AS = {
   email: /email addresses?\b/i,
   placeholder: /template placeholders?\b/i,
   'xml-tag': /XML\/HTML tags?\b/i,
+  quoted: /text inside quotation marks\b/i,
 };
 
 /** Every document that tells a reader what the optimiser will not touch. */

@@ -40,6 +40,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The safe level no longer rewrites a thanks, a quotation or three ordinary
+  words.** Found by drawing the README's picture from a real run (#675): the
+  shortened support prompt contained "So much for your help with this." and
+  "In advance." The `politeness` rule deleted each courtesy phrase wherever it
+  stood, and measured on 2026-11-17 that did three kinds of damage at the
+  level that promises not to change what a prompt asks for. A fragment where a
+  sentence was: "Thanks a lot for doing this." became "A lot for doing this.",
+  and the same in Spanish, French and German. A broken instruction: "Tell the
+  customer: thank you for your order." became "Tell the customer: for your
+  order.", and "Thanks to the new policy refunds take five days." lost its
+  first word. A changed instruction: "Speak kindly to the customer." became
+  "Speak to the customer.", "Aim to please the customer." became "Aim to the
+  customer.", and "If the user says thanks, reply politely." became "If the
+  user says reply politely." A thanks is now removed only as a whole sentence
+  that does nothing but thank, with what it is for, and is left exactly as
+  written when it follows a colon, sits in a list, opens a clause or is what
+  the sentence is about. One courtesy is deliberately no longer removed: a
+  thanks hung on the end of a clause by a comma ("summarise it for me, thank
+  you very much") cannot be told from the last item of a list of things to
+  say, so it stays. "please" after "to", "kindly" anywhere but in front
+  of what is asked, and German "Bitte" after a determiner are left alone.
+  **Text inside quotation marks is protected**, as code, URLs and placeholders
+  already were: `Reply "Please hold on"` used to become `Reply " hold on"`,
+  so the model was told to output a different string and the report counted
+  the difference as a saving. `ProtectionKind` gains `quoted`. This also
+  corrects a figure this project published about itself:
+  `docs/our-own-medicine.md` said the rules recover 12 tokens from the four
+  system prompts the package ships, credited to `emphasis`. All 12 were the
+  rules rewriting `"..."` to `"."` inside the JSON example in two of those
+  prompts. The figure is 0. On `examples/support-prompt.txt` the shortened
+  prompt is now clean and the README's picture is redrawn: 326 tokens down to
+  202, $31.00 a month, and a first lever worth $416.99, 13 times more. (#677)
+
 - **The README's pictures show what the CLI prints, in the product's own
   identity.** `docs/assets/demo.svg` was typed by hand under a comment calling
   it a transcript, for a prompt that was in no directory of the repository.

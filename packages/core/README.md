@@ -46,7 +46,7 @@ duplicated paragraphs, decorative separators, shouting in capitals.
 
 **Never touches what would break the prompt.** Code fences, indented code blocks,
 inline code, URLs, email addresses, template placeholders (`{{x}}`, `${x}`,
-`{x}`, `{% %}`) and XML/HTML tags are isolated *before* any rule runs. If a rule ever did make one of those disappear,
+`{x}`, `{% %}`), XML/HTML tags and text inside quotation marks are isolated *before* any rule runs. If a rule ever did make one of those disappear,
 that rule is discarded and the rest carry on.
 
 **Tells you where the money actually is.** Trimming is usually not it. Read
