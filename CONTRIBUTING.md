@@ -94,13 +94,23 @@ npm run test:agents  # real CLI/MCP workflows on synthetic logs; run build first
 npm run test:release # the bill of materials each release attaches, checked against npm's own view of the tree
 ```
 
-Two that write files rather than check them:
+The ones that write files rather than check them:
 
 ```bash
 npm run draw:architecture  # redraws docs/assets/boundary.svg from the code
-npm run draw:icon          # redraws the editor extension's icon.png
+npm run draw:bill          # redraws docs/assets/bill.svg from what `trazum bill` prints
+npm run draw:demo          # redraws docs/assets/demo.svg from what `trazum optimize` prints
+npm run draw:icon          # rewrites the extension's icon and the web app's favicon, touch icon and manifest icons
 npm run measure:tokens     # re-measures the estimator against a real counter
 ```
+
+Every picture and icon in this repository comes out of one of those, in the
+colours and the mark `scripts/brand.mjs` names, which `brand.test.js` holds to
+the web app's `globals.css` and `icon.svg`. Build first (`npm run build`): the
+two transcripts are drawn from the built CLI. **A price change, or a reworded
+line in either report, fails `bill-image.test.js` or `demo-image.test.js` until
+the picture is redrawn**, and the README restates figures from both, so the same
+tests then fail until its prose agrees.
 
 And one that produces something to hand to a marketplace:
 

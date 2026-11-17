@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { draw, statementLines } from '../../../scripts/draw-bill.mjs';
+import { draw, statement, statementLines } from '../../../scripts/draw-bill.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -20,11 +20,12 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
  * picture is redrawn, so the README never shows a bill the CLI would not print.
  */
 describe('the bill picture in the README', () => {
-  const lines = statementLines();
+  const ansi = statement();
+  const lines = statementLines(ansi);
 
   it('is exactly what the drawing script makes of the CLI output today', () => {
     const current = readFileSync(join(ROOT, 'docs/assets/bill.svg'), 'utf8');
-    assert.equal(current, draw(lines), 'docs/assets/bill.svg is stale. Run: node scripts/draw-bill.mjs');
+    assert.equal(current, draw(ansi), 'docs/assets/bill.svg is stale. Run: node scripts/draw-bill.mjs');
   });
 
   it('shows a priced total, the bill by project and the bill by model', () => {
