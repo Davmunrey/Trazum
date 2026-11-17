@@ -181,7 +181,10 @@ Nothing you paste leaves your browser.
 [`examples/support-prompt.txt`](examples/support-prompt.txt); the picture stops
 after the first lever and says so. Read the first line: the rules recovered
 $31.00 a month, and the lever it names is worth $416.99, **13 times more**. That
-gap is the entire argument for this tool.*
+gap is the entire argument for this tool. The token counts and the $31.00 are
+the same wherever you run it; the lever's figure is this repository's, whose
+`trazum.config.json` assumes 300 output tokens a call, and follows your own
+settings anywhere else.*
 
 </div>
 

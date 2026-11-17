@@ -29,9 +29,14 @@ on:
 permissions:
   contents: read
 
+# One at a time for each issue or pull request, and a run in progress finishes.
+# Cancelling it left a cancelled check on #687 when its description was edited
+# seconds after it was opened, and the guide comment reported that as a
+# failure. Every job here only adds, and takes seconds: the second run finds
+# nothing left to do.
 concurrency:
   group: triage-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   intake:

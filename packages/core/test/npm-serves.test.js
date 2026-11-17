@@ -2,7 +2,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-import { publishablePackages, servedVersion } from '../../../scripts/npm-serves.mjs';
+import {
+  publishablePackages,
+  servedVersion,
+  tarballServed,
+  tarballUrl,
+  waitingFor,
+} from '../../../scripts/npm-serves.mjs';
 
 /**
  * The check that a release actually reached the registry, checked itself.
@@ -147,5 +153,86 @@ describe('reading what the registry says is latest', () => {
       return { ok: true, json: async () => ({ latest: '1.83.0' }) };
     });
     assert.equal(headers?.['cache-control'], 'no-cache');
+  });
+});
+
+/**
+ * The half the dist-tag does not answer.
+ *
+ * 2.7.12's release passed this check at 22:42:49 UTC on 2026-11-17 with every
+ * dist-tag at 2.7.12, and `@trazum/core`'s tarball answered 404 until 22:45:55.
+ * In between, the version every other package pins could not be installed. The
+ * check now asks for the tarball too, and these hold the two answers apart.
+ */
+describe('a version is served when its tarball is, not when its name is', () => {
+  /** A registry: what it calls latest, and whether it hands over a tarball. */
+  const registry = ({ latest, tarball }) => {
+    const asked = [];
+    const fetchImpl = async (url, options = {}) => {
+      asked.push({ url, method: options.method ?? 'GET', headers: options.headers ?? {} });
+      if (url.endsWith('/dist-tags')) return { ok: true, json: async () => ({ latest }) };
+      return { ok: tarball };
+    };
+    return { fetchImpl, asked };
+  };
+
+  it('asks for the address an install fetches, for a scoped name and a bare one', () => {
+    assert.equal(tarballUrl('@trazum/core', '2.7.12'), 'https://registry.npmjs.org/@trazum/core/-/core-2.7.12.tgz');
+    assert.equal(
+      tarballUrl('@trazum/tokenizer-openai', '2.7.12'),
+      'https://registry.npmjs.org/@trazum/tokenizer-openai/-/tokenizer-openai-2.7.12.tgz',
+    );
+    assert.equal(tarballUrl('left-pad', '1.3.0'), 'https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz');
+  });
+
+  it('asks with HEAD and no cache, because it wants to know and not to download', async () => {
+    const { fetchImpl, asked } = registry({ latest: '2.7.12', tarball: true });
+    assert.equal(await tarballServed('@trazum/core', '2.7.12', fetchImpl), true);
+    assert.deepEqual(asked.map((call) => [call.url, call.method]), [[tarballUrl('@trazum/core', '2.7.12'), 'HEAD']]);
+    assert.equal(asked[0].headers['cache-control'], 'no-cache');
+  });
+
+  it('reads a refusal as not served', async () => {
+    const { fetchImpl } = registry({ latest: '2.7.12', tarball: false });
+    assert.equal(await tarballServed('@trazum/core', '2.7.12', fetchImpl), false);
+  });
+
+  it('is done only when the tag names the version and the tarball is there', async () => {
+    const { fetchImpl } = registry({ latest: '2.7.12', tarball: true });
+    assert.equal(await waitingFor('@trazum/core', '2.7.12', fetchImpl), null);
+  });
+
+  it('keeps waiting on a tag that is right over a tarball that is not there: 2.7.12', async () => {
+    const { fetchImpl } = registry({ latest: '2.7.12', tarball: false });
+    const reason = await waitingFor('@trazum/core', '2.7.12', fetchImpl);
+    assert.match(reason, /tarball cannot be downloaded yet/);
+    assert.match(reason, /2\.7\.12/);
+  });
+
+  it('says the tag is behind, and does not ask for a tarball nobody is pointed at', async () => {
+    const { fetchImpl, asked } = registry({ latest: '2.7.11', tarball: true });
+    const reason = await waitingFor('@trazum/core', '2.7.12', fetchImpl);
+    assert.match(reason, /served at 2\.7\.11, waiting for 2\.7\.12/);
+    assert.equal(asked.some((call) => call.method === 'HEAD'), false);
+  });
+
+  it('treats a registry that does not answer as still waiting, for either question', async () => {
+    const silent = async () => {
+      throw new Error('connection reset');
+    };
+    assert.match(await waitingFor('@trazum/core', '2.7.12', silent), /served at nothing/);
+    const tagOnly = async (url) => {
+      if (url.endsWith('/dist-tags')) return { ok: true, json: async () => ({ latest: '2.7.12' }) };
+      throw new Error('connection reset');
+    };
+    assert.match(await waitingFor('@trazum/core', '2.7.12', tagOnly), /tarball cannot be downloaded yet/);
+  });
+
+  it('is what the wait loop uses, and the failure names which half is missing', () => {
+    const source = readFileSync(new URL('../../../scripts/npm-serves.mjs', import.meta.url), 'utf8');
+    const main = source.slice(source.indexOf('async function main()'));
+    assert.match(main, /await waitingFor\(name, version\)/);
+    assert.doesNotMatch(main, /await servedVersion\(/, 'the loop still decides on the dist-tag alone');
+    assert.match(main, /\$\{why\.get\(name\)\}/);
   });
 });
