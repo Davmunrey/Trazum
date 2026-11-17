@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 
 import { SPAWN_ENV } from '../../cli/test/env.mjs';
+import { CREDENTIALS_FILE, WARN_DAYS, npmTokenStanding, recordedNpmTokenExpiry } from '../../../scripts/npm-token-expiry.mjs';
 
 /**
  * The two scripts that keep a release from being cut with something left
@@ -96,6 +97,78 @@ describe('prepare-release', () => {
     }
   });
 
+  /**
+   * 2.7.10 was prepared, reviewed and merged on a day the npm token no longer
+   * worked, and a merged release that cannot upload leaves `main` naming a
+   * version npm does not have. The script reads the recorded expiry before it
+   * plans anything.
+   */
+  const lockstep = [
+    'package.json', 'packages/core/package.json', 'packages/cli/package.json', 'packages/mcp/package.json',
+    'packages/tokenizer-openai/package.json', 'apps/web/package.json', 'apps/vscode/package.json',
+    'plugin/.claude-plugin/plugin.json', 'packages/mcp/server.json', 'packages/mcp/src/index.ts',
+    'package-lock.json', 'CHANGELOG.md', 'RELEASES.md',
+  ];
+  const prepareOnCopy = (expires, ...args) => {
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-release-'));
+    try {
+      for (const path of lockstep) {
+        mkdirSync(dirname(join(dir, path)), { recursive: true });
+        copyFileSync(join(ROOT, path), join(dir, path));
+      }
+      mkdirSync(dirname(join(dir, CREDENTIALS_FILE)), { recursive: true });
+      writeFileSync(join(dir, CREDENTIALS_FILE), JSON.stringify({ npmToken: { expires } }));
+      execFileSync('git', ['init', '-q'], { cwd: dir, env: SPAWN_ENV });
+      const result = spawnSync(process.execPath, [join(ROOT, 'scripts', 'prepare-release.mjs'), nextPatch, ...args], {
+        cwd: dir, env: { ...SPAWN_ENV, PREPARE_RELEASE_ROOT: dir }, encoding: 'utf8', timeout: 60000,
+      });
+      return { ...result, version: JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).version };
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  };
+
+  it('refuses to prepare a release the npm token is recorded as unable to upload', () => {
+    const refused = prepareOnCopy(daysFromNow(-1));
+    assert.equal(refused.status, 1, refused.stderr);
+    assert.match(refused.stderr, /^prepare-release: npm token: recorded as expiring on \d{4}-\d{2}-\d{2}, which has come/m);
+    assert.match(refused.stderr, /leave main naming a version npm does not have/);
+    assert.equal(refused.version, current, 'it refused and moved the version anyway');
+    assert.doesNotMatch(refused.stderr, /^changed /m, 'it refused after writing');
+    assert.doesNotMatch(refused.stderr, /at file:\/\//, 'the refusal printed a stack trace');
+
+    // A date that is not one protects nothing, so it stops the release too.
+    const nonsense = prepareOnCopy('2027-02-31');
+    assert.equal(nonsense.status, 1);
+    assert.match(nonsense.stderr, /is not a real YYYY-MM-DD date/);
+    assert.equal(nonsense.version, current);
+  });
+
+  it('says in a dry run what a real run would refuse, and still shows the plan', () => {
+    const dry = prepareOnCopy(daysFromNow(-1), '--dry-run');
+    assert.equal(dry.status, 0, dry.stderr);
+    assert.match(dry.stderr, /^A real run would stop here: npm token: recorded as expiring on/m);
+    assert.match(dry.stderr, /would change package\.json \(/);
+    assert.equal(dry.version, current);
+  });
+
+  it('prepares the release and names the token among what is still yours, when the date is near or unknown', () => {
+    const near = prepareOnCopy(daysFromNow(5));
+    assert.equal(near.status, 0, near.stderr);
+    assert.equal(near.version, nextPatch);
+    assert.match(near.stderr, /^ {2}- npm token: expires \d{4}-\d{2}-\d{2}, [45] day\(s\) left: renew it/m);
+
+    const unknown = prepareOnCopy(null);
+    assert.equal(unknown.status, 0, unknown.stderr);
+    assert.match(unknown.stderr, /^ {2}- npm token: no expiry date in/m);
+
+    // A token with months left is not on the list: the list is for what needs doing.
+    const fine = prepareOnCopy(daysFromNow(60));
+    assert.equal(fine.status, 0, fine.stderr);
+    assert.equal(fine.version, nextPatch);
+    assert.doesNotMatch(fine.stderr, /npm token/);
+  });
+
   it('refuses a version that is not newer, and one that is not a version', () => {
     const older = script('prepare-release.mjs', current, '--dry-run');
     assert.equal(older.status, 1);
@@ -104,6 +177,110 @@ describe('prepare-release', () => {
     assert.equal(nonsense.status, 1);
     assert.match(nonsense.stderr, /is not a version/);
     assert.doesNotMatch(older.stderr + nonsense.stderr, /at file:\/\//, 'a refusal printed a stack trace');
+  });
+});
+
+/**
+ * The date the npm token stops uploading releases, written down by a person.
+ *
+ * 2.7.10's release pull request merged on 2026-11-17, the job ran five minutes
+ * of checks, and the first upload answered `E404 Not Found - PUT`. Nothing in
+ * the repository knew when the token would stop working, so `main` named a
+ * version npm did not have and nothing had warned. The date now lives in
+ * `.github/release-credentials.json`, the weekly run goes red two weeks ahead
+ * of it, and a release is not prepared past it.
+ */
+const DAY = 86_400_000;
+const at = (date) => Date.parse(`${date}T00:00:00Z`);
+const daysFromNow = (days) => new Date(Date.now() + days * DAY).toISOString().slice(0, 10);
+
+/** A directory holding only a credentials record, with `expires` as given. */
+const recorded = (expires) => {
+  const dir = mkdtempSync(join(tmpdir(), 'trazum-credentials-'));
+  mkdirSync(dirname(join(dir, CREDENTIALS_FILE)), { recursive: true });
+  writeFileSync(join(dir, CREDENTIALS_FILE), typeof expires === 'string' && expires.startsWith('{') ? expires : JSON.stringify({ npmToken: { expires } }));
+  return dir;
+};
+
+describe('the npm token\'s expiry', () => {
+  it('counts the days to a recorded date, and warns two weeks ahead', () => {
+    const now = at('2027-01-01') + 9 * 3_600_000; // nine in the morning, UTC
+    const far = npmTokenStanding('2027-02-15', now);
+    assert.equal(far.status, 'ok');
+    assert.equal(far.daysLeft, 45);
+    assert.equal(far.text, 'npm token: expires 2027-02-15, 45 day(s) left');
+
+    // Fourteen whole days ahead is still quiet at nine in the morning; the next day is not.
+    assert.equal(WARN_DAYS, 14);
+    assert.equal(npmTokenStanding('2027-01-16', now).status, 'ok');
+    const soon = npmTokenStanding('2027-01-15', now);
+    assert.equal(soon.status, 'soon');
+    assert.equal(soon.daysLeft, 14);
+    assert.match(soon.text, /expires 2027-01-15, 14 day\(s\) left: renew it and record the new date/);
+    assert.equal(npmTokenStanding('2027-01-02', now).daysLeft, 1, 'fifteen hours left is one day, not none');
+  });
+
+  it('counts the token as gone from the first minute of the day npm named', () => {
+    // npm names a day and no hour. The early reading never promises a credential that is not there.
+    assert.equal(npmTokenStanding('2027-01-15', at('2027-01-15') - 1).status, 'soon');
+    const gone = npmTokenStanding('2027-01-15', at('2027-01-15'));
+    assert.equal(gone.status, 'expired');
+    assert.match(gone.text, /recorded as expiring on 2027-01-15, which has come: no release can upload/);
+    assert.equal(npmTokenStanding('2027-01-15', at('2027-03-01')).status, 'expired');
+  });
+
+  it('calls a date nobody recorded unrecorded, never fine', () => {
+    for (const nothing of [null, undefined]) {
+      const standing = npmTokenStanding(nothing, at('2027-01-01'));
+      assert.equal(standing.status, 'unrecorded');
+      assert.match(standing.text, /no expiry date in \.github\/release-credentials\.json, so nothing warns/);
+    }
+  });
+
+  it('refuses a date that is not one, the thirty-first of February included', () => {
+    // Date.parse reads 2027-02-31 as the third of March and says nothing.
+    for (const wrong of ['2027-02-31', '2027-13-01', '2027-2-5', '15/02/2027', 'next spring', '', 20270215, true, {}]) {
+      assert.equal(npmTokenStanding(wrong, at('2027-01-01')).status, 'invalid', `${JSON.stringify(wrong)} was read as a date`);
+    }
+    assert.equal(npmTokenStanding('2028-02-29', at('2027-01-01')).status, 'ok', 'a real leap day was refused');
+  });
+
+  it('reads the date from the record, and nothing from a record that is not there', () => {
+    assert.equal(recordedNpmTokenExpiry(recorded('2027-02-15')), '2027-02-15');
+    assert.equal(recordedNpmTokenExpiry(recorded(null)), null);
+    assert.equal(recordedNpmTokenExpiry(recorded('{}')), null);
+    assert.equal(recordedNpmTokenExpiry(mkdtempSync(join(tmpdir(), 'trazum-credentials-'))), null, 'a missing file is not an error');
+    assert.throws(() => recordedNpmTokenExpiry(recorded('{ not json')), /release-credentials\.json is not JSON/);
+  });
+
+  it('this repository\'s record holds a date or null, and never a credential', () => {
+    const text = readFileSync(join(ROOT, CREDENTIALS_FILE), 'utf8');
+    const record = JSON.parse(text);
+    assert.deepEqual(Object.keys(record).sort(), ['about', 'npmToken']);
+    assert.deepEqual(Object.keys(record.npmToken), ['expires']);
+    assert.notEqual(npmTokenStanding(record.npmToken.expires).status, 'invalid', 'the recorded expiry is not a date');
+    // The date is public. The token is not, and this file is the tempting place to paste it.
+    assert.doesNotMatch(text, /npm_[A-Za-z0-9]{20,}/, 'token material in the credentials record');
+  });
+
+  it('turns the weekly run red before the date, and only notes a date nobody recorded', () => {
+    const fresh = (dir, ...args) =>
+      spawnSync(process.execPath, [join(ROOT, 'scripts', 'freshness.mjs'), ...args], {
+        cwd: ROOT, env: { ...SPAWN_ENV, FRESHNESS_CREDENTIALS_ROOT: dir }, encoding: 'utf8', timeout: 60000,
+      });
+
+    const soon = fresh(recorded(daysFromNow(5)));
+    assert.match(soon.stdout, /^OVERDUE {2}npm token: expires \d{4}-\d{2}-\d{2}, [45] day\(s\) left: renew it/m);
+    assert.equal(soon.status, 1, 'a token five days from expiry did not fail the scheduled run');
+    assert.equal(fresh(recorded(daysFromNow(5)), '--report').status, 0, 'report mode failed');
+
+    assert.match(fresh(recorded(daysFromNow(-1)), '--report').stdout, /^OVERDUE {2}npm token: recorded as expiring on/m);
+    assert.match(fresh(recorded('2027-02-31'), '--report').stdout, /^OVERDUE {2}npm token: the expiry .* is not a real YYYY-MM-DD date/m);
+    assert.match(fresh(recorded(daysFromNow(60)), '--report').stdout, /^ok {7}npm token: expires \d{4}-\d{2}-\d{2}, (59|60) day\(s\) left$/m);
+    // Unknown is said, as a note: it is not a deadline, and it is not a pass either.
+    assert.match(fresh(recorded(null), '--report').stdout, /^note {5}npm token: no expiry date in/m);
+    // And the real record is on the report, whatever it holds.
+    assert.match(script('freshness.mjs', '--report').stdout, /^(ok {7}|note {5}|OVERDUE {2})npm token: /m);
   });
 });
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The two questions worth asking before `npm publish`, rather than after.
+ * The three questions worth asking before `npm publish`, rather than after.
  *
  * **Why this exists.** 1.9.0 was tagged, ran every check green, and then failed
  * on the last step with `E404 Not Found - PUT https://registry.npmjs.org/@trazum%2fcore`.
@@ -31,6 +31,48 @@
  * Before, a dry run proved the environment gate existed and nothing about npm,
  * so the only way to test a trusted publisher was to spend a version number on
  * it.
+ *
+ * ## `token` — is the stored credential still alive?
+ *
+ * `auth` asks about the credential this workflow would prefer. The answer was
+ * "refused" at 1.86.0 and is still, and the uploads go through anyway, on the
+ * granular token stored as `NPM_TOKEN`. That token was the one credential
+ * nothing asked about. It has an expiry, and 2.7.10 found out the expensive
+ * way that npm no longer took it: the release pull request merged, the job
+ * ran five minutes of checks, and the first upload answered `E404 Not Found -
+ * PUT`, under a note that said a job holding the token had failed for some
+ * other reason. `main` named a version npm did not have.
+ *
+ * So this asks npm `GET /-/whoami` with the token, the request `npm whoami`
+ * makes. Measured against the live registry on 2026-11-17: a token npm does
+ * not know is answered `401`, and so was the token stored on this repository's
+ * `release` environment, 42 minutes after it failed 2.7.10's upload (dry run
+ * 44057560003). A refusal is reported as an error at the start of the job, in
+ * the summary, and again by `claims` at the end of a failed one, with the
+ * steps that fix it. The verdict is also a step output, one of four words this
+ * file wrote, so a dry run can end on it: the log's tail is what the API hands
+ * back, and the first reading of that dry run was line 367 of 42,713.
+ *
+ * **It reports and does not fail.** Both answers are measured now: the token
+ * that replaced the dead one was answered `200` the same afternoon (dry run
+ * 44104925964). What keeps this a report is the other credential: if npm ever
+ * accepts the trusted publisher, an upload needs no token at all, and a gate
+ * on a dead one would stop a release that would have gone out.
+ *
+ * **An accepted token is not a promise, and that was measured too.** Thirteen
+ * minutes after that `200`, the first upload with the same token answered
+ * `EOTP`: the account asks for a one-time code to publish and the token had
+ * not been made to publish without one. `whoami` cannot be asked that, nor
+ * whether the token may write to each package, where one outside its scope
+ * fails at the upload with the same `E404` as a dead token. So the words for
+ * an accepted token say what it does not cover, and the failure note names
+ * both errors.
+ *
+ * The token goes to the registry's own origin and nowhere else. `REGISTRY` can
+ * be pointed elsewhere for the tests, and a credential that follows an
+ * environment variable to another host would be the worst thing this file
+ * could do, so anything but npm's registry or this machine is refused before a
+ * request is made.
  *
  * ## `versions` — is any of these numbers already spent?
  *
@@ -430,6 +472,128 @@ async function checkAuth() {
   return 'configured';
 }
 
+/** The registry a stored npm token is for. */
+const NPM_REGISTRY_ORIGIN = 'https://registry.npmjs.org';
+
+/**
+ * Whether the stored token may be sent to `REGISTRY`.
+ *
+ * npm's own registry, or this machine, which is where the tests stand one up.
+ * Anything else is a host an environment variable chose.
+ */
+function tokenMayGoTo(registry) {
+  let url;
+  try {
+    url = new URL(registry);
+  } catch {
+    return false;
+  }
+  if (url.origin === NPM_REGISTRY_ORIGIN) return true;
+  return url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+}
+
+const HOW_TO_RENEW =
+  'To fix: on npmjs.com, Access Tokens -> Generate New Token -> Granular Access Token, read and ' +
+  'write on the @trazum packages, allowed to publish without a one-time code (the two-factor ' +
+  'bypass option); store it as the NPM_TOKEN secret of the release environment ' +
+  '(Settings -> Environments -> release); write its expiry date in .github/release-credentials.json; ' +
+  'then re-run the failed jobs of this run. docs/releasing.md, "The token fallback".';
+
+/**
+ * Ask npm whether the stored token is still one it knows.
+ *
+ * Four outcomes: `absent` (no token reached this step), `accepted`, `refused`
+ * and `unknown`. As with the exchange above, the status selects a sentence
+ * this file wrote and nothing from the response is quoted, the account name
+ * included: who the token belongs to is not what the job needs to know.
+ *
+ * `afterFailure` is the same question asked again at the end of a failed job,
+ * where the log gets read: no summary, and each answer says what it means for
+ * the failure above it.
+ */
+async function checkToken({ afterFailure = false } = {}) {
+  const token = process.env.NODE_AUTH_TOKEN ?? '';
+
+  const report = (verdict, annotate, message) => {
+    annotate(message);
+    if (!afterFailure) {
+      summary(`\n### npm token\n\n**${verdict}.** ${message}\n`);
+      // One of the four words above, never anything npm sent: see `output`.
+      output('token', verdict);
+    }
+    return verdict;
+  };
+
+  if (token === '') {
+    return report(
+      'absent',
+      notice,
+      afterFailure
+        ? 'No npm token reached this job, so the uploads had trusted publishing and nothing else. ' +
+          'The block below says what npm must match.'
+        : 'No npm token reached this step (the NPM_TOKEN secret is not set on the release ' +
+          'environment), so the uploads rely on trusted publishing alone and the check above is ' +
+          'the one that decides.',
+    );
+  }
+
+  if (!tokenMayGoTo(REGISTRY)) {
+    return report(
+      'unknown',
+      warn,
+      'The npm token was not checked: this script is pointed at a registry that is not ' +
+        `${NPM_REGISTRY_ORIGIN}, and the token is sent nowhere else.`,
+    );
+  }
+
+  let res;
+  try {
+    res = await fetch(registryUrl('-', 'whoami'), {
+      headers: { authorization: `Bearer ${token}`, accept: 'application/json' },
+      // A redirect is an answer this does not understand, never somewhere to follow with a credential.
+      redirect: 'manual',
+    });
+  } catch (error) {
+    return report('unknown', warn, `Could not reach npm to check the stored token: ${error.message}. Nothing is known about it either way.`);
+  }
+
+  if (res.ok) {
+    return report(
+      'accepted',
+      notice,
+      afterFailure
+        ? 'npm accepts the token stored as NPM_TOKEN, so the failure above is not an expired or ' +
+          'revoked token. If it is "E404 Not Found - PUT", the token may not write to that package: ' +
+          'one added after the token was made is outside its scope. If it is "EOTP", the token was ' +
+          'not made to publish without a one-time code: generate it again with the two-factor bypass ' +
+          'option. docs/releasing.md, "The token fallback".'
+        : 'npm accepts the token stored as NPM_TOKEN. It cannot be asked whether that token may ' +
+          'write to each package (one outside its scope fails at the upload with E404) or publish ' +
+          'without a one-time code (one that may not fails with EOTP), so the upload still decides.',
+    );
+  }
+
+  if (res.status === 401 || res.status === 403) {
+    const answer = res.status === 401 ? '401' : '403';
+    return report(
+      'refused',
+      fail,
+      afterFailure
+        ? `npm refuses the token stored as NPM_TOKEN (${answer}): it has expired or been revoked. ` +
+          'If the failure above is "E404 Not Found - PUT", this is why, unless trusted publishing ' +
+          `was accepted for every package. ${HOW_TO_RENEW}`
+        : `npm refuses the token stored as NPM_TOKEN (${answer}): it has expired or been revoked. ` +
+          'Unless trusted publishing was accepted for every package in the step above, every upload ' +
+          'in this job will fail with "E404 Not Found - PUT", which is how npm reports a write it ' +
+          `will not authorise. Nothing is at stake yet. ${HOW_TO_RENEW}`,
+    );
+  }
+
+  // The number goes to the log, never into what gets written.
+  console.log(`  npm answered ${String(Number(res.status) || 0)} to whoami`);
+  return report('unknown', warn, 'npm gave an answer about the stored token that this check does not know. Nothing is known about it either way.');
+}
+
 /** Whether `version` of `name` is already on the registry. */
 async function alreadyPublished(name, version) {
   const res = await fetch(registryUrl(registryName(name), encodeURIComponent(version)), {
@@ -540,10 +704,17 @@ if (mode === 'auth') {
     // Nothing to add; the publish error above is the story.
   }
   if (idToken) console.log(describeToken(idToken));
+  // And the credential that actually uploads, asked again here for the same
+  // reason. Last, so a failed job ends on the line that most often explains it.
+  await checkToken({ afterFailure: true });
+  process.exit(0);
+} else if (mode === 'token') {
+  // Never non-zero either, and the header says what would change that.
+  await checkToken();
   process.exit(0);
 } else if (mode === 'versions') {
   process.exit(await checkVersions());
 } else {
-  console.error('usage: npm-publish-preflight.mjs <auth|claims|versions>');
+  console.error('usage: npm-publish-preflight.mjs <auth|token|claims|versions>');
   process.exit(2);
 }

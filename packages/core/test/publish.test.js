@@ -1597,6 +1597,10 @@ describe('the publish preflight', () => {
         // so `auth` takes its no-token path unless a case supplies one.
         ACTIONS_ID_TOKEN_REQUEST_URL: '',
         ACTIONS_ID_TOKEN_REQUEST_TOKEN: '',
+        // The same for the stored token. `actions/setup-node` exports a
+        // placeholder under this name for the whole job once it is given a
+        // registry, and `verify` runs these tests inside the release job.
+        NODE_AUTH_TOKEN: '',
         ...env,
       },
     });
@@ -2259,6 +2263,244 @@ describe('the publish preflight', () => {
     assert.match(run, /ls-remote --exit-code --tags origin "refs\/tags\/v\$version"/, 'a re-run would try to push an existing tag');
     // And a refused tag says what to run, since the packages are already out.
     assert.match(run, /git tag v\$version \$GITHUB_SHA && git push origin v\$version/, 'a refused tag leaves no recovery command');
+  });
+
+  /**
+   * The third question: is the stored token still one npm knows?
+   *
+   * `auth` asks about trusted publishing, which refused this workflow at
+   * 1.86.0 and refuses it still, while the uploads go through on the granular
+   * token in `NPM_TOKEN`. Nothing asked about that token until 2.7.10's release
+   * pull request merged on a day it no longer worked: five minutes of checks,
+   * then `E404 Not Found - PUT` on the first upload, under a failure note that
+   * said a job holding the token had failed for some other reason.
+   *
+   * The registry here is a stand-in on a loopback socket. Against the real one,
+   * measured on 2026-11-17, a token npm does not know is answered 401.
+   */
+  const STORED = 'npm_storedTokenThatMustNeverBePrinted0000';
+
+  /** A registry that records what `whoami` was asked with, and answers `status`. */
+  const whoami = (status, seen) => (req, res) => {
+    seen.push({ url: req.url, method: req.method, authorization: req.headers.authorization });
+    res.writeHead(status, { 'content-type': 'application/json' }).end(status === 200 ? '{"username":"somebody"}' : '{}');
+  };
+
+  it('asks npm whether the stored token is alive, with the request npm whoami makes', async () => {
+    const seen = [];
+    const result = await withRegistry(whoami(200, seen), async (url) => await run('token', url, { NODE_AUTH_TOKEN: STORED }));
+
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.deepEqual(seen, [{ url: '/-/whoami', method: 'GET', authorization: `Bearer ${STORED}` }]);
+    assert.match(result.stdout, /::notice::npm accepts the token stored as NPM_TOKEN/);
+    assert.doesNotMatch(result.stdout, /::(warning|error)::/, 'it raised an alarm over a token npm accepts');
+    // An accepted token is not a promise: its scope and its two-factor standing are not askable.
+    assert.match(result.stdout, /the upload still decides/);
+    assert.match(result.stdout, /fails with EOTP/);
+    // Whose token it is stays out of the log: nothing from the answer is quoted.
+    assert.doesNotMatch(result.stdout, /somebody/, 'the account name from the response was printed');
+  });
+
+  it('says a refused token is expired or revoked, and how to renew it, without failing the job', async () => {
+    for (const status of [401, 403]) {
+      const seen = [];
+      const result = await withRegistry(whoami(status, seen), async (url) => await run('token', url, { NODE_AUTH_TOKEN: STORED }));
+
+      assert.equal(seen.length, 1);
+      assert.match(result.stdout, new RegExp(`::error::npm refuses the token stored as NPM_TOKEN \\(${status}\\): it has expired or been revoked`));
+      // What it will look like later, so the E404 is recognised when it comes.
+      assert.match(result.stdout, /E404 Not Found - PUT/);
+      // And every step of the fix, the last of which is the one nobody did before.
+      for (const step of ['Granular Access Token', 'without a one-time code', 'NPM_TOKEN secret of the release environment', '.github/release-credentials.json', 're-run the failed jobs']) {
+        assert.ok(result.stdout.includes(step), `the refusal does not say: ${step}`);
+      }
+      /**
+       * It reports. A trusted publisher npm accepted would need no token at
+       * all, and a gate on a dead one would stop a release that would have
+       * gone out.
+       */
+      assert.equal(result.status, 0, `a ${status} failed the job`);
+    }
+  });
+
+  it('never prints the token, whatever npm answers', async () => {
+    const { mkdtempSync, readFileSync: read } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    for (const status of [200, 401, 403, 302, 500]) {
+      const summaryPath = join(mkdtempSync(join(tmpdir(), 'trazum-token-')), 'summary.md');
+      const result = await withRegistry(
+        whoami(status, []),
+        async (url) => await run('token', url, { NODE_AUTH_TOKEN: STORED, GITHUB_STEP_SUMMARY: summaryPath }),
+      );
+      const everything = result.stdout + result.stderr + read(summaryPath, 'utf8');
+      assert.ok(!everything.includes(STORED), `the token was printed on a ${status}`);
+      // Nor a piece of it: a "helpful" prefix or suffix is most of a credential.
+      for (const piece of [STORED.slice(4, 12), STORED.slice(-8)]) {
+        assert.ok(!everything.includes(piece), `part of the token was printed on a ${status}`);
+      }
+    }
+  });
+
+  it('sends the token to npm or to this machine, and to no host an environment variable names', async () => {
+    /**
+     * `TRAZUM_NPM_REGISTRY` exists so these tests can stand a registry up. A
+     * credential that followed it anywhere would make that variable the most
+     * dangerous line in the release job.
+     */
+    const elsewhere = await run('token', 'https://registry.example.invalid', { NODE_AUTH_TOKEN: STORED });
+    assert.equal(elsewhere.status, 0);
+    assert.match(elsewhere.stdout, /::warning::The npm token was not checked: .* the token is sent nowhere else/);
+    // No request was attempted: a lookup of that host would have said so instead.
+    assert.doesNotMatch(elsewhere.stdout, /Could not reach npm/);
+
+    const plainHttp = await run('token', 'http://registry.npmjs.org', { NODE_AUTH_TOKEN: STORED });
+    assert.match(plainHttp.stdout, /the token is sent nowhere else/, 'the token would cross the network in the clear');
+
+    // A redirect is not followed: the second host never sees the request.
+    const second = [];
+    await withRegistry(whoami(200, second), async (target) => {
+      const result = await withRegistry(
+        (_req, res) => res.writeHead(302, { location: `${target}/-/whoami` }).end(),
+        async (url) => await run('token', url, { NODE_AUTH_TOKEN: STORED }),
+      );
+      assert.deepEqual(second, [], 'the token followed a redirect');
+      assert.match(result.stdout, /::warning::npm gave an answer about the stored token that this check does not know/);
+      assert.doesNotMatch(result.stdout, /::notice::npm accepts/);
+    });
+  });
+
+  it('says so when no token reached the step, and asks npm nothing', async () => {
+    const seen = [];
+    const result = await withRegistry(whoami(200, seen), async (url) => await run('token', url, { NODE_AUTH_TOKEN: '' }));
+    assert.equal(result.status, 0);
+    assert.deepEqual(seen, [], 'it asked npm about a token it does not hold');
+    assert.match(result.stdout, /::notice::No npm token reached this step/);
+    assert.match(result.stdout, /trusted publishing alone/);
+  });
+
+  it('calls an answer it does not know unknown, and an unreachable registry the same', async () => {
+    const odd = await withRegistry(whoami(500, []), async (url) => await run('token', url, { NODE_AUTH_TOKEN: STORED }));
+    assert.equal(odd.status, 0);
+    assert.match(odd.stdout, /::warning::npm gave an answer about the stored token that this check does not know/);
+    assert.doesNotMatch(odd.stdout, /::(notice|error)::/, 'a 500 was read as a verdict');
+    // The number is in the log and never in the annotation or the summary.
+    assert.match(odd.stdout, /^ {2}npm answered 500 to whoami$/m);
+
+    const down = await run('token', 'http://127.0.0.1:9', { NODE_AUTH_TOKEN: STORED });
+    assert.equal(down.status, 0);
+    assert.match(down.stdout, /::warning::Could not reach npm to check the stored token/);
+    assert.match(down.stdout, /Nothing is known about it either way/);
+  });
+
+  it('writes the token verdict to the job summary, and repeats it at the end of a failed job', async () => {
+    const { mkdtempSync, readFileSync: read, existsSync: exists } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const summaryPath = join(mkdtempSync(join(tmpdir(), 'trazum-token-')), 'summary.md');
+
+    const outputPath = join(mkdtempSync(join(tmpdir(), 'trazum-token-')), 'output');
+    await withRegistry(whoami(401, []), async (url) => await run('token', url, { NODE_AUTH_TOKEN: STORED, GITHUB_STEP_SUMMARY: summaryPath, GITHUB_OUTPUT: outputPath }));
+    const written = read(summaryPath, 'utf8');
+    assert.match(written, /### npm token\n\n\*\*refused\.\*\* npm refuses the token stored as NPM_TOKEN/);
+    // And as a step output, so a dry run can end on it. One word this script wrote.
+    assert.equal(read(outputPath, 'utf8'), 'token=refused\n');
+    for (const [status, token, word] of [[200, STORED, 'accepted'], [500, STORED, 'unknown'], [200, '', 'absent']]) {
+      const path = join(mkdtempSync(join(tmpdir(), 'trazum-token-')), 'output');
+      await withRegistry(whoami(status, []), async (url) => await run('token', url, { NODE_AUTH_TOKEN: token, GITHUB_OUTPUT: path }));
+      assert.equal(read(path, 'utf8'), `token=${word}\n`);
+    }
+
+    /**
+     * `claims` is what the failure step runs. The log's tail is what gets read
+     * when a release fails, so the token's verdict is its last line, worded for
+     * someone looking at the failure above it, and the summary is not written a
+     * second time.
+     */
+    const again = join(mkdtempSync(join(tmpdir(), 'trazum-token-')), 'summary.md');
+    const refused = await withRegistry(
+      (req, res) => {
+        // The runner's OIDC endpoint and npm in one server, so the claims block prints too.
+        if (req.url.includes('audience=')) return res.writeHead(200).end('{"value":"a.b.c"}');
+        res.writeHead(401).end('{}');
+      },
+      async (url) =>
+        await run('claims', url, {
+          NODE_AUTH_TOKEN: STORED,
+          GITHUB_STEP_SUMMARY: again,
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+        }),
+    );
+    assert.equal(refused.status, 0);
+    const lines = refused.stdout.trim().split('\n');
+    assert.ok(lines.length > 1, 'the claims block was not printed, so the order below proves nothing');
+    assert.match(lines.at(-1), /^::error::npm refuses the token stored as NPM_TOKEN \(401\)/, 'a failed job does not end on the token verdict');
+    assert.match(lines.at(-1), /If the failure above is "E404 Not Found - PUT", this is why/);
+    assert.ok(!exists(again), 'the failure step wrote the summary a second time');
+
+    // And the other way round: a live token points the reader at the scope instead.
+    assert.ok(!exists(join(dirname(again), 'output')));
+    const quiet = join(mkdtempSync(join(tmpdir(), 'trazum-token-')), 'output');
+    await withRegistry(whoami(401, []), async (url) => await run('claims', url, { NODE_AUTH_TOKEN: STORED, GITHUB_OUTPUT: quiet }));
+    assert.ok(!exists(quiet), 'the failure step overwrote the verdict the first step gave');
+
+    const alive = await withRegistry(whoami(200, []), async (url) => await run('claims', url, { NODE_AUTH_TOKEN: STORED }));
+    assert.match(alive.stdout, /::notice::npm accepts the token stored as NPM_TOKEN, so the failure above is not an expired or revoked token/);
+    assert.match(alive.stdout, /outside its scope/);
+    // The other way an accepted token fails, measured on 2026-11-17 thirteen minutes after npm accepted it.
+    assert.match(alive.stdout, /If it is "EOTP", the token was not made to publish without a one-time code/);
+  });
+
+  it('the release workflow asks about the token before the long checks, and again when it fails', () => {
+    const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
+    const steps = release.split(/^      - /m);
+    const tokenStep = steps.find((s) => /preflight\.mjs token/.test(s));
+    assert.ok(tokenStep, 'the release never asks whether the token that uploads is alive');
+    const code = tokenStep.replace(/^\s*#.*$/gm, '');
+
+    assert.match(code, /NODE_AUTH_TOKEN: \$\{\{ secrets\.NPM_TOKEN \}\}/, 'the step asks about a token it was not given');
+    // On every event: a dry run from a release branch is how it is known before merging.
+    assert.doesNotMatch(code, /^\s*if:/m, 'the token check is gated, so a dry run cannot answer it');
+    // Before `verify`: five minutes of checks ahead of a credential nobody asked about is what 2.7.10 spent.
+    assert.ok(
+      release.indexOf('preflight.mjs token') < release.indexOf('- name: Verify'),
+      'the token is checked after the long checks',
+    );
+    assert.ok(release.indexOf('preflight.mjs token') < release.indexOf('run: npm publish'));
+
+    /**
+     * A dry run ends on the verdict. The first reading of the stored token, on
+     * dry run 44057560003, was line 367 of a 42,713-line log, and the tail is
+     * what the logs API returns. The word travels through the environment: a
+     * step output spliced into a script is the injection shape, even when this
+     * repository wrote the value.
+     */
+    assert.match(code, /^\s*id: token$/m, 'the token step has no id, so nothing can read its verdict');
+    const dryRun = steps.find((s) => s.startsWith('name: Dry run finished'));
+    assert.ok(dryRun, 'the dry run has no closing step');
+    const dryCode = dryRun.replace(/^\s*#.*$/gm, '');
+    assert.match(dryCode, /TOKEN_VERDICT: \$\{\{ steps\.token\.outputs\.token \}\}/);
+    assert.match(dryCode, /echo "The npm token stored for uploads: \$\{TOKEN_VERDICT:-not checked\}\./);
+    // The script is the lines indented under `run: |`; the chunk runs on into the next job.
+    const script = [];
+    for (const line of dryCode.slice(dryCode.indexOf('run: |')).split('\n').slice(1)) {
+      if (line.trim() === '') continue;
+      if (!line.startsWith('          ')) break;
+      script.push(line.trim());
+    }
+    assert.ok(script.length >= 2, 'the dry run script was not read');
+    assert.doesNotMatch(script.join('\n'), /\$\{\{/, 'a step output is spliced into the script');
+    assert.ok(script.at(-1).includes('TOKEN_VERDICT'), 'the dry run does not end on the token verdict');
+
+    // The failure step is given the token too, so `claims` can ask again.
+    const failureStep = steps.find((s) => s.startsWith('name: What that failure probably means'));
+    assert.ok(failureStep, 'the failure note is gone');
+    const failureCode = failureStep.replace(/^\s*#.*$/gm, '');
+    assert.match(failureCode, /if: failure\(\)/);
+    assert.match(failureCode, /NODE_AUTH_TOKEN: \$\{\{ secrets\.NPM_TOKEN \}\}/, 'the failure note cannot ask about the token');
+    assert.match(failureCode, /preflight\.mjs claims/);
+    // The sentence that sent 2.7.10's reader away from the cause.
+    assert.doesNotMatch(failureCode, /this failure is something else/, 'the note again says a job holding the token failed for another reason');
+    assert.match(failureCode, /which expires/, 'the note does not say the token can expire');
   });
 
   it('can backfill one missing release, checked against the commit that set its version', () => {

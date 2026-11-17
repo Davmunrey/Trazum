@@ -23,6 +23,13 @@
  * anything is written, naming the file. A layout that changed is a script to
  * update, not a release to cut with a version missing.
  *
+ * It also refuses to prepare a release the npm token is recorded as unable
+ * to upload. 2.7.10's release pull request merged on a day the token no
+ * longer worked, and a merged release that cannot publish leaves `main`
+ * naming a version npm does not have, with every later merge retrying the
+ * upload. The date comes from `.github/release-credentials.json`; a dry run
+ * says what a real run would refuse, and changes nothing either way.
+ *
  * What stays a person's job, printed at the end: the RELEASES.md section (its
  * "on npm at" line is moved here, being a version and nothing else) and
  * the ROADMAP entry (prose about what shipped), and the per-provider price
@@ -32,6 +39,8 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { npmTokenStanding, recordedNpmTokenExpiry } from './npm-token-expiry.mjs';
 
 // PREPARE_RELEASE_ROOT points the script at a copy of the repository: the tests
 // run it there for real, so a write that moves the wrong thing is caught.
@@ -73,6 +82,7 @@ function replace(path, from, to, expected) {
 }
 
 const current = JSON.parse(read('package.json')).version;
+const token = npmTokenStanding(recordedNpmTokenExpiry(ROOT));
 
 if (!pinOnly) {
   if (next === undefined) {
@@ -83,6 +93,13 @@ if (!pinOnly) {
   const to = parse(next);
   if (to === null) throw new Error(`"${next}" is not a version: use MAJOR.MINOR.PATCH, e.g. 2.7.0.`);
   if (from === null || !newer(to, from)) throw new Error(`${next} is not newer than the current ${current}.`);
+
+  // Before anything is planned: a release that cannot upload is not one to prepare.
+  if (token.status === 'expired' || token.status === 'invalid') {
+    const refusal = `${token.text}. A release merged now would verify, fail at the upload and leave main naming a version npm does not have.`;
+    if (!dryRun) throw new Error(refusal);
+    console.error(`A real run would stop here: ${refusal}`);
+  }
 
   const version = (v) => `"version": "${v}"`;
   const core = (v) => `"@trazum/core": "${v}"`;
@@ -192,5 +209,6 @@ ${dryRun ? 'Dry run: nothing written.' : `Prepared ${current} -> ${next}.`} Stil
   - RELEASES.md: a "## ${next}" section (the "on npm at" line has moved)
   - ROADMAP.md: what shipped, moved from Next to Released
   - Prices: re-read any provider whose review is older than 45 days (node scripts/freshness.mjs)
-  - node scripts/build-wiki.mjs && node scripts/build-plugin-skill.mjs, then npm run verify`);
+  - node scripts/build-wiki.mjs && node scripts/build-plugin-skill.mjs, then npm run verify${token.status === 'ok' ? '' : `
+  - ${token.text}`}`);
 }

@@ -1947,6 +1947,56 @@ describe('the packaged Action', () => {
     );
   });
 
+  it('the publish credential reaches npm publish and the preflight script, and no other step', () => {
+    /**
+     * The test above says which file may name the secret and in what shape.
+     * This one says which steps of that file receive it, because the shape is
+     * satisfied by any step that copies the line.
+     *
+     * Four steps upload. Two more hold the token since 2.7.10 failed on one
+     * npm no longer accepted: the check that asks npm about it before the long
+     * checks, and the failure note that asks again. Both run one script of
+     * this repository, which imports nothing outside Node and sends the token
+     * to npm's registry or nowhere (publish.test.js holds it to that). A step
+     * that runs anything else with the token in its environment (an install,
+     * a build, somebody's action) is the leak this is here to stop.
+     */
+    const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
+    const holders = release
+      .split(/^      - /m)
+      .map((step) => step.replace(/^\s*#.*$/gm, ''))
+      .filter((step) => /NODE_AUTH_TOKEN/.test(step));
+
+    const allowed = [
+      // An upload, from the package's own directory.
+      /^\s*run: npm publish --provenance --access public\s*$/m,
+      // The preflight, and nothing chained to it.
+      /^\s*run: node scripts\/npm-publish-preflight\.mjs token\s*$/m,
+    ];
+    const failureNote = (step) => {
+      const body = step.slice(step.indexOf('run: |') + 'run: |'.length).split('\n').map((line) => line.trim()).filter(Boolean);
+      return step.includes('if: failure()')
+        && body.length > 1
+        && body.at(-1) === 'node scripts/npm-publish-preflight.mjs claims'
+        && body.slice(0, -1).every((line) => /^echo "::error::[^"$`\\]*"$/.test(line));
+    };
+
+    const strangers = holders
+      .filter((step) => !allowed.some((shape) => shape.test(step)) && !failureNote(step))
+      .map((step) => step.split('\n')[0]);
+    assert.deepEqual(strangers, [], `a step holds the npm token and does something else with it: ${strangers.join('; ')}`);
+    assert.equal(holders.length, 6, 'the steps holding the npm token changed: four uploads, the check and the failure note');
+    // No step that holds it calls an action: `uses:` would hand the token to code this repository did not write.
+    for (const step of holders) assert.doesNotMatch(step, /^\s*uses:/m, `a step holding the token runs an action: ${step.split('\n')[0]}`);
+
+    // And the script the two new holders run stays free of anything it did not ship with.
+    const script = readFileSync(join(repoRoot, 'scripts/npm-publish-preflight.mjs'), 'utf8');
+    const imported = [...script.matchAll(/^import .* from '([^']+)';$/gm)].map((match) => match[1]);
+    assert.ok(imported.length > 0, 'no import was parsed from the preflight');
+    assert.deepEqual(imported.filter((name) => !name.startsWith('node:')), [], 'the preflight imports something that is not Node');
+    assert.doesNotMatch(script, /\bimport\(/, 'the preflight loads a module at run time');
+  });
+
   it('the release workflow cannot publish a version the tag does not name', () => {
     // A tag reading v1.2.0 against manifests reading 1.1.0 publishes 1.1.0 under
     // a release note for 1.2.0. npm allows unpublishing for 72 hours and then

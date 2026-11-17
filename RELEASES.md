@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.10**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.11**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -52,7 +52,69 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 2.7.11 — Google's prices re-read, and the release 2.7.10 could not be
+
+**Adoption, read 2026-11-17:** 2836 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.9.
+
+**2.7.10 never reached npm.** Its release was merged on 2026-11-17 and the
+upload was refused: the token the workflow publishes with was no longer
+accepted. So this is the first version on npm with what 2.7.10 describes
+below, the `plan` that stops offering the Batch API to calls that cannot take
+it. Coming from 2.7.9, you get both:
+
+```bash
+npx -y @trazum/cli@2.7.11 from-claude-code ~/.claude/projects --label-from-project -o usage.jsonl
+npx -y @trazum/cli@2.7.11 plan usage.jsonl
+```
+
+**Google's prices were re-read.** Google's Gemini API docs moved to
+aistudio.google.com, the November review could not reach them, and Google's
+figures stayed dated 2026-10-10: from 2026-11-25 every report that priced a
+Gemini call would have carried a "prices may be stale" warning. The pricing,
+deprecations and caching pages and each row's model page were read on
+2026-11-16. Every price, cache and batch price, storage price, context window
+and cache minimum matched, and the review date moves.
+
+**`gemini-2.5-pro` changes price on 2026-12-01.** From that day Google routes
+requests to the retired `gemini-2.5-pro` to Gemini 3.8 Flash and bills them at
+its rates: $0.75/$3.75 through 2026-12-31 and $1.50/$7.50 after, against
+$1.25/$10 today. The id carries both periods, so a call in a log is priced on
+its own date and a log spanning the day is billed both ways. `trazum models`
+and the MCP `list_models` tool print a row's current figures, so until
+2026-12-01 they show 2.5 Pro at 3.8 Flash's price. `gemini-2.5-flash` routes
+to Gemini 3.5 Flash-Lite the same day, at the text rates it already carries.
+
+**Not changed:** the Batch tabs of 3.1 Pro Preview and both 2.5 models charge
+the standard cache price, and a batch call's cache reads are still billed here
+at half of it.
+
+**Why 2.7.10 did not upload, and what a release does about it now.** The
+release job asked npm about the trusted publisher, which refuses this
+workflow, and never about the token the uploads go through on. That token
+stopped being accepted, and the job found out at its last step, five minutes
+in, with `main` already naming a version npm did not have. The job now asks
+npm about the token before its checks and on a dry run, says what a refusal
+means and how to fix it, and repeats the answer where a failed job is read.
+The token's expiry date has a place in the repository, the weekly check goes
+red two weeks before it, and a release is not prepared past it. The first
+replacement token was accepted by npm and then refused the upload, because it
+had not been made to publish without a two-factor code; the notes for renewing
+it now say so.
+
+**For contributors.** Three new issue forms (a wrong price or missing model, a
+feature request, a documentation fault), labels kept in the repository, and a
+check on every pull request that it names its issue and that its changelog
+line landed under `Unreleased`.
+
+**Still waiting on a person:** 2.7.2's tag.
+
+No breaking change, and nothing to migrate.
+
 ## 2.7.10 — A plan that stops offering a batch nobody can take
+
+**Never reached npm.** The release was merged and its upload was refused; see
+2.7.11 above, which is the first version on npm with everything below.
+`@trazum/cli@2.7.10` does not exist, so the commands here name 2.7.11.
 
 **Adoption, read 2026-11-17:** 2696 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.9.
 
@@ -62,8 +124,8 @@ and run it again:** a usage log written by an earlier `from-claude-code` does
 not carry the new mark.
 
 ```bash
-npx -y @trazum/cli@2.7.10 from-claude-code ~/.claude/projects --label-from-project -o usage.jsonl
-npx -y @trazum/cli@2.7.10 plan usage.jsonl
+npx -y @trazum/cli@2.7.11 from-claude-code ~/.claude/projects --label-from-project -o usage.jsonl
+npx -y @trazum/cli@2.7.11 plan usage.jsonl
 ```
 
 **`plan` offered the Batch API to calls that cannot take it.** A converted

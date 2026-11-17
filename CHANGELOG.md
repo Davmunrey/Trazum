@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.11 — 2026-11-17
+
 ### Added
 
 - **An issue comes in with a form, labels and a triage state.** Three new forms
@@ -86,7 +90,44 @@ merged commit with no entry is a change only `git log` remembers.
   of 3.1 Pro Preview and both 2.5 models charge the standard cache price, and
   a batch call's cache reads are still billed here at half of it.
 
+- **A release never asked npm about the credential that uploads it.** The
+  release job checked the trusted publisher, which refused this workflow at
+  1.86.0 and refuses it still, and said nothing about the granular token the
+  uploads go through on. That token has an expiry. 2.7.10's release pull
+  request merged on 2026-11-17, the job ran five minutes of checks, and the
+  first upload answered `E404 Not Found - PUT`, under a failure note that
+  said of a job holding the token that "this failure is something else".
+  Nothing was half-published, and `main` named a version npm did not have.
+  Three changes, none of which alters anything installable. The job now asks
+  npm `whoami` with the stored token before `verify`, on a manual dry run too,
+  so a dry run from a release branch answers before the merge; a refusal is an
+  error on the run page and in the job summary with the steps that fix it, and
+  the failure note asks again and ends on the answer, as does a dry run, in
+  one word. Measured against the live registry: a token npm does not know is
+  answered `401`, and so was the stored token itself, on a dry run of this
+  change 42 minutes after the failed upload; the token that replaced it was
+  answered `200` that afternoon, and thirteen minutes later was refused the
+  upload with `EOTP`, because it had not been made to publish without a
+  one-time code. So the step reports and does not fail, an accepted token is
+  worded as less than a promise, and the failure note names `EOTP` beside
+  `E404`. The token's expiry date is now recorded in
+  `.github/release-credentials.json` (`null` until the owner writes it down),
+  and `scripts/freshness.mjs` calls it overdue from fourteen days before,
+  which turns the weekly scheduled run red on `main`; a date nobody recorded
+  is printed as a note that says so. And `scripts/prepare-release.mjs` refuses
+  to prepare a release once the recorded date has come. The token reaches two
+  more steps of `release.yml` than it did, both running one script of this
+  repository that imports nothing outside Node and sends the token to npm's
+  registry or to nowhere, and `security.test.js` holds the list of steps to
+  exactly those. Sixty-one faults planted in the check, the workflow, the
+  date arithmetic and the two scripts that read it were each caught.
+  `docs/releasing.md` gains "When the token expires", and loses the paragraph
+  that said there was no token to rotate.
+
 ## 2.7.10 — 2026-11-17
+
+_Merged and never uploaded: npm refused the token the release publishes with
+(#662). What this section lists first reached npm in 2.7.11._
 
 ### Fixed
 
