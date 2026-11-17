@@ -1,0 +1,131 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# The review bot: what it reads, what it is told to look for, and everything
+# it is switched off from doing.
+#
+# CodeRabbit reviews public repositories at no charge (its pricing page, read
+# on 2026-11-17: "free reviews forever for public repositories"). It was chosen because
+# its whole behaviour is this file, in the repository, where a pull request
+# can change it and a reviewer can read why. It is installed from
+# https://github.com/apps/coderabbitai by the repository's owner; until then
+# this file does nothing.
+#
+# It reviews. It does not write: every feature that opens a pull request,
+# pushes a commit or edits a description is off below. Commits here are signed
+# off by their author (dco.yml) and a bot's would not be.
+#
+# CONTRIBUTING.md, "Review", says how its findings are handled: checked in the
+# code before anybody acts on one, and resolved by a person.
+
+language: en-US
+tone_instructions: >-
+  Plain and specific. Say what is wrong, where, and what input shows it. No
+  praise, no summary of what the code does, no emoji. If you are not sure,
+  say what you could not verify.
+early_access: false
+
+reviews:
+  # Fewer, surer comments. The ruleset requires every thread to be resolved,
+  # so a speculative comment costs a person a reply.
+  profile: chill
+  high_level_summary: false
+  poem: false
+  review_status: false
+  collapse_walkthrough: true
+  sequence_diagrams: false
+  suggested_labels: false
+  auto_apply_labels: false
+  # A status is not a required check and must not look like one.
+  commit_status: false
+  fail_commit_status: false
+
+  auto_review:
+    enabled: true
+    # Pull requests here are opened as drafts and marked ready once CI is
+    # green, so a review that waited for "ready" would arrive after the merge.
+    drafts: true
+    base_branches:
+      - main
+
+  path_filters:
+    # Generated from other files in this repository; review the source.
+    - '!wiki/**'
+    - '!plugin/skills/**'
+    - '!docs/assets/**'
+    - '!**/dist/**'
+    - '!package-lock.json'
+    - '!apps/web/public/**'
+    # Not this project's to edit.
+    - '!.claude/skills/synced/**'
+
+  path_instructions:
+    - path: 'packages/core/src/**'
+      instructions: >-
+        This package has no runtime dependency and makes no network call
+        except in llm.ts and tokenizer.ts, which are opt-in. Flag any new
+        import of a package, any new use of fetch, and any new file or
+        environment read. Every regular expression runs on input a stranger
+        controls: flag a quantifier that is unbounded inside another
+        quantifier, and a lookbehind that can run at every position.
+    - path: 'packages/core/src/{rules,phrases,segment}.ts'
+      instructions: >-
+        A rule at the "safe" level must never change what a prompt asks for.
+        For each phrase or pattern added, look for a sentence where removing
+        it changes the instruction: a word that is also an ordinary word, a
+        phrase that takes an object, text the prompt is about rather than
+        text it uses. Say the sentence. Text inside code, URLs, placeholders,
+        tags and quotation marks is protected and must stay protected.
+    - path: 'packages/core/src/pricing.ts'
+      instructions: >-
+        A price is never derived, estimated or remembered. Each figure must
+        come from the provider's own page, and the pull request must say
+        which page and on what date. Flag any rate that is computed from
+        another rate, and any change to a price without a change to the date
+        it was reviewed.
+    - path: '**/test/**'
+      instructions: >-
+        A test that cannot fail tests nothing. Flag an assertion that would
+        still pass with the code under test removed, a regular expression
+        that matches the test's own comment, and a guard that reads no file
+        or finds no entry and passes anyway.
+    - path: '.github/workflows/**'
+      instructions: >-
+        The "_target" variant of the pull_request event is banned except in
+        cla.yml. Every action is
+        pinned to a full commit SHA with a version comment. No expression
+        from the event (a title, a body, a branch name) may be interpolated
+        into a run script; it goes through env. Permissions are declared and
+        minimal.
+    - path: '**/*.md'
+      instructions: >-
+        Documents here are held to the code by tests. Flag a number, a
+        command or a flag that the diff does not show being measured or
+        defined. Do not comment on style or wording.
+
+  # Review only. Each of these writes to the repository when used.
+  finishing_touches:
+    unit_tests:
+      enabled: false
+    simplify:
+      enabled: false
+    autofix:
+      enabled: false
+    fix_ci:
+      enabled: false
+    resolve_merge_conflict:
+      enabled: false
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  # What it learns from this repository stays with this repository.
+  learnings:
+    scope: local
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - 'CONTRIBUTING.md'
+      - 'docs/doctrine.md'
+      - 'docs/authoring-rules.md'
+      - 'DESIGN.md'

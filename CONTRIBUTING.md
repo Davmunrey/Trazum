@@ -318,6 +318,12 @@ A security problem is never an issue: report it privately, as
 [SECURITY.md](SECURITY.md) says. A question goes to Discussions. Blank issues
 stay on for the report no form anticipated.
 
+**An issue gets `needs-triage` whatever opened it.** The forms apply it, and
+the `Triage` workflow applies it to an issue that came in without a form: a
+blank one, or one opened through the API. That second half was missing until
+2026-11-17, when eleven issues were open and none carried a label; none of
+them had come through a form.
+
 ### Triage
 
 Every new issue carries `needs-triage`, meaning nobody has decided anything
@@ -326,6 +332,7 @@ about it yet. Triage replaces it with one state:
 | State | Means | Then |
 | --- | --- | --- |
 | `accepted` | It will be done | Anyone may pick it up. `good first issue` marks the small, fully specified ones; `help wanted` says a pull request from anyone is welcome |
+| `blocked` | It will be done, and cannot be started | It waits on something held outside the repository: a provider key, a publisher account, a real export. The issue says exactly what, so whoever holds it knows they are the one being waited for |
 | `needs-info` | Waiting on the reporter | The comment says what is missing: a reproduction, a price's source, a version |
 | `wontfix` | It will not be done | Closed, with the reason in the closing comment |
 | `duplicate` | Already reported | Closed, with a link to the original |
@@ -335,9 +342,27 @@ and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) says what a single-maintainer
 project can honestly promise. An issue is never closed for going quiet: an
 unanswered report is still a report.
 
+An issue carries one state at a time. `accepted` and `blocked` together are
+the roadmap: [`ROADMAP.md`](ROADMAP.md#open-work-as-issues) lists exactly those
+issues, drawn from the issue list, and the weekly `Triage` run fails when the
+page and the list disagree. After triaging, redraw it:
+
+```bash
+gh issue list --state open --limit 200 --json number,title,labels > issues.json
+node scripts/triage.mjs roadmap issues.json
+```
+
 The other labels say what kind of work an issue or pull request is: `bug`,
 `correctness`, `pricing`, `enhancement`, `documentation`, `dependencies` (what
 Dependabot opens) and `ci`.
+
+And where it lives: `area:core`, `area:cli`, `area:mcp`, `area:web`,
+`area:action` and `area:vscode`. On a pull request from this repository nobody
+applies these by hand. The `Triage` workflow gives it an area for each package
+its paths touch, `ci` when it touches a workflow, `documentation` when every
+file it changes is a document, and the kind of the issue it closes. It only
+adds: a label a person put on or took off stays as they left it. A pull request
+from a fork runs with a read-only token, so the maintainer labels that one.
 
 Two labels are for pull requests, and only a maintainer applies them, because
 each lets a pull request past a check in `PR readiness`: `no-issue` for a pull
@@ -387,6 +412,42 @@ the solution, so a reviewer can judge whether the change answers it, and so the
 problem outlives a pull request that is closed. The `PR readiness` check refuses
 a description with no closing keyword. Dependabot is exempt, and a maintainer
 can label a pull request `no-issue` when it truly needs none.
+
+### Review
+
+Every pull request is read before it merges, and the ruleset requires every
+review thread to be resolved first.
+
+**What a review here looks for**, in the order that has cost this project
+the most:
+
+1. **Does it change what a prompt asks for?** Anything in a `safe` rule that
+   can alter meaning is a defect, whatever it saves. #677 is what that looks
+   like when a review misses it.
+2. **Is every figure reproducible?** A price has a provider page and a date
+   behind it. A number in a document was measured, and the pull request says
+   how. Nothing is derived, rounded for effect or remembered.
+3. **Does the core still run offline with no dependency?** A new `fetch`, a
+   new package or a new file read in `@trazum/core` needs a reason a reviewer
+   can repeat.
+4. **Was each new guard proven?** A test that has never been seen to fail is
+   not known to test anything. The description says what was planted.
+5. **Does the page still say what the code does?** Documents here are held to
+   the code by tests; a change that moves one moves the other in the same
+   pull request.
+
+**The machines.** CodeQL reads every pull request and its findings block the
+merge. A review bot is configured in [`.coderabbit.yaml`](.coderabbit.yaml)
+and reads the diff too once the repository's owner has installed it: it is
+told the five questions above, it reviews and does nothing else, and it pushes
+no commit. What it says is information to check, not an instruction. A finding is traced in the code
+before it is acted on; a real one is fixed, a wrong one is answered on its
+thread with what was traced, and either way the thread is resolved by a
+person. A security finding stays open until the maintainer decides.
+
+**If you are reviewing somebody else's pull request**, say what you checked
+and what you did not. "Read the diff, did not run it" is a useful review.
+An approval with nothing in it is not one.
 
 ### How a pull request lands
 

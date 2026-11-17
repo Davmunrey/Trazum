@@ -2906,6 +2906,48 @@ retries and controller overhead together. Any broader shared-service or fleet
 claim requires workload-specific throughput, backpressure and isolation evidence;
 local stress tests alone do not establish that capacity.
 
+### Open work, as issues
+
+Everything this project has agreed to do and has not done is an open issue
+that triage accepted. The table is drawn from the issue list by
+`node scripts/triage.mjs roadmap`, and the weekly `Triage` run fails when the
+two disagree, so an item is here because it is accepted and leaves when it is
+closed, not when somebody remembers this page. Live:
+[ready to be picked up](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3Aaccepted),
+[waiting on something outside](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3Ablocked),
+[open to a first contribution](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+
+<!-- open-work:start -->
+**Ready to be picked up (8).**
+
+| Issue | What | Area |
+| --- | --- | --- |
+| [#638](https://github.com/Davmunrey/Trazum/issues/638) | Evaluate repeat-review-v1 over repeated tasks before making it default | cli |
+| [#642](https://github.com/Davmunrey/Trazum/issues/642) | Decide whether to ship DeepSeek and Mistral tokenizer packages | core |
+| [#648](https://github.com/Davmunrey/Trazum/issues/648) | Decide when and how to read OpenCode's SQLite sessions | cli |
+| [#680](https://github.com/Davmunrey/Trazum/issues/680) | Review the French dictionary: 38 entries nobody who reads French has agreed to | core |
+| [#681](https://github.com/Davmunrey/Trazum/issues/681) | Review the German dictionary: 38 entries nobody who reads German has agreed to | core |
+| [#682](https://github.com/Davmunrey/Trazum/issues/682) | Review the Portuguese dictionary: 36 entries nobody who reads Portuguese has agreed to | core |
+| [#683](https://github.com/Davmunrey/Trazum/issues/683) | Review the Italian dictionary: 36 entries nobody who reads Italian has agreed to | core |
+| [#684](https://github.com/Davmunrey/Trazum/issues/684) | Review the Dutch dictionary: 30 entries nobody who reads Dutch has agreed to | core |
+
+**Waiting on something outside the repository (7).** Each issue says what.
+
+| Issue | What | Area |
+| --- | --- | --- |
+| [#640](https://github.com/Davmunrey/Trazum/issues/640) | Publish trazum-vscode to the VS Code Marketplace | vscode |
+| [#641](https://github.com/Davmunrey/Trazum/issues/641) | Measure the estimator's error against Google, xAI and Moonshot | core |
+| [#643](https://github.com/Davmunrey/Trazum/issues/643) | Front xAI and Moonshot in the gateway once endpoints are confirmed | cli |
+| [#644](https://github.com/Davmunrey/Trazum/issues/644) | Choose and test a model-side optimiser candidate (arc 1.57.0) | core |
+| [#645](https://github.com/Davmunrey/Trazum/issues/645) | Build from-cursor from a real Cursor usage export | cli |
+| [#646](https://github.com/Davmunrey/Trazum/issues/646) | Publish the web playground as a Hugging Face Space | web |
+| [#647](https://github.com/Davmunrey/Trazum/issues/647) | Mark kimi-k2, the Kimi K2.x models and grok-4 retired on evidence | core |
+<!-- open-work:end -->
+
+A blocked issue is not a deferred one. Most of them wait on something only
+the owner holds, a provider key, a publisher account, a real export, and each
+says exactly what; the work itself is specified and ready.
+
 **Historical boundary.** [The 2.4
 plan](docs/plan-2.4.md) was the previous plan, 2.4.0 delivered every
 move of it that did not need something held outside this repository,
