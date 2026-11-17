@@ -11,6 +11,22 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **The command reference documents every command.** `docs/commands.md` had
+  no chapter for six of the 55 commands `trazum --help` lists: `init`,
+  `where`, `schema`, `rules`, `filter` and `models`. Each has one now, with
+  output transcribed from a run, and `command-reference.test.js` holds the
+  page to the CLI's own list: a command with no chapter fails, as does a link
+  on the page to a chapter that is not there. Four commands (`optimize`,
+  `check`, `baseline`, `eval`) stay under chapters named for the job, each
+  held to the chapter that runs it. Found by checking the living docs against
+  the CLI: every command and flag they mention exists, every model id is in
+  the catalogue, and the package READMEs' examples import exported names.
+  `docs/setup.md` and `docs/running.md` pin the Action at 2.7.11 where they
+  said 2.7.9, and `scripts/freshness.mjs` no longer says a stale price warns
+  "every user": it warns on reports that priced that provider. (#673)
+
 ### Fixed
 
 - **A batch call's cache reads on three Google models were billed at half of

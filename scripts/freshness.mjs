@@ -10,8 +10,9 @@
  * kind of failure nobody sees until a stranger does:
  *
  * - **Provider prices.** Each provider's rates were read on a date
- *   (`PROVIDER_REVIEWED`), and past `STALE_PRICING_DAYS` the CLI warns every
- *   user. Overdue here means the warning is already on someone's screen.
+ *   (`PROVIDER_REVIEWED`), and past `STALE_PRICING_DAYS` the CLI warns on
+ *   every report that priced one of that provider's models. Overdue here
+ *   means the warning is already on someone's screen.
  * - **The Action pin.** The docs tell readers to pin a release commit, and the
  *   guard in security.test.js allows one release of lag. Two releases behind
  *   is the state that held every pull request red for three weeks in
