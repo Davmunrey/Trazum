@@ -8,6 +8,8 @@ export interface CodexRecord {
   ts?: string;
   session?: string;
   label?: string;
+  /** Always true: a turn of an agent loop, whose next step waited on the answer. */
+  interactive: true;
   usage: { input_tokens: number; output_tokens: number; cache_read_input_tokens: number };
 }
 
@@ -124,6 +126,7 @@ export function codexRecords(text: string, options: { label?: string } = {}): Co
       ...(typeof row.timestamp === 'string' && Number.isFinite(Date.parse(row.timestamp)) ? { ts: row.timestamp } : {}),
       ...(session === null ? {} : { session }),
       ...(options.label === undefined ? {} : { label: options.label }),
+      interactive: true,
       usage: {
         // Both cached input and reasoning output are subsets, not extra tokens.
         input_tokens: last.input_tokens - last.cached_input_tokens,

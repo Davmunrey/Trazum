@@ -1,0 +1,55 @@
+name: pr-guide
+
+# One comment per pull request that names the next step and who owns it.
+# The script has one owner, Davmunrey/Zolts (scripts/pr_guide.py, tested there
+# in tests/test_pr_guide.py). This workflow fetches it at a pinned commit and
+# refuses it unless its SHA-256 matches, so a change there reaches this
+# repository only when the pin below is moved on purpose.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review, converted_to_draft]
+  pull_request_review:
+    types: [submitted, dismissed]
+  # Refresh when CI finishes. GitHub only runs workflow_run from the default
+  # branch's copy of this file, so this trigger starts working once merged.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: read
+  statuses: read
+
+concurrency:
+  group: pr-guide-${{ github.event.pull_request.number || github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  guide:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    # Fork pull requests get a read-only token; the guide stays quiet there.
+    if: github.event_name == 'workflow_run' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      PR_GUIDE_COMMIT: 9251f8ce3370f6aafb2fcaa0316160466d664f18
+      PR_GUIDE_SHA256: 20ecca2bc2f80c33289caa4e74dd01cef195be01f99caf25aa85a56688f7396b
+    steps:
+      # A guide that cannot run must not turn a pull request red, so neither
+      # step can fail the job; a digest mismatch stops the script from running.
+      - name: Fetch the guide script at its pinned commit
+        id: fetch
+        continue-on-error: true
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/pr_guide.py" \
+            "https://raw.githubusercontent.com/Davmunrey/Zolts/${PR_GUIDE_COMMIT}/scripts/pr_guide.py"
+          echo "${PR_GUIDE_SHA256}  $RUNNER_TEMP/pr_guide.py" | sha256sum --check --strict -
+      - name: Update the guide comment
+        if: steps.fetch.outcome == 'success'
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_GUIDE_SELF: guide
+        run: python3 "$RUNNER_TEMP/pr_guide.py"

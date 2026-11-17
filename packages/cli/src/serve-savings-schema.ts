@@ -34,7 +34,7 @@ export const SAVINGS_SCHEMAS = {
   SavingsPlan: object({
     schemaVersion: { const: 1 }, span: nullable(ref('Window')), pricingLastReviewed: text,
     actions: { type: 'array', items: ref('SavingsAction') }, projectedSavingUsd: amount, measuredStakeUsd: amount, totalUsd: amount,
-    createdAt: text,
+    batchExcludedUsd: amount, createdAt: text,
   }, ['schemaVersion', 'span', 'pricingLastReviewed', 'actions', 'projectedSavingUsd', 'measuredStakeUsd', 'totalUsd']),
   SavingsVerifiedAction: object({
     action: ref('SavingsAction'), outcome: { enum: ['arrived', 'not-arrived', 'cannot-tell'] },

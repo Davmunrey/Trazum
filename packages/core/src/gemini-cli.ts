@@ -28,6 +28,8 @@ export interface GeminiCliRecord {
   ts?: string;
   session?: string;
   label?: string;
+  /** Always true: a turn of an agent loop, whose next step waited on the answer. */
+  interactive: true;
   usage: { input_tokens: number; output_tokens: number; cache_read_input_tokens: number };
 }
 
@@ -176,6 +178,7 @@ export function geminiCliRecords(text: string, options: { label?: string } = {})
       ...(ts === undefined ? {} : { ts }),
       ...(owner === null ? {} : { session: owner }),
       ...(options.label === undefined ? {} : { label: options.label }),
+      interactive: true,
       usage: {
         input_tokens: input - cached + (tool ?? 0),
         output_tokens: output + (thoughts ?? 0) + extraOutput,

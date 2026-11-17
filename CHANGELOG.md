@@ -11,23 +11,6 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-### Added
-
-- **Google's Gemini 4 family and Gemini 3.5 Flash-Lite are priced.** Gemini 4
-  Carbon and Argon at $2/$10 through 2026-11-30 and $4/$20 from 2026-12-01,
-  Gemini 4 Hydrogen at $1.50/$7.50, each reading its cache at 5% of input,
-  with batch at half and implicit caching from 4,096 tokens; Gemini 3.5
-  Flash-Lite at $0.30/$2.50, its cache at 10%. Every figure is from Google's
-  pricing page, the model pages and its caching page, read 2026-11-16. Until
-  now a call to any of them read as unpriced. On 2026-12-01 the introductory
-  price of Carbon and Argon ends, and `pricing-review.test.js` fails that day
-  until it is moved into the rows' history. Google's Flex and Priority
-  tiers are on the page and not in the table: a call on either is priced at
-  the standard rate, and each Gemini 4 row's note says so.
-  `per-request-tiers.test.js` holds the four rows to every figure the page
-  prints, standard, batch and cache, on both sides of 2026-12-01; six faults
-  planted in the rows were each caught.
-
 ### Fixed
 
 - **Google's prices were re-read, and `gemini-2.5-pro` bills at Gemini 3.8
@@ -49,6 +32,72 @@ merged commit with no entry is a change only `git log` remembers.
   price; a call in a log is priced on its own date. Not changed: the Batch tabs
   of 3.1 Pro Preview and both 2.5 models charge the standard cache price, and
   a batch call's cache reads are still billed here at half of it.
+
+## 2.7.10 — 2026-11-17
+
+### Fixed
+
+- **`plan` offered the Batch API to calls that cannot take it.** Two kinds,
+  both measured. Twenty calls that had already run on the Batch API, a $0.07
+  bill at the batch rate, were offered "$0.0350 projected" for batching them:
+  half of a price that was already the half. And a converted Claude Code
+  session was told to "route and batch" every turn of an agent loop, $9.13
+  projected against the example projects' $12.70 bill, on the assumption that
+  "these calls can wait for a batch window". The assumption was printed, so
+  the plan did not lie; it asked a question the log could have answered, and
+  counted the answer into the total before it came. A record can now say
+  `"interactive": true`, meaning something waited on the answer, and
+  `from-claude-code`, `from-codex` and `from-gemini-cli` say it on every
+  line. The batch lever leaves out those calls and the ones already billed at
+  the batch rate, in its own figure and in the combined route-and-batch one,
+  each at its own model's rate. The same projects now read "Route", $7.34
+  projected, and the plan ends by saying how much input and output it left
+  out and why (`batchExcludedUsd` in the document). A route that combines
+  nothing no longer says "combined with batching". **A log that marks nothing
+  is read exactly as before.** The profile's breakdown gains
+  `batchExcludedInputTokens`, `batchExcludedOutputTokens` and
+  `batchExcludedUsd`, and `fieldCoverage` counts `interactive`; a document
+  from before the fields existed reads them as zero. Thirteen faults planted
+  in the lever, the parser, the roll-up, the plan and its renderers were each
+  caught.
+- **The recovery for a release that lost its tag was one step short.**
+  `docs/releasing.md` said that a person pushes the tag and the run it starts
+  creates the release. That run verifies the tagged tree first, and a tree
+  that is days old can fail a test that reads the calendar: 2.7.2's has since
+  2026-11-16, on a promotional price in its last 45 days. The page now says
+  the failed run is expected when the recovery comes late, and names the
+  second step, `backfill-releases` with the version and the commit, which
+  creates the release on the tag once it exists. It also says why the tag
+  itself stays a person's step.
+
+## 2.7.9 — 2026-11-17
+
+### Added
+
+- **Every pull request carries a comment that names its next step and who
+  owns it** (#649). A `pr-guide` workflow keeps one comment per pull request,
+  edited in place: linked issue, draft state, failing checks by name, merge
+  conflicts, review, and one line saying what moves it next. The script is
+  owned by Davmunrey/Zolts and tested there; this repository fetches it at a
+  pinned commit and runs it only if its SHA-256 matches. The workflow uses no
+  third-party action, `pull_request` rather than `pull_request_target`, a
+  least-privilege token, skips forks, and cannot turn a pull request red.
+- **Google's Gemini 4 family and Gemini 3.5 Flash-Lite are priced.** Gemini 4
+  Carbon and Argon at $2/$10 through 2026-11-30 and $4/$20 from 2026-12-01,
+  Gemini 4 Hydrogen at $1.50/$7.50, each reading its cache at 5% of input,
+  with batch at half and implicit caching from 4,096 tokens; Gemini 3.5
+  Flash-Lite at $0.30/$2.50, its cache at 10%. Every figure is from Google's
+  pricing page, the model pages and its caching page, read 2026-11-16. Until
+  now a call to any of them read as unpriced. On 2026-12-01 the introductory
+  price of Carbon and Argon ends, and `pricing-review.test.js` fails that day
+  until it is moved into the rows' history. Google's Flex and Priority
+  tiers are on the page and not in the table: a call on either is priced at
+  the standard rate, and each Gemini 4 row's note says so.
+  `per-request-tiers.test.js` holds the four rows to every figure the page
+  prints, standard, batch and cache, on both sides of 2026-12-01; six faults
+  planted in the rows were each caught.
+
+### Fixed
 
 - **The card for a shared link broke a project's name across two lines.**
   `docs/assets/social-preview.png` shipped in 2.7.8 with

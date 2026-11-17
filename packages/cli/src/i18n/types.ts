@@ -2003,13 +2003,16 @@ export interface CliMessages {
     staked(usd: string): string;
     /** One action line: what to do, to which workload, on which model. */
     action(kind: PlanActionKind, label: string, model: string): string;
-    routeTo(model: string): string;
+    /** Where the calls go. `withBatch` is false when the action only routes: nothing is combined then. */
+    routeTo(model: string, withBatch: boolean): string;
     /** One assumption the log cannot confirm, localized from its typed form. */
     assume(assumption: PlanAssumption): string;
     /** The command that can check the assumption, when one exists. */
     check(command: string): string;
     /** Actions below --min-usd, counted out loud rather than dropped silently. */
     filtered(count: string, minUsd: string, worth: string): string;
+    /** Input and output the batch lever left out, and why. */
+    batchExcluded(usd: string): string;
     footer(): string;
     /** The plan saved as dated JSON — what 1.39's verify will hold it to. */
     wrote(path: string): string;

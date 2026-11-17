@@ -2856,9 +2856,33 @@ last confirmed. The hosted web app carries the OWASP ASVS level 2 work done
 since 2.7.7, and the README opens on what the tool does for its reader. The
 repeated-task evaluation this number had been reserved for did not ship in it.
 
+## 2.7.9 — Gemini 4 priced — released
+
+Google's Gemini 4 family is in the price table, read from Google's pages:
+Carbon and Argon at $2/$10 through 2026-11-30 and $4/$20 after, Hydrogen at
+$1.50/$7.50, each with a cache read at 5% of input, and Gemini 3.5 Flash-Lite
+at $0.30/$2.50. A test holds the four rows to every figure the page prints on
+both sides of the date. The card shown when the repository's link is shared
+is redrawn so no name wraps, and the hosted web app's PostgreSQL driver moves
+to 4.1.1. Google's review date and the rerouting of `gemini-2.5-pro` on
+2026-12-01 are in review and not in this release. The repeated-task evaluation
+this number had been reserved for did not ship in it.
+
+## 2.7.10 — A plan that stops offering a batch nobody can take — released
+
+`plan` offered the Batch API to every slice whose provider sells one, and two
+kinds of call cannot take it: a call already billed at the batch rate, and a
+call something waited on, which every turn of a coding agent is. A record can
+now say `"interactive": true`, the three agent-session converters say it on
+every line, and the batch lever leaves those calls out and says how much it
+left out. On the example projects the projection went from $9.13 to $7.34,
+and on this repository's own sessions from $42.69 to $38.83. A log that marks
+nothing is read as before. The repeated-task evaluation this number had been
+reserved for did not ship in it.
+
 ## Next
 
-**Target: 2.7.9, repeated-task evaluation.**
+**Target: 2.7.11, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,
