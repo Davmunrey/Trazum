@@ -11,7 +11,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **The recovery for a release that lost its tag was one step short.**
+  `docs/releasing.md` said that a person pushes the tag and the run it starts
+  creates the release. That run verifies the tagged tree first, and a tree
+  that is days old can fail a test that reads the calendar: 2.7.2's has since
+  2026-11-16, on a promotional price in its last 45 days. The page now says
+  the failed run is expected when the recovery comes late, and names the
+  second step, `backfill-releases` with the version and the commit, which
+  creates the release on the tag once it exists. It also says why the tag
+  itself stays a person's step.
 
 ## 2.7.9 — 2026-11-17
 
