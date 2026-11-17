@@ -37,8 +37,8 @@ four times understates it in every figure a reader sees.
 
 **The text you receive is masked.** Before any rule runs, the engine replaces
 every code fence, indented code block, inline code span, URL, email address,
-template placeholder (`{{x}}`, `${x}`, `{x}`, `{% %}`) and XML/HTML tag with a
-single private-use Unicode marker. Your
+template placeholder (`{{x}}`, `${x}`, `{x}`, `{% %}`), XML/HTML tag and run of
+text inside quotation marks with a single private-use Unicode marker. Your
 regex cannot match inside them because the characters are not there.
 
 So this is not a hazard you need to design around:
@@ -89,8 +89,17 @@ const yourRule = dropRule('your-new-rule', 'aggressive', YOUR_PHRASES);
 ```
 
 `dropRule` sorts by length so a longer phrase wins over a shorter one it
-contains — `thank you very much` before `thanks` — and tidies the whitespace and
-punctuation left behind. Use it when you can.
+contains — `it is important to note that` before `note that` — and tidies the
+whitespace and punctuation left behind. Use it when you can.
+
+**Use it only for a phrase that is safe to delete wherever it stands.** A phrase
+that takes an object, or that a prompt can be *about*, is not: `thank you` was in
+a `dropRule` list until it turned "Thank you so much for your help with this."
+into "So much for your help with this." and "If the user says thanks, reply
+politely." into "If the user says reply politely." Thanks are now removed only
+as a whole sentence (`removeThanks` in `rules.ts`), and a word that is also an
+ordinary word gets a lookbehind saying where it is the courtesy (`WHERE_ONLY`).
+`courtesy.test.js` is the table of what each of those must and must not touch.
 
 Otherwise, write it out:
 

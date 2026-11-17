@@ -43,7 +43,8 @@ engine removes it reproducibly, for free, with no API key and no round trip.
 
 - 12 rules across two levels (`safe`, `aggressive`).
 - Protection pass: code fences, indented code blocks, inline code, URLs, email
-  addresses, template placeholders and XML/HTML tags are isolated *before* any
+  addresses, template placeholders, XML/HTML tags and text inside quotation marks
+  are isolated *before* any
   rule runs, so no rule can structurally break a prompt.
 - Dependency-free heuristic token estimator. Published at ±15% here, which was a
   design target and not true; measured and made true in 1.9.0.

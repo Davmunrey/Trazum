@@ -519,7 +519,8 @@ export type ProtectionKind =
   | 'url'
   | 'email'
   | 'placeholder'
-  | 'xml-tag';
+  | 'xml-tag'
+  | 'quoted';
 
 /** Optimisation options. */
 export interface OptimizeOptions {

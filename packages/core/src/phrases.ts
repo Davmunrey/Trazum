@@ -184,6 +184,7 @@ export const POLITENESS: readonly string[] = [
   "if you don't mind",
   'if you would be so kind',
   'much appreciated',
+  'many thanks',
 
   // Spanish
   'por favor',
@@ -235,6 +236,139 @@ export const POLITENESS: readonly string[] = [
   'bedankt',
   'dank je',
   'dank u',
+];
+
+/**
+ * The entries of `POLITENESS` that thank somebody, as opposed to softening an
+ * instruction.
+ *
+ * The two were one list and one behaviour, delete the phrase wherever it
+ * stands, and that is right for "please" and wrong for a thanks. A thanks is
+ * rarely a word on its own: it has an object ("thank you **for your help**"),
+ * or it is the thing the prompt is talking about ("if the user says
+ * **thanks**", "start every reply with **Thank you for contacting us**").
+ * Measured on 2026-11-17, at the safe level:
+ *
+ *   Thank you so much for your help with this.  ->  So much for your help with this.
+ *   Tell the customer: thank you for your order.  ->  Tell the customer: for your order.
+ *   If the user says thanks, reply politely.  ->  If the user says reply politely.
+ *   Thanks to the new policy refunds take five days.  ->  To the new policy refunds take five days.
+ *
+ * A fragment, a broken instruction, a changed instruction and a deleted
+ * preposition. So these are removed only as a whole sentence that does nothing
+ * but thank, and left exactly as written anywhere else: `rules.ts`,
+ * `removeThanks`.
+ */
+export const THANKS: readonly string[] = [
+  // English
+  'thanks in advance',
+  'thank you very much',
+  'thank you',
+  'thanks',
+  'much appreciated',
+  'many thanks',
+  // Spanish
+  'muchas gracias',
+  'gracias de antemano',
+  'te lo agradezco',
+  'te agradecería',
+  'gracias',
+  // French
+  'merci beaucoup',
+  "merci d'avance",
+  'merci',
+  'je vous remercie',
+  // German
+  'vielen Dank',
+  'danke im Voraus',
+  'danke',
+  'ich danke Ihnen',
+  // Portuguese
+  'muito obrigado',
+  'muito obrigada',
+  'obrigado',
+  'obrigada',
+  'agradeço desde já',
+  // Italian
+  'grazie mille',
+  'grazie in anticipo',
+  'grazie',
+  'ti ringrazio',
+  // Dutch
+  'hartelijk dank',
+  'bedankt',
+  'dank je',
+  'dank u',
+];
+
+/**
+ * What may follow a thanks and still leave the sentence nothing but a thanks:
+ * how much, and when. "Thank you **so much**", "gracias **de antemano**".
+ */
+export const THANKS_DEGREE: readonly string[] = [
+  // English
+  'so much',
+  'so very much',
+  'very much',
+  'a lot',
+  'again',
+  'in advance',
+  // Spanish
+  'mucho',
+  'de antemano',
+  'de nuevo',
+  // French
+  'beaucoup',
+  "d'avance",
+  'par avance',
+  'infiniment',
+  'encore',
+  // German
+  'vielmals',
+  'im Voraus',
+  'nochmals',
+  // Portuguese
+  'desde já',
+  'antecipadamente',
+  // Italian
+  'mille',
+  'in anticipo',
+  'ancora',
+  // Dutch
+  'alvast',
+  'bij voorbaat',
+  'nogmaals',
+];
+
+/**
+ * The word that introduces what the thanks is for. Deliberately not "to":
+ * "thanks **to** the new policy" is a cause, not a courtesy, and the same goes
+ * for "gracias **a**" and "grazie **a**".
+ */
+export const THANKS_FOR: readonly string[] = [
+  'for', // English
+  'por', // Spanish, Portuguese
+  'pela',
+  'pelo',
+  'pour', // French
+  'für', // German
+  'per', // Italian
+  'voor', // Dutch
+];
+
+/**
+ * A verb that makes "thank you for X ..." a statement about the phrase rather
+ * than a thanks: "Thank you for your order **is** the subject line". Seen
+ * after the thanks, the sentence is left alone.
+ */
+export const THANKS_NOT_A_THANKS: readonly string[] = [
+  'is', 'are', 'was', 'were', 'should', 'must', 'means', 'will', 'can',
+  'es', 'son', 'debe', 'significa',
+  'est', 'sont', 'doit',
+  'ist', 'sind', 'muss', 'soll',
+  'são', 'deve',
+  'sono',
+  'zijn', 'moet',
 ];
 
 /** Filler and throat-clearing with no content. */

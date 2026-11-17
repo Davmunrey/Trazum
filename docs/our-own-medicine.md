@@ -167,7 +167,7 @@ Four chapters later, the scoreboard:
 | Admission | After the arc |
 |---|---|
 | The record is self-reported | **No longer true.** Five defects were found by CodeQL and by nothing here — an outside instrument, narrower than an audit, and the qualification is written beside it |
-| No outcome is recorded for any of it | **Weakened, not overturned.** One outcome is on the record: the deterministic rules recover 0.5% from the only corpus this project owns |
+| No outcome is recorded for any of it | **Weakened, not overturned.** One outcome is on the record: the deterministic rules recover nothing from the only corpus this project owns |
 | This project has no usage log of its own | **Still true, in full** |
 
 **Why the third one stands, and what would have made it fall.** This project
@@ -268,23 +268,38 @@ Measured by running the optimiser on them, at the aggressive level:
 
 | Prompt | Tokens | Recovered |
 |---|---|---|
-| `suggest` | 307 | 4 |
-| `semantic` | 402 | 8 |
+| `suggest` | 307 | 0 |
+| `semantic` | 402 | 0 |
 | `refiner` | 203 | 0 |
 | `example-review` | 313 | 0 |
 
-**1225 tokens**, and this project's own deterministic rules recover **12 of them**
-— under one per cent. Eleven of the 12 rules are inert on all four; the
-recovered tokens come entirely from `emphasis`, which lower-cases shouted words.
+**1225 tokens**, and this project's own deterministic rules recover **0 of them**.
 
-The figures moved in the 1.82 arc and the reason is worth stating, because a
-table that quietly changed would be exactly what this page exists to argue
-against. Nothing was edited in the prompts. The estimator changed: symbol runs
-had been charged one token per two, and every symbol-dense sample in the corpus
-measured under that rule. These four prompts are full of backticks, braces and
-JSON, so their counts went up when the rule was corrected against measurement.
-The recovered figure doubled for the same reason and is still under one per
-cent.
+**This table said 12 until 2026-11-17, and the 12 were damage.** The page
+credited them to `emphasis`, "which lower-cases shouted words". That was never
+checked against the output, and it was wrong. Both prompts show the model the
+JSON they want back, with a placeholder for each value:
+
+    Each element is {"before": "...", "after": "..."}.
+
+and the rules, reading the inside of those quotation marks as prose with
+repeated punctuation, rewrote it to
+
+    Each element is {"before": ".", "after": "."}.
+
+Six placeholders across the two prompts, two tokens each: the whole of the 12.
+The optimiser was not trimming this project's prompts, it was corrupting the
+example in them, and this page published the result as a saving for as long as
+the table stood. Text inside quotation marks is protected now, for exactly this
+reason, and the figure is the one a careful reader would have expected all
+along. The saving this page reported under one per cent is zero.
+
+The token counts in the table moved once before, in the 1.82 arc, and for a
+different reason: nothing was edited in the prompts, the estimator changed.
+Symbol runs had been charged one token per two, and every symbol-dense sample in
+the corpus measured under that rule. These four prompts are full of backticks,
+braces and JSON, so their counts went up when the rule was corrected against
+measurement.
 
 **The honest reading is not "the rules are bad".** These are prompts written to
 be read by a model, edited repeatedly, with no politeness, no hedging and nothing
@@ -294,7 +309,7 @@ nobody could accuse of being adversarial: the deterministic side recovers close
 to nothing from text that was already written carefully.
 
 **What this establishes.** One outcome, recorded rather than inferred: on the only
-corpus this project owns, the feature this product leads with recovers 0.5%. By
+corpus this project owns, the feature this product leads with recovers nothing. By
 the standard set in 1.50.4 that is a real outcome measurement, and it is the first
 one on this page that is about the product working rather than about the process
 around it.

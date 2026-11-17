@@ -175,12 +175,12 @@ Nothing you paste leaves your browser.
 
 <div align="center">
 
-<img src="docs/assets/demo.svg" alt="trazum optimize on a wordy support prompt: 326 tokens down to 214 (-34.4%), $28.00/month saved by the rules, and the lever the report says to start with, a cheaper model, worth $419.93/month, 15 times more" width="670">
+<img src="docs/assets/demo.svg" alt="trazum optimize on a wordy support prompt: 326 tokens down to 202 (-38.0%), $31.00/month saved by the rules, and the lever the report says to start with, a cheaper model, worth $416.99/month, 13 times more" width="670">
 
 *Real output, drawn by a script from
 [`examples/support-prompt.txt`](examples/support-prompt.txt); the picture stops
 after the first lever and says so. Read the first line: the rules recovered
-$28.00 a month, and the lever it names is worth $419.93, **15 times more**. That
+$31.00 a month, and the lever it names is worth $416.99, **13 times more**. That
 gap is the entire argument for this tool.*
 
 </div>
@@ -289,7 +289,7 @@ reported that way rather than dressed up.
 
 **3. And never touches what would break the prompt.** Code fences, indented code
 blocks, inline code, URLs, email addresses, template placeholders (`{{x}}`,
-`${x}`, `{x}`, `{% %}`) and XML/HTML tags are isolated before any rule runs. If a rule ever did make one of those
+`${x}`, `{x}`, `{% %}`), XML/HTML tags and text inside quotation marks are isolated before any rule runs. If a rule ever did make one of those
 disappear, that rule is discarded and the rest carry on.
 
 **Reviewing an aggressive run.** Every rule reports what it actually changed,
