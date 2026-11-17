@@ -11,7 +11,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **Google's prices were re-read, and `gemini-2.5-pro` bills at Gemini 3.8
+  Flash's rates from 2026-12-01.** Google's Gemini API docs moved to
+  aistudio.google.com (the old ai.google.dev pricing address now redirects
+  there), the November review could not reach them, and Google's figures
+  stayed dated 2026-10-10, so the CLI would have warned about every one from
+  2026-11-25. The pricing, deprecations and caching pages and each row's
+  model page were read on 2026-11-16: every price, cache and batch price,
+  storage price, context window and cache minimum matched, and Google's
+  review date moves. What is new is that "effective December 1, 2026"
+  requests to the retired `gemini-2.5-pro` route to Gemini 3.8 Flash and are
+  billed at its rates, $0.75/$3.75 through 2026-12-31 and $1.50/$7.50 after,
+  against $1.25/$10 today. The id now carries both periods, as `grok-4` does,
+  and a log spanning the day is billed both ways. `gemini-2.5-flash` routes
+  to Gemini 3.5 Flash-Lite that day, whose text rates are the ones it already
+  carries. `trazum models` and the MCP `list_models` tool print a row's
+  current figures, so until 2026-12-01 they show 2.5 Pro at 3.8 Flash's
+  price; a call in a log is priced on its own date. Not changed: the Batch tabs
+  of 3.1 Pro Preview and both 2.5 models charge the standard cache price, and
+  a batch call's cache reads are still billed here at half of it.
 
 ## 2.7.10 — 2026-11-17
 
