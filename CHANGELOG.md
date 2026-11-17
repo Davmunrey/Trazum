@@ -11,7 +11,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Changed
+
+- **The npm token's expiry date is recorded: 2027-02-15.** The token that
+  published 2.7.11 was created on 2026-11-17 with ninety days to run, by its
+  owner's account of it; npm shows the date only when a token is made, and
+  this repository cannot ask for it. `.github/release-credentials.json` held
+  `null`, which `scripts/freshness.mjs` could only print as a note. With the
+  date, the weekly scheduled run goes red on `main` from 2027-02-01, fourteen
+  days ahead, and `scripts/prepare-release.mjs` refuses to prepare a release
+  from 2027-02-15. The token is counted as gone from the first minute of that
+  day. Nothing installable changes. (#669)
 
 ## 2.7.11 — 2026-11-17
 
