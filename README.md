@@ -783,7 +783,11 @@ The four you are most likely to want directly:
 ## Roadmap and contributing
 
 [ROADMAP.md](ROADMAP.md) covers what is planned and why, and the history that
-got here, oldest first.
+got here, oldest first. Its
+[open work](ROADMAP.md#open-work-as-issues) is the list of accepted issues,
+and five of them need nothing but somebody who reads French, German,
+Portuguese, Italian or Dutch:
+[good first issues](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 [CONTRIBUTING.md](CONTRIBUTING.md) covers adding a rule or a language, and
 [docs/authoring-rules.md](docs/authoring-rules.md) is the full walkthrough for a
 rule.

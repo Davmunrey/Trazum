@@ -1,0 +1,125 @@
+name: Triage
+
+# The labels nobody should have to remember, and the roadmap's table held to
+# the issues it is made of. What each job decides is in scripts/triage.mjs,
+# as functions that triage.test.js runs without a network; this file only
+# says when, and with which permission.
+#
+# Why it exists: CONTRIBUTING.md says every new issue starts as `needs-triage`.
+# On 2026-11-17 eleven issues were open and none carried a label. The forms
+# apply their labels and none of the eleven had come through a form: they were
+# opened through the API, and a blank issue skips the forms the same way.
+
+on:
+  issues:
+    types: [opened, reopened]
+  # The plain event, never its `_target` variant, which security.test.js bans
+  # everywhere but the CLA gate (and bans by name, which is why it is not
+  # spelled out here). The price is that a pull request from a fork gets a
+  # read-only token and is labelled by a person; one from this repository is
+  # labelled here.
+  pull_request:
+    types: [opened, reopened, synchronize, edited]
+  schedule:
+    # Mondays, after the weekly CI run at 06:41, so the two failures a stale
+    # repository can produce do not arrive in one email.
+    - cron: '23 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: triage-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  intake:
+    name: A new issue starts as needs-triage
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/triage.mjs
+            scripts/pr-readiness.mjs
+          sparse-checkout-cone-mode: false
+
+      # The number and the label names only. The title and the body are a
+      # stranger's text and are never read here.
+      - name: Add needs-triage unless a state is already there
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_LABELS: ${{ toJSON(github.event.issue.labels.*.name) }}
+        run: node scripts/triage.mjs issue
+
+  labels:
+    name: A pull request gets its areas and its issue's kind
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: write
+    steps:
+      # The base commit, so the script that runs with a writable token is the
+      # one already on main and not the one the pull request proposes.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/triage.mjs
+            scripts/pr-readiness.mjs
+          sparse-checkout-cone-mode: false
+
+      - name: Add the labels its paths and its issue give it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          if [ -f scripts/triage.mjs ]; then node scripts/triage.mjs pull-request; else echo "The base commit has no scripts/triage.mjs yet: nothing to run."; fi
+
+  roadmap:
+    name: The roadmap lists the open work the issues describe
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/triage.mjs
+            scripts/pr-readiness.mjs
+            ROADMAP.md
+          sparse-checkout-cone-mode: false
+
+      # A scheduled failure lands on main, where GitHub tells the owner. An
+      # issue accepted or closed since the table was written is exactly that:
+      # the roadmap saying something the issue list no longer does.
+      - name: Compare ROADMAP.md's table with the open issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh issue list --state open --limit 200 --json number,title,labels > "$RUNNER_TEMP/issues.json"
+          node scripts/triage.mjs roadmap "$RUNNER_TEMP/issues.json" --check

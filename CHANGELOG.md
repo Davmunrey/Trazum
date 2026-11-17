@@ -13,6 +13,30 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Triage that happens whatever opened the issue, and a roadmap made of the
+  issues.** `CONTRIBUTING.md` said every new issue starts as `needs-triage`.
+  On 2026-11-17 eleven issues were open and none carried a label: the forms
+  apply theirs, and none of the eleven had come through a form. The `Triage`
+  workflow now gives every new issue a state, and gives a pull request from
+  this repository an area for each package its paths touch and the kind of the
+  issue it closes; it only adds, so a label a person changed stays changed.
+  New labels: `blocked`, for work that is accepted and waits on something held
+  outside the repository, and `area:core`, `area:cli`, `area:mcp`, `area:web`,
+  `area:action` and `area:vscode`. The open issues are triaged: seven of the
+  ten backlog items turned out to be waiting on a key, an account or an export
+  only the owner holds, and say so now. `ROADMAP.md` gains "Open work, as
+  issues", a table of the accepted and blocked issues drawn by
+  `node scripts/triage.mjs roadmap`; the weekly run fails when the page and the
+  issue list disagree. `CONTRIBUTING.md` gains a "Review" section, what a
+  review here looks for and how a machine's finding is handled, and
+  `.coderabbit.yaml` configures a review bot that is free on public
+  repositories: it is told those same questions, reviews drafts because that
+  is the state a pull request is reviewed in here, and has every feature that
+  writes to the repository switched off. It does nothing until the owner
+  installs the app. Five issues are open for a first contribution: the
+  French, German, Portuguese, Italian and Dutch dictionaries each need one
+  afternoon from somebody who reads the language (#680 to #684). (#679)
+
 - **The command reference documents every command.** `docs/commands.md` had
   no chapter for six of the 55 commands `trazum --help` lists: `init`,
   `where`, `schema`, `rules`, `filter` and `models`. Each has one now, with
