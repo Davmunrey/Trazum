@@ -165,7 +165,7 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
         reader types commands read as another form. A terminal is dark — that
         is its use scene, not a preference — and this repository already draws
         one, in `docs/assets/demo.svg` at the top of the README. Same window,
-        same mark, same palette, so the thing the README promises and the thing
+        same wordmark, same palette, so the thing the README promises and the thing
         the page delivers are recognisably the same object.
 
         The colours are the dark theme's own tokens, applied in both schemes on

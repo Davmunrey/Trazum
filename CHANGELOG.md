@@ -27,7 +27,49 @@ merged commit with no entry is a change only `git log` remembers.
   said 2.7.9, and `scripts/freshness.mjs` no longer says a stale price warns
   "every user": it warns on reports that priced that provider. (#673)
 
+- **The web app answers for `/favicon.ico`, an Apple touch icon and a web
+  manifest.** Measured on the deployed app on 2026-11-17, each of the three
+  answered 404 and the page carried one icon tag, to `icon.svg`: a client that
+  asks for `/favicon.ico` without reading the page got nothing, and a phone's
+  home screen got a screenshot. The app now ships `favicon.ico` (16, 32 and
+  48 pixels), a 180-pixel touch icon and a manifest with 192 and 512-pixel
+  icons and a maskable one, all of them the T of `icon.svg`, written by
+  `npm run draw:icon` and held byte for byte by `brand.test.js`. The manifest
+  declares `display: browser`: it names and draws a shortcut and does not
+  claim an installed app. (#675)
+
 ### Fixed
+
+- **The README's pictures show what the CLI prints, in the product's own
+  identity.** `docs/assets/demo.svg` was typed by hand under a comment calling
+  it a transcript, for a prompt that was in no directory of the repository.
+  Its arithmetic was held to the price table and stayed right; the report
+  around it moved on. On 2026-11-17 the CLI opened with its "Start here" line
+  where the picture closed with it, suggested Claude Haiku 5.5 where the
+  picture named Haiku 4.5, and assumed 300 output tokens where the picture
+  said 500. It is now drawn by `npm run draw:demo` from a run on
+  `examples/support-prompt.txt`, shows the first 26 of the report's 51 lines
+  and says so in the picture, and `demo-image.test.js` fails when the file is
+  not that output. The README's figures follow: 326 tokens down to 214, $28.00
+  a month saved by the rules, and a first lever worth $419.93, 15 times more.
+  The same picture separated its columns with plain spaces, which an SVG shown
+  through `<img>` collapses, so GitHub drew the transcript with its
+  indentation and alignment gone; both transcripts now write no-break spaces
+  and are as wide as their longest line. Both are coloured by the escape codes
+  the CLI emits rather than by guessing from the shape of a line: the bill's
+  share bars and its subscription caveat are drawn the way a terminal shows
+  them. And the three pictures, with the editor extension's icon, were still
+  in the palette and the mark the product had before `DESIGN.md` settled on
+  acid yellow and a plain T, so the first screen of the repository, the
+  editor's listing and the browser tab showed different products. All of them
+  now take their colours and the T from `scripts/brand.mjs`, which
+  `brand.test.js` holds to the web app's `globals.css` and `icon.svg`.
+  `docs/setup.md` shows the web app from a production build, in the light or
+  the dark theme to match the reader's; the previous screenshot was taken from
+  a development server and had the framework's badge in its corner. The
+  example prompt is one this repository's own gate reads, so
+  `trazum.baseline.json` is re-recorded with it: three prompts, 877 tokens.
+  (#675)
 
 - **A batch call's cache reads on three Google models were billed at half of
   what Google charges.** A batch call is priced at the row's batch ratio, and

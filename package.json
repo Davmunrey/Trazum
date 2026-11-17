@@ -28,6 +28,8 @@
     "trazum": "node packages/cli/dist/index.js",
     "test:action": "node --test action/test/*.test.mjs",
     "draw:architecture": "node scripts/draw-architecture.mjs",
+    "draw:bill": "node scripts/draw-bill.mjs",
+    "draw:demo": "node scripts/draw-demo.mjs",
     "measure:tokens": "node scripts/measure-token-band.mjs",
     "check:models": "node scripts/check-model-availability.mjs",
     "measure:safety": "node scripts/measure-rule-safety.mjs",

@@ -39,6 +39,12 @@ Self-hosted Space Grotesk Variable for wordmark, headings and interface. This re
 
 The complete Trazum name leads in application, marketing, terminal and loading screen. A plain T is used only where the full wordmark cannot fit, such as the collapsed rail and favicon. No standalone abstract symbol.
 
+## Outside the web app
+
+The README's three pictures, the extension's icon and the web app's icon files are drawn by scripts, and all of them take their colours and the T from `scripts/brand.mjs`. That file holds no value of its own: `brand.test.js` fails when one of its colours is not in `globals.css`, when its T is not `icon.svg`'s, or when a picture carries a colour it does not name. The two terminal pictures use the dark tokens in both schemes, as the Playground does, and colour each line the way the CLI colours it; the theme maps the CLI's green, yellow and red to the dark theme's good, caution and error, and its cyan to the acid fill.
+
+Icons: `favicon.ico` (16, 32, 48), a 180px Apple touch icon, 192px and 512px manifest icons and a 512px maskable one. The two that a device cuts to its own shape are full-bleed, with no border to slice through.
+
 ## Layout and controls
 
 Desktop rail: 252px, collapsible to 72px. Below 1024px: existing accessible drawer and compact brand bar. Task headings range from 38px to 56px. Strong 2px borders identify working regions; thinner rules separate data rows. No rounded card language. Cards inside cards reduce to section rules and transparent backgrounds.

@@ -361,10 +361,16 @@ broken — which is exactly when somebody is asking.
 ### Web
 
 <div align="center">
-  <img src="assets/web-dashboard.jpg" alt="Trazum's acid neobrutalist dashboard in Spanish, showing synthetic usage: 12 recorded calls, 6 priced calls and a catalogue-priced subtotal, with report navigation and coverage caveats." width="820">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/web-dark.png">
+    <img src="assets/web-light.png" alt="Trazum's bill page reading the two illustrative projects in examples/claude-projects: $12.70 of catalogue-priced spend across 126 recorded calls, all of them priced, with the spend by day and the first opportunity, whether caching paid for itself." width="820">
+  </picture>
 </div>
 
-*Synthetic demonstration data. This screenshot is not a customer bill.*
+*Illustrative data from [`examples/claude-projects`](../examples/claude-projects),
+the same two projects as the bill at the top of the README. Not a customer bill.
+Taken from a production build, in the light theme and the dark one; you see the
+one that matches yours.*
 
 ```bash
 npm run build:web

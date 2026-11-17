@@ -58,6 +58,9 @@ describe('the baseline still describes the tree', () => {
     assert.deepEqual(recorded, [
       'examples/sample-prompt.en.txt',
       'examples/sample-prompt.es.txt',
+      // The wordy prompt `docs/assets/demo.svg` is drawn from. Deliberately
+      // unoptimised: it is what the README's picture shortens.
+      'examples/support-prompt.txt',
     ]);
   });
 

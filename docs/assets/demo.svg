@@ -1,74 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="546" viewBox="0 0 760 546" role="img" aria-label="trazum optimize run: 238 tokens down to 142, minus 40.3 percent, saving 24 dollars a month — and an advisory worth 22 times the trim">
+<svg xmlns="http://www.w3.org/2000/svg" width="670" height="687" viewBox="0 0 670 687" role="img" aria-label="trazum optimize on a wordy support prompt: 326 tokens down to 214, $28.00 a month saved by the rules, and the lever the report says to start with">
   <!--
-    A transcript, not a mock-up. Every line below is real output from
-    `trazum optimize` on a wordy support prompt at 50,000 calls a month —
-    figures included, down to the closing line admitting an advisory is worth
-    22× what the rules saved. If the report format changes, re-run and
-    re-transcribe rather than editing numbers here: a demo with invented
-    output is a claim the repository never made. (The first draft of this file
-    contained exactly one invented advisory figure, and the comment you are
-    reading is why it was caught.)
-
-    The palette was GitHub's — #0d1117 on #161b22 with their greens and ambers
-    — which put another product's identity on the one picture at the top of
-    this repository's README. It wears Trazum's dark tokens now. **Colours
-    only: not one glyph, figure or line of the transcript moved**, which is the
-    only kind of edit this file admits without a re-run.
+    Drawn by scripts/draw-demo.mjs from what the command in the window
+    prints for examples/support-prompt.txt, in English. Do not edit: redraw.
+    The suite fails when this stops being that output. The picture stops
+    after the first lever and its last bar says how much of the report that
+    is. (An XML comment cannot hold two hyphens in a row, which is why the
+    command is not spelled out here.)
   -->
-  <defs>
-    <clipPath id="window"><rect x="10" y="8" width="740" height="530" rx="12"/></clipPath>
-  </defs>
-
-  <!-- window -->
-  <rect x="10" y="8" width="740" height="530" rx="12" fill="#171512" stroke="#363329" stroke-width="1"/>
-  <g clip-path="url(#window)">
-    <rect x="10" y="8" width="740" height="38" fill="#1e1c18"/>
-    <line x1="10" y1="46" x2="750" y2="46" stroke="#363329" stroke-width="1"/>
+  <rect x="1" y="1" width="668" height="685" fill="#1c211b" stroke="#67715c" stroke-width="2"/>
+  <rect x="2" y="2" width="666" height="40" fill="#242a21"/>
+  <line x1="2" y1="42" x2="668" y2="42" stroke="#67715c" stroke-width="1"/>
+  <g transform="translate(14 11) scale(0.55)"><path fill="#dce94d" stroke="#20231e" stroke-width="3" d="M1.5 1.5h37v37h-37z"/><path fill="#20231e" d="M9 10h22v6h-8v15h-6V16H9z"/></g>
+  <text x="46" y="28" font-family="'Space Grotesk',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" font-weight="700" letter-spacing="-0.4" fill="#f0f1e5">Trazum</text>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13">
+    <text x="22" y="72"><tspan fill="#dce94d" font-weight="bold">$</tspan><tspan fill="#f0f1e5">&#160;trazum&#160;optimize&#160;examples/support-prompt.txt&#160;--calls&#160;50000&#160;--cost</tspan></text>
+    <text x="22" y="104"><tspan fill="#f0f1e5" font-weight="bold">Start&#160;here:</tspan></text>
+    <text x="22" y="125"><tspan fill="#f0f1e5">&#160;&#160;</tspan><tspan fill="#c0c6af">"This&#160;task&#160;may&#160;not&#160;need&#160;Claude&#160;Opus&#160;5",&#160;$419.93/month,&#160;15×&#160;what&#160;the&#160;rules</tspan></text>
+    <text x="22" y="146"><tspan fill="#c0c6af">&#160;&#160;saved.</tspan></text>
+    <text x="22" y="188"><tspan fill="#f0f1e5" font-weight="bold">Input&#160;tokens</tspan></text>
+    <text x="22" y="209"><tspan fill="#f0f1e5">&#160;&#160;326&#160;→&#160;</tspan><tspan fill="#6fc99a">214</tspan><tspan fill="#f0f1e5">&#160;&#160;&#160;</tspan><tspan fill="#f0f1e5" font-weight="bold">-34.4%</tspan><tspan fill="#c0c6af">&#160;(estimated,&#160;±6%)</tspan></text>
+    <text x="22" y="251"><tspan fill="#f0f1e5" font-weight="bold">Rules&#160;applied</tspan></text>
+    <text x="22" y="272"><tspan fill="#f0f1e5">&#160;&#160;</tspan><tspan fill="#c0c6af">[safe]</tspan><tspan fill="#f0f1e5">&#160;Repeated&#160;paragraphs&#160;</tspan><tspan fill="#c0c6af">(1×,&#160;~72&#160;tokens)</tspan></text>
+    <text x="22" y="293"><tspan fill="#f0f1e5">&#160;&#160;</tspan><tspan fill="#c0c6af">[safe]</tspan><tspan fill="#f0f1e5">&#160;Wordy&#160;phrasing&#160;</tspan><tspan fill="#c0c6af">(2×,&#160;~6&#160;tokens)</tspan></text>
+    <text x="22" y="314"><tspan fill="#f0f1e5">&#160;&#160;</tspan><tspan fill="#c0c6af">[safe]</tspan><tspan fill="#f0f1e5">&#160;Politeness&#160;formulas&#160;</tspan><tspan fill="#c0c6af">(8×,&#160;~22&#160;tokens)</tspan></text>
+    <text x="22" y="335"><tspan fill="#f0f1e5">&#160;&#160;</tspan><tspan fill="#c0c6af">[safe]</tspan><tspan fill="#f0f1e5">&#160;Filler&#160;and&#160;throat-clearing&#160;</tspan><tspan fill="#c0c6af">(2×,&#160;~11&#160;tokens)</tspan></text>
+    <text x="22" y="377"><tspan fill="#f0f1e5" font-weight="bold">Cost&#160;with&#160;Claude&#160;Opus&#160;5</tspan></text>
+    <text x="22" y="398"><tspan fill="#f0f1e5">&#160;&#160;50,000&#160;calls/month&#160;·&#160;300&#160;output&#160;tokens&#160;per&#160;call</tspan></text>
+    <text x="22" y="419"><tspan fill="#f0f1e5">&#160;&#160;$456.50&#160;→&#160;</tspan><tspan fill="#6fc99a">$428.50</tspan><tspan fill="#f0f1e5">&#160;&#160;&#160;</tspan><tspan fill="#f0f1e5" font-weight="bold">saving&#160;$28.00/month&#160;(6.1%)</tspan></text>
+    <text x="22" y="461"><tspan fill="#f0f1e5" font-weight="bold">Beyond&#160;shortening&#160;the&#160;prompt</tspan></text>
+    <text x="22" y="482"><tspan fill="#f0f1e5">&#160;&#160;</tspan><tspan fill="#dce94d">→</tspan><tspan fill="#f0f1e5">&#160;</tspan><tspan fill="#6fc99a">$419.93</tspan><tspan fill="#f0f1e5">&#160;&#160;</tspan><tspan fill="#f0f1e5" font-weight="bold">This&#160;task&#160;may&#160;not&#160;need&#160;Claude&#160;Opus&#160;5</tspan></text>
+    <text x="22" y="503"><tspan fill="#f0f1e5">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;</tspan><tspan fill="#c0c6af">By&#160;length&#160;and&#160;vocabulary&#160;the&#160;prompt&#160;looks&#160;like&#160;"haiku"</tspan></text>
+    <text x="22" y="524"><tspan fill="#c0c6af">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;complexity.&#160;On&#160;Claude&#160;Haiku&#160;5.5&#160;you&#160;would&#160;go&#160;from&#160;$428.50&#160;to</tspan></text>
+    <text x="22" y="545"><tspan fill="#c0c6af">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;$8.57&#160;per&#160;month.&#160;This&#160;is&#160;a&#160;keyword&#160;heuristic,&#160;not&#160;a&#160;judgement</tspan></text>
+    <text x="22" y="566"><tspan fill="#c0c6af">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;about&#160;answer&#160;quality.&#160;Measure&#160;it&#160;before&#160;switching&#160;in&#160;production:</tspan></text>
+    <text x="22" y="587"><tspan fill="#c0c6af">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;`trazum&#160;route&#160;&lt;log.jsonl&gt;&#160;--prompt-file&#160;&lt;prompt&gt;&#160;--cases&#160;&lt;cases&gt;</tspan></text>
+    <text x="22" y="608"><tspan fill="#c0c6af">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;--yes`&#160;sends&#160;the&#160;same&#160;cases&#160;to&#160;both&#160;models&#160;and&#160;reports&#160;whether</tspan></text>
+    <text x="22" y="629"><tspan fill="#c0c6af">&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;the&#160;cheaper&#160;one&#160;still&#160;does&#160;the&#160;job.</tspan></text>
   </g>
-  <!--
-    The window's mark, not macOS's three lights. The traffic lights are another
-    product's chrome worn as a costume; this is the same ledger-shortening mark
-    the app ships as its favicon, so the terminal in the README is recognisably
-    Trazum's.
-  -->
-  <g transform="translate(26 15)">
-    <rect width="24" height="24" rx="5.5" fill="#b0522f"/>
-    <g stroke-width="2" stroke-linecap="round">
-      <path d="M5.5 7h13.5" stroke="#fff"/>
-      <path d="M5.5 12h9.5" stroke="#fff" opacity=".45"/>
-      <path d="M5.5 12h6" stroke="#fff"/>
-      <path d="M5.5 17h6" stroke="#fff" opacity=".45"/>
-      <path d="M5.5 17h3.5" stroke="#fff"/>
-    </g>
-  </g>
-  <text x="380" y="31" text-anchor="middle" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="12" fill="#a8a495">trazum</text>
-
-  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5">
-    <text x="34" y="74" fill="#a8a495">$ <tspan fill="#efece4">trazum optimize support-prompt.txt --calls 50000 --cost</tspan></text>
-
-    <text x="34" y="106" fill="#efece4" font-weight="bold">Input tokens</text>
-    <text x="34" y="128" fill="#efece4">  238 → <tspan fill="#6fc99a" font-weight="bold">142</tspan>   <tspan fill="#6fc99a" font-weight="bold">-40.3%</tspan> <tspan fill="#a8a495">(estimated, ±6%)</tspan></text>
-
-    <text x="34" y="160" fill="#efece4" font-weight="bold">Rules applied</text>
-    <text x="34" y="182" fill="#a8a495">  [safe] <tspan fill="#efece4">Repeated paragraphs</tspan>          (1×, ~60 tokens)</text>
-    <text x="34" y="204" fill="#a8a495">  [safe] <tspan fill="#efece4">Wordy phrasing</tspan>               (2×, ~7 tokens)</text>
-    <text x="34" y="226" fill="#a8a495">  [safe] <tspan fill="#efece4">Politeness formulas</tspan>          (8×, ~20 tokens)</text>
-    <text x="34" y="248" fill="#a8a495">  [safe] <tspan fill="#efece4">Filler and throat-clearing</tspan>   (1×, ~8 tokens)</text>
-
-    <text x="34" y="280" fill="#efece4" font-weight="bold">Cost with Claude Opus 5</text>
-    <text x="34" y="302" fill="#a8a495">  50,000 calls/month · 500 output tokens per call</text>
-    <text x="34" y="324" fill="#efece4">  $684.50 → $660.50   <tspan fill="#6fc99a" font-weight="bold">saving $24.00/month</tspan> <tspan fill="#a8a495">(3.5%)</tspan></text>
-
-    <text x="34" y="356" fill="#efece4" font-weight="bold">Beyond shortening the prompt</text>
-    <text x="34" y="378" fill="#d6ad63">  → $528.40</text>
-    <text x="130" y="378" fill="#efece4">This task may not need Claude Opus 5</text>
-    <text x="130" y="398" fill="#a8a495">on Claude Haiku 4.5 you would go from $660.50 to $132.10 per month</text>
-    <text x="34" y="426" fill="#d6ad63">  → $330.25</text>
-    <text x="130" y="426" fill="#efece4">If the work tolerates latency, use the Batch API</text>
-    <text x="34" y="454" fill="#a8a495">  ·</text>
-    <text x="130" y="454" fill="#efece4">Your cost is in the output, not the prompt</text>
-    <text x="130" y="474" fill="#a8a495">output accounts for $625.00 per month against $35.50 of input</text>
-
-    <text x="34" y="510" fill="#efece4">  Start here: <tspan fill="#d6ad63">"This task may not need Claude Opus 5"</tspan> — $528.40/month, <tspan fill="#6fc99a" font-weight="bold">22×</tspan> what the rules saved.</text>
-  </g>
+  <rect x="2" y="651" width="666" height="34" fill="#242a21"/>
+  <line x1="2" y1="651" x2="668" y2="651" stroke="#67715c" stroke-width="1"/>
+  <text x="22" y="673" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="11.5" fill="#c0c6af">The&#160;first&#160;26&#160;of&#160;the&#160;51&#160;lines&#160;this&#160;prints.&#160;The&#160;other&#160;levers&#160;follow.</text>
 </svg>

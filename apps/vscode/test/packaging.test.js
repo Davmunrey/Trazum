@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
 import { SPAWN_ENV } from '../../../packages/cli/test/env.mjs';
-import { CELLS, FILLED, PALETTE, SIZE, png } from '../../../scripts/draw-icon.mjs';
+import { markPng } from '../../../scripts/brand.mjs';
+import { EXTENSION_SIZE, ICONS } from '../../../scripts/draw-icon.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -91,12 +92,12 @@ describe('the icon is generated, and is what the generator produces', () => {
     assert.ok(existsSync(path));
   });
 
-  it('is a 128×128 PNG, which is what the marketplace asks for', () => {
+  it('is a square PNG with at least the 128 pixels the marketplace lays out', () => {
     const bytes = readFileSync(path);
     assert.deepEqual([...bytes.subarray(0, 8)], [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-    assert.equal(bytes.readUInt32BE(16), SIZE);
-    assert.equal(bytes.readUInt32BE(20), SIZE);
-    assert.equal(SIZE, 128);
+    assert.equal(bytes.readUInt32BE(16), EXTENSION_SIZE);
+    assert.equal(bytes.readUInt32BE(20), EXTENSION_SIZE);
+    assert.ok(EXTENSION_SIZE >= 128, 'smaller than the listing draws it');
   });
 
   it('is byte-identical to a fresh run, so it was generated and not edited', () => {
@@ -105,35 +106,31 @@ describe('the icon is generated, and is what the generator produces', () => {
       picture, for the same reason: a binary somebody touched by hand is a
       binary nobody can review or reproduce.
     */
-    assert.deepEqual(readFileSync(path), png());
+    assert.deepEqual(readFileSync(path), markPng(EXTENSION_SIZE));
   });
 
   it('and the generator is reachable from a script somebody can run', () => {
     const scripts = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')).scripts;
     assert.ok(scripts['draw:icon'], 'no npm script regenerates it');
+    assert.ok(
+      ICONS.some((icon) => join(repoRoot, icon.path) === path),
+      'the script behind draw:icon does not write the file the manifest names',
+    );
   });
 
-  it('draws the product’s own proportion bar, in the product’s own palette', () => {
-    assert.ok(FILLED > 0 && FILLED < CELLS, 'a bar that is empty or full is not a bar');
-
+  it('is the same mark the web app ships, not one of its own', () => {
     /*
-      Held against the file the generator says it took the colours from, not
-      against a copy of them written here. `draw-icon.mjs` claims the palette is
-      *"the product's own, taken from `docs/assets/demo.svg`"*, and until this
-      assertion existed that sentence was a comment beside a hardcoded triple in
-      the guard — two copies of the same number, agreeing with each other and
-      with nothing. A colour changed in the demo now changes the icon or fails
-      here; it can no longer do neither.
+      This icon used to be a proportion bar in the palette the product had
+      before `DESIGN.md` settled on acid and a plain T, so the editor's listing
+      and the browser tab showed two different products. Both now come out of
+      `scripts/brand.mjs`, and `brand.test.js` holds that file to the web app's
+      `icon.svg` and `globals.css`. What is left to say here is that this icon
+      is the bordered mark at the extension's size, which the byte comparison
+      above already proves, and that no second generator has grown beside it.
     */
-    const demo = readFileSync(join(repoRoot, 'docs', 'assets', 'demo.svg'), 'utf8');
-    const hex = ([r, g, b]) =>
-      `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
-    for (const [role, channels] of Object.entries(PALETTE)) {
-      assert.ok(
-        demo.toLowerCase().includes(hex(channels)),
-        `the icon's ${role} colour ${hex(channels)} is in no other surface of this product`,
-      );
-    }
+    const generator = readFileSync(join(repoRoot, 'scripts', 'draw-icon.mjs'), 'utf8');
+    assert.doesNotMatch(generator, /#[0-9a-fA-F]{6}\b/, 'draw-icon.mjs carries a colour of its own');
+    assert.match(generator, /from '\.\/brand\.mjs'/, 'draw-icon.mjs no longer draws from brand.mjs');
   });
 });
 

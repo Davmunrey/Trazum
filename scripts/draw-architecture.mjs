@@ -36,27 +36,30 @@ import { readFileSync, mkdirSync, writeFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { ACID, DARK, MONO } from './brand.mjs';
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
- * The palette, value for value from `docs/assets/demo.svg`.
+ * The palette is the product's, from `scripts/brand.mjs`.
  *
- * Dark, and that is a decision rather than a default: the demo image directly
- * above this one in the README is a terminal transcript on `#171512`, and two
- * images of different temperature stacked on a front page read as two projects.
+ * Dark, and that is a decision rather than a default: the picture directly
+ * above this one in the README is a terminal transcript on the same ground,
+ * and two images of different temperature stacked on a front page read as two
+ * projects. Acid marks the two things the picture is about, the core and the
+ * line nothing crosses; green marks what is allowed to leave.
  */
 const C = {
-  bg: '#171512',
-  panel: '#1e1c18',
-  rule: '#302c26',
-  ink: '#efece4',
-  soft: '#a8a495',
-  accent: '#b0522f',
-  keep: '#6fc99a',
-  warn: '#d6ad63',
+  bg: DARK.canvas,
+  panel: DARK.raised,
+  rule: DARK.rule,
+  ink: DARK.text,
+  soft: DARK.secondary,
+  accent: ACID,
+  wash: DARK.wash,
+  keep: DARK.good,
+  warn: DARK.warn,
 };
-
-const MONO = 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
 
 /** Publishable workspaces, derived rather than typed, so the picture cannot lag. */
 function publishable() {
@@ -82,7 +85,7 @@ const text = (x, y, value, { size = 12, fill = C.ink, weight = 400, anchor = 'st
   + `font-weight="${weight}" text-anchor="${anchor}">${esc(value)}</text>`;
 
 const box = (x, y, w, h, { stroke = C.rule, fill = C.panel, dash = null } = {}) =>
-  `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="${fill}" stroke="${stroke}"`
+  `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}" stroke="${stroke}"`
   + `${dash === null ? '' : ` stroke-dasharray="${dash}"`} stroke-width="1"/>`;
 
 const arrow = (x1, y, x2, colour) =>
@@ -97,7 +100,7 @@ function draw() {
 
   out.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img">`);
   out.push(`<title>What goes in, what is computed on your machine, and what leaves</title>`);
-  out.push(`<rect width="${W}" height="${H}" rx="10" fill="${C.bg}"/>`);
+  out.push(`<rect x="1" y="1" width="${W - 2}" height="${H - 2}" fill="${C.bg}" stroke="${C.rule}" stroke-width="2"/>`);
 
   out.push(text(28, 36, 'What goes in, what is computed here, and what comes out', { size: 13.5, weight: 700 }));
   out.push(text(28, 55, 'Every figure is computed on the machine that runs it.', { size: 10.5, fill: C.soft }));
@@ -113,7 +116,7 @@ function draw() {
   out.push(text(42, 213, 'LangSmith · Claude Code', { size: 9, fill: C.soft }));
 
   /* ---- centre: the machine ---- */
-  out.push(box(248, 78, 326, 262, { fill: '#1a1815' }));
+  out.push(box(248, 78, 326, 262, { fill: C.bg }));
   out.push(text(264, 97, 'THIS MACHINE · OFFLINE · DETERMINISTIC', { size: 9, fill: C.soft }));
 
   out.push(box(264, 108, 294, 48, { stroke: C.accent }));
@@ -166,10 +169,10 @@ function draw() {
   out.push(arrow(196, 194, 248, C.accent));
 
   /* ---- what the line stops, which is the whole point ---- */
-  out.push(box(28, 362, 824, 56, { stroke: C.accent, fill: '#20150f', dash: '4 3' }));
+  out.push(box(28, 362, 824, 56, { stroke: C.accent, fill: C.wash, dash: '4 3' }));
   out.push(text(44, 383, 'Never crosses the line', { size: 11, fill: C.accent, weight: 700 }));
   out.push(text(44, 400, 'the prompt text · the model’s answer · file paths · branch names · credentials', { size: 10.5 }));
-  out.push(text(44, 414, 'Not redacted, not hashed — absent. receipt-redaction.test.js plants all five and fails if any appears.', { size: 8.5, fill: C.soft }));
+  out.push(text(44, 414, 'Not redacted, not hashed: absent. receipt-redaction.test.js plants all five and fails if any appears.', { size: 8.5, fill: C.soft }));
 
   out.push('</svg>');
   return `${out.join('\n')}\n`;

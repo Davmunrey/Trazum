@@ -30,7 +30,7 @@ npx @trazum/cli bill
 
 <div align="center">
 
-<img src="docs/assets/bill.svg" alt="trazum bill on two illustrative Claude Code projects: $12.70 across 126 priced calls, a table by project and one by model with each share as a bar, Claude Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 each priced at its own rate" width="690">
+<img src="docs/assets/bill.svg" alt="trazum bill on two illustrative Claude Code projects: $12.70 across 126 priced calls, a table by project and one by model with each share as a bar, Claude Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 each priced at its own rate" width="650">
 
 *Illustrative data from [`examples/claude-projects`](examples/claude-projects),
 not a customer result. Generated from the CLI output.*
@@ -175,10 +175,12 @@ Nothing you paste leaves your browser.
 
 <div align="center">
 
-<img src="docs/assets/demo.svg" alt="trazum optimize on a wordy support prompt: 238 tokens down to 142 (-40.3%), $24.00/month saved by the rules, and an advisory pointing at $528.40/month, 22 times more" width="760">
+<img src="docs/assets/demo.svg" alt="trazum optimize on a wordy support prompt: 326 tokens down to 214 (-34.4%), $28.00/month saved by the rules, and the lever the report says to start with, a cheaper model, worth $419.93/month, 15 times more" width="670">
 
-*Real output, transcribed. Read the last two lines: the rules recovered $24.00
-a month, and the advisory above them is worth $528.40, **22 times more**. That
+*Real output, drawn by a script from
+[`examples/support-prompt.txt`](examples/support-prompt.txt); the picture stops
+after the first lever and says so. Read the first line: the rules recovered
+$28.00 a month, and the lever it names is worth $419.93, **15 times more**. That
 gap is the entire argument for this tool.*
 
 </div>
@@ -712,7 +714,10 @@ packages/tokenizer-openai/   optional exact counter, and the only dependency her
 apps/web/          Next.js (App Router) — Optimise, Compare, Your bill, Library
 action/            the packaged GitHub Action that comments on pull requests
 scripts/           release notes, the token-band harness, rollback recovery
+  brand.mjs          the palette and the T, once, for everything drawn outside the web app
   draw-architecture.mjs  redraws the picture above from the workspace globs
+  draw-bill.mjs, draw-demo.mjs  redraw the two terminal pictures from what the CLI prints
+  draw-icon.mjs      writes every icon: the extension's, and the web app's favicon set
   build-wiki.mjs     rebuilds wiki/ from this file, verbatim, section by section
 wiki/              the GitHub wiki, generated — every page is a section of a
                    document above, so there is nothing here to keep in sync
