@@ -2896,9 +2896,28 @@ Issues gained forms and labels, and every pull request is checked for its
 issue and for where its changelog line landed. The repeated-task evaluation
 this number had been reserved for did not ship in it.
 
+## 2.7.12 — A safe level that leaves a thanks, a quotation and three ordinary words alone — released
+
+Found by drawing a picture. The README's `optimize` transcript had been typed
+by hand and no longer matched the tool, so it was regenerated from a real run,
+and the shortened prompt came out containing "So much for your help with
+this." The `politeness` rule had been deleting each courtesy phrase wherever it
+stood: a thanks out of the sentence it belonged to, "kindly" out of "speak
+kindly", and all of it inside quotation marks, at the level that promises not
+to change what a prompt asks for. A thanks is now removed only as a whole
+sentence, three words that are also ordinary words are removed only where they
+are the courtesy, and quoted text is protected like code. The same protection
+showed that the 12 tokens this project said its rules recover from its own
+prompts were the rules damaging an example in them; the figure is 0. Google's
+Batch tabs for three models charge the standard cache price and those reads
+are billed at it. Every picture and icon comes from one palette and one mark,
+the command reference covers every command, and triage, the roadmap's open
+work and review are written down and applied by a workflow. The repeated-task
+evaluation this number had been reserved for did not ship in it.
+
 ## Next
 
-**Target: 2.7.12, repeated-task evaluation.**
+**Target: 2.7.13, repeated-task evaluation.**
 
 Validate repeated experiments on representative accepted tasks before making
 the instruction policy a default. Measure cost per accepted task, quality,
