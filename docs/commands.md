@@ -4081,6 +4081,18 @@ a log without the field keep the standard price, and a model with no batch API
 (`batch: null`) cannot have run one, so it keeps its standard price whatever
 the log says.
 
+**Where a Batch table charges the cache differently, the row says so.** Most
+Batch tables charge a cache read at the same share of the halved input.
+Google's do not for three models: the Batch tab of Gemini 3.1 Pro Preview
+reads "Context caching price: Same as Standard" ($0.20 against a batch input
+of $1.00), and the tabs of Gemini 2.5 Pro and 2.5 Flash print the standard
+figures. Those rows carry `multipliers.batchCacheRead: 0.2`, the cache price
+over the batch input, and a batch call on them reads the cache at the price
+the tab prints. Until 2.7.12 it was billed at half of that. For the two 2.5
+models the figure ends on 2026-12-01, when Google bills them at the rates of
+Gemini 3.8 Flash and 3.5 Flash-Lite, whose Batch tabs halve the cache price.
+A `pricing` overlay can set `batchCacheRead` on a row of its own.
+
 **A geography is a published multiplier, applied last.** Anthropic bills US-only
 inference (`inference_geo: "us"` on the request, or a workspace's default
 geography) at 1.1x on every token category of Claude 4.6 and later: input,

@@ -159,7 +159,8 @@ function priceOf(record: StoreRecord, catalogue: PricingCatalogue): number | nul
   /* A record of one request says its prompt; any other only bounds it. */
   const prompt = record.input + record.cacheRead + record.write5m + record.write1h;
   const rates = effectivePricing(model, at, record.calls === 1 ? { inputTokens: prompt } : { inputTokensAtMost: prompt });
-  const ratios = multipliersFor(model, at);
+  // The ratios of the call as priced; a store record does not say it was a batch call.
+  const ratios = multipliersFor(model, at, rates);
   return (
     (record.input * rates.inputPerMTok +
       record.cacheRead * rates.inputPerMTok * ratios.cacheRead +

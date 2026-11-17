@@ -120,8 +120,10 @@ export function createSessionLedgerTracker(options: SessionLedgerOptions): Sessi
     tally.turns += 1;
     const model = catalogue.byId.get(record.model)!;
     const at = billedAt(record, on);
-    const { inputPerMTok } = effectivePricing(model, at, promptSizeOf(record));
-    const rates = multipliersFor(model, at);
+    const how = promptSizeOf(record);
+    const { inputPerMTok } = effectivePricing(model, at, how);
+    // The same call, so a batch call's cache read is the Batch table's.
+    const rates = multipliersFor(model, at, how);
     // The bill's own convention: unstated TTLs sit in the 5m bucket at the cheaper rate.
     tally.writeUsd +=
       ((record.cacheWrite5mTokens * rates.cacheWrite5m + record.cacheWrite1hTokens * rates.cacheWrite1h) / 1_000_000)

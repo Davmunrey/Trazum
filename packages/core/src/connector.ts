@@ -618,7 +618,7 @@ export function bucketedProfile(
       bucket.calls === 1 ? { inputTokens: prompt, ...how } : { inputTokensAtMost: prompt, ...how },
     );
     const { inputPerMTok, outputPerMTok } = priced;
-    const rates = multipliersFor(model, at);
+    const rates = multipliersFor(model, at, priced);
     const per = (count: number, rate: number): number => (count / 1_000_000) * rate;
     const costAt = (input: number, output: number): number =>
       per(bucket.inputTokens, input) +

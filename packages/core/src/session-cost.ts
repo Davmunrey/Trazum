@@ -78,8 +78,10 @@ export function costOf(record: UsageRecord, catalogue: PricingCatalogue, on: Dat
   if (!model) return null;
   // At the call's own moment and on its own prompt, as the bill prices it.
   const at = billedAt(record, on);
-  const { inputPerMTok, outputPerMTok } = effectivePricing(model, at, promptSizeOf(record));
-  const rates = multipliersFor(model, at);
+  const how = promptSizeOf(record);
+  const { inputPerMTok, outputPerMTok } = effectivePricing(model, at, how);
+  // The same call, so a batch call's cache read is the Batch table's.
+  const rates = multipliersFor(model, at, how);
   const per = (tokens: number, rate: number): number => (tokens / 1_000_000) * rate;
   return (
     per(record.inputTokens, inputPerMTok) +
