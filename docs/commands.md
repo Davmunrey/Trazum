@@ -63,6 +63,12 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 - [Did anything stop running: `trazum pulse`](#did-anything-stop-running-trazum-pulse)
 - [This machine, measured: `trazum bench`](#this-machine-measured-trazum-bench)
 - [Telling us something: `trazum feedback`](#telling-us-something-trazum-feedback)
+- [Before the first report: `trazum init`](#before-the-first-report-trazum-init)
+- [Where a file's prompts go: `trazum where`](#where-a-files-prompts-go-trazum-where)
+- [The contracts as JSON Schema: `trazum schema`](#the-contracts-as-json-schema-trazum-schema)
+- [What each rule does, and what it recovers here: `trazum rules`](#what-each-rule-does-and-what-it-recovers-here-trazum-rules)
+- [What a model costs today: `trazum models`](#what-a-model-costs-today-trazum-models)
+- [Repeated log lines, before an agent reads them: `trazum filter`](#repeated-log-lines-before-an-agent-reads-them-trazum-filter)
 - [Languages](#languages)
 - [The report](#the-report)
 - [The prompt](#the-prompt)
@@ -2293,6 +2299,175 @@ work reaches the prefilled body — not the config, not a prompt, not a label, n
 a figure — and no package here may declare an install hook, which is how a CLI
 usually acquires telemetry without a line of its own code changing.
 ---
+
+### Before the first report: `trazum init`
+
+`init` looks at a repository and proposes a `trazum.config.json`: which model
+the prompts are sent to, and every setting it could not fill in, with the
+reason. It reads source files for a model name and the folder for a usage log;
+it measures nothing itself.
+
+```bash
+trazum init --dry-run     # what it found and what it would write; writes nothing
+trazum init --yes         # write trazum.config.json without asking
+trazum init services/api  # another directory
+```
+
+```
+What is here
+  1 prompt file found.
+  No usage found. Point trazum at a log (trazum profile <log.jsonl>) or pull
+  one (trazum connect anthropic): every money figure in this tool comes from one.
+
+What the config would say
+  + usage.model  app.py:5 names claude-opus-5
+  · usage.callsPerMonth  nothing has been measured yet
+  · usage.batchEligible  whether the work can wait for a batch window is a
+    product decision, and no log records it
+  · spend.maxUsd  a budget is a policy, and there is no measured figure to
+    write one against yet
+
+Would write trazum.config.json:
+
+{
+  "usage": {
+    "model": "claude-opus-5"
+  }
+}
+```
+
+*Real output of `init --dry-run` on a folder with one prompt file and one
+Python file, trimmed.* A line starting with `+` is a setting it will write and
+where it read it; a line starting with `·` is one it left out and why. Here
+nothing had been measured, so the file it would write holds a model and
+nothing else. What each setting does is in
+[Project defaults](#project-defaults-trazumconfigjson); the README's
+[first five minutes](../README.md#the-first-five-minutes-trazum-init) walks
+through it.
+
+### Where a file's prompts go: `trazum where`
+
+`where` answers two things from what is on the machine: which agent host this
+shell is running inside, and which provider and model a source file sends its
+prompts to.
+
+```bash
+trazum where          # the host alone
+trazum where app.py   # and where this file's prompts go
+```
+
+```
+Prompts in app.py go to
+  anthropic · Claude Opus 5
+    line 5  model-literal: claude-opus-5
+    line 1  sdk-import: import anthropic
+```
+
+*Real output, the host lines left out.* Each line is the evidence, with its
+line number: a model named in a string, an SDK imported. It reads the file and
+calls nothing. The host line says which agent it found by its environment
+variables, and says in the same breath what that does not tell it: how the
+work is paid for.
+
+### The contracts as JSON Schema: `trazum schema`
+
+Every document Trazum writes for another program has a contract, and `schema`
+prints it as JSON Schema, draft 2020-12, on stdout.
+
+```bash
+trazum schema usage-log > usage-log.schema.json
+trazum schema plan
+```
+
+The names it knows are `usage-log`, `profile`, `fleet`, `plan`,
+`verification`, `history`, `connected`, `cost-answer`, `spend-guard`,
+`outcome-report`, `annual-record`, `roll-up`, `first-run`, `pulse`,
+`rule-yield`, `gateway-refusal`, `bench`, `prompt-draft`, `position`,
+`routing-measurement`, `example-pruning`, `store-inventory`, `conformance`
+and `watch-cycle`. A name it does not know exits 1 and prints the list. The
+schema validates with any draft 2020-12 validator, no Trazum required, and
+lists the fields a reader may rely on, which is fewer than a document
+carries. To check a document against its contract with Trazum itself, use
+[`trazum conform`](#building-on-the-format-trazum-conform); what each field
+means is in [JSON output](json-output.md).
+
+### What each rule does, and what it recovers here: `trazum rules`
+
+`rules` lists every rewrite rule with its level (`safe` or `aggressive`), its
+id and what it removes. The id is what `--disable` takes.
+
+```bash
+trazum rules                              # the list
+trazum rules --measure prompts/           # what each recovers in your prompts
+trazum rules --measure prompts/ --level aggressive
+```
+
+```
+What each rule recovers in prompts, 1 prompt, level safe
+  36 tokens before. The rules recover 4; normalisation recovers 1 whether a
+  rule is enabled or not, and that is not the rules' work.
+
+  politeness             lost if removed      4   alone      4   1 prompt
+  duplicate-blocks       lost if removed      0   alone      0   0 prompts
+  verbose-phrases        lost if removed      0   alone      0   0 prompts
+```
+
+*Real output on one short prompt, the remaining rows left out.* `--measure`
+runs the rules over a directory and gives two figures a rule: what the total
+loses if that rule is turned off, and what it recovers running alone.
+
+### What a model costs today: `trazum models`
+
+`models` prints the price table every figure in this tool is priced from:
+input and output per million tokens, the context window and the cache
+minimum, for each model in the catalogue.
+
+```bash
+trazum models
+```
+
+```
+Models and pricing  (USD per million tokens)
+  Table reviewed on 2026-11-05 (12 days ago). Verify before budgeting.
+  Per provider: 2026-11-05 (12 days ago) moonshot, deepseek, xai, mistral ·
+  2026-11-16 (1 day ago) anthropic, openai, google
+
+  model                               input       output     context  cache min.
+  claude-fable-5-2                        8           40      1,000K         512
+  claude-opus-5                           5           25      1,000K         512
+  gemini-4-carbon                    2 (→4)     10 (→20)  1,048.576K       4,096
+
+  Prices in brackets are the price once the promotion ends.
+```
+
+*Real output on 2026-11-17, most rows left out.* The dates are the part to
+read first: each provider's page was read on its own day, and the table's
+date is the oldest of them. A price in brackets is what the row costs after
+a promotion ends. A dash in the cache column means the provider publishes no
+minimum. It prints a row's price today; a call in a log is priced on its own
+date, so a bill can differ from this table for a model whose price has
+changed.
+
+### Repeated log lines, before an agent reads them: `trazum filter`
+
+`filter` compacts consecutive identical lines in a log on its way to an
+agent's context, and keeps the original on disk. It is opt-in and
+experimental, it runs locally with no model, and it is not for source files
+or for output another program parses.
+
+```bash
+set -o pipefail
+npm test | trazum filter compact --recovery-dir "$HOME/.trazum-tool-logs"
+trazum filter restore <sha256> --recovery-dir "$HOME/.trazum-tool-logs"
+trazum filter instructions
+```
+
+Keep `pipefail`, or a passing filter hides a failing command. Unique lines
+and lines that look like errors are kept. `--recovery-dir` is where the
+complete original goes, and a log can hold secrets: delete the directory when
+the originals are no longer needed. `--stats` writes one JSON record to
+stderr; its token counts are estimates, not a bill. The whole of it, with
+what it does not do, is in [Opt-in tool-output filter](tool-output-filter.md).
 
 ## Languages
 
