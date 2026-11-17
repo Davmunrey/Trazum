@@ -37,6 +37,33 @@ merged commit with no entry is a change only `git log` remembers.
   Eight faults planted one at a time were each caught. The bug form's version
   hint no longer says there is no npm package. (#665)
 
+- **A pull request is checked for its issue and for where its changelog line
+  landed.** The new `PR readiness` check, run by `scripts/pr-readiness.mjs` on
+  every pull request, refuses three things:
+  - a description without a closing keyword (`Fixes #<n>`);
+  - a line added inside a released version's section of `CHANGELOG.md`;
+  - a pull request that adds no line under `Unreleased`.
+
+  The second is what happened on 2026-11-17: a branch merged `main` after the
+  2.7.9 and 2.7.10 releases, git placed its entry inside `## 2.7.9` without a
+  conflict, and `changelog-coverage.test.js`, which can only ask whether
+  `Unreleased` is empty, had nothing to say.
+
+  Exemptions:
+  - Dependabot;
+  - the release pull request, which adds a version heading;
+  - two labels only a maintainer applies, `no-issue` and `changelog-history`.
+
+  Rebuilt from that merge, the check refuses it. It accepts all 40 of the latest
+  commits on `main` and the 2.7.10 release itself. The description reaches the
+  script through the environment, never inlined into the shell. CONTRIBUTING.md
+  now says how a pull request lands: issue first, squash only, current with
+  `main`, and a look at the changelog line after a release. The PR template
+  opens with `Fixes #`. `.github/rulesets/main-branch.json` now allows only
+  squash, requires `PR readiness`, and carries the `code_scanning` and
+  `code_quality` rules that the ruleset GitHub enforces already had. An admin
+  re-imports it. (#666)
+
 ### Fixed
 
 - **Google's prices were re-read, and `gemini-2.5-pro` bills at Gemini 3.8

@@ -1,3 +1,8 @@
+Fixes #
+
+<!-- The issue this resolves. Open it first if there is none: the PR readiness
+     check refuses a description without a closing keyword. -->
+
 ## What this changes
 
 <!-- One paragraph. What was true before, and what is true now. -->
@@ -16,6 +21,7 @@
 
 ## Checks
 
+- [ ] The issue is named above with `Fixes #`
 - [ ] `npm run verify` is green
 - [ ] `CHANGELOG.md` has an entry under `Unreleased`
 - [ ] New machine-readable output is contracted in `docs/json-output.md` with a

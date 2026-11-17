@@ -210,8 +210,10 @@ Some of this cannot be committed to a file — it lives in repository settings.
 
 1. **Import the ruleset.** Settings → Rules → Rulesets → New ruleset → Import,
    and select `.github/rulesets/main-branch.json`. It requires a pull request
-   with passing checks and linear history, and blocks force-pushes and deletion
-   of the default branch.
+   with passing checks, `PR readiness` among them, squash merges and linear
+   history, and CodeQL results with no open alert. It blocks force-pushes and
+   deletion of the default branch. Re-import it whenever the file changes: the
+   ruleset GitHub enforces is a copy, and nothing syncs it.
 
    **It asks for zero approvals, deliberately.** The first version required
    one, and that deadlocked the repository: GitHub does not let you approve

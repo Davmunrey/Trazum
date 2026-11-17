@@ -1,0 +1,38 @@
+name: PR readiness
+
+# Two rules every pull request keeps, checked by scripts/pr-readiness.mjs:
+# it names the issue it resolves, and its changelog line lands under
+# `## Unreleased` rather than inside a released version. The ruleset in
+# .github/rulesets/main-branch.json requires this job by its name.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-readiness-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  readiness:
+    name: PR readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check the linked issue and where the changelog line landed
+        env:
+          # The description is untrusted text: it reaches the script as data,
+          # through the environment, and is never interpolated into `run:`.
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/pr-readiness.mjs
