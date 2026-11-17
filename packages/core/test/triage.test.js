@@ -236,6 +236,13 @@ describe('the workflow runs it with no more than it needs', () => {
     assert.match(job('roadmap'), /node scripts\/triage\.mjs roadmap "\$RUNNER_TEMP\/issues\.json" --check/);
   });
 
+  it('lets a run in progress finish, so a quick edit does not leave a cancelled check', () => {
+    // #687: its description was edited seconds after it opened, the second run
+    // cancelled the first, and the guide comment reported the cancelled check
+    // as failing. Each job only adds, so two runs are one run and a no-op.
+    assert.match(workflow, /^concurrency:\n {2}group: triage-.+\n {2}cancel-in-progress: false$/m);
+  });
+
   it('keeps credentials out of every checkout', () => {
     const checkouts = workflow.match(/uses: actions\/checkout@/g) ?? [];
     assert.equal(checkouts.length, 3);

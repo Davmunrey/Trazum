@@ -36,6 +36,14 @@
  * `versions` map. A version that exists but is not `latest` is not what a
  * stranger installs, and that distinction is the whole point of the check.
  *
+ * And that the **tarball** of that version can be downloaded. The dist-tag was
+ * all this asked until 2.7.12, when it was not enough: the check passed at
+ * 22:42:49 UTC on 2026-11-17, and `@trazum/core`'s tarball answered 404 at
+ * 22:43:05 and again at 22:45:23, then 200 at 22:45:55. For about three
+ * minutes after the release reported success, `npx @trazum/cli@2.7.12` failed
+ * with E404, because the CLI pins that exact version of the core. The registry
+ * knowing a version's name is not the registry handing it over.
+ *
  * It does not verify the tarball's contents. `publish.test.js` does that
  * against the commit, before anything is uploaded, which is the only moment it
  * can still be changed.
@@ -89,6 +97,34 @@ export async function servedVersion(name, fetchImpl = fetch) {
   return typeof tags.latest === 'string' ? tags.latest : null;
 }
 
+/** Where the registry serves one version's tarball: the address an install fetches. */
+export function tarballUrl(name, version) {
+  return `https://registry.npmjs.org/${name}/-/${name.split('/').pop()}-${version}.tgz`;
+}
+
+/** Whether the registry hands over that tarball. A refusal, or no answer, is a no. */
+export async function tarballServed(name, version, fetchImpl = fetch) {
+  // HEAD: the question is whether it is there, not what is in it.
+  const response = await fetchImpl(tarballUrl(name, version), {
+    method: 'HEAD',
+    headers: { 'cache-control': 'no-cache' },
+  });
+  return response.ok;
+}
+
+/**
+ * What stands between one package and a stranger installing it, or `null`
+ * when nothing does: the dist-tag first, because a tarball nobody is pointed
+ * at is not the release, and then the tarball it points at.
+ */
+export async function waitingFor(name, version, fetchImpl = fetch) {
+  const served = await servedVersion(name, fetchImpl).catch(() => null);
+  if (served !== version) return `is served at ${served ?? 'nothing'}, waiting for ${version}`;
+  const there = await tarballServed(name, version, fetchImpl).catch(() => false);
+  if (!there) return `is latest at ${version}, and its tarball cannot be downloaded yet`;
+  return null;
+}
+
 /**
  * The wait itself, behind a main check.
  *
@@ -111,17 +147,20 @@ async function main() {
 
   const deadline = Date.now() + timeoutMs;
   const pending = new Map(wanted.map((pkg) => [pkg.name, pkg.version]));
+  /** Why each package is still pending, as of the last time it was asked. */
+  const why = new Map();
 
   console.log(`Waiting for npm to serve ${wanted.map((p) => `${p.name}@${p.version}`).join(', ')}`);
 
   while (pending.size > 0) {
     for (const [name, version] of [...pending]) {
-      const served = await servedVersion(name).catch(() => null);
-      if (served === version) {
-        console.log(`  ${name} is served at ${version}`);
+      const reason = await waitingFor(name, version);
+      if (reason === null) {
+        console.log(`  ${name} is served at ${version}, tarball and all`);
         pending.delete(name);
       } else {
-        console.log(`  ${name} is served at ${served ?? 'nothing'}, waiting for ${version}`);
+        why.set(name, reason);
+        console.log(`  ${name} ${reason}`);
       }
     }
     if (pending.size === 0) break;
@@ -135,7 +174,7 @@ async function main() {
          * a version is on npm that a stranger cannot install.
          */
         console.error(
-          `::error::npm is not serving ${name}@${version} as latest after ${Math.round(timeoutMs / 1000)}s.` +
+          `::error::npm is not serving ${name}@${version} after ${Math.round(timeoutMs / 1000)}s: it ${why.get(name)}.` +
             ' The publish was accepted and the registry has not made it installable.',
         );
       }

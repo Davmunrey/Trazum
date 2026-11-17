@@ -53,6 +53,13 @@ npm publish -w @trazum/mcp  --access public
   not the moment `npm publish` returns; it is the moment a stranger typing
   `npm install` gets what `RELEASES.md` says they will.
 
+  **And the dist-tag was not that moment either.** On 2.7.12 the check passed
+  at 22:42:49 UTC and `@trazum/core`'s tarball answered 404 for three minutes
+  more, so `npx @trazum/cli@2.7.12` failed with `E404` while the job was
+  tagging the release. The script now asks for each tarball as well, with a
+  `HEAD` request to the address an install fetches, and says which of the two
+  it is still waiting for.
+
 - **`npm view` 404s for several minutes after a successful publish.** The
   aggregated packument propagates behind the per-version document and the
   tarball, so `+ @trazum/cli@1.8.0` on screen and `npm view` returning 404 are

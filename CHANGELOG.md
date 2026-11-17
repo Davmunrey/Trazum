@@ -11,7 +11,25 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **A release waits until its packages can be downloaded, not until npm knows
+  their names.** `scripts/npm-serves.mjs` waited for npm's `latest` dist-tag
+  to name the new version and stopped there. On 2.7.12, 2026-11-17, that check
+  passed at 22:42:49 UTC and `@trazum/core`'s tarball answered 404 at 22:43:05
+  and 22:45:23, then 200 at 22:45:55: for about three minutes after the
+  release reported success, `npx @trazum/cli@2.7.12` failed with `E404`,
+  because the CLI pins that exact version of the core. The check now asks for
+  each tarball as well, with a `HEAD` request to the address an install
+  fetches, and when it gives up it says which of the two it was still waiting
+  for. The `Triage` workflow no longer cancels a run in progress: on #687 a
+  description edited seconds after opening left a cancelled check that the
+  guide comment reported as a failure, and both runs can simply finish. And the
+  README's caption under the `optimize` picture says where its dollars come
+  from: the token counts and the $31.00 saved are the same anywhere, while the
+  first lever's $416.99 is what the command prints in this repository, whose
+  configuration assumes 300 output tokens a call. Outside it the published CLI
+  assumed 500 and printed $661.99 for the same prompt. (#688)
 
 ## 2.7.12 — 2026-11-17
 
