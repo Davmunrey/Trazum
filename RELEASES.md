@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.9**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.7.10**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,57 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.7.10 — A plan that stops offering a batch nobody can take
+
+**Adoption, read 2026-11-17:** 2696 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.9.
+
+**If you ran `plan` on a coding agent's sessions, part of what it projected
+was batching, which an agent's turns cannot use. Convert the sessions again
+and run it again:** a usage log written by an earlier `from-claude-code` does
+not carry the new mark.
+
+```bash
+npx -y @trazum/cli@2.7.10 from-claude-code ~/.claude/projects --label-from-project -o usage.jsonl
+npx -y @trazum/cli@2.7.10 plan usage.jsonl
+```
+
+**`plan` offered the Batch API to calls that cannot take it.** A converted
+Claude Code session was told to "route and batch" every turn of an agent
+loop, on the assumption that "these calls can wait for a batch window". Each
+turn of a coding agent is the next step's input, and the Batch API answers
+within a day. On the two example projects that was $9.13 projected against a
+$12.70 bill; it is now $7.34, all of it routing. On this repository's own
+sessions, 588 calls and $103.07, the projection went from $42.69 to $38.83.
+
+**How a log says it.** A record can carry `"interactive": true`, meaning
+something waited on the answer. `from-claude-code`, `from-codex` and
+`from-gemini-cli` write it on every line. The plan ends by saying how much
+input and output it left out of the batch lever and why, and the document
+carries the figure as `batchExcludedUsd`. **A log that marks nothing is read
+exactly as before**, and is still asked whether its calls can wait.
+
+**Calls already on the Batch API are not offered it twice.** Twenty calls
+that had run there, a $0.07 bill at the batch rate, were offered "$0.0350
+projected" for batching them: half of a price that was already the half.
+
+**A route that combines nothing says so.** "to Claude Sonnet 5.5", where it
+said "combined with batching where both apply" on a slice that had no batch.
+
+**Not in this release:** Google's review date and the 2026-12-01 rerouting of
+`gemini-2.5-pro`, still under review (#654). **Still waiting on a person:**
+2.7.2's tag. Its release page no longer needs one: once the tag exists, the
+`backfill-releases` workflow can create the page, and `docs/releasing.md` now
+says both steps.
+
+No breaking change. `interactive` is a new optional field on a usage-log
+record and in its published schema; the profile's breakdown gains
+`batchExcludedInputTokens`, `batchExcludedOutputTokens` and
+`batchExcludedUsd`, and the plan document `batchExcludedUsd`. A document from
+before they existed reads them as zero. All packages, the plugin and MCP
+discovery advance together to 2.7.10.
 
 ---
 
