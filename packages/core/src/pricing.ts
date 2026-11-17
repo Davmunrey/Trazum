@@ -122,10 +122,17 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * target's rates. 2.5 Pro carries that as a second period; 2.5 Flash's text
    * rates are 3.5 Flash-Lite's, so its price does not move. The Gemini 4
    * family and 3.5 Flash-Lite are priced in their own rows, from the same
-   * read; the page's other models are still unpriced. Not modelled: the
-   * Batch tabs of 3.1 Pro Preview and both
-   * 2.5 models charge the standard cache price, and this table bills a batch
-   * call's cache reads at half of it, as it does every other rate.
+   * read; the page's other models are still unpriced.
+   *
+   * Batch tabs read again 2026-11-17, for the cache price alone. Six of the
+   * nine rows print a batch cache price that is half the standard one, as
+   * the batch input is: 4 Carbon, Argon and Hydrogen, 3.8 and 3.6 Flash and
+   * 3.5 Flash-Lite. Three do not. 3.1 Pro Preview's reads "Same as Standard",
+   * $0.20 and $0.40, and 2.5 Pro's and 2.5 Flash's print the standard figures
+   * ($0.125 and $0.25; $0.03). Those three carry `batchCacheRead: 0.2`: the
+   * cache price over the batch input, where a standard call reads at 0.1.
+   * For the two 2.5 models it ends on 2026-12-01, when they are billed at
+   * the rates of 3.8 Flash and 3.5 Flash-Lite, whose Batch tabs halve it.
    */
   google: '2026-11-16',
   /*
@@ -236,25 +243,39 @@ export const COST_MULTIPLIERS = {
  * should fall back to the default.
  */
 /** Memoised for the same reason as `effectivePricing`: once per record. */
-const multipliersMemo = new WeakMap<
-  ModelPricing,
-  { cacheWrite5m: number; cacheWrite1h: number; cacheRead: number; batch: number | null }
->();
+type Multipliers = { cacheWrite5m: number; cacheWrite1h: number; cacheRead: number; batch: number | null };
+const multipliersMemo = new WeakMap<ModelPricing, Multipliers>();
+const batchMultipliersMemo = new WeakMap<ModelPricing, Multipliers>();
 
-export function multipliersFor(model: ModelPricing, on?: Date): {
-  cacheWrite5m: number;
-  cacheWrite1h: number;
-  cacheRead: number;
-  batch: number | null;
-} {
+/**
+ * The cache and batch ratios of a row, at a date and for a kind of call.
+ *
+ * `how` is the same context `effectivePricing` is given, and it matters for
+ * one figure. Every ratio here multiplies the input rate `effectivePricing`
+ * returned, which for a batch call is already the batch rate. Where a
+ * provider's Batch table charges the cache at something other than the
+ * standard share of that halved input, the row says so in `batchCacheRead`,
+ * and a batch call gets that as its `cacheRead`. Until 2.7.12 nothing asked
+ * how the call ran: Google's Batch tab for Gemini 3.1 Pro Preview and both
+ * 2.5 models prints "Same as Standard" for the cache, and a batch call's
+ * cache reads on them were billed at half of what the page charges.
+ */
+export function multipliersFor(model: ModelPricing, on?: Date, how?: { batch?: boolean }): Multipliers {
   // A dated question about a repriced model asks the period in force then.
   if (on !== undefined && model.history !== undefined) {
     const period = pricedAt(model, on);
-    if (period !== model) return multipliersFor(period);
+    if (period !== model) return multipliersFor(period, undefined, how);
+  }
+  const m = model.multipliers ?? {};
+  if (how?.batch === true && m.batchCacheRead !== undefined && m.batch !== null) {
+    const cached = batchMultipliersMemo.get(model);
+    if (cached !== undefined) return cached;
+    const result = Object.freeze({ ...multipliersFor(model), cacheRead: m.batchCacheRead });
+    batchMultipliersMemo.set(model, result);
+    return result;
   }
   const cached = multipliersMemo.get(model);
   if (cached !== undefined) return cached;
-  const m = model.multipliers ?? {};
   const result = Object.freeze({
     cacheWrite5m: m.cacheWrite5m ?? COST_MULTIPLIERS.cacheWrite5m,
     cacheWrite1h: m.cacheWrite1h ?? COST_MULTIPLIERS.cacheWrite1h,
@@ -1760,8 +1781,17 @@ export const MODELS: ModelPricing[] = [
     outputPerMTok: 7.5,
     promo: { inputPerMTok: 0.75, outputPerMTok: 3.75, until: '2026-12-31', confirmedOn: '2026-11-16' },
     history: [
-      /* Its own price: $0.125 cached (10%) and batch half, the ratios 3.8 Flash also has. */
-      { until: '2026-12-01T00:00:00Z', inputPerMTok: 1.25, outputPerMTok: 10 },
+      /*
+       * Its own price: $0.125 cached (10%) and batch half. Its Batch tab charges
+       * the cache at the standard $0.125 against a batch input of $0.625 (and
+       * $0.25 against $1.25 above 200k): 0.2 of the batch rate, read 2026-11-17.
+       */
+      {
+        until: '2026-12-01T00:00:00Z',
+        inputPerMTok: 1.25,
+        outputPerMTok: 10,
+        multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5, batchCacheRead: 0.2 },
+      },
     ],
     contextWindow: 1_048_576,
     cacheMinTokens: 2048,
@@ -1797,6 +1827,21 @@ export const MODELS: ModelPricing[] = [
     displayName: 'Gemini 2.5 Flash',
     inputPerMTok: 0.3,
     outputPerMTok: 2.5,
+    history: [
+      /*
+       * The same $0.30/$2.50, and one figure that differs until the rerouting:
+       * its own Batch tab charges the cache at the standard $0.03 against a
+       * batch input of $0.15, 0.2 of the batch rate (read 2026-11-17). From
+       * 2026-12-01 it is billed at 3.5 Flash-Lite's rates, whose Batch tab
+       * prints $0.015.
+       */
+      {
+        until: '2026-12-01T00:00:00Z',
+        inputPerMTok: 0.3,
+        outputPerMTok: 2.5,
+        multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5, batchCacheRead: 0.2 },
+      },
+    ],
     contextWindow: 1_048_576,
     cacheMinTokens: 2048,
     caching: 'automatic',
@@ -1912,7 +1957,12 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_048_576,
     cacheMinTokens: 4096,
     caching: 'automatic',
-    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    /*
+     * The Batch tab's cache row reads "Same as Standard": $0.20 against a batch
+     * input of $1.00, and $0.40 against $2.00 above 200k. 0.2 of the batch rate
+     * in both bands, where a standard call reads at 0.1 (read 2026-11-17).
+     */
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5, batchCacheRead: 0.2 },
     tiers: [
       {
         id: 'over-200k',

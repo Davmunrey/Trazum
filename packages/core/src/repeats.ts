@@ -121,8 +121,10 @@ export function createRepeatsTracker(options: RepeatsOptions): RepeatsTracker {
     if (before.tokens !== tokens) return;
 
     const at = billedAt(record, on);
-    const { inputPerMTok, outputPerMTok } = effectivePricing(model, at, promptSizeOf(record));
-    const rates = multipliersFor(model, at);
+    const how = promptSizeOf(record);
+    const { inputPerMTok, outputPerMTok } = effectivePricing(model, at, how);
+    // The same call, so a batch call's cache read is the Batch table's.
+    const rates = multipliersFor(model, at, how);
     const per = (count: number, rate: number): number => (count / 1_000_000) * rate;
     slice.repeats += 1;
     slice.usd +=

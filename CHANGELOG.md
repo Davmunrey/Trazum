@@ -11,6 +11,29 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **A batch call's cache reads on three Google models were billed at half of
+  what Google charges.** A batch call is priced at the row's batch ratio, and
+  its cache reads at the row's cache ratio of that halved input, which is what
+  most Batch tables print. Google's Batch tab for Gemini 3.1 Pro Preview reads
+  "Context caching price: Same as Standard", $0.20 and $0.40 against batch
+  inputs of $1.00 and $2.00, and the tabs of Gemini 2.5 Pro ($0.125) and 2.5
+  Flash ($0.03) print the standard figures. 2.7.11's notes named this as not
+  changed. The three rows now carry `multipliers.batchCacheRead: 0.2`, the
+  cache price over the batch input, and the bill, a session's cost, a
+  truncated retry, a repeat, a conversation's growth and the usage-report
+  connector all ask for the ratios of the call they priced. One batch call on
+  3.1 Pro Preview with 50,000 fresh input tokens, 100,000 read from the cache
+  and 2,000 out was billed $0.072 and is $0.082. For the two 2.5 models the
+  figure ends on 2026-12-01, when Google bills them at the rates of Gemini 3.8
+  Flash and 3.5 Flash-Lite, whose Batch tabs halve the cache price; 2.5 Flash
+  gains a dated period for that, at the same $0.30/$2.50. The other six Google
+  rows print a halved cache price and are unchanged, as is every other
+  provider. A `pricing` overlay can set `batchCacheRead`. Read from Google's
+  pricing page on 2026-11-17, for the Batch tabs' cache rows alone; Google's
+  review date does not move. Seventeen planted faults were each caught. (#671)
+
 ### Changed
 
 - **The npm token's expiry date is recorded: 2027-02-15.** The token that

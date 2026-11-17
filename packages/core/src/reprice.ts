@@ -206,7 +206,7 @@ function priceTokensRanged(
   size: PromptSize,
 ): { usd: number; floorUsd: number | null } {
   const priced = effectivePricing(model, on, size);
-  const rates = multipliersFor(model, on);
+  const rates = multipliersFor(model, on, priced);
   const per = (tokens: number, rate: number): number => (tokens / 1_000_000) * rate;
   const at = (inputPerMTok: number, outputPerMTok: number): number =>
     per(breakdown.inputTokens, inputPerMTok) +

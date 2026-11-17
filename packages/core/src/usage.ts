@@ -1251,7 +1251,8 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
   const priced = effectivePricing(model, at, promptSizeOf(record));
   const { inputPerMTok, outputPerMTok } = priced;
   // Dated, like the rate above: a repriced cache read is part of the reprice.
-  const rates = multipliersFor(model, at);
+  // And for the same kind of call: a batch call reads the cache at the Batch table's price.
+  const rates = multipliersFor(model, at, priced);
   const per = (tokens: number, rate: number): number => (tokens / 1_000_000) * rate;
   const recordUsd = (input: number, output: number): number =>
     per(record.inputTokens, input) +

@@ -106,6 +106,16 @@ export interface CostMultipliers {
    * "nobody has said", and only the first should stop the advisory firing.
    */
   batch?: number | null;
+  /**
+   * A batch call's cache read, as a fraction of the **batch** input price,
+   * where the provider's Batch table prints a cache price that is not the
+   * standard ratio of it. Google's Batch tab for Gemini 3.1 Pro Preview reads
+   * "Context caching price: Same as Standard", $0.20 against a batch input of
+   * $1.00, so 0.2 where a standard call reads at 0.1. Absent means a batch
+   * call reads the cache at `cacheRead`, the same share of a halved input,
+   * which is what every other Batch table this catalogue was read from prints.
+   */
+  batchCacheRead?: number;
 }
 
 /**

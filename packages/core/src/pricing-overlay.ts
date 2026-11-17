@@ -59,7 +59,7 @@ const PROMO_KEYS = ['inputPerMTok', 'outputPerMTok', 'until'] as const;
  * has no batch API" should stop the advisory offering a discount nobody sells,
  * while "nobody has said" should fall back to the default.
  */
-const MULTIPLIER_KEYS = ['cacheRead', 'cacheWrite5m', 'cacheWrite1h', 'batch'] as const;
+const MULTIPLIER_KEYS = ['cacheRead', 'cacheWrite5m', 'cacheWrite1h', 'batch', 'batchCacheRead'] as const;
 
 const TIERS: ModelPricing['tier'][] = ['frontier', 'opus', 'sonnet', 'haiku', 'unknown'];
 const CAPABILITIES: Capability[] = ['small', 'mid', 'large', 'frontier', 'unknown'];
@@ -165,7 +165,7 @@ function parseMultipliers(raw: unknown, label: string, source: string): CostMult
   }
 
   const multipliers: CostMultipliers = {};
-  for (const key of ['cacheRead', 'cacheWrite5m', 'cacheWrite1h'] as const) {
+  for (const key of ['cacheRead', 'cacheWrite5m', 'cacheWrite1h', 'batchCacheRead'] as const) {
     if (raw[key] === undefined) continue;
     /**
      * Zero is refused along with the negatives. A free cache read is not a price
