@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 2.7.10 — 2026-11-17
+
 ### Fixed
 
 - **`plan` offered the Batch API to calls that cannot take it.** Two kinds,
