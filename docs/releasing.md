@@ -435,6 +435,23 @@ including what it costs a reader pinning with a tilde, is in
    missing release from its `version`, `commit` and `latest` inputs, but only
    while that commit's workflow files still match main's.
 
+   **When the tag is pushed days later, the run it starts may fail at Verify,
+   and that is expected.** A tag-triggered run checks out the tagged commit
+   and verifies that tree before it creates the release, and some of this
+   repository's tests fail by the calendar: a promotional price in its last
+   45 days, a provider review past its window. 2.7.2's tree has failed the
+   first of those since 2026-11-16, so its tag gives a failed Release run and
+   no release page. Nothing is published either way, because every version is
+   already on npm. Finish it from the Actions tab: run `backfill-releases`
+   with the version, the release commit and `latest` off. It finds the tag,
+   skips the push it would be refused, and creates the release from
+   `RELEASES.md`.
+
+   Only the tag itself needs a person. The workflow's token is refused the
+   ref for as long as the commit's workflow files differ from main's, and an
+   agent session can neither push a tag nor create one through the GitHub
+   tools it is given.
+
    A pushed tag still works as the manual override — for re-running a release
    whose publish failed, or releasing a commit that is not the newest merge:
 
