@@ -27,6 +27,7 @@ the browser adds.
 | `projectedSavingUsd` | The projections, summed. Additive by construction: two levers on the same slice arrive pre-combined in one action, so nothing here double-counts. |
 | `measuredStakeUsd` | Money already paid to the problems named — the retry bill, the cache loss. |
 | `totalUsd` | The bill the plan was made against. |
+| `batchExcludedUsd` | Input and output dollars no batch action was drawn on: calls already billed at the batch rate, and calls something waited on (`"interactive": true` on the record). Optional: a plan saved before the field existed has none, and verifies as before. Never a saving, and nothing should add it to one. |
 
 **`projectedSavingUsd` and `measuredStakeUsd` are never added together**, and
 nothing that renders this file should add them. One is a prediction about calls

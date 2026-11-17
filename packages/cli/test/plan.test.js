@@ -136,6 +136,70 @@ describe('plan', () => {
     );
   });
 
+  /**
+   * A coding agent's turns, and calls already on the Batch API, are left out
+   * of the batch lever, and the plan says so with the money it left out. The
+   * same log unmarked is told to "route and batch", which is what every
+   * converted Claude Code session was told before a record could say that
+   * something waited on its answer.
+   */
+  const agentLog = async (mark) => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-plan-'));
+    // Three calls of 400k input on Opus 5: $2.00 each, $6.00, nothing else.
+    const rows = [0, 1, 2].map((i) =>
+      line({ model: 'claude-opus-5', label: 'agent', ts: `2026-08-0${i + 1}T09:00:00Z`, ...mark, usage: { input_tokens: 400_000, output_tokens: 0 } }));
+    const log = join(dir, 'agent.jsonl');
+    await writeFile(log, rows.join('\n') + '\n');
+    return { dir, log };
+  };
+
+  it('routes a coding agent\'s turns without asking whether they can wait a day', async () => {
+    const { log } = await agentLog({ interactive: true });
+    const result = run([log]);
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+    assert.match(out, /Route agent \(claude-opus-5\)/);
+    assert.doesNotMatch(out, /Route and batch|Batch agent/);
+    assert.doesNotMatch(out, /can wait for a batch window/);
+    // Nothing is combined, so the route line does not say it is.
+    assert.match(out, /to Claude Sonnet 5\.5 \? assumes/);
+    assert.doesNotMatch(out, /combined with batching/);
+    // What was left out, with its money: three calls of $2.00 input.
+    assert.match(out, /No batch saving is projected on \$6\.00 of input and output/);
+    assert.match(out, /something waited on their answer/);
+
+    const unmarked = flat(run([(await agentLog({})).log]));
+    assert.match(unmarked, /Route and batch agent/);
+    assert.doesNotMatch(unmarked, /No batch saving is projected/);
+  });
+
+  it('does not offer the Batch API to calls that already ran on it', async () => {
+    const { log } = await agentLog({ batch: true });
+    const out = flat(run([log]));
+    assert.doesNotMatch(out, /Route and batch|Batch agent/);
+    // Billed at half, so the three calls are $1.00 each.
+    assert.match(out, /No batch saving is projected on \$3\.00 of input and output/);
+  });
+
+  it('says what it left out in the document, in Markdown and in Spanish', async () => {
+    const { dir, log } = await agentLog({ interactive: true });
+    const document = JSON.parse(run([log, '--json']).stdout);
+    assert.equal(document.batchExcludedUsd, 6);
+    assert.deepEqual(document.actions.map((a) => a.kind), ['route']);
+    assert.equal(JSON.parse(run([(await agentLog({})).log, '--json']).stdout).batchExcludedUsd, 0);
+
+    const md = join(dir, 'plan.md');
+    run([log, '--markdown-out', md, '-o', '/dev/null']);
+    const body = await readFile(md, 'utf8');
+    assert.match(body, /^### Route agent/m);
+    assert.match(body, /^- to Claude Sonnet 5\.5$/m);
+    assert.match(body, /^_No batch saving is projected on \$6\.00 of input and output/m);
+
+    const es = flat(run([log, '--locale', 'es']));
+    assert.match(es, /No se proyecta ahorro por batch sobre \$6\.00 de entrada y salida/);
+    assert.match(es, /a Claude Sonnet 5\.5 \? supone/);
+  });
+
   it('refuses a missing target and a log that priced nothing, naming the fix', async () => {
     const bare = run([]);
     assert.equal(bare.status, 1);

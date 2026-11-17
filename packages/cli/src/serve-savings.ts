@@ -94,7 +94,11 @@ function savingsPlan(text: string) {
   const keys = (value: object, allowed: readonly string[], field: string) => {
     if (Object.keys(value).some((key) => !allowed.includes(key))) throw new SavingsInputError(`${field} has unknown properties`);
   };
-  keys(plan, ['schemaVersion', 'span', 'pricingLastReviewed', 'actions', 'projectedSavingUsd', 'measuredStakeUsd', 'totalUsd', 'createdAt'], 'plan');
+  keys(plan, ['schemaVersion', 'span', 'pricingLastReviewed', 'actions', 'projectedSavingUsd', 'measuredStakeUsd', 'totalUsd', 'batchExcludedUsd', 'createdAt'], 'plan');
+  // Absent on a plan saved before 2.7.10, which left nothing out of the batch lever.
+  if (plan.batchExcludedUsd !== undefined && !finite(plan.batchExcludedUsd)) {
+    throw new SavingsInputError('plan.batchExcludedUsd must be a finite non-negative number when present');
+  }
   if (typeof plan.pricingLastReviewed !== 'string' || plan.pricingLastReviewed.trim() === '' ||
       !finite(plan.projectedSavingUsd) || !finite(plan.measuredStakeUsd) || !finite(plan.totalUsd)) {
     throw new SavingsInputError('plan needs pricingLastReviewed and finite non-negative projectedSavingUsd, measuredStakeUsd and totalUsd');

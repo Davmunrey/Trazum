@@ -13,6 +13,29 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **`plan` offered the Batch API to calls that cannot take it.** Two kinds,
+  both measured. Twenty calls that had already run on the Batch API, a $0.07
+  bill at the batch rate, were offered "$0.0350 projected" for batching them:
+  half of a price that was already the half. And a converted Claude Code
+  session was told to "route and batch" every turn of an agent loop, $9.13
+  projected against the example projects' $12.70 bill, on the assumption that
+  "these calls can wait for a batch window". The assumption was printed, so
+  the plan did not lie; it asked a question the log could have answered, and
+  counted the answer into the total before it came. A record can now say
+  `"interactive": true`, meaning something waited on the answer, and
+  `from-claude-code`, `from-codex` and `from-gemini-cli` say it on every
+  line. The batch lever leaves out those calls and the ones already billed at
+  the batch rate, in its own figure and in the combined route-and-batch one,
+  each at its own model's rate. The same projects now read "Route", $7.34
+  projected, and the plan ends by saying how much input and output it left
+  out and why (`batchExcludedUsd` in the document). A route that combines
+  nothing no longer says "combined with batching". **A log that marks nothing
+  is read exactly as before.** The profile's breakdown gains
+  `batchExcludedInputTokens`, `batchExcludedOutputTokens` and
+  `batchExcludedUsd`, and `fieldCoverage` counts `interactive`; a document
+  from before the fields existed reads them as zero. Thirteen faults planted
+  in the lever, the parser, the roll-up, the plan and its renderers were each
+  caught.
 - **The recovery for a release that lost its tag was one step short.**
   `docs/releasing.md` said that a person pushes the tag and the run it starts
   creates the release. That run verifies the tagged tree first, and a tree

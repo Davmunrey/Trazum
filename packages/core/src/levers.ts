@@ -120,6 +120,17 @@ export interface BillLevers {
   promptCeilingShare: number;
   /** The bill the shares are taken against. */
   totalUsd: number;
+  /**
+   * Input and output dollars the batch lever left out, on models whose
+   * provider sells a Batch API: calls already billed at the batch rate, and
+   * calls something waited on (`interactive` on the record).
+   *
+   * Stated because its absence reads as an oversight. Somebody who knows the
+   * Batch API halves a price, and sees no batch row against their coding
+   * agent's bill, should be told the row was left out on purpose and for what
+   * reason, with the money it would have been drawn on. Never a saving.
+   */
+  batchExcludedUsd: number;
 }
 
 /**
@@ -144,12 +155,16 @@ function stepDown(capability: Capability): Capability | null {
   return at <= 0 ? null : CAPABILITY_LADDER[at - 1]!;
 }
 
-/** What a breakdown's tokens would cost at a model's rates, split so batch can apply. */
+/**
+ * What a breakdown's tokens would cost at a model's rates, split so batch can
+ * apply. `batchableUsd` is the input and output of the calls that could still
+ * move to the Batch API, at these rates: see `batchExcludedUsd`.
+ */
 function repriceAt(
   breakdown: UsageBreakdown,
   model: ModelPricing,
   on: Date,
-): { inputUsd: number; outputUsd: number; cacheUsd: number; totalUsd: number } {
+): { inputUsd: number; outputUsd: number; cacheUsd: number; totalUsd: number; batchableUsd: number } {
   // The breakdown's largest call bounds every prompt in it: see `PromptSize`.
   const { inputPerMTok, outputPerMTok } = effectivePricing(model, on, {
     inputTokensAtMost: breakdown.maxCallInputTokens,
@@ -170,8 +185,22 @@ function repriceAt(
     per(breakdown.cacheReadTokens, inputPerMTok * rates.cacheRead) +
     per(breakdown.cacheWriteTokens, inputPerMTok * rates.cacheWrite5m);
 
-  return { inputUsd, outputUsd, cacheUsd, totalUsd: inputUsd + outputUsd + cacheUsd };
+  const batchableUsd =
+    per(Math.max(0, breakdown.inputTokens - excluded(breakdown.batchExcludedInputTokens)), inputPerMTok) +
+    per(Math.max(0, breakdown.outputTokens - excluded(breakdown.batchExcludedOutputTokens)), outputPerMTok);
+
+  return { inputUsd, outputUsd, cacheUsd, totalUsd: inputUsd + outputUsd + cacheUsd, batchableUsd };
 }
+
+/**
+ * A `batchExcluded*` figure, or zero when the breakdown has none.
+ *
+ * A breakdown read back from a document written before the fields existed
+ * carries no such number. Zero is what that document meant: it excluded
+ * nothing, because nothing told it to.
+ */
+const excluded = (value: number | undefined): number =>
+  typeof value === 'number' && Number.isFinite(value) ? value : 0;
 
 /**
  * The cheapest recommendable model one capability step below, same provider.
@@ -251,10 +280,11 @@ export function billLevers(
     report.total.inputUsd + report.total.cacheReadUsd + report.total.cacheWriteUsd;
 
   if (totalUsd <= 0) {
-    return { slices: [], promptCeilingUsd, promptCeilingShare: 0, totalUsd };
+    return { slices: [], promptCeilingUsd, promptCeilingShare: 0, totalUsd, batchExcludedUsd: 0 };
   }
 
   const slices: SliceLevers[] = [];
+  let batchExcludedUsd = 0;
 
   for (const { label, model: modelId, breakdown } of report.byLabelAndModel) {
     const model = catalogue.byId.get(modelId);
@@ -280,12 +310,26 @@ export function billLevers(
      * lines; whether it also reaches cache reads and writes is not something this
      * catalogue records, so they stay at full price. That understates the saving,
      * which is the direction to be wrong in.
+     *
+     * **And only to calls that could move.** A call already billed at the batch
+     * rate cannot be halved again, and a call something waited on cannot wait a
+     * day: a turn of a coding agent is the plainest case. Both used to be
+     * offered the lever. A log of twenty calls that all ran on the Batch API
+     * was told it could save half of a bill that was already the half, and a
+     * converted Claude Code session was asked whether its turns "can wait for a
+     * batch window". The breakdown says what to leave out, and a slice with
+     * nothing left has no batch lever at all.
      */
     const batchRate = multipliersFor(model).batch;
-    const batchable = batchRate !== null && batchRate < 1;
-    const batch = batchable
-      ? { savingUsd: (breakdown.inputUsd + breakdown.outputUsd) * (1 - batchRate!) }
-      : null;
+    const batchableUsd = Math.max(
+      0,
+      breakdown.inputUsd + breakdown.outputUsd - excluded(breakdown.batchExcludedUsd),
+    );
+    // A cent of a cent left by floating point is not a lever.
+    const batchable = batchRate !== null && batchRate < 1 && batchableUsd > 1e-9;
+    const batch = batchable ? { savingUsd: batchableUsd * (1 - batchRate!) } : null;
+    // Counted for every slice a Batch API exists for, listed below or not.
+    if (batchRate !== null && batchRate < 1) batchExcludedUsd += excluded(breakdown.batchExcludedUsd);
 
     /**
      * Both together — **computed, never summed.**
@@ -299,9 +343,10 @@ export function billLevers(
       outputUsd: breakdown.outputUsd,
       cacheUsd: breakdown.cacheReadUsd + breakdown.cacheWriteUsd,
       totalUsd: breakdown.totalUsd,
+      batchableUsd,
     };
     const combinedCost = batchable
-      ? afterBoth.totalUsd - (afterBoth.inputUsd + afterBoth.outputUsd) * (1 - batchRate!)
+      ? afterBoth.totalUsd - afterBoth.batchableUsd * (1 - batchRate!)
       : afterBoth.totalUsd;
     const combinedUsd = breakdown.totalUsd - combinedCost;
 
@@ -327,6 +372,7 @@ export function billLevers(
     promptCeilingUsd,
     promptCeilingShare: promptCeilingUsd / totalUsd,
     totalUsd,
+    batchExcludedUsd,
   };
 }
 

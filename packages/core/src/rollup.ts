@@ -323,6 +323,9 @@ const BREAKDOWN_SUM = [
   'webSearchUsd',
   'webSearchUnpricedRequests',
   'batchUsd',
+  'batchExcludedInputTokens',
+  'batchExcludedOutputTokens',
+  'batchExcludedUsd',
 ] as const;
 
 /** Fields whose combination is a maximum, because a sum would invent a call. */
@@ -337,6 +340,7 @@ const COVERAGE_FIELDS = [
   'stopReason',
   'cacheTtl',
   'cacheWrites',
+  'interactive',
   'parsed',
 ] as const;
 

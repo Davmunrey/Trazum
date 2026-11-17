@@ -60,7 +60,7 @@ this section without changing a promise, which must not fail.
 | Field | What it holds |
 | --- | --- |
 | `schemaVersion` | The contract version. `1` today. |
-| `total` | Every priced call, split by input, cache reads, cache writes and output, in tokens and dollars, and by web searches (since 2.7.5): `webSearchRequests`, `webSearchUsd` (inside `totalUsd`, billed per search) and `webSearchUnpricedRequests` (searches on a model with no per-search fee, left out of `totalUsd`). |
+| `total` | Every priced call, split by input, cache reads, cache writes and output, in tokens and dollars, and by web searches (since 2.7.5): `webSearchRequests`, `webSearchUsd` (inside `totalUsd`, billed per search) and `webSearchUnpricedRequests` (searches on a model with no per-search fee, left out of `totalUsd`). `batchExcludedInputTokens`, `batchExcludedOutputTokens` and `batchExcludedUsd` are the input and output the Batch API lever leaves out: calls already billed at the batch rate, and calls marked `interactive`. They are inside the lines above, not beside them. |
 | `byLabel` | The same breakdown per workload label, largest bill first. |
 | `byModel` | The same per model, largest bill first. Unpriced models appear with tokens and zero dollars. |
 | `byLabelAndModel` | The grain a routing decision is made at: one row per workload and model. |
@@ -76,7 +76,7 @@ this section without changing a promise, which must not fail.
 | `span` | The period the log covers, or `null`. Stated, never extrapolated. |
 | `spendByDay` | Exact dollars per UTC day, with the day's biggest label and the day's spend per model — the series `modelMixDrift` summarises, whole. |
 | `duplicateLines` | Lines identical to an earlier one (timestamped records only), and what they added to the total — the shape a doubled export has. |
-| `fieldCoverage` | How many parsed records carried each optional field — the counts behind "what this log cannot answer yet". |
+| `fieldCoverage` | How many parsed records carried each optional field — the counts behind "what this log cannot answer yet". `interactive` counts the records that said something waited on their answer. |
 | `outcomeTally` | What each recorded `outcome` value cost: `byValue` (value, calls, usd, dearest first), `recorded`, `parsed`, `unrecordedUsd`. **Measurement only, no judgement** — which values mean success is declared in the config, not decided here, so a consumer that wants a rate passes this through `outcomeReport`. An aggregate, never a list of calls. |
 | `outcomeTallyByLabel` | The same tally per label, each with the slice's own `calls` and `totalUsd` — so a coverage share describes the workload and not the file it came from. The grouping a decision is made at. |
 | `outcomeTallyByModel` | The same, per model. |
@@ -137,6 +137,7 @@ is not a report:
 | `projectedSavingUsd` | Projected savings summed. Additive by construction: same-slice compositions arrive pre-combined inside one action. With `--min-usd` it covers only the actions the document holds — the file never contradicts itself; what was dropped is stated on the terminal with its worth. |
 | `measuredStakeUsd` | Measured stakes summed — money already paid to problems this plan names, kept apart from the projections. Filtered the same way. |
 | `totalUsd` | The bill the plan was made against. |
+| `batchExcludedUsd` | Input and output dollars no batch action was drawn on: calls already billed at the batch rate, and calls something waited on (`"interactive": true` on the record, which `from-claude-code`, `from-codex` and `from-gemini-cli` write on every line). Zero when the log marked neither, and absent on a plan saved before the field existed. What the plan left out and why, never a saving. |
 
 ## The verification document
 

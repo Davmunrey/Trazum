@@ -549,7 +549,19 @@ cache loss) are separate totals throughout, because "what you would save" and
 Every action carries what the log cannot confirm — the cheaper model's
 competence, the batch window's tolerability — and the command that can check
 it when one exists. `--min-usd` drops the noise floor and says how many
-actions it dropped and what they were worth together. [The document it writes
+actions it dropped and what they were worth together.
+
+**The Batch API is offered only to calls that could move to it.** A call that
+already ran there is billed at half and is not offered it again. A call
+something waited on is not offered it either: a record that says
+`"interactive": true` is left out, and `from-claude-code`, `from-codex` and
+`from-gemini-cli` say it on every line, because each turn of a coding agent
+is the next step's input and the Batch API answers within a day. A slice
+with nothing left to move has a route and no batch, and the plan ends by
+saying how much input and output it left out and why. A log that marks
+nothing is read as it always was, and still asks whether its calls can wait.
+
+[The document it writes
 is documented field by field](plan-format.md), because a plan is the one
 output here meant to be committed and read back later. `-o plan.json` saves
 the plan dated, so a later log can be held against it; `--markdown-out` and

@@ -37,6 +37,7 @@ findings are unavailable rather than reporting them as zero.
 | `timestamp` | Days, drift, the watch, rates per month. Without it a total is still a total. |
 | `session` | Conversation growth, per-session budgets, cache TTL fit. |
 | `thread` | Only when one session runs several conversations at once, such as an agent and its subagents: which one the call belongs to. The turn-by-turn findings (growth, repeats, truncation retries, cache TTL fit, cache writes never read) follow each thread on its own; what a session costs, and the per-session budget, still count the whole session. Leave it out on the main conversation. `from-claude-code` and `bill` write it for you from a subagent's `agentId`. |
+| `interactive` | Only on a call something waited on: a person in a conversation, or an agent whose next step needed the answer. Say `"interactive": true` and `plan` stops offering the Batch API for that call, which answers within a day. `from-claude-code`, `from-codex` and `from-gemini-cli` write it on every line. Leave it out and nothing changes: a log that marks none of its calls is read as it always was. |
 | cache token fields | The cache verdict — whether caching is paying for itself or costing you. |
 | `stop_reason` | Truncation-and-retry detection: work billed twice. |
 | `requests` | Only on a row that sums calls, such as a usage report's hourly or daily bucket: how many it sums, or `null` when the report does not say. A per-call log leaves it out. It is what lets a model priced by prompt length be billed honestly: a call is billed on its own prompt, and a summed row at the dearer rate unless its whole prompt total is under the line, with the cheaper figure printed beside it. The `from-*` converters for usage reports write it for you. |
@@ -87,7 +88,9 @@ at 1.1x on Claude 4.6 and later; `"global"` and `"not_available"` are the
 standard price. A line without either is priced at the standard, global rate,
 so a US-only workload logged without the field reads a tenth under its cost.
 A record from any other source can say `"batch": true` at the top level, which
-is what Trazum's own usage report converters write for a batch row.
+is what Trazum's own usage report converters write for a batch row. A call
+marked that way is billed at the batch rate, and `plan` does not offer to
+batch it a second time.
 
 **Keep `server_tool_use` too.** `"server_tool_use": {"web_search_requests": 3}`
 is three searches by Anthropic's web search tool, billed at $10 per 1,000 on
