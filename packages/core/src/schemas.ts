@@ -65,6 +65,7 @@ export const CONTRACT_SCHEMAS: Record<ContractName, Record<string, unknown>> = {
       label: string,
       session: string,
       thread: string,
+      interactive: boolean,
       outcome: string,
       stop_reason: string,
     },

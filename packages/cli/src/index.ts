@@ -11402,13 +11402,19 @@ async function commandPlan(
           : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
       lines.push('');
       lines.push(`### ${t.plan.action(action.kind, name, action.model)} — ${money}`);
-      if (action.detail.routeTo !== undefined) lines.push(`- ${t.plan.routeTo(action.detail.routeTo.displayName)}`);
+      if (action.detail.routeTo !== undefined) {
+        lines.push(`- ${t.plan.routeTo(action.detail.routeTo.displayName, action.kind === 'route+batch')}`);
+      }
       for (const assumption of action.assumes) lines.push(`- ${t.plan.assume(assumption)}`);
       if (action.check !== null) lines.push(`- ${t.plan.check(action.check)}`);
     }
     if (filtered > 0) {
       lines.push('');
       lines.push(`_${t.plan.filtered(n(filtered), formatUsd(minUsd), formatUsd(droppedUsd))}_`);
+    }
+    if (plan.batchExcludedUsd > 0) {
+      lines.push('');
+      lines.push(`_${t.plan.batchExcluded(formatUsd(plan.batchExcludedUsd))}_`);
     }
     lines.push('');
     lines.push(`_${t.plan.footer()}_`);
@@ -11436,7 +11442,7 @@ async function commandPlan(
     console.log();
     console.log(`  ${c.green('→')} ${c.bold(t.plan.action(action.kind, name, action.model))}  ${money}`);
     if (action.detail.routeTo !== undefined) {
-      console.log(`    ${c.dim(t.plan.routeTo(action.detail.routeTo.displayName))}`);
+      console.log(`    ${c.dim(t.plan.routeTo(action.detail.routeTo.displayName, action.kind === 'route+batch'))}`);
     }
     for (const assumption of action.assumes) {
       console.log(`    ${c.yellow('?')} ${c.dim(wrap(t.plan.assume(assumption), 72, '      '))}`);
@@ -11448,6 +11454,10 @@ async function commandPlan(
   if (filtered > 0) {
     console.log();
     console.log(`  ${c.dim(wrap(t.plan.filtered(n(filtered), formatUsd(minUsd), formatUsd(droppedUsd)), 74, '  '))}`);
+  }
+  if (plan.batchExcludedUsd > 0) {
+    console.log();
+    console.log(`  ${c.dim(wrap(t.plan.batchExcluded(formatUsd(plan.batchExcludedUsd)), 74, '  '))}`);
   }
   console.log();
   console.log(`  ${c.dim(wrap(t.plan.footer(), 74, '  '))}`);

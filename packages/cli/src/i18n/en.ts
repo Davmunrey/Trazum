@@ -3254,7 +3254,8 @@ ${bold('EXAMPLES')}
                 : 'Look at the cache on';
       return `${verb} ${label} (${model})`;
     },
-    routeTo: (model) => `to ${model}, combined with batching where both apply, never summed`,
+    routeTo: (model, withBatch) =>
+      withBatch ? `to ${model}, combined with batching where both apply, never summed` : `to ${model}`,
     assume: (assumption) => {
       switch (assumption.kind) {
         case 'model-capability':
@@ -3272,6 +3273,8 @@ ${bold('EXAMPLES')}
     check: (command) => `check it: ${command}`,
     filtered: (count, minUsd, worth) =>
       `${count} actions under ${minUsd}, worth ${worth} together, left out by --min-usd, left out of this document entirely, not disproved.`,
+    batchExcluded: (usd) =>
+      `No batch saving is projected on ${usd} of input and output: those calls already ran on the Batch API, or something waited on their answer (marked interactive, as every turn of a coding agent is).`,
     footer: () =>
       'Ranked by money, projected or already spent alike. The assumptions are yours to answer: this plan is arithmetic over the log, not knowledge of your product.',
     wrote: (path) =>

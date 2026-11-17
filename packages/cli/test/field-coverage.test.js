@@ -89,6 +89,7 @@ describe('what this log cannot answer yet', () => {
       stopReason: 1,
       cacheTtl: 0,
       cacheWrites: 0,
+      interactive: 0,
       parsed: 2,
     });
   });

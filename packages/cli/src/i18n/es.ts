@@ -3284,7 +3284,8 @@ ${bold('EJEMPLOS')}
                 : 'Mira la caché de';
       return `${verb} ${label} (${model})`;
     },
-    routeTo: (model) => `a ${model}, combinado con el batch donde aplican los dos, nunca sumado`,
+    routeTo: (model, withBatch) =>
+      withBatch ? `a ${model}, combinado con el batch donde aplican los dos, nunca sumado` : `a ${model}`,
     assume: (assumption) => {
       switch (assumption.kind) {
         case 'model-capability':
@@ -3302,6 +3303,8 @@ ${bold('EJEMPLOS')}
     check: (command) => `compruébalo: ${command}`,
     filtered: (count, minUsd, worth) =>
       `${count} acciones por debajo de ${minUsd}, que juntas valen ${worth}, quedaron fuera por --min-usd: fuera de este documento por completo, no refutadas.`,
+    batchExcluded: (usd) =>
+      `No se proyecta ahorro por batch sobre ${usd} de entrada y salida: esas llamadas ya pasaron por la Batch API, o algo esperaba su respuesta (marcadas como interactivas, como lo es cada turno de un agente de código).`,
     footer: () =>
       'Ordenado por dinero, proyectado o ya gastado por igual. Los supuestos los respondes tú: este plan es aritmética sobre el registro, no conocimiento de tu producto.',
     wrote: (path) =>

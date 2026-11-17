@@ -223,6 +223,20 @@ export interface UsageRecord {
    */
   batch?: true;
   /**
+   * True when something waited on the answer: a person in a conversation, or
+   * an agent whose next step needed it. The Batch API answers within a day,
+   * so a call like this cannot move to it, and the batch lever leaves it out
+   * (`batchExcludedUsd` on the breakdown) instead of asking the reader whether
+   * a turn of their coding agent "can wait for a batch window".
+   *
+   * Read from a record-level `interactive: true`, which is what the agent
+   * session converters write on every line: `from-claude-code`, `from-codex`
+   * and `from-gemini-cli`. Absent says nothing either way. A log that marks
+   * none of its calls is read as it always was, because most logs never
+   * recorded who was waiting.
+   */
+  interactive?: true;
+  /**
    * Web searches the call ran, when the log counted any: Anthropic's
    * `usage.server_tool_use.web_search_requests`, which every Messages
    * response and every Claude Code log line carries once a search has run.
@@ -355,6 +369,22 @@ export interface UsageBreakdown {
    * difference. Their searches are in `webSearchUsd`, at the same fee as any.
    */
   batchUsd: number;
+  /**
+   * The input and output the Batch API lever leaves out, in tokens and in
+   * dollars at each call's own rate: calls already billed at the batch rate,
+   * which cannot be halved twice, and calls something waited on
+   * (`interactive` on the record), which cannot wait a day.
+   *
+   * Already inside `inputTokens`, `outputTokens`, `inputUsd` and `outputUsd`.
+   * Input and output only, because those are the two lines the lever prices.
+   * Tokens as well as dollars, because a batch saving on another model's rates
+   * is priced from the tokens. Written as what is left out, never as what is
+   * left in, so a document from before the fields existed reads as zero and
+   * prices the lever as it always did.
+   */
+  batchExcludedInputTokens: number;
+  batchExcludedOutputTokens: number;
+  batchExcludedUsd: number;
 }
 
 /**
@@ -379,6 +409,8 @@ export interface FieldCoverage {
   cacheTtl: number;
   /** Records that wrote to the cache at all — the denominator for `cacheTtl`. */
   cacheWrites: number;
+  /** Records marked `interactive`: something waited on the answer. */
+  interactive: number;
   /** Every record that parsed, priced or not — the denominator for the rest. */
   parsed: number;
 }
@@ -722,6 +754,9 @@ const EMPTY = (): UsageBreakdown => ({
   webSearchUsd: 0,
   webSearchUnpricedRequests: 0,
   batchUsd: 0,
+  batchExcludedInputTokens: 0,
+  batchExcludedOutputTokens: 0,
+  batchExcludedUsd: 0,
 });
 
 /**
@@ -1081,6 +1116,8 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * cannot collide on a flat record.
      */
     ...(record.batch === true || usage.service_tier === 'batch' ? { batch: true as const } : {}),
+    /* Said by the record alone: nothing a provider returns names who was waiting. */
+    ...(record.interactive === true ? { interactive: true as const } : {}),
     ...(valueOf(webSearch) > 0 ? { webSearchRequests: valueOf(webSearch) } : {}),
     ...(openAiSplitGiven && !openAiSplitAgrees ? { writeSplitContradicted: true as const } : {}),
   };
@@ -1223,6 +1260,16 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
     per(record.cacheWrite1hTokens, input * rates.cacheWrite1h) +
     per(record.outputTokens, output);
   if (priced.batch === true) into.batchUsd += recordUsd(inputPerMTok, outputPerMTok);
+  /*
+   * What the batch lever must not count: a call the log says ran on the Batch
+   * API, and a call something waited on. By the record, not by the price: a
+   * batch call on a model with no batch rate is still a call that was batched.
+   */
+  if (record.batch === true || record.interactive === true) {
+    into.batchExcludedInputTokens += record.inputTokens;
+    into.batchExcludedOutputTokens += record.outputTokens;
+    into.batchExcludedUsd += per(record.inputTokens, inputPerMTok) + per(record.outputTokens, outputPerMTok);
+  }
   const floor = priced.tier?.decided === false ? priced.tier.floor : undefined;
   if (floor !== undefined) {
     into.tierCeilingCalls += 1;
@@ -1355,7 +1402,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   const outcomesByModel = new Map<string, Map<string, { calls: number; usd: number }>>();
   const unrecordedByLabel = new Map<string, number>();
   const unrecordedByModel = new Map<string, number>();
-  const coverage = { label: 0, session: 0, outcome: 0, ts: 0, stopReason: 0, cacheTtl: 0, cacheWrites: 0, parsed: 0 };
+  const coverage = { label: 0, session: 0, outcome: 0, ts: 0, stopReason: 0, cacheTtl: 0, cacheWrites: 0, interactive: 0, parsed: 0 };
   /**
    * Raw lines already seen, for the duplicate check. Bounded by the number of
    * *timestamped* lines — the price of catching a doubled bill, paid only on
@@ -1443,6 +1490,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
      */
     coverage.parsed += 1;
     if (record.label !== null) coverage.label += 1;
+    if (record.interactive === true) coverage.interactive += 1;
     if (record.session !== null) coverage.session += 1;
     if (record.outcome !== null) coverage.outcome += 1;
     if (record.ts !== null) coverage.ts += 1;

@@ -106,6 +106,13 @@ export interface PlanDocument {
   measuredStakeUsd: number;
   /** The bill the plan was made against. */
   totalUsd: number;
+  /**
+   * Input and output dollars no batch action here was drawn on: calls already
+   * billed at the batch rate, and calls something waited on (`interactive` on
+   * the record, which the agent session converters write). Zero when the log
+   * marked neither. A fact about what the plan left out, never a saving.
+   */
+  batchExcludedUsd: number;
 }
 
 /**
@@ -223,6 +230,7 @@ export function buildPlan(
     projectedSavingUsd: actions.reduce((sum, a) => sum + (a.savingUsd ?? 0), 0),
     measuredStakeUsd: actions.reduce((sum, a) => sum + (a.stakeUsd ?? 0), 0),
     totalUsd: report.total.totalUsd,
+    batchExcludedUsd: levers.batchExcludedUsd,
   };
 }
 

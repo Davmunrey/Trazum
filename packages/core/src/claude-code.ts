@@ -75,6 +75,12 @@ export interface ClaudeCodeRecord {
    * id like the session's, grouped by and never printed.
    */
   thread?: string;
+  /**
+   * Always true: every line here is a turn of an agent loop, and the next
+   * step waited on its answer. `plan` reads it to leave these calls out of
+   * the Batch API lever, which answers within a day.
+   */
+  interactive: true;
   label?: string;
   /**
    * What the provider said ended the turn, when the transcript recorded it.
@@ -267,6 +273,7 @@ export function claudeCodeRecords(
       model,
       ts: typeof entry.timestamp === 'string' ? entry.timestamp : '',
       session: typeof entry.sessionId === 'string' ? entry.sessionId : '',
+      interactive: true,
       /* A sidechain with no agent id is still not the main thread: one thread for all of them. */
       ...(entry.isSidechain === true
         ? { thread: typeof entry.agentId === 'string' && entry.agentId !== '' ? entry.agentId : 'sidechain' }
