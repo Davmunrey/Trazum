@@ -2,12 +2,12 @@
   "about": "What mutation testing found the last time it was recorded: the score of each file, and every mutant no test killed. Written by `node scripts/mutate.mjs --write`; `--check` fails on a survivor that is not listed here. A survivor is a line a test should hold and does not yet, or a change that makes no difference; docs/mutation-testing.md says how to tell.",
   "recorded": "2026-11-18",
   "total": {
-    "mutants": 475,
-    "killed": 432,
+    "mutants": 510,
+    "killed": 463,
     "timeout": 8,
-    "survived": 34,
+    "survived": 38,
     "uncovered": 1,
-    "score": 92.6
+    "score": 92.4
   },
   "files": {
     "packages/core/src/optimize.ts": {
@@ -49,9 +49,57 @@
       "survived": 3,
       "uncovered": 0,
       "score": 95.9
+    },
+    "packages/core/src/billing.ts": {
+      "mutants": 35,
+      "killed": 31,
+      "timeout": 0,
+      "survived": 4,
+      "uncovered": 0,
+      "score": 88.6
     }
   },
   "survivors": [
+    {
+      "id": "d493de0f2c75",
+      "file": "packages/core/src/billing.ts",
+      "line": 38,
+      "function": "promptSizeOf",
+      "operator": "condition",
+      "status": "survived",
+      "before": "...(record.speed === undefined ? {} : { speed: record.speed }),",
+      "after": "...(false ? {} : { speed: record.speed }),"
+    },
+    {
+      "id": "de0feaf6ae99",
+      "file": "packages/core/src/billing.ts",
+      "line": 39,
+      "function": "promptSizeOf",
+      "operator": "condition",
+      "status": "survived",
+      "before": "...(record.serviceTier === undefined ? {} : { serviceTier: record.serviceTier }),",
+      "after": "...(false ? {} : { serviceTier: record.serviceTier }),"
+    },
+    {
+      "id": "fcbd519ff201",
+      "file": "packages/core/src/billing.ts",
+      "line": 40,
+      "function": "promptSizeOf",
+      "operator": "condition",
+      "status": "survived",
+      "before": "...(record.inferenceGeo === undefined ? {} : { inferenceGeo: record.inferenceGeo }),",
+      "after": "...(false ? {} : { inferenceGeo: record.inferenceGeo }),"
+    },
+    {
+      "id": "e92ab3c29e05",
+      "file": "packages/core/src/billing.ts",
+      "line": 56,
+      "function": "webSearchUsdOf",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "if (searches <= 0 || model.webSearchPerThousandUsd === undefined)",
+      "after": "if (searches < 0 || model.webSearchPerThousandUsd === undefined)"
+    },
     {
       "id": "016a041c03af",
       "file": "packages/core/src/optimize.ts",

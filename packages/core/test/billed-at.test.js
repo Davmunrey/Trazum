@@ -46,6 +46,47 @@ describe('a finding prices a call at the moment the bill does', () => {
   });
 });
 
+describe('a call with no clock is billed at the date the report is given', () => {
+  it('at peak, when that date is at peak, and not at some other moment', () => {
+    /*
+      The same million input tokens on DeepSeek V4 Flash, with no timestamp.
+      `on` is the only moment the record can mean: Friday 2026-10-02 07:30 UTC,
+      inside the 06:00-10:00 peak, where the row bills $0.30 per million.
+      A record with no clock read as some other instant would fall outside
+      that window, or before the row's 2026-09-10 price change.
+    */
+    const log = JSON.stringify({ model: 'deepseek-v4-flash', usage: { input_tokens: 1_000_000, output_tokens: 0 } });
+    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE, on: new Date('2026-10-02T07:30:00Z') });
+    close(report.total.totalUsd, 0.3, 'the bill, at the given moment');
+  });
+});
+
+describe('a call is priced by the size of its whole prompt', () => {
+  it('counts its one-hour cache writes toward the line, as it counts every other input token', () => {
+    /*
+      Claude Haiku 5.5 bills a request over 100,000 input tokens at $0.50 in,
+      and a one-hour write at twice that, "cache reads and writes included" in
+      the count (the catalogue's row). This call carries 1,000 input tokens and
+      150,000 written to the one-hour cache: 151,000, over the line.
+      1,000 at $0.50 and 150,000 at $1.00 is $0.1505.
+    */
+    const log = JSON.stringify({
+      model: 'claude-haiku-5-5',
+      ts: '2026-10-05T12:00:00Z',
+      usage: {
+        input_tokens: 1_000,
+        output_tokens: 0,
+        cache_creation_input_tokens: 150_000,
+        cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 150_000 },
+      },
+    });
+    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
+    close(report.total.inputUsd, 0.0005, '1,000 input tokens at the over-100,000 rate');
+    close(report.total.cacheWriteUsd, 0.15, '150,000 one-hour writes at the over-100,000 rate');
+    close(report.total.totalUsd, 0.1505, 'the call');
+  });
+});
+
 describe('a budget prices a record at its own model\'s ratios', () => {
   it('reads an Opus 5.5 cache hit at 5% of input, not 10%', () => {
     /*

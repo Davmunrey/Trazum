@@ -14,7 +14,7 @@ where a wrong line costs most.
 ## Where it stands
 
 <!-- mutation-score:start -->
-Recorded on 2026-11-18: **92.6%** of 475 mutants caught.
+Recorded on 2026-11-18: **92.4%** of 510 mutants caught.
 
 | File | Mutants | Caught | Alive | Score |
 | --- | --- | --- | --- | --- |
@@ -23,7 +23,8 @@ Recorded on 2026-11-18: **92.6%** of 475 mutants caught.
 | `rules.ts` | 131 | 121 | 10 | 92.4% |
 | `savings.ts` | 62 | 60 | 2 | 96.8% |
 | `session-cost.ts` | 74 | 71 | 3 | 95.9% |
-| **All** | 475 | 440 | 35 | 92.6% |
+| `billing.ts` | 35 | 31 | 4 | 88.6% |
+| **All** | 510 | 471 | 39 | 92.4% |
 <!-- mutation-score:end -->
 
 A survivor is not a bug. It is a place where a bug would not be noticed.
@@ -42,11 +43,14 @@ itself and should hold itself.
 
 ## What is mutated
 
-The built JavaScript of five files, chosen for what a mistake in them does:
+The built JavaScript of six files, chosen for what a mistake in them does:
 
 - `optimize.ts`, `segment.ts` and `rules.ts` turn a prompt into a shorter
   prompt. A wrong line there changes what somebody's model is told.
 - `savings.ts` and `session-cost.ts` turn token counts into money.
+- `billing.ts` says, for every call the bill and its findings price, the
+  moment it was billed at, the size of prompt that picks its band, how it ran,
+  and what its web searches cost. A wrong line there misprices every call.
 
 Twelve kinds of change:
 
@@ -78,7 +82,11 @@ So the score is not read as more than it is:
   says nothing about the tests. The loop's start and its bound are mutated.
 - **Every file not listed above.** The whole core has about 15,700 possible
   mutants; this runs 3% of them. The price table alone has 801 numbers, and
-  whether a test holds each one is the next question worth asking.
+  whether a test holds each one is the next question worth asking. The code
+  that chooses a call's rate from that table, `effectivePricing` and
+  `multipliersFor`, is in the same file, `pricing.ts`, and is not mutated
+  either; nor is `usage.ts`, where the bill multiplies a call's tokens by
+  those rates.
 
 ## How a mutant is run
 
@@ -131,7 +139,7 @@ choice of tests is wrong and no score should be read until it is fixed.
 
 Last run on 2026-11-18, over the 38 survivors that were on record that day:
 none was killed by a test it had not been given. It took 614 seconds. The
-record holds 35 now.
+record holds 39 now.
 
 It costs a whole suite per mutant, so it is run when the way tests are chosen
 changes, not on every run.
@@ -162,7 +170,10 @@ A killed mutant costs one test file. A survivor costs every test file that
 reaches it, so a whole run gets shorter as survivors are killed: on four cores
 it took 1,595 seconds at 62.1% and 662 seconds at 91.5%. On a GitHub-hosted
 runner the same run took 1,259 seconds on 2026-11-18 and caught the same 408
-of 446, file by file, with no test failing once and passing alone.
+of 446, file by file, with no test failing once and passing alone. On a
+four-core machine shared with other test runs, the whole run took 1,405
+seconds over five files and 475 mutants, and 1,400 seconds over six files and
+510, both on 2026-11-18.
 
 ## In CI
 
@@ -212,12 +223,16 @@ There are three honest outcomes:
 
 ### What is on record
 
-Of the 35 on record, as read on 2026-11-18. This is a reading, not a proof:
+Of the 39 on record, as read on 2026-11-18. This is a reading, not a proof:
 
-- **6 are shortcuts.** A test for "is there anything to do" in front of code
-  that does nothing when there is not (`segment.ts` 194, 196, 310), and the
-  early exit from the fixed-point loop (`optimize.ts` 187). Forcing them
-  changes the time and not the answer.
+- **10 are changes that make no difference.** Six are shortcuts: a test for
+  "is there anything to do" in front of code that does nothing when there is
+  not (`segment.ts` 194, 196, 310), and the early exit from the fixed-point
+  loop (`optimize.ts` 187). Forcing them changes the time and not the answer.
+  Three write a field the call left out as present and undefined
+  (`billing.ts` 38, 39, 40): everything that reads the field asks whether it
+  is undefined, and an absent field is. One lets a call with no web searches
+  through to the arithmetic (`billing.ts` 56), where no searches cost nothing.
 - **13 guard an input that does not arrive.** A match of no length, where no
   pattern can produce one (`segment.ts` 288, 289, 293). More protected spans
   than there are masks, where the cap moving by one only matters on a
@@ -248,3 +263,10 @@ gone.
 Add its path to `TARGETS` in `scripts/mutate.mjs`, run it with `--only`, kill
 what is worth killing, and record a whole run. The pull request says what the
 first run found. A file is not added with its survivors unread.
+
+Until the record names the new file, `mutation.test.js` fails before any
+mutant is run, because it holds the record to `TARGETS`. That test file
+reaches none of the core's source, so the `--only` run can leave it out with
+`--without mutation.test.js`. The whole run cannot, and `billing.ts` was
+recorded by first giving it a row of zeros in the record and the table, which
+`--write` then replaced.
