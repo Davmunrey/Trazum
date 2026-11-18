@@ -179,20 +179,6 @@ describe('the catalogue is internally consistent', () => {
     }
   });
 
-  it('capability and the deprecated tier never disagree', () => {
-    // `tier` is kept in step for the whole of 1.x. If they drift, half the code
-    // ranks one way and half the other, and the difference is invisible until a
-    // recommendation is wrong.
-    const equivalent = { small: 'haiku', mid: 'sonnet', large: 'opus', frontier: 'frontier' };
-    for (const model of listModels()) {
-      assert.equal(
-        model.tier,
-        equivalent[model.capability],
-        `${model.id}: capability ${model.capability} against tier ${model.tier}`,
-      );
-    }
-  });
-
   it('a model with no caching has no cache minimum, and vice versa', () => {
     for (const model of listModels()) {
       if (model.caching === 'none') {

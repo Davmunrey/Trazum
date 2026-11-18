@@ -27,7 +27,6 @@ const row = (fields) => ({
   contextWindow: 1_000_000,
   cacheMinTokens: null,
   capability: 'mid',
-  tier: 'sonnet',
   ...fields,
 });
 const band = (id, tokens, inputPerMTok, outputPerMTok) => ({

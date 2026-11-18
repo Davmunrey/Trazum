@@ -48,17 +48,39 @@ const part = (heading) => {
   return end === -1 ? from : from.slice(0, end);
 };
 
-/** Every `@deprecated` in the packages' sources: the name it marks, and its comment. */
-function deprecated() {
+/** Every `@deprecated` in one source text: the name it marks, and its comment. */
+function marksIn(file, source) {
   const found = [];
-  for (const file of tracked.filter((path) => /^(packages|apps)\/[^/]+\/src\/.*\.tsx?$/.test(path))) {
-    const source = read(file);
-    for (const match of source.matchAll(/\/\*\*(?:(?!\*\/)[\s\S])*?@deprecated(?:(?!\*\/)[\s\S])*?\*\/\s*(?:export\s+)?(?:declare\s+)?(?:const|function|class|interface|type|enum|readonly)?\s*([A-Za-z_$][\w$]*)/g)) {
-      found.push({ file, name: match[1], comment: match[0] });
-    }
+  for (const match of source.matchAll(/\/\*\*(?:(?!\*\/)[\s\S])*?@deprecated(?:(?!\*\/)[\s\S])*?\*\/\s*(?:export\s+)?(?:declare\s+)?(?:const|function|class|interface|type|enum|readonly)?\s*([A-Za-z_$][\w$]*)/g)) {
+    found.push({ file, name: match[1], comment: match[0] });
   }
   return found;
 }
+
+/** Every `@deprecated` in the packages' sources. */
+function deprecated() {
+  return tracked
+    .filter((path) => /^(packages|apps)\/[^/]+\/src\/.*\.tsx?$/.test(path))
+    .flatMap((file) => marksIn(file, read(file)));
+}
+
+/**
+ * The member this file was written about, as `types.ts` had it until 3.0.0
+ * removed it (#764). Kept as text so the search is still seen to find a
+ * `@deprecated` member when the sources hold none.
+ */
+const REMOVED_TIER = `export interface ModelPricing {
+  /** Capability, on a vendor-neutral scale. */
+  capability: Capability;
+  /**
+   * @deprecated Use \`capability\`. Anthropic's ladder used as a generic axis
+   * stopped making sense once other providers were priced. Kept in step with
+   * \`capability\`. It was to be removed in 2.0 and was not: 2.0.0 removed
+   * nothing. It goes only in a major, and none has been named. See
+   * VERSIONING.md.
+   */
+  tier: 'haiku' | 'sonnet' | 'opus' | 'frontier' | 'unknown';
+}`;
 
 describe('the freeze is stated for the line being released', () => {
   it('names the major line the manifest is on', () => {
@@ -85,7 +107,18 @@ describe('what an earlier version said would be removed', () => {
   const listed = [...part('### Deprecated, and still working').matchAll(/^- `([^`]+)`/gm)].map((match) => match[1]);
 
   it('the search finds the one this was written about', () => {
-    assert.ok(marked.some((entry) => entry.name === 'tier' && entry.file === 'packages/core/src/types.ts'), 'a `@deprecated` on `tier` in types.ts is what the search must find');
+    assert.deepEqual(
+      marksIn('packages/core/src/types.ts', REMOVED_TIER).map((entry) => entry.name),
+      ['tier'],
+      'a `@deprecated` on `tier`, as types.ts had it, is what the search must find',
+    );
+  });
+
+  it('`tier` is removed rather than still marked, and the policy no longer lists it', () => {
+    // 3.0.0 removes it (#764). Marked again, the policy would have to list it
+    // again; listed again, the policy would promise a field that is gone.
+    assert.ok(!marked.some((entry) => entry.name === 'tier'), 'a `@deprecated` `tier` is back in the sources');
+    assert.ok(!listed.includes('tier'), 'the policy still lists `tier` as deprecated and still working');
   });
 
   it('everything marked deprecated in the sources is listed in the policy, and nothing else is', () => {

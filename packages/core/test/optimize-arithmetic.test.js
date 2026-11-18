@@ -160,7 +160,6 @@ describe('recounting with an exact counter recomputes every figure', () => {
           outputPerMTok: 8,
           contextWindow: 2_000_000,
           cacheMinTokens: 256,
-          tier: 'opus',
           capability: 'large',
         },
       },

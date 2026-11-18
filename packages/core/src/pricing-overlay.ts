@@ -29,7 +29,6 @@ export const PRICING_MODEL_KEYS = [
   'outputPerMTok',
   'contextWindow',
   'cacheMinTokens',
-  'tier',
   'capability',
   'caching',
   'notes',
@@ -61,7 +60,6 @@ const PROMO_KEYS = ['inputPerMTok', 'outputPerMTok', 'until'] as const;
  */
 const MULTIPLIER_KEYS = ['cacheRead', 'cacheWrite5m', 'cacheWrite1h', 'batch', 'batchCacheRead'] as const;
 
-const TIERS: ModelPricing['tier'][] = ['frontier', 'opus', 'sonnet', 'haiku', 'unknown'];
 const CAPABILITIES: Capability[] = ['small', 'mid', 'large', 'frontier', 'unknown'];
 const CACHING_MODES: CachingMode[] = ['explicit', 'automatic', 'none', 'unknown'];
 
@@ -182,6 +180,24 @@ function parseMultipliers(raw: unknown, label: string, source: string): CostMult
   return multipliers;
 }
 
+/**
+ * `tier` was a key on a model until 3.0.0, which removed it.
+ *
+ * Refused by name, ahead of the unknown-key check, so the reader is told what
+ * to write instead rather than offered the nearest spelling. Not ignored: a
+ * key somebody wrote and nothing reads is a setting that looks set. Checked on
+ * a parsed document and again on an overlay handed to `applyPricingOverlay` as
+ * an object, which no parser has read.
+ */
+function refuseTier(raw: unknown, id: string, source: string): void {
+  if (!isPlainObject(raw) || !('tier' in raw)) return;
+  throw new PricingOverlayError(
+    `"models.${id}.tier" was removed in 3.0.0. Write "capability" instead: ` +
+      'haiku is "small", sonnet is "mid", opus is "large", frontier is "frontier", unknown is "unknown"',
+    source,
+  );
+}
+
 function parseModel(
   raw: unknown,
   id: string,
@@ -190,6 +206,7 @@ function parseModel(
   if (!isPlainObject(raw)) {
     throw new PricingOverlayError(`"models.${id}" must be an object`, source);
   }
+  refuseTier(raw, id, source);
   rejectUnknownKeys(raw, PRICING_MODEL_KEYS, source, `models.${id}.`);
   if (Object.keys(raw).length === 0) {
     throw new PricingOverlayError(
@@ -242,15 +259,6 @@ function parseModel(
       );
     }
     model.caching = raw.caching as CachingMode;
-  }
-  if (raw.tier !== undefined) {
-    if (typeof raw.tier !== 'string' || !TIERS.includes(raw.tier as ModelPricing['tier'])) {
-      throw new PricingOverlayError(
-        `"models.${id}.tier" must be one of ${TIERS.join(', ')}`,
-        source,
-      );
-    }
-    model.tier = raw.tier as ModelPricing['tier'];
   }
   if (raw.notes !== undefined) {
     if (typeof raw.notes !== 'string') {
@@ -356,6 +364,7 @@ export function applyPricingOverlay(
 ): PricingCatalogue {
   const overridden: string[] = [];
   const added: string[] = [];
+  for (const [id, patch] of Object.entries(overlay.models)) refuseTier(patch, id, source);
 
   const models = base.models.map((model) => {
     const patch = overlay.models[model.id];
@@ -389,7 +398,7 @@ export function applyPricingOverlay(
     // `cacheMinTokens` is checked for `undefined` and not for falsiness, so an
     // explicit `null` counts as supplied. That is the point of it: saying "not
     // known" is an answer, leaving it out is not.
-    const missing = (['displayName', 'inputPerMTok', 'outputPerMTok', 'contextWindow', 'cacheMinTokens', 'tier', 'capability'] as const).filter(
+    const missing = (['displayName', 'inputPerMTok', 'outputPerMTok', 'contextWindow', 'cacheMinTokens', 'capability'] as const).filter(
       (key) => patch[key] === undefined,
     );
     if (missing.length > 0) {

@@ -21,7 +21,7 @@ milestone, which holds the same issues.
 
 <!-- milestones:start -->
 1. **[2.7.13: repeated-task evaluation](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%222.7.13%3A+repeated-task+evaluation%22)**. Validate the instruction policy over repeated experiments on accepted tasks before it becomes a default: cost per accepted task, quality, retries and controller overhead, measured together. Issues: [#638](https://github.com/Davmunrey/Trazum/issues/638).
-2. **[A site that carries the brand](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22A+site+that+carries+the+brand%22)**. The landing as the front door, the documentation, the catalogue of models and prices, the roadmap and the changelog as pages of one site, and a brand page, all in the design system the project already chose and each with a way to GitHub. Issues: [#734](https://github.com/Davmunrey/Trazum/issues/734), [#735](https://github.com/Davmunrey/Trazum/issues/735), [#736](https://github.com/Davmunrey/Trazum/issues/736), [#737](https://github.com/Davmunrey/Trazum/issues/737), [#744](https://github.com/Davmunrey/Trazum/issues/744), [#759](https://github.com/Davmunrey/Trazum/issues/759).
+2. **[A site that carries the brand](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22A+site+that+carries+the+brand%22)**. The landing as the front door, the documentation, the catalogue of models and prices, the roadmap and the changelog as pages of one site, and a brand page, all in the design system the project already chose and each with a way to GitHub. Issues: [#734](https://github.com/Davmunrey/Trazum/issues/734), [#735](https://github.com/Davmunrey/Trazum/issues/735), [#736](https://github.com/Davmunrey/Trazum/issues/736), [#737](https://github.com/Davmunrey/Trazum/issues/737), [#744](https://github.com/Davmunrey/Trazum/issues/744), [#759](https://github.com/Davmunrey/Trazum/issues/759), [#770](https://github.com/Davmunrey/Trazum/issues/770).
 3. **[Trazum speaks first](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Trazum+speaks+first%22)**. The status line, the watcher and the spend guard exist and are off until somebody wires each by hand. Next: one command that turns them on and off, a watcher that reads the agents' sessions directly and says so on the screen, a weekly summary that arrives on its own, a plan that can open the pull request, and a terminal that carries the brand. Issues: [#755](https://github.com/Davmunrey/Trazum/issues/755), [#756](https://github.com/Davmunrey/Trazum/issues/756), [#757](https://github.com/Davmunrey/Trazum/issues/757), [#758](https://github.com/Davmunrey/Trazum/issues/758).
 4. **[3.0.0: the release allowed to break](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%223.0.0%3A+the+release+allowed+to+break%22)**. A major is the only release that may remove something. This one removes `tier` from a model in the pricing catalogue, deprecated since 1.8.0 in favour of `capability`, and nothing its changelog entry does not list. Issues: [#764](https://github.com/Davmunrey/Trazum/issues/764).
 5. **[A repository a stranger can contribute to](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22A+repository+a+stranger+can+contribute+to%22)**. What a visitor and a contributor need that is not the product: a roadmap that opens with what comes next, a wiki that publishes itself, documents that agree with each other, and Discussions with a form for each kind of question. Issues: [#725](https://github.com/Davmunrey/Trazum/issues/725), [#726](https://github.com/Davmunrey/Trazum/issues/726), [#727](https://github.com/Davmunrey/Trazum/issues/727), [#732](https://github.com/Davmunrey/Trazum/issues/732), [#747](https://github.com/Davmunrey/Trazum/issues/747), [#765](https://github.com/Davmunrey/Trazum/issues/765), [#767](https://github.com/Davmunrey/Trazum/issues/767).
@@ -45,7 +45,7 @@ closed, not when somebody remembers this page. Live:
 [open to a first contribution](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
-**Ready to be picked up (14).**
+**Ready to be picked up (13).**
 
 | Issue | What | Area |
 | --- | --- | --- |
@@ -59,10 +59,9 @@ closed, not when somebody remembers this page. Live:
 | [#684](https://github.com/Davmunrey/Trazum/issues/684) | Review the Dutch dictionary: 30 entries nobody who reads Dutch has agreed to | core |
 | [#756](https://github.com/Davmunrey/Trazum/issues/756) | watch reads the agents' sessions directly and says so on the screen when a budget is crossed | cli |
 | [#757](https://github.com/Davmunrey/Trazum/issues/757) | A weekly summary that arrives on its own, and a plan that can open the pull request | cli, action |
-| [#758](https://github.com/Davmunrey/Trazum/issues/758) | The terminal output carries the brand: one hierarchy, the palette, and the total first | cli |
-| [#759](https://github.com/Davmunrey/Trazum/issues/759) | The landing tells a longer story: a developer sits down, works, opens Trazum, checks, reads, and closes the lid | web |
 | [#763](https://github.com/Davmunrey/Trazum/issues/763) | Nineteen of sixty-nine sampled prices could change and no test would fail | core |
 | [#764](https://github.com/Davmunrey/Trazum/issues/764) | 3.0.0 removes `tier` from a model in the pricing catalogue | core |
+| [#770](https://github.com/Davmunrey/Trazum/issues/770) | The landing's terminal sits in the upper half of its window, and its spacing was never measured | web |
 
 **Waiting on something outside the repository (10).** Each issue says what.
 

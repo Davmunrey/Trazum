@@ -327,7 +327,6 @@ describe('a connected report, bucket by bucket', () => {
       contextWindow: 100_000,
       cacheMinTokens: 1024,
       capability: 'mid',
-      tier: 'sonnet',
       history: [{ until: '2026-09-10T00:00:00Z', inputPerMTok: 3, outputPerMTok: 3 }],
     };
     const catalogue = {

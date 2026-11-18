@@ -555,7 +555,6 @@ describe('profile_usage', () => {
           outputPerMTok: 8,
           contextWindow: 200_000,
           cacheMinTokens: 1024,
-          tier: 'sonnet',
           capability: 'mid',
           caching: 'automatic',
         },

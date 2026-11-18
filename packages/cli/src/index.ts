@@ -4443,7 +4443,6 @@ function commandOwnrate(args: Args, t: CliMessages): void {
         outputPerMTok: Number(usdPerMTok.toFixed(4)),
         contextWindow: 32768,
         cacheMinTokens: null,
-        tier: 'unknown',
         capability: 'unknown',
       },
     },

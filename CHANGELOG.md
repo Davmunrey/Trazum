@@ -13,6 +13,49 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Removed
+
+- **Breaking, for 3.0.0: `tier` is gone from a model in the pricing catalogue. Use `capability`.** It was
+  deprecated in 1.8.0, the entry that deprecated it said it would go in 2.0, and 2.0.0 removed nothing. The owner
+  decided on 2026-11-18 that it goes in 3.0.0, and nothing else goes with it. The migration, repeated here as
+  `VERSIONING.md` asks:
+  - **A pricing overlay** that writes `"tier"` on a model is now refused, with an error that names the key
+    (`"models.<id>.tier"`) and says to write `"capability"`. It is not ignored, because a key somebody wrote and
+    nothing reads is a setting that looks set. Delete `"tier"` and write `"capability"` in its place, mapping
+    `"haiku"` to `"small"`, `"sonnet"` to `"mid"`, `"opus"` to `"large"`, and `"frontier"` and `"unknown"` to
+    themselves. A model the bundled catalogue does not have still has to be complete, and `capability` is the field
+    it needs; `tier` is no longer asked for. The same refusal applies to an overlay handed to `applyPricingOverlay`
+    as an object.
+  - **A consumer of the JSON** reads `capability` where it read `tier`, with the same mapping. Every document
+    that carries a model whole stops carrying `tier`: the models `GET /api/optimize` serves, the overlay
+    `--pricing-live` writes for a model the catalogue does not have, and the snippet `trazum ownrate` prints. No
+    other document carried it.
+  - **In code**, `ModelPricing` has no `tier`, so `model.tier` and the type `ModelPricing['tier']` do not compile,
+    and `PRICING_MODEL_KEYS` no longer lists it. `recommendTier`, `recommendTierDetailed`, `cheapestOfTier` and
+    `cheapestOfTierIn` keep the names they always spoke (`haiku`, `sonnet`, `opus`, `frontier`, `unknown`) and
+    choose by the model's `capability` through the same mapping; where an annotation used `ModelPricing['tier']`
+    for those names, `Parameters<typeof cheapestOfTier>[0]` is the same five. The `model-downgrade` advisory
+    chooses by `capability` too.
+
+  No price changed and no recommendation changed. Every field of all 91 models, multipliers included, was dumped
+  from the build before the change and after it, and the two are identical once `tier` is taken out of the first.
+  Every advisory for every model, at eight prompts, three dates, with and without the Batch API and in both
+  languages (8,736 calls), and every `cheapestOfTier` and `cheapestOfTierIn` answer by provider and date, are
+  identical before and after. No model's `tier` and `capability` disagreed. `tier-removed.test.js` holds the
+  recorded answers (the cheaper model each of the 91 is offered at three prompts, and the cheapest of each tier by
+  provider), fails if `tier` comes back in the type, the catalogue or a document that carries a model, and holds the
+  overlay's refusal; `api.test.mjs` in the web app calls `GET /api/optimize` and holds its models to the same.
+  `VERSIONING.md` lists nothing as deprecated and still working, and `versioning.test.js` still sees its search
+  find a `@deprecated` member, on the text `types.ts` had. The recorded answers are a file a price change can
+  move, so `scripts/record-recommendations.mjs` writes it again from the build, the test holds the file to what
+  that script writes, and `CONTRIBUTING.md`, "Changing prices", says to read the diff and say which answers moved.
+  Twenty-one faults were planted and each failed a test: `tier` back in the type, plain and marked `@deprecated`
+  as it was, on one catalogue model, and in each of the three documents; the refusal removed with the key kept,
+  with it silently dropped, falling back to the unknown-key message, unchecked on an object, no longer naming the
+  key, and reading a patch that is not an object; six ways of choosing other than by `capability`; the
+  `VERSIONING.md` entry put back; and the recording script skipping a prompt, and skipping a provider. The refusal
+  is in English only, as every error of the overlay is. (#764)
+
 ### Added
 
 - **Codacy and DeepSource read the repository from a configuration that is in it, and Codacy is sent the coverage.**

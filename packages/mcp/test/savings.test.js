@@ -55,7 +55,7 @@ describe('savings plans over MCP', () => {
 
   it('prices caller models through an explicit overlay', () => {
     const pricing_overlay = JSON.stringify({ lastReviewed: '2026-10-12', models: {
-      'synthetic-model': { displayName: 'Synthetic model', inputPerMTok: 2, outputPerMTok: 4, contextWindow: 500_000, cacheMinTokens: 1024, tier: 'sonnet', capability: 'mid', caching: 'automatic' },
+      'synthetic-model': { displayName: 'Synthetic model', inputPerMTok: 2, outputPerMTok: 4, contextWindow: 500_000, cacheMinTokens: 1024, capability: 'mid', caching: 'automatic' },
     } });
     const result = JSON.parse(planTool.run({ log: logOf(record({ model: 'synthetic-model' })), pricing_overlay }));
     assert.equal(result.evidence.pricingOverlay, true);

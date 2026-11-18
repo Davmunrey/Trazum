@@ -33,6 +33,7 @@ let endpoint;
 /** Every request the fake model received, so a test can assert none arrived. */
 let calls = 0;
 let POST;
+let GET;
 
 before(async () => {
   server = createServer((req, res) => {
@@ -73,7 +74,7 @@ before(async () => {
   process.env.TRAZUM_LLM_API_KEY = 'test-key';
   delete process.env.TRAZUM_ALLOWED_LLM_ENDPOINTS;
 
-  ({ POST } = await import('../app/api/optimize/route.ts'));
+  ({ POST, GET } = await import('../app/api/optimize/route.ts'));
 });
 
 after(() => server?.close());
@@ -236,5 +237,21 @@ describe('suggestions over HTTP', () => {
     assert.equal(status, 400);
     assert.match(body.error, /does not call endpoints chosen by the caller/);
     assert.equal(calls, before, 'a caller-named endpoint reached the network');
+  });
+});
+
+describe('the models the page is offered', () => {
+  it('carry `capability` and not the `tier` 3.0.0 removed', async () => {
+    // `GET /api/optimize` hands the catalogue to the page as JSON, a document
+    // that carries every model whole. `tier` left a model in 3.0.0 (#764), and
+    // this is where it would come back into a document somebody reads.
+    const response = await GET(new Request('http://localhost/api/optimize'));
+    assert.equal(response.status, 200);
+    const { models } = await response.json();
+    assert.ok(models.length > 0, 'no models, so nothing was checked');
+    for (const model of models) {
+      assert.equal('tier' in model, false, `${model.id} carries \`tier\` in GET /api/optimize`);
+      assert.ok(model.capability, `${model.id} has no capability`);
+    }
   });
 });

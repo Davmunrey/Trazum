@@ -4,18 +4,19 @@ import type { Locale } from './i18n/types.js';
 import { COMPLEX_SIGNALS, SIMPLE_SIGNALS } from './phrases.js';
 import {
   BUNDLED_CATALOGUE,
+  CAPABILITY_OF_TIER,
   effectivePricing,
   isOffered,
   modelFrom,
   multipliersFor,
 } from './pricing.js';
-import type { PricingCatalogue, PromptSize } from './pricing.js';
+import type { PricingCatalogue, PromptSize, TierName } from './pricing.js';
 import { formatUsd } from './savings.js';
 import { analyzeExamples, findContradictions, findMovableSchema,
   findRestatedFormat } from './structure.js';
 import { bandGoverns, estimateTokens } from './tokenizer.js';
 import { bandFor } from './band.js';
-import type { Advisory, ModelPricing, TokenCounter, UsageProfile } from './types.js';
+import type { Advisory, Capability, ModelPricing, TokenCounter, UsageProfile } from './types.js';
 
 function countSignals(haystack: string, signals: readonly string[]): number {
   let count = 0;
@@ -25,7 +26,7 @@ function countSignals(haystack: string, signals: readonly string[]): number {
 
 /** What `recommendTierDetailed` saw, not only what it concluded. */
 export interface TierRecommendation {
-  tier: ModelPricing['tier'];
+  tier: TierName;
   complexSignals: number;
   simpleSignals: number;
   /**
@@ -67,7 +68,7 @@ export function recommendTierDetailed(prompt: string, tokens: number): TierRecom
 
   if (/```|~~~/.test(prompt)) score += 1;
 
-  const tier = score >= 3 ? 'opus' : score >= 0 ? 'sonnet' : 'haiku';
+  const tier: TierName = score >= 3 ? 'opus' : score >= 0 ? 'sonnet' : 'haiku';
   return {
     tier,
     complexSignals,
@@ -84,31 +85,41 @@ export function recommendTierDetailed(prompt: string, tokens: number): TierRecom
  * Callers that need to know whether the answer is trustworthy reach for
  * `recommendTierDetailed`.
  */
-export function recommendTier(prompt: string, tokens: number): ModelPricing['tier'] {
+export function recommendTier(prompt: string, tokens: number): TierName {
   return recommendTierDetailed(prompt, tokens).tier;
 }
 
-const TIER_ORDER: Record<ModelPricing['tier'], number> = {
+/**
+ * Capabilities in order, so a suggestion can be compared with the model in use.
+ *
+ * Keyed by `capability` since 3.0.0, which removed `tier` from a model. The
+ * order is the one the tier names had: `small` where `haiku` was, `mid` where
+ * `sonnet` was, `large` where `opus` was.
+ */
+const CAPABILITY_ORDER: Record<Capability, number> = {
   /**
    * Below every real tier, so no tier is ever "less capable than unknown".
    *
    * The value carries the intent rather than the guard below carrying it alone.
    * Set the other way — above everything — the comparison
-   * `TIER_ORDER[suggested] < TIER_ORDER['unknown']` is true for every prompt,
+   * `CAPABILITY_ORDER[suggested] < CAPABILITY_ORDER['unknown']` is true for every prompt,
    * and the only thing left standing between that and a recommendation is an
    * unrelated provider filter. Mutation testing found exactly that: deleting
    * the guard changed no test result, because a second accident was covering
    * for it. Two accidents in a row is not a design.
    */
   unknown: Number.NEGATIVE_INFINITY,
-  haiku: 0,
-  sonnet: 1,
-  opus: 2,
+  small: 0,
+  mid: 1,
+  large: 2,
   frontier: 3,
 };
 
 /**
  * Cheapest model of a capability tier, using today's effective input price.
+ *
+ * Chosen by the model's `capability`, the tier name translated through
+ * `CAPABILITY_OF_TIER`.
  *
  * **Within the same provider**, which is a product decision rather than an
  * implementation detail. Dropping from Opus to Sonnet is a one-line change;
@@ -121,7 +132,7 @@ const TIER_ORDER: Record<ModelPricing['tier'], number> = {
  * that adds a bare model cannot pull a switch out of thin air.
  */
 function cheapestInTier(
-  tier: ModelPricing['tier'],
+  tier: TierName,
   on: Date,
   pricing: PricingCatalogue,
   provider: string | undefined,
@@ -129,7 +140,7 @@ function cheapestInTier(
 ): ModelPricing | undefined {
   const candidates = pricing.models.filter(
     (m) =>
-      m.tier === tier &&
+      m.capability === CAPABILITY_OF_TIER[tier] &&
       m.provider === provider &&
       // Not generally available, or refused outright by the provider:
       // recommending a model the reader cannot call is worse than
@@ -502,13 +513,17 @@ export function buildAdvisories(
    * stop reading the prompt.
    *
    * **Deliberately redundant**, and the one surviving mutant in this change.
-   * `TIER_ORDER.unknown` is `-Infinity`, so the comparison is already false and
+   * `CAPABILITY_ORDER.unknown` is `-Infinity`, so the comparison is already false and
    * deleting this clause changes no behaviour and no test. It stays because the
    * two express the same rule in different places: an ordering that forgets it
    * and a condition that forgets it both have to happen before a model of
    * unrecorded capability is told it is overpowered.
    */
-  if (!recommendation.conflicted && model.tier !== 'unknown' && TIER_ORDER[suggestedTier] < TIER_ORDER[model.tier]) {
+  if (
+    !recommendation.conflicted &&
+    model.capability !== 'unknown' &&
+    CAPABILITY_ORDER[CAPABILITY_OF_TIER[suggestedTier]] < CAPABILITY_ORDER[model.capability]
+  ) {
     const candidate = cheapestInTier(suggestedTier, on, pricing, model.provider, size);
     if (candidate) {
       const candidatePricing = effectivePricing(candidate, on, size);

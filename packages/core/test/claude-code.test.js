@@ -315,7 +315,6 @@ describe('an alias survives every catalogue, not just the bundled one', () => {
             outputPerMTok: 99,
             contextWindow: 1000,
             cacheMinTokens: null,
-            tier: 'unknown',
             capability: 'unknown',
           },
         },

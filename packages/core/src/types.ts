@@ -332,16 +332,14 @@ export interface ModelPricing {
     /** What the provider answered, in the provider's words. */
     because: string;
   };
-  /** Capability, on a vendor-neutral scale. */
-  capability: Capability;
   /**
-   * @deprecated Use `capability`. Anthropic's ladder used as a generic axis
-   * stopped making sense once other providers were priced. Kept in step with
-   * `capability`. It was to be removed in 2.0 and was not: 2.0.0 removed
-   * nothing. It goes only in a major, and none has been named. See
-   * VERSIONING.md.
+   * Capability, on a vendor-neutral scale.
+   *
+   * The only one a model carries since 3.0.0, which removed `tier`, deprecated
+   * since 1.8.0. A pricing overlay that still writes `tier` is refused, naming
+   * the key, rather than read or ignored.
    */
-  tier: 'haiku' | 'sonnet' | 'opus' | 'frontier' | 'unknown';
+  capability: Capability;
   /** Promotional pricing, when one is running. */
   promo?: {
     inputPerMTok: number;
