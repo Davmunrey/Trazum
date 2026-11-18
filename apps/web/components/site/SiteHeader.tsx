@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowRight, ArrowUpRight, Menu, Monitor, Moon, Sun, X } from 'lucide-react';
 
 import { MARKETING_LOCALES, MARKETING_LOCALE_META, type MarketingLocale } from '../../lib/marketing-locales';
-import { HEADER_ENTRIES, HOME_PATH, SITE_LINKS } from '../../lib/site';
+import { HEADER_ENTRIES, HOME_PATH, SITE_LINKS, type SiteLinkId } from '../../lib/site';
 import type { SiteCopy } from '../../lib/site-copy';
 import { THEMES, applyTheme, saveTheme, storedTheme, type Theme } from '../../lib/theme';
 import { cn } from '../../lib/utils';
@@ -149,15 +149,20 @@ export function ThemeControl({ copy, className = '' }: { copy: SiteCopy; classNa
   );
 }
 
+/** The entry for the section the reader is in: acid fill, the way active navigation is drawn everywhere. */
+const CURRENT = 'border-2 border-foreground bg-primary px-3 text-primary-foreground';
+
 function EntryLink({
   id,
   copy,
   className,
+  current = false,
   onNavigate,
 }: {
   id: (typeof HEADER_ENTRIES)[number];
   copy: SiteCopy;
   className: string;
+  current?: boolean;
   onNavigate?: () => void;
 }) {
   const link = SITE_LINKS[id];
@@ -166,6 +171,7 @@ function EntryLink({
     <a
       href={link.href}
       onClick={onNavigate}
+      {...(current ? { 'aria-current': 'page' as const } : {})}
       {...(link.external
         ? { target: '_blank', rel: 'noreferrer noopener', 'aria-label': `${label}, ${copy.opensExternal}` }
         : {})}
@@ -181,10 +187,13 @@ export function SiteHeader({
   copy,
   locale,
   onLocaleChange,
+  current,
 }: {
   copy: SiteCopy;
   locale: MarketingLocale;
   onLocaleChange: (next: MarketingLocale) => void;
+  /** The entry of the section this page belongs to, drawn as active navigation. */
+  current?: SiteLinkId;
 }) {
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
@@ -234,7 +243,10 @@ export function SiteHeader({
                 <EntryLink
                   id={id}
                   copy={copy}
-                  className={`inline-flex items-center gap-1 border-b-2 border-transparent py-1 text-[15px] font-semibold transition-colors hover:border-foreground ${FOCUS}`}
+                  current={id === current}
+                  className={`inline-flex items-center gap-1 py-1 text-[15px] font-semibold transition-colors ${
+                    id === current ? CURRENT : 'border-b-2 border-transparent hover:border-foreground'
+                  } ${FOCUS}`}
                 />
               </li>
             ))}
@@ -270,8 +282,11 @@ export function SiteHeader({
                     <EntryLink
                       id={id}
                       copy={copy}
+                      current={id === current}
                       onNavigate={() => setOpen(false)}
-                      className={`flex min-h-12 items-center justify-between font-display text-[22px] font-bold tracking-[-0.02em] ${FOCUS}`}
+                      className={`flex min-h-12 items-center justify-between font-display text-[22px] font-bold tracking-[-0.02em] ${
+                        id === current ? 'bg-primary px-3 text-primary-foreground' : ''
+                      } ${FOCUS}`}
                     />
                   </li>
                 ))}

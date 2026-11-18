@@ -44,7 +44,7 @@ import { TOUR_SEEN_KEY } from '../lib/tour';
 import { usePromptText } from '../lib/prompt-text';
 import { useScenario } from '../lib/scenario';
 import { applyTheme, saveTheme, storedTheme, type Theme } from '../lib/theme';
-import { DOCS_URL, HOME_PATH, NPM_URL } from '../lib/site';
+import { DOCS_PATH, HOME_PATH, NPM_URL } from '../lib/site';
 
 /** Where the rail's expanded/collapsed preference lives between visits. */
 const RAIL_STORAGE_KEY = 'trazum:rail';
@@ -522,10 +522,11 @@ export function App({
 
   /**
    * The way back to the public site, then the package and the docs: the
-   * places this page otherwise only alludes to. The two that leave are
-   * external on purpose and marked as such: `no-referrer` is already
-   * site-wide, so a share token can never ride along, and the arrow glyph
-   * says "this leaves the app" before the click. The repository is not a
+   * places this page otherwise only alludes to. The docs are a page of the
+   * site and stay in this tab. The package leaves, external on purpose and
+   * marked as such: `no-referrer` is already site-wide, so a share token
+   * can never ride along, and the arrow glyph says "this leaves the app"
+   * before the click. The repository is not a
    * row here: it is the same GitHub button every page of the site carries,
    * at the foot of the rail. The addresses are `lib/site.ts`'s, the same the
    * site's header and footer use.
@@ -533,7 +534,7 @@ export function App({
   const RESOURCES = [
     { href: HOME_PATH, label: t.page.backToSite, Icon: ArrowLeft, external: false },
     { href: NPM_URL, label: t.page.linkNpm, Icon: Package, external: true },
-    { href: DOCS_URL, label: t.page.linkDocs, Icon: BookOpen, external: true },
+    { href: DOCS_PATH, label: t.page.linkDocs, Icon: BookOpen, external: false },
   ];
 
   /**

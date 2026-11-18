@@ -286,6 +286,39 @@ export const FLOWS = [
     },
   },
   {
+    name: 'docs: from the landing, follow Docs, search a term, open a result and land on its heading',
+    covers: [],
+    async run({ page, open, see, is }) {
+      await open('/');
+      await page.locator('[data-site-header]').getByRole('link', { name: 'Docs', exact: true }).click();
+      await page.waitForURL((url) => url.pathname === '/docs');
+      await page.locator('html[data-started="true"]').waitFor({ state: 'attached' });
+      await see(page.getByRole('heading', { level: 1, name: 'Documentation' }), 'the documentation index');
+      await page.getByRole('searchbox', { name: 'Search the documentation' }).fill('baseline gate');
+      /*
+        The result is the heading "The CI gate: a budget is a ceiling, a
+        baseline is a gate" in the command reference. GitHub's address for it,
+        worked out by hand: lower case, the colon and the comma dropped, each
+        space a hyphen.
+      */
+      const result = page.getByRole('link', { name: /The CI gate: a budget is a ceiling, a baseline is a gate/ }).first();
+      await see(result, 'a result for the heading');
+      await result.click();
+      await page.waitForURL((url) => url.pathname === '/docs/commands');
+      is(new URL(page.url()).hash, '#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate', 'the heading the result names');
+      const heading = page.getByRole('heading', { level: 3, name: /^The CI gate: a budget is a ceiling, a baseline is a gate/ });
+      await see(heading, 'the heading, on its page');
+      const top = await heading.evaluate((element) => Math.round(element.getBoundingClientRect().top));
+      is(top >= 0 && top < 400, true, 'whether the heading is scrolled into view, not left below the fold');
+      is(await page.locator('[data-doc="commands"]').getAttribute('lang'), 'en', 'the language the document is marked in');
+      is(
+        await page.locator('[data-view-on-github]').first().getAttribute('href'),
+        'https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md',
+        'where View on GitHub goes',
+      );
+    },
+  },
+  {
     name: 'tour: each page it visits runs its own demo, once',
     covers: [],
     async run({ page, open, see, is }) {

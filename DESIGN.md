@@ -55,6 +55,17 @@ Icons: `favicon.ico` (16, 32, 48), a 180px Apple touch icon, 192px and 512px man
 - Sections: full-width bands separated by 2px rules, alternating paper and layer; one ink band per page at most. No card inside a band except the one figure the band is about.
 - Social card: 1200 by 630, paper and ink with the page's title, the illustrative bill in the dark tokens, the command in the acid fill; colours from `scripts/brand.mjs` only.
 
+## Documentation (Read mode)
+
+- Surface: `/docs` is the index and `/docs/<slug>` one document. Read, not Operate or Persuade: the document is the page and everything else steps back. Content is the repository's own file, drawn from a tree, never HTML.
+- Index: ink-on-paper title at display size, one large search field, the repository's task table, then one band per reader goal, alternating paper and layer, each a rule-separated list of title and one-sentence description. The last band says what is kept out and links it on GitHub. No cards.
+- Page: three columns from 1280px (documents 256px, text, contents 240px); two from 1024px, contents becoming a disclosure; one below, both lists being disclosures above the text. Sidebar and contents are sticky and scroll on their own. Active document and active heading take the acid fill; nothing else on the page is acid.
+- Text: Space Grotesk at 16.5px on 1.72, measure 78ch. Headings in the display face; h2 sits on a 2px rule with 60px above it, h3 and h4 do not. The document's own `#` is the page title. A heading's `#` permalink shows on hover only.
+- Code and measurements: the mono stack. A fenced block is a 2px box on the sunken ground with its language in an ink tab; it scrolls inside itself, takes keyboard focus and shows a 3px focus ring. A table wider than the column scrolls inside a box with 2px rules above and below, column heads in small mono capitals. Neither ever scrolls the page, at 390px included.
+- Links: accent text, underlined; a link that leaves the site carries an arrow that is not read aloud. A badge image from another host is not loaded: it is its description, as a link.
+- Disclosures from the document (`<details>`) are real ones, open when they hold the page's headings; a link to a heading inside a closed one opens it.
+- Language: the shell is in every site language; the document stays English, is marked `lang="en"`, and the page says so in the reader's language.
+
 ## Layout and controls
 
 Desktop rail: 252px, collapsible to 72px. Below 1024px: existing accessible drawer and compact brand bar. Task headings range from 38px to 56px. Strong 2px borders identify working regions; thinner rules separate data rows. No rounded card language. Cards inside cards reduce to section rules and transparent backgrounds.

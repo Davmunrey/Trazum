@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from 'react';
 
 import { useMarketingLocale } from '../marketing';
 import type { MarketingLocale } from '../../lib/marketing-locales';
+import type { SiteLinkId } from '../../lib/site';
 import { SITE_COPY, UNREVIEWED_NOTE, type SiteCopy } from '../../lib/site-copy';
 import { SiteFooter } from './SiteFooter';
 import { SiteHeader } from './SiteHeader';
@@ -19,9 +20,12 @@ import { SiteHeader } from './SiteHeader';
  */
 export function SiteFrame({
   initialLocale,
+  current,
   children,
 }: {
   initialLocale: MarketingLocale;
+  /** The header entry of the section this page is in, if it is in one. */
+  current?: SiteLinkId;
   children: (locale: MarketingLocale, copy: SiteCopy) => ReactNode;
 }) {
   const [locale, setLocale] = useMarketingLocale(initialLocale);
@@ -46,7 +50,7 @@ export function SiteFrame({
       >
         {copy.skipToContent}
       </a>
-      <SiteHeader copy={copy} locale={locale} onLocaleChange={setLocale} />
+      <SiteHeader copy={copy} locale={locale} onLocaleChange={setLocale} current={current} />
       {note !== '' && (
         <p className="border-b-2 border-foreground bg-warn-wash px-4 py-2.5 text-center text-[13px] leading-relaxed text-warn sm:px-8">
           {note}

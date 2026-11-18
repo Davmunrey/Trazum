@@ -82,7 +82,8 @@ describe('the switch', () => {
 /** Every file under a directory that matches, skipping what is installed or built. */
 function walk(dir, pattern, found = []) {
   for (const name of readdirSync(dir)) {
-    if (name === 'node_modules' || name === '.next') continue;
+    // `generated` is the documents turned into modules: their text is the repository's, not this app's source.
+    if (name === 'node_modules' || name === '.next' || name === 'generated') continue;
     const path = join(dir, name);
     if (statSync(path).isDirectory()) walk(path, pattern, found);
     else if (pattern.test(path)) found.push(path);

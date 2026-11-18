@@ -2298,6 +2298,7 @@ browser on your behalf (that is a request you did not read), nothing about your
 work reaches the prefilled body — not the config, not a prompt, not a label, not
 a figure — and no package here may declare an install hook, which is how a CLI
 usually acquires telemetry without a line of its own code changing.
+
 ---
 
 ### Before the first report: `trazum init`

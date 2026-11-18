@@ -1,6 +1,7 @@
-# Only what the image build needs goes to the daemon. The test suites, the
-# docs and the git history are the bulk of this repository and none of them
-# belong in a build context.
+# Only what the image build needs goes to the daemon. The test suites and the
+# git history are the bulk of this repository and neither belongs in a build
+# context. The documents are let back in below, because the site's
+# documentation pages are built from them.
 node_modules
 **/node_modules
 .git
@@ -11,6 +12,12 @@ node_modules
 docs
 action
 *.md
+# Except what the documentation pages are built from: the documents the site
+# publishes, and their images, which are under docs/assets.
+!README.md
+!CONTRIBUTING.md
+!VERSIONING.md
+!docs
 .env*
 .trazum
 .gitea

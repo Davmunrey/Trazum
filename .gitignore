@@ -33,3 +33,9 @@ skills-lock.json
 
 # Written by `npm run coverage`; the Coverage workflow uploads it and nothing keeps it.
 /coverage/
+
+# Written by `scripts/build-docs-site.mjs` from the repository's own documents,
+# before the web app builds, runs or is tested: the pages of /docs and the
+# images they use. A committed copy would be a second copy of the documents.
+/apps/web/lib/docs/generated/
+/apps/web/public/docs-assets/

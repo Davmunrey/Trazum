@@ -15,6 +15,44 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The documentation is on the site, at `/docs`.** The header's Docs entry,
+  the footer's and the application rail's lead there instead of to
+  `docs/README.md` on GitHub, and the landing's links to the CI and agent
+  documents lead to their pages. `/docs` is the index, grouped as
+  `docs/README.md` groups it and opening with that file's own table of
+  tasks; `/docs/<slug>` is one page per document, with a contents list built
+  from its headings (sticky on wide screens, a disclosure on narrow ones),
+  the document's own anchors as GitHub gives them so old links keep landing,
+  View on GitHub for the same file, and previous and next within its group.
+  Thirty-six documents are published: the README as an overview, the
+  guides, references and trust documents under `docs/`, `CONTRIBUTING.md`
+  and `VERSIONING.md`. Plans, the audit, the compliance records, the CLA and
+  the policy and history files are not, and the index says they exist and
+  links each on GitHub. The list is one file, `apps/web/lib/docs/manifest.ts`,
+  and `docs.test.mjs` fails on a document `docs/README.md` links that has no
+  page and is not left out, on a file under `docs/` in neither list, and on a
+  group `docs/README.md` does not agree with. Search over titles and headings
+  runs in the page from a small index the build writes: no server, nothing
+  sent, nothing typed put in the address. A relative link between published
+  documents becomes a link between their pages, any other relative link an
+  absolute GitHub link, and an anchor that does not exist stops the build;
+  images are copied and served from the site's own origin, and an image on
+  another host (the README's badges) is never loaded: the page shows its
+  description as a link. The Markdown is read by a reader written for the
+  subset the documents use, about twelve hundred lines with no dependency,
+  which builds a tree React draws, so nothing in a document can become markup;
+  it stops the build, naming the line, at a construct it does not know,
+  raw HTML included, and was checked against `markdown-it` on all 37 files
+  (same headings, lists, tables, code blocks, links and text). The
+  documents stay English in every language and each page says so. Two
+  documents had a paragraph run straight into `---`, which GitHub and this
+  reader both take as a heading of the whole paragraph; each gained the
+  blank line it was missing, in `README.md` and `docs/commands.md`. The
+  Dockerfile now carries the documents into its build stage and the app's
+  `public/` folder into the runtime image, which it had not. A fifteenth
+  end-to-end flow goes from `/` through Docs, a search, a result, and the
+  heading. (#735)
+
 - **Mutation testing reaches the code that prices a call.** `billing.ts` is
   the sixth target: it says, for every call the bill and its findings price,
   the moment it was billed at, the size of prompt that picks its band, how it

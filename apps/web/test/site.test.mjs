@@ -132,7 +132,8 @@ describe('every public page carries the header, the GitHub button and the way in
     assert.equal(site.GITHUB_URL, 'https://github.com/Davmunrey/Trazum');
     assert.equal(site.DASHBOARD_PATH, '/app');
     assert.equal(site.HOME_PATH, '/');
-    assert.equal(site.SITE_LINKS.docs.href, 'https://github.com/Davmunrey/Trazum/blob/main/docs/README.md');
+    assert.equal(site.SITE_LINKS.docs.href, '/docs');
+    assert.equal(site.SITE_LINKS.docs.external, false, 'the Docs entry leaves the site again');
     assert.equal(site.SITE_LINKS.npm.href, 'https://www.npmjs.com/package/@trazum/cli');
     for (const [id, file] of [['licence', 'LICENSE'], ['changelog', 'CHANGELOG.md'], ['security', 'SECURITY.md']]) {
       assert.equal(site.SITE_LINKS[id].href, `https://github.com/Davmunrey/Trazum/blob/main/${file}`, id);

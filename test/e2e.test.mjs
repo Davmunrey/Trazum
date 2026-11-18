@@ -93,7 +93,18 @@ describe('every tab a visitor can open has a flow that opens it', () => {
     for (const step of ['[data-site-header]', 'Open the dashboard', 'Load the sample month', '8 calls · $1.05', "open('/?tab=compare"]) {
       assert.ok(source.includes(step), `the site flow no longer does: ${step}`);
     }
-    for (const flow of FLOWS.filter((candidate) => candidate !== site)) {
+    /*
+      The documentation flow starts on the landing too, because the way to the
+      docs is the header's Docs entry and a visitor starts at the front door.
+    */
+    const docs = FLOWS.find((flow) => flow.name.startsWith('docs: '));
+    assert.ok(docs, 'no flow follows the Docs entry');
+    const docsSource = docs.run.toString();
+    assert.match(docsSource, /^[\s\S]*?await open\('\/'\);/, 'the docs flow does not start at /');
+    for (const step of ["name: 'Docs'", '/docs/commands', 'getByRole(\'searchbox\'', '#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate']) {
+      assert.ok(docsSource.includes(step), `the docs flow no longer does: ${step}`);
+    }
+    for (const flow of FLOWS.filter((candidate) => candidate !== site && candidate !== docs)) {
       for (const [, path] of flow.run.toString().matchAll(/open\('([^']*)'\)/g)) {
         assert.ok(path.startsWith('/app'), `"${flow.name}" opens ${path}, which is not the application`);
       }

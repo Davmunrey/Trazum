@@ -5,11 +5,14 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node ../../scripts/build-docs-site.mjs",
     "dev": "next dev",
-    "prebuild": "npm --prefix ../../packages/core run build",
+    "prebuild": "npm --prefix ../../packages/core run build && node ../../scripts/build-docs-site.mjs",
     "build": "next build",
     "start": "next start",
+    "pretypecheck": "node ../../scripts/build-docs-site.mjs",
     "typecheck": "tsc --noEmit",
+    "pretest": "node ../../scripts/build-docs-site.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {

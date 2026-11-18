@@ -1,4 +1,5 @@
 import type { MarketingLocale } from './marketing-locales';
+import { docHref } from './docs/manifest';
 import { GITHUB_URL } from './site';
 
 /**
@@ -90,8 +91,8 @@ export const ILLUSTRATIVE_BILL = {
 
 /** Where each of the three other things Trazum does is explained in full. */
 export const MORE_LINKS = {
-  ci: { href: `${GITHUB_URL}/blob/main/docs/ci.md`, external: true, command: 'trazum check' },
-  mcp: { href: `${GITHUB_URL}/blob/main/docs/agents.md`, external: true, command: 'spend_guard' },
+  ci: { href: docHref('ci'), external: false, command: 'trazum check' },
+  mcp: { href: docHref('agents'), external: false, command: 'spend_guard' },
   trim: { href: '/app?tab=optimise', external: false, command: 'trazum optimize' },
 } as const;
 

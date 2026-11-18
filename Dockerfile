@@ -24,6 +24,12 @@ RUN npm ci
 
 COPY packages/core packages/core
 COPY apps/web apps/web
+# The documentation pages are built from the repository's own documents, so
+# the build stage carries them and the two scripts that turn them into pages.
+# They go no further: the runtime stage below holds only what was built.
+COPY README.md CONTRIBUTING.md VERSIONING.md ./
+COPY docs docs
+COPY scripts/build-docs-site.mjs scripts/docs-markdown.mjs scripts/
 
 # Analytics keys are NEXT_PUBLIC_* and bake into the bundle at build time.
 # Empty defaults keep the build working with no analytics configured.
@@ -47,6 +53,9 @@ WORKDIR /repo
 # assets are not traced and ride along explicitly.
 COPY --from=build /repo/apps/web/.next/standalone ./
 COPY --from=build /repo/apps/web/.next/static ./apps/web/.next/static
+# `public/` is not part of the standalone trace either: the app's icons and
+# the documentation's images are served from it.
+COPY --from=build /repo/apps/web/public ./apps/web/public
 
 USER node
 EXPOSE 3000
