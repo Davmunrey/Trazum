@@ -32,6 +32,7 @@ const SHELL = [
   'components/site/SiteFrame.tsx',
   'components/site/CommandLine.tsx',
   'components/site/NotFound.tsx',
+  'components/landing/Story.tsx',
 ];
 
 describe('the marketing pages play by the app’s rules', () => {
@@ -57,24 +58,20 @@ describe('the marketing pages play by the app’s rules', () => {
 
   it('respects prefers-reduced-motion, wherever the motion lives', () => {
     /**
-     * The promise is that the landing's motion is switched off for a reader
-     * who asked for less of it. It is one animation, the bill's share bars
-     * filling, and it lives in the stylesheet, so that is where this looks.
-     * `Reveal` was deleted because it rendered copy at zero opacity; a guard
-     * pinned to it would have failed the day the defect was removed.
+     * The landing's motion is its story, told by scroll (`app/landing.css`).
+     * Every rule that moves anything sits inside
+     * `@media (prefers-reduced-motion: no-preference)` and under
+     * `:root[data-motion='scroll']`, which the bootstrap never sets for a
+     * reader who asked for less motion. Outside that block the stylesheet is
+     * the still page, and nothing in it may depend on the story's progress.
      */
-    const css = read('app/globals.css');
-    assert.match(css, /prefers-reduced-motion/, 'nothing gates motion for the reader who asked for less');
-    const guarded = css
-      .split(/@media \(prefers-reduced-motion: no-preference\)/)
-      .slice(1)
-      .join('\n');
-    for (const name of ['ledger-fill']) {
-      assert.match(guarded, new RegExp(`animation:\\s*${name}`), `${name} runs regardless of the reader's preference`);
-    }
-    // And the finished state is the default, so a browser that runs no
-    // animation at all still draws the completed figure.
-    assert.match(landing, /ledger-bar/, 'the landing no longer uses the class this guard describes');
+    const css = read('app/landing.css');
+    const at = css.indexOf('@media (prefers-reduced-motion: no-preference)');
+    assert.ok(at !== -1, 'nothing gates the story for the reader who asked for less motion');
+    const still = css.slice(0, at);
+    assert.equal(/var\(--p\)|animation(?:-[a-z]+)?\s*:/.test(still), false, 'the still page depends on the story');
+    assert.match(css.slice(at), /:root\[data-motion='scroll'\] \.story \[data-mv\] \{\s*animation-duration: auto;/, 'the story is not under the motion switch');
+    assert.match(codeOf('lib/theme.ts'), /prefers-reduced-motion: reduce\)'\)\.matches\)r\.dataset\.motion='scroll'/, 'the bootstrap sets the story mode regardless of the preference');
   });
 
   it('carries its own locale key, so an unreviewed language stays on the site', () => {

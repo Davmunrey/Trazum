@@ -13,8 +13,8 @@ page.
 
 ## What is checked
 
-Sixteen flows, each from an empty browser. They drive the application at
-`/app`, where it has lived since the landing took `/`; three start on the
+Twenty-one flows, each from an empty browser. Most drive the application at
+`/app`, where it has lived since the landing took `/`; eight start on the
 landing:
 
 | Flow | What the page must show |
@@ -32,6 +32,11 @@ landing:
 | Docs | from the landing, the Docs entry to `/docs`, a search for `baseline gate`, the result for the heading "The CI gate: a budget is a ceiling, a baseline is a gate", and the command reference open at `#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate` with that heading scrolled into view, the document marked English, and View on GitHub going to `docs/commands.md` |
 | Models | from the landing, the Models entry to `/models`, the count of every model, one provider chosen so that only its rows are left, a text filter that keeps `deepseek-v4-pro` and drops `deepseek-flash`, the sentence for a filter nothing matches, nothing written to the address, `gemini-2.5-pro` drawn with the Retired tab and marked retired, and no request made by the page while it was filtered |
 | Tour | all ten steps: the bill, the optimiser and the comparison each run their sample, and the terminal types and runs each of its three commands once |
+| Landing, the story | scrolled from top to bottom a percent at a time: the bill's total, the gate's verdict, the trimming's token counts, what never leaves on the screen and what leaves beside the closed machine each come into view, in that order; the lid's computed rotation is closed (below -95°) at the end, open again halfway back and at the top; no control inside the pinned stage; the last call to action takes focus and leads to `/app` |
+| Landing, the fallback | the same story with `CSS.supports` saying no to scroll-driven animation, so the script writes the progress (`data-story="script"`) |
+| Landing, on a phone | the menu opens above the story, the page never scrolls sideways at five points of it, and the story plays in order |
+| Landing, reduced motion | no story mode, every scene's text on the page in reading order, every line of output fully shown, the laptop open and still |
+| Appearance, the public site | on a dark system with nothing chosen the landing is light and its control says Light, `/app` is dark, and Dark chosen in the header holds after a reload |
 | Appearance | dark applied at once and still there after a reload |
 | Language | Spanish on the page and in the `lang` attribute, after a reload too |
 | Phone menu | the tabs behind a menu, and the menu reaching them |
@@ -103,10 +108,12 @@ of a tenth.
 
 A step of the `Build and tests` job, after the web app is built and the
 privacy probe has run, on a server of its own. It is part of the required
-check, so a pull request that breaks a flow cannot merge. All sixteen took 38
-seconds by the times the runner printed, on a machine shared with other runs,
-on 2026-11-18; the tour is nearly ten of them, because it waits for a hand that
-types.
+check, so a pull request that breaks a flow cannot merge. All twenty-one took
+67 seconds by the times the runner printed, against a local production build
+on a machine three other jobs were sharing, on 2026-11-18. The tour is ten of
+them, because it waits for a hand that types. The five flows of the landing
+are 22: the three that play the story each scroll the page a hundred and one
+times and read it at each stop.
 
 ## Adding a flow
 

@@ -9,7 +9,7 @@ Warm paper, dark ink, structural borders, emphatic grotesk typography, and acid 
 ## Surface modes
 
 - Application: Operate. Persistent navigation, generous task heading, explicit input and report boundaries. The bill remains the default entry.
-- Landing: Persuade. Large editorial headline, factual worked examples, strong horizontal rules and distinct calls to action.
+- Landing: Persuade. Large editorial headline, the product told by scroll on a drawn laptop ("Landing: the story told by scrolling"), strong horizontal rules and distinct calls to action.
 - Playground: Operate. Dark terminal using the same wordmark, typography and acid prompt.
 - Loading and metadata: the same typographic identity.
 
@@ -52,7 +52,7 @@ Icons: `favicon.ico` (16, 32, 48), a 180px Apple touch icon, 192px and 512px man
 - GitHub button: the mark drawn inline (no request to GitHub), 2px border on paper, never acid; its name says GitHub and that it opens a new tab. Mark alone only where the word cannot fit. The same component in the header, the footer, the landing and the rail.
 - Primary action: acid fill, 2px ink border, 3px hard offset, an arrow. One per region.
 - Footer: paper, 2px rule above, wordmark, one line, the GitHub button, and two link groups (product, project).
-- Sections: full-width bands separated by 2px rules, alternating paper and layer; one ink band per page at most. No card inside a band except the one figure the band is about.
+- Sections: full-width bands separated by 2px rules, alternating paper and layer. On the light public pages there is no full-width ink band: ink is for type, rules and the laptop's screen. No card inside a band except the one figure the band is about.
 - Social card: 1200 by 630, paper and ink with the page's title, the illustrative bill in the dark tokens, the command in the acid fill; colours from `scripts/brand.mjs` only.
 
 ## Documentation (Read mode)
@@ -74,11 +74,24 @@ Primary buttons and active navigation may carry a 3px hard offset shadow. Passiv
 
 ## Appearance preference
 
-The rail offers Light, Dark and System (localized in English and Spanish). System is the default. Explicit choice persists under `trazum:theme`; a nonce-authorized bootstrap applies it before paint. Blocked storage falls back safely to the system theme. Native controls and Tailwind dark variants follow the resolved `data-theme` value.
+The rail offers Light, Dark and System (localized in English and Spanish). System is the application's default. Explicit choice persists under `trazum:theme`; a nonce-authorized bootstrap applies it before paint. Blocked storage falls back safely to the system theme. Native controls and Tailwind dark variants follow the resolved `data-theme` value.
+
+The public site is paper first, by the owner's decision of 2026-11-18 (#744): with no choice stored, a visitor whose system is dark still gets the light page, and the header's control shows Light, until they choose Dark (or System). The middleware marks each address as `site` or `app` (`surfaceOf` in `apps/web/lib/site.ts`) and the layout stamps it on `<html data-surface>`; the bootstrap and the stylesheet's system-dark rule read it, so the site stays light with storage blocked and without JavaScript. The application keeps System as its default. The explicit Dark theme of the site uses the dark tokens above and no others.
 
 ## Motion and states
 
-Existing ledger-fill remains the landing's authored motion. Short color transitions and a one-pixel press on primary actions. No invisible-on-scroll content. Reduced motion, loading, empty, error, session, locale and report states remain functional.
+The landing's authored motion is its story, told by scrolling (below); it replaces the ledger-fill, at the owner's request of 2026-11-18. Elsewhere: short color transitions and a one-pixel press on primary actions. Reduced motion, loading, empty, error, session, locale and report states remain functional.
+
+## Landing: the story told by scrolling
+
+Asked for by the owner on 2026-11-18 (#744): less dark, a page that tells the product as you scroll, a laptop whose lid closes, the CLI in motion. The identity is unchanged; what changed is the landing's motion and its lightness.
+
+- **The arc.** The hero (headline, command, the two actions) holds the first screen at 1440x900 and 390x844, with the laptop already rising below it. Then one pinned stage: the laptop arrives; the camera pushes into its screen until the terminal fills the window; three commands run inside it (`bill`, `check` and its exit status, `optimize`), each scrolling the terminal on rather than cutting to a slide, each with its heading and sentence on a paper plate; the camera pulls back out; what never leaves the machine settles onto the screen and the lid closes over it about its hinge, the screen's light going out, ending on the closed machine with the wordmark and what does leave beside it. A quiet marker with the acid fill says which of the four scenes is playing. "Why the number holds up" and the closing (the command, the dashboard, GitHub) follow on paper.
+- **The laptop.** Drawn in CSS and inline SVG in the light tokens on either theme: an ink bezel with a rule-grey rim, a paper deck with keys and a trackpad, a hinge, real proportions (a 16:10 screen, a deck as deep as the lid is tall), in perspective, with the brand's hard offset shadow and no gradient. The lid's back carries the full wordmark. The screen uses the dark terminal tokens, as the Playground and the README's pictures do.
+- **The screen is the CLI's.** Every character on it is what the built CLI printed, written by `scripts/draw-landing-terminal.mjs` and compared by the web suite. The text is in the DOM once; typing is a clip over constant text. A product part with no runnable example in the repository has no scene.
+- **Scroll drives it, nothing else.** Each moving element runs keyframes of `transform`, `opacity` and `clip-path`, written from the timeline by `apps/web/lib/story-motion.ts`, on the section's CSS scroll timeline; where the browser has none, a passive, frame-throttled script that runs only while the section is on screen holds them paused at the scroll position. No wheel or touch listener, no `preventDefault`, no scroll-snap, no animation on a clock: scrolling back plays it back. Nothing else changes with scroll, and no custom property is animated: an animated custom property restyles everything beneath it, which measured 50 to 180 ms a frame at 4x CPU throttle. The terminal is laid out at its final size and reaches a scale of exactly 1 inside the screen, so its text is never scaled up. The budget, measured on a full scroll at 4x CPU throttle: no long task over 50 ms while scrolling, and a layout shift of 0.02 at most.
+- **Never hidden.** With reduced motion, without JavaScript, and before the first frame, every scene is ordinary content in reading order and the laptop is drawn still with what never leaves on its screen. The pinned stage holds no control, so keyboard focus never lands behind it. The phone gets the same story with the laptop at the viewport's width, a shorter scroll, and nothing sideways.
+- **Light first.** No full-width ink band on the light page; acid as a fill with more confidence (the cursor, the bars, the marker, the numbers, the primary action, the command chips); the paper tones for depth. The terminal fills the window only between paper: the hero, the closing scene and everything after are light.
 
 ## Process and evidence
 

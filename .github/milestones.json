@@ -10,6 +10,11 @@
     "issues": [734, 735, 736, 737, 744]
   },
   {
+    "title": "Trazum speaks first",
+    "description": "The status line, the watcher and the spend guard exist and are off until somebody wires each by hand. Next: one command that turns them on and off, a watcher that reads the agents' sessions directly and says so on the screen, a weekly summary that arrives on its own, a plan that can open the pull request, and a terminal that carries the brand.",
+    "issues": [755, 756, 757, 758]
+  },
+  {
     "title": "A repository a stranger can contribute to",
     "description": "What a visitor and a contributor need that is not the product: a roadmap that opens with what comes next, a wiki that publishes itself, documents that agree with each other, and Discussions with a form for each kind of question.",
     "issues": [725, 726, 727, 732, 747]

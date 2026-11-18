@@ -1,0 +1,643 @@
+/*
+ * The landing's story: a laptop, the CLI at work on its screen, and a lid
+ * that closes. DESIGN.md, "Landing: the story told by scrolling", is the rule;
+ * `components/landing/Story.tsx` says how the pieces fit.
+ *
+ * Read this file in two halves.
+ *
+ * 1. The still page, first and unconditional. It is what a reader gets with
+ *    reduced motion, without JavaScript, and in the first frame: every scene
+ *    in reading order, every line of output in full, the laptop drawn once
+ *    with what never leaves on its screen. Nothing in it is hidden.
+ *
+ * 2. The story, only under `:root[data-motion='scroll']` (set before paint by
+ *    the layout's bootstrap, never under reduced motion) and only for a reader
+ *    with `prefers-reduced-motion: no-preference`. It places things; it does
+ *    not move them. What moves is keyframes of `transform`, `opacity` and
+ *    `clip-path` that `lib/story-motion.ts` writes from the timeline, on the
+ *    section's scroll timeline: no width, height, top or left changes with
+ *    scroll, and nothing in this file changes with scroll at all.
+ *
+ * Colours: the page's tokens for paper and type, so the explicit Dark theme
+ * follows; the device drawn in the light tokens on either theme, and its
+ * screen in the dark terminal tokens, as the Playground and the README's
+ * terminal pictures are. Every value is one `globals.css` and
+ * `scripts/brand.mjs` already name.
+ */
+
+/*
+ * The headline's fallback, sized to Space Grotesk so the swap moves nothing.
+ *
+ * The face arrives after the first paint (`font-display: swap`), and the
+ * first measurement of this page put its whole cumulative layout shift,
+ * 0.036, on that swap: the headline drawn in Arial Bold, then redrawn a
+ * little narrower. The adjustment is Next's own arithmetic on the capsize
+ * metrics it ships: Space Grotesk Bold's average width (490 of 1000) over
+ * Arial Bold's (983 of 2048), and its ascent and descent at that size.
+ */
+@font-face {
+  font-family: 'Trazum Grotesk Fallback';
+  src: local('Arial Bold'), local('Arial-BoldMT'), local('Liberation Sans Bold'), local('Arial'), local('Liberation Sans');
+  font-weight: 700;
+  size-adjust: 102.09%;
+  ascent-override: 96.39%;
+  descent-override: 28.6%;
+  line-gap-override: 0%;
+}
+#landing-title {
+  font-family: 'Space Grotesk Variable', 'Trazum Grotesk Fallback', sans-serif;
+}
+
+.story {
+  /* The terminal's tokens: the dark theme's, on either theme. */
+  --term-bg: #1c211b;
+  --term-raised: #242a21;
+  --term-text: #f0f1e5;
+  --term-dim: #c0c6af;
+  --term-rule: #67715c;
+  --term-good: #6fc99a;
+  --term-warn: #d6ad63;
+  --term-bad: #f39f87;
+  --term-acid: #dce94d;
+  /* The device's: the light theme's paper and ink, on either theme. */
+  --dev-ink: #20231e;
+  --dev-shell: #fbf9f1;
+  --dev-deck: #eeeee0;
+  --dev-rule: #999f8a;
+  --dev-shadow: var(--ink);
+  --dev-off: #080c07;
+}
+:root[data-theme='dark'] .story {
+  --dev-shadow: #080c07;
+}
+
+/* ---------------------------------------------------------------- still -- */
+
+.story-stage {
+  border-top: 2px solid var(--foreground);
+}
+
+.story-world {
+  /* The still laptop's size; the story redefines it from the stage. */
+  --sw: min(600px, calc(100vw - 64px));
+  --L: calc(var(--sw) / 0.94);
+  --sh: calc(var(--sw) / 1.6);
+  --bt: calc(var(--L) * 0.035);
+  --chin: calc(var(--L) * 0.05);
+  --Hl: calc(var(--sh) + var(--bt) + var(--chin));
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 56px 16px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+@media (min-width: 640px) {
+  .story-world { padding: 72px 32px 96px; }
+}
+@media (min-width: 1024px) {
+  .story-world { padding: 96px 48px 120px; gap: 72px; }
+}
+
+.term-box {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+}
+
+.scene {
+  display: grid;
+  gap: 20px 56px;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .scene { grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr); }
+}
+
+.scene-kicker {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--terracotta);
+}
+.scene-kicker > span {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 6px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.scene-title {
+  margin-top: 12px;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.6vw, 52px);
+  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+.scene-body {
+  margin-top: 16px;
+  max-width: 58ch;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--muted-foreground);
+}
+.scene-note {
+  margin-top: 16px;
+  max-width: 58ch;
+  padding-left: 14px;
+  border-left: 4px solid var(--foreground);
+  font-size: 14px;
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+/* The terminal, still: each scene's output whole, on the terminal's ground. */
+.term {
+  --tf: min(15px, calc((100vw - 72px) / (var(--cols) * 0.61)));
+  margin: 0;
+  min-width: 0;
+  padding: 20px 18px;
+  border: 2px solid var(--foreground);
+  background: var(--term-bg);
+  color: var(--term-text);
+  font-family: var(--font-mono);
+  font-size: var(--tf);
+  line-height: 1.5;
+  white-space: pre;
+  overflow: hidden;
+  font-variant-ligatures: none;
+}
+@media (min-width: 1024px) {
+  .term { --tf: min(15px, calc((58vw - 120px) / (var(--cols) * 0.61))); }
+}
+.tl {
+  display: block;
+  min-height: 1.5em;
+}
+.t-prompt { color: var(--term-acid); font-weight: 700; }
+.t-cursor { display: none; }
+.t-b { font-weight: 700; }
+.t-d { color: var(--term-dim); }
+.t-g { color: var(--term-good); }
+.t-y { color: var(--term-warn); }
+.t-r { color: var(--term-bad); }
+.t-a { color: var(--term-acid); }
+.t-bar { display: inline-block; }
+
+/* The last scene's words, still. */
+.story-never {
+  max-width: 760px;
+}
+
+/* The laptop, still: open, upright, what never leaves on its screen. */
+.story-camera {
+  position: relative;
+  align-self: center;
+  width: var(--L);
+  /* The lid, the deck in perspective under it, and room for what leaves. */
+  height: calc(var(--Hl) + var(--L) * 0.5);
+}
+.story-3d {
+  position: absolute;
+  inset: 0;
+  perspective: calc(var(--L) * 3.2);
+  perspective-origin: 50% calc(var(--L) * -0.12);
+}
+.lt-device {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--L);
+  height: var(--Hl);
+  transform-style: preserve-3d;
+}
+.lt-lid {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(0deg);
+}
+.lt-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+.lt-front {
+  background: var(--dev-ink);
+  border: calc(var(--L) * 0.006) solid var(--dev-rule);
+  box-shadow: calc(var(--L) * 0.012) calc(var(--L) * 0.012) 0 var(--dev-shadow);
+}
+.lt-screen {
+  position: absolute;
+  left: calc((var(--L) - var(--sw)) / 2 - var(--L) * 0.006);
+  top: calc(var(--bt) - var(--L) * 0.006);
+  width: var(--sw);
+  height: var(--sh);
+  overflow: hidden;
+  background: var(--term-bg);
+}
+.lt-never {
+  position: absolute;
+  inset: 0;
+  padding: calc(var(--L) * 0.045) calc(var(--L) * 0.06);
+  color: var(--term-text);
+}
+.lt-never-label {
+  font-family: var(--font-mono);
+  font-size: calc(var(--L) * 0.019);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--term-acid);
+}
+.lt-never ul {
+  margin-top: calc(var(--L) * 0.022);
+  border-top: 1px solid var(--term-rule);
+}
+.lt-never li {
+  padding: calc(var(--L) * 0.009) 0;
+  border-bottom: 1px solid var(--term-rule);
+  font-family: var(--font-display);
+  font-size: calc(var(--L) * 0.044);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.lt-screen-off {
+  position: absolute;
+  inset: 0;
+  background: var(--dev-off);
+  opacity: 0;
+}
+.lt-back {
+  transform: rotateX(180deg);
+  display: grid;
+  place-items: center;
+  background: var(--dev-shell);
+  border: calc(var(--L) * 0.004) solid var(--dev-ink);
+}
+.lt-back span {
+  font-family: var(--font-display);
+  font-size: calc(var(--L) * 0.085);
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  color: var(--dev-ink);
+}
+.lt-deck {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  width: var(--L);
+  height: calc(var(--L) * 0.68);
+  transform-origin: 50% 0;
+  transform: rotateX(76deg);
+  border: calc(var(--L) * 0.004) solid var(--dev-ink);
+  background: var(--dev-deck);
+  box-shadow: calc(var(--L) * 0.016) calc(var(--L) * 0.016) 0 var(--dev-shadow);
+}
+.lt-deck-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.lt-deck-shade {
+  position: absolute;
+  inset: 0;
+  background: var(--dev-ink);
+  transform-origin: 50% 0;
+  transform: scaleY(0);
+  opacity: 0;
+}
+
+.story-leaves {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 14px;
+}
+.story-leaves-label {
+  border: 2px solid var(--foreground);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.story-leaves-text {
+  font-size: 18px;
+  font-weight: 700;
+}
+.story-camera .story-leaves {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+}
+
+.story-marker {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- story -- */
+
+@media (prefers-reduced-motion: no-preference) {
+  /*
+   * Each moving element (`[data-mv]`) runs its own keyframes, written from the
+   * timeline by `lib/story-motion.ts` and named on the element, over the
+   * section's view timeline: 0% when the stage pins, 100% when it lets go.
+   * They animate `transform`, `opacity` and `clip-path` and nothing else.
+   *
+   * Where the browser has no scroll timeline, `Story.tsx` says so with
+   * `data-story="script"`: the same keyframes then sit paused, a second
+   * long, and the script sets each one's current time to the scroll position.
+   */
+  :root[data-motion='scroll'] .story {
+    view-timeline: --story block;
+    position: relative;
+    height: 900vh;
+  }
+  @media (max-aspect-ratio: 1/1) {
+    :root[data-motion='scroll'] .story { height: 680vh; }
+  }
+  :root[data-motion='scroll'] .story [data-mv] {
+    animation-duration: auto;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-timeline: --story;
+    animation-range: contain 0% contain 100%;
+  }
+  :root[data-motion='scroll'][data-story='script'] .story [data-mv] {
+    animation-timeline: auto;
+    animation-duration: 1s;
+    animation-play-state: paused;
+  }
+
+  :root[data-motion='scroll'] .story-stage {
+    position: sticky;
+    top: 0;
+    /* The small viewport: a phone's toolbars never cover the stage. */
+    height: 100svh;
+    overflow: hidden;
+    container: story / size;
+    border-top: 0;
+    background: var(--background);
+  }
+
+  :root[data-motion='scroll'] .story-world {
+    /*
+     * The geometry, from the stage, which does not move while scrolling. The
+     * screen is 16:10. `--shown` is the largest 16:10 rectangle the window
+     * holds; the screen at rest is `--lam` of it, so pushing in by
+     * `1 / --lam` makes the screen exactly the shown rectangle and the
+     * terminal, laid out at that size, reaches a scale of exactly 1: its text
+     * is never scaled up.
+     */
+    --lam: 0.5;
+    --shown: min(100cqw, 160cqh);
+    --shownH: calc(var(--shown) / 1.6);
+    --sw: calc(var(--shown) * var(--lam));
+    --top: calc((100cqh - var(--Hl) - var(--L) * 0.3) / 2);
+    --cy: calc(var(--top) + var(--bt) + var(--sh) / 2);
+    --hy: calc(var(--top) + var(--Hl));
+    --aside-x: 17cqw;
+    --aside-y: -4cqh;
+    /* Closed, the machine is a third of its open height: it rises to the middle. */
+    --close-y: 9cqh;
+    /* Where the terminal's lines are, and how big. */
+    --tb-left: 36cqw;
+    --tb-top: calc((100cqh - var(--shownH)) / 2 + var(--shownH) * 0.08);
+    --tb-w: 60cqw;
+    --tb-h: calc(var(--shownH) * 0.86);
+    --tf: min(19px, calc(var(--tb-w) / (var(--cols) * 0.61)));
+    --lh: calc(var(--tf) * 1.5);
+    /* At rest the column sits in the middle of the screen; inside, it moves aside for the words. */
+    --rest-x: calc(50cqw - var(--tb-w) / 2 - var(--tb-left));
+    /* The words' plates are centred on their own height beside the device. */
+    --words-y: -50%;
+
+    position: absolute;
+    inset: 0;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    display: block;
+  }
+  @media (max-aspect-ratio: 1/1) {
+    :root[data-motion='scroll'] .story-world {
+      --lam: 0.86;
+      --top: 11cqh;
+      --aside-x: 0px;
+      --aside-y: 0px;
+      --close-y: 0px;
+      --tb-left: 4cqw;
+      --tb-w: 92cqw;
+      --tb-h: calc(100cqh - var(--tb-top) - 9cqh);
+      --rest-x: 0px;
+      --words-y: 0px;
+    }
+  }
+
+  /* The camera: the device, pushed into and pulled out of. */
+  :root[data-motion='scroll'] .story-camera {
+    position: absolute;
+    left: calc(50cqw - var(--L) / 2);
+    top: var(--top);
+    width: var(--L);
+    height: var(--Hl);
+    transform-origin: 50% calc(var(--bt) + var(--sh) / 2);
+  }
+  :root[data-motion='scroll'] .story-3d {
+    perspective-origin: 50% calc(var(--L) * -0.12);
+  }
+
+  /*
+   * The terminal: a layer the size of the window, laid out at its final
+   * size, scaled down onto the laptop's screen and cut to it.
+   */
+  :root[data-motion='scroll'] .story-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100cqw;
+    height: 100cqh;
+    z-index: 3;
+    background: var(--term-bg);
+    transform-origin: 50% 50%;
+  }
+
+  :root[data-motion='scroll'] .term-box {
+    display: block;
+    margin-left: var(--tb-left);
+    margin-top: var(--tb-top);
+    width: var(--tb-w);
+    height: var(--tb-h);
+  }
+
+  :root[data-motion='scroll'] .scene {
+    display: block;
+  }
+
+  :root[data-motion='scroll'] .term {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: var(--tf);
+    overflow: visible;
+  }
+
+  /* A command is typed: the text is all there, and a clip shows it a character at a time. */
+  :root[data-motion='scroll'] .tl-command {
+    position: relative;
+  }
+  :root[data-motion='scroll'] .t-typed {
+    display: inline-block;
+  }
+  :root[data-motion='scroll'] .t-cursor {
+    display: inline-block;
+    position: absolute;
+    left: 2ch;
+    top: 0.12em;
+    width: 1ch;
+    height: 1.2em;
+    background: var(--term-acid);
+  }
+
+  /* The words for each scene inside the screen, on paper. */
+  :root[data-motion='scroll'] .scene-cap {
+    position: absolute;
+    left: 3.5cqw;
+    top: 50%;
+    width: min(29cqw, 460px);
+    padding: clamp(18px, 2.2cqw, 32px);
+    z-index: 2;
+    border: 2px solid var(--foreground);
+    background: var(--background);
+    color: var(--foreground);
+  }
+  :root[data-motion='scroll'] .scene-cap .scene-title {
+    font-size: clamp(26px, 2.7cqw, 44px);
+  }
+  :root[data-motion='scroll'] .scene-cap .scene-body {
+    font-size: clamp(14px, 1.1cqw, 16px);
+    line-height: 1.6;
+  }
+  :root[data-motion='scroll'] .scene-cap .scene-note {
+    font-size: 13px;
+  }
+  @media (max-aspect-ratio: 1/1) {
+    :root[data-motion='scroll'] .scene-cap {
+      left: 4cqw;
+      right: 4cqw;
+      top: 3cqh;
+      width: auto;
+      padding: 14px 16px;
+    }
+    :root[data-motion='scroll'] .scene-cap .scene-title {
+      margin-top: 6px;
+      font-size: 24px;
+    }
+    :root[data-motion='scroll'] .scene-cap .scene-body {
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    :root[data-motion='scroll'] .scene-cap .scene-note {
+      display: none;
+    }
+  }
+
+  /* The last scene's words, beside the device. */
+  :root[data-motion='scroll'] .story-never {
+    position: absolute;
+    left: 5cqw;
+    top: 50%;
+    width: min(31cqw, 520px);
+    z-index: 2;
+  }
+  @media (max-aspect-ratio: 1/1) {
+    :root[data-motion='scroll'] .story-never {
+      left: 5cqw;
+      right: 5cqw;
+      width: auto;
+      top: calc(var(--hy) + var(--L) * 0.3);
+    }
+    :root[data-motion='scroll'] .story-never .scene-title {
+      font-size: 28px;
+    }
+    :root[data-motion='scroll'] .story-never .scene-body {
+      font-size: 14px;
+      margin-top: 10px;
+    }
+  }
+
+  /* What does leave comes up out of the closed machine. */
+  :root[data-motion='scroll'] .story-camera .story-leaves {
+    top: auto;
+    bottom: calc(var(--L) * 0.12);
+    margin: 0;
+  }
+  :root[data-motion='scroll'] .story-leaves-text {
+    font-size: clamp(18px, 1.9cqw, 30px);
+  }
+
+  /* Where the visitor is in the story. */
+  :root[data-motion='scroll'] .story-marker {
+    position: absolute;
+    left: 3.5cqw;
+    bottom: 3.5cqh;
+    z-index: 4;
+    display: flex;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 2px solid var(--foreground);
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  :root[data-motion='scroll'] .story-marker li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  :root[data-motion='scroll'] .mk-bar {
+    position: relative;
+    width: 34px;
+    height: 10px;
+    border: 2px solid var(--foreground);
+  }
+  :root[data-motion='scroll'] .mk-fill {
+    position: absolute;
+    inset: 0;
+    background: var(--primary);
+    transform-origin: 0 50%;
+  }
+  :root[data-motion='scroll'] .mk-label {
+    position: absolute;
+    left: 12px;
+    bottom: calc(100% + 8px);
+    padding: 2px 8px;
+    border: 2px solid var(--foreground);
+    background: var(--primary);
+    color: var(--primary-foreground);
+    white-space: nowrap;
+  }
+  @media (max-aspect-ratio: 1/1) {
+    :root[data-motion='scroll'] .story-marker {
+      left: 50%;
+      bottom: 2.5cqh;
+      transform: translateX(-50%);
+    }
+    :root[data-motion='scroll'] .mk-bar { width: 26px; }
+  }
+}

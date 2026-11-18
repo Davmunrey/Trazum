@@ -93,6 +93,27 @@ export const CANONICAL: Readonly<Record<PublicPage, string>> = {
 };
 
 /**
+ * The addresses that are the application rather than the public site: the
+ * dashboard, the operator's page, a shared comparison, and the two machine
+ * surfaces. Everything else this origin serves to a person, the landing and
+ * the page an unknown address gets, is the site.
+ */
+export const APPLICATION_PREFIXES = ['/app', '/admin', '/c', '/api', '/badge'] as const;
+
+/**
+ * Which surface an address belongs to.
+ *
+ * It decides one thing: the appearance a visitor gets before choosing one.
+ * The public site is paper first, so a visitor whose system is dark still
+ * gets the light page until they pick Dark (or System) in the header; the
+ * application keeps System as its default. `DESIGN.md`, "Appearance
+ * preference", records the rule and the owner's decision behind it.
+ */
+export function surfaceOf(pathname: string): 'site' | 'app' {
+  return APPLICATION_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ? 'app' : 'site';
+}
+
+/**
  * Where an old address goes now, or `null` when it is not an old address.
  *
  * Two moved:

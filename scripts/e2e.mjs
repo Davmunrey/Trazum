@@ -102,6 +102,91 @@ const RUN = [['00', 100_000, 1_000], ['05', 200_000, 2_000]]
  */
 
 /**
+ * The landing's story, read the way a visitor sees it.
+ *
+ * `toStory(page, p)` scrolls to a point of the story (0 when its stage pins,
+ * 1 when it lets go) and waits two frames, so the scroll timeline or the
+ * fallback script has drawn it. `seen(page, text)` says whether an element
+ * holding exactly that text is on screen: inside the viewport and, with every
+ * ancestor's opacity multiplied in, at least 0.9 opaque, and not cut away by
+ * a clip (it is found by a hit test at its middle). `lidAngle(page)` is
+ * the lid's rotation about its hinge, in degrees, read back from the computed
+ * transform: 0 open, about -103 closed.
+ */
+async function toStory(page, p) {
+  await page.evaluate(async (p) => {
+    const story = document.querySelector('.story');
+    const top = story.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo(0, top + p * (story.offsetHeight - window.innerHeight));
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }, p);
+}
+
+const seen = (page, text) =>
+  page.evaluate((text) => {
+    const owners = [...document.querySelectorAll('.story .tl, .story li, .story p, .story h2, .story span')].filter(
+      (element) => element.textContent.trim() === text,
+    );
+    for (const element of owners) {
+      const box = element.getBoundingClientRect();
+      if (box.width === 0 || box.bottom < 0 || box.top > window.innerHeight || box.right < 0 || box.left > window.innerWidth) continue;
+      let opacity = 1;
+      for (let at = element; at !== null; at = at.parentElement) opacity *= Number(getComputedStyle(at).opacity);
+      if (opacity < 0.9) continue;
+      // Not cut away: a clip removes what it hides from hit testing, so the
+      // element must be found at the middle of its visible part.
+      const x = (Math.max(box.left, 0) + Math.min(box.right, window.innerWidth)) / 2;
+      const y = (Math.max(box.top, 0) + Math.min(box.bottom, window.innerHeight)) / 2;
+      if (document.elementsFromPoint(x, y).includes(element)) return true;
+    }
+    return false;
+  }, text);
+
+const lidAngle = (page) =>
+  page.evaluate(() => {
+    const transform = getComputedStyle(document.querySelector('.lt-lid')).transform;
+    const m = transform.match(/matrix3d\(([^)]*)\)/);
+    if (m === null) return 0;
+    const v = m[1].split(',').map(Number);
+    return Math.round((Math.atan2(v[6], v[5]) * 180) / Math.PI);
+  });
+
+/** What each scene says that only that scene says, in the order the story tells it. */
+const STORY_MARKS = [
+  ['the bill’s total', '$12.70 across 126 priced call(s)'],
+  ['the gate’s verdict', 'All 3 within budget.'],
+  ['the trimming’s token counts', '326 → 202   -38.0% (estimated, ±6%)'],
+  ['what never leaves, on the screen', 'Credentials'],
+  ['what does leave, outside the closed machine', 'A receipt, a report, a gate verdict.'],
+];
+
+/** Scroll the story from top to bottom a percent at a time; return where each mark was first seen. */
+async function readStory(page) {
+  const first = new Map();
+  for (let step = 0; step <= 100; step += 1) {
+    await toStory(page, step / 100);
+    for (const [what, text] of STORY_MARKS) if (!first.has(what) && (await seen(page, text))) first.set(what, step);
+  }
+  return first;
+}
+
+/** The story, top to bottom and back: each scene in its turn, the lid shut at the end and open again on the way up. */
+async function storyInOrder({ page, is }) {
+  const first = await readStory(page);
+  for (const [what] of STORY_MARKS) if (!first.has(what)) throw new Error(`scrolled the whole story and never saw ${what}`);
+  const order = STORY_MARKS.map(([what]) => first.get(what));
+  for (let at = 1; at < order.length; at += 1) {
+    if (order[at] <= order[at - 1]) throw new Error(`${STORY_MARKS[at][0]} appeared at ${order[at]}%, not after ${STORY_MARKS[at - 1][0]} at ${order[at - 1]}%`);
+  }
+  is((await lidAngle(page)) < -95, true, 'the lid is closed at the end of the story');
+  await toStory(page, 0.5);
+  is(await lidAngle(page), 0, 'the lid, reopened on the way back up');
+  is(await seen(page, 'A receipt, a report, a gate verdict.'), false, 'what leaves, gone again on the way back up');
+  await toStory(page, 0);
+  is(await lidAngle(page), 0, 'the lid at the top of the story');
+}
+
+/**
  * The flows. `covers` names the tabs a flow opens; `e2e.test.mjs` requires
  * every tab the app renders to be covered by one, so a new tab arrives with
  * its flow or fails the build.
@@ -402,6 +487,91 @@ export const FLOWS = [
     },
   },
   {
+    name: 'landing: scrolling tells the story in order, the lid closes and reopens, and the last action leads to /app',
+    covers: [],
+    async run({ page, open, is, noSidewaysScroll }) {
+      await open('/');
+      is(await page.locator('html').getAttribute('data-motion'), 'scroll', 'the story mode, set before paint');
+      is(await page.locator('.story a, .story button, .story input, .story [tabindex]').count(), 0, 'controls inside the pinned stage, where focus could hide');
+      await storyInOrder({ page, is });
+      await noSidewaysScroll('at the top of the story');
+      const close = page.locator('[data-landing-close] [data-dashboard-action]');
+      await close.focus();
+      is(await close.evaluate((element) => element === document.activeElement), true, 'the last call to action, reached by focus');
+      await close.click();
+      await page.waitForURL((url) => url.pathname === '/app');
+    },
+  },
+  {
+    name: 'landing: without scroll-driven animation the script tells the same story',
+    covers: [],
+    async run({ page, open, is }) {
+      await page.addInitScript(() => {
+        const supports = CSS.supports.bind(CSS);
+        CSS.supports = (...args) => (String(args.join(' ')).includes('animation-timeline') ? false : supports(...args));
+      });
+      await open('/');
+      is(await page.locator('html').getAttribute('data-story'), 'script', 'the fallback, in charge');
+      await storyInOrder({ page, is });
+    },
+  },
+  {
+    name: 'landing: on a phone the same story plays, and nothing scrolls sideways',
+    covers: [],
+    viewport: PHONE,
+    async run({ page, open, see, is, noSidewaysScroll }) {
+      await open('/');
+      await page.locator('[data-site-header]').getByRole('button', { name: 'Menu' }).click();
+      await see(page.locator('[data-site-header]').getByRole('link', { name: /^Docs/ }), 'the phone menu, above the story');
+      await page.locator('[data-site-header]').getByRole('button', { name: 'Close' }).click();
+      for (const p of [0, 0.15, 0.4, 0.8, 1]) {
+        await toStory(page, p);
+        await noSidewaysScroll(`at ${p * 100}% of the story`);
+      }
+      await toStory(page, 0);
+      await storyInOrder({ page, is });
+    },
+  },
+  {
+    name: 'landing: reduced motion gets every scene, still, in reading order',
+    covers: [],
+    context: { reducedMotion: 'reduce' },
+    async run({ page, open, is }) {
+      await open('/');
+      is(await page.locator('html').getAttribute('data-motion'), null, 'the story mode, which reduced motion never gets');
+      const text = (await page.locator('.story').allInnerTexts()).join('\n');
+      let at = -1;
+      for (const [what, mark] of STORY_MARKS) {
+        const found = text.indexOf(mark, at + 1);
+        if (found === -1) throw new Error(`${what} is not on the still page after the scene before it`);
+        at = found;
+      }
+      is(await page.locator('.story .tl').evaluateAll((lines) => lines.every((line) => getComputedStyle(line).opacity === '1')), true, 'every line of output, fully shown');
+      const headings = await page.locator('.story h2').evaluateAll((all) => all.map((h) => [h.textContent, h.getBoundingClientRect().height > 0 && getComputedStyle(h).visibility === 'visible']));
+      is(headings.length, 4, 'the number of scenes with a heading');
+      for (const [heading, shown] of headings) is(shown, true, `the scene "${heading}", shown`);
+      is(await lidAngle(page), 0, 'the laptop, open and still');
+    },
+  },
+  {
+    name: 'appearance: the public site is light on a dark system until Dark is chosen; the application follows the system',
+    covers: [],
+    context: { colorScheme: 'dark' },
+    async run({ page, open, is }) {
+      await open('/');
+      is(await page.locator('html').getAttribute('data-theme'), 'light', 'the landing on a dark system, nothing chosen');
+      const header = page.locator('[data-site-header]');
+      is(await header.getByRole('button', { name: 'Light', exact: true }).first().getAttribute('aria-pressed'), 'true', 'the control, saying Light');
+      await open('/app');
+      is(await page.locator('html').getAttribute('data-theme'), 'dark', 'the application on a dark system, nothing chosen');
+      await open('/');
+      await header.getByRole('button', { name: 'Dark', exact: true }).first().click();
+      is(await page.locator('html').getAttribute('data-theme'), 'dark', 'the landing after choosing Dark');
+      await open('/');
+      is(await page.locator('html').getAttribute('data-theme'), 'dark', 'the landing after a reload');
+    },
+  },
+  {
     name: 'appearance: dark is applied at once and is still there after a reload',
     covers: [],
     async run({ page, open, is }) {
@@ -512,6 +682,8 @@ async function main(argv) {
         colorScheme: 'light',
         viewport: flow.viewport ?? DESKTOP,
         serviceWorkers: 'block',
+        // A flow about the reader's own settings (a dark system, reduced motion) says so here.
+        ...flow.context,
       });
       const page = await context.newPage();
       page.setDefaultTimeout(timeout);

@@ -439,6 +439,38 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The landing tells the product as you scroll: a laptop, the CLI at work,
+  and a lid that closes.** Below the headline a laptop drawn in the brand
+  arrives; scrolling pushes the camera into its screen until the terminal
+  fills the window, and inside it `npx @trazum/cli bill
+  examples/claude-projects` types itself and prints the bill line by line,
+  its share bars filling, then `check examples/` gates the repository's own
+  example prompts and `echo $?` prints the status the process returned, then
+  `optimize examples/support-prompt.txt` prints its whole report. The camera
+  pulls back out, what never leaves the machine settles onto the screen, and
+  the lid closes over it in 3D, ending on the closed machine with the
+  wordmark and what does leave beside it. Every character on the screen is
+  the built CLI's output, written by `scripts/draw-landing-terminal.mjs` into
+  `apps/web/lib/landing-terminal.ts` and compared by the web suite; the MCP
+  `spend_guard` answer has no scene because the repository has no example
+  call of it to run. Scroll is the only clock: each moving element runs
+  keyframes of `transform`, `opacity` and `clip-path` written from the
+  timeline, on the section's CSS scroll timeline where the browser has one
+  and held paused at the scroll position by a passive, frame-throttled script
+  where it has not, so scrolling back plays it back. On a full scroll at 4x
+  CPU throttle no task over 50 ms ran while scrolling, and the page's layout
+  shift was 0.0086 at 1440x900 and 0.013 at 390x844, once the headline was
+  given a fallback face sized to Space Grotesk. With reduced motion
+  or without JavaScript every scene is ordinary content in reading order and
+  the laptop is still. The public site is now light first: with no choice
+  stored it is paper even on a dark system, until Dark is picked in the
+  header; the application keeps System as its default. The boot mark that
+  stood in for the application while its scripts loaded moved under `/app`,
+  because at the root it hid the whole landing from a reader without
+  JavaScript. DESIGN.md records the rule, which the owner asked for on
+  2026-11-18. Five browser flows hold it, in `docs/end-to-end-tests.md`.
+  (#744)
+
 - **`ROADMAP.md` opens with what comes next, and the release history is its
   own file.** The roadmap was 3,394 lines and `## Next` began on line 2,927,
   after the story of every release from 0.1.0. That story is in `HISTORY.md`

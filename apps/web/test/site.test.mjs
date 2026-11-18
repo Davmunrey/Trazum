@@ -409,6 +409,9 @@ describe('every new string, in every language its surface speaks', () => {
       'components/site/SiteFrame.tsx',
       'components/site/CommandLine.tsx',
       'components/site/NotFound.tsx',
+      'components/landing/Story.tsx',
+      'lib/story-timeline.ts',
+      'app/landing.css',
     ]) {
       assert.ok(!read(file).includes('—'), `${file} has an em-dash`);
     }
