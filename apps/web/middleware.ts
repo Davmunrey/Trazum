@@ -5,7 +5,7 @@ import { analyticsConnectSrc } from '@/lib/analytics';
 import { allowed, apiRoute } from '@/lib/api-methods';
 import { createRateLimiter } from '@/lib/rate-limit';
 import { routeOf, securityEvent } from '@/lib/security-log';
-import { redirectFor } from '@/lib/site';
+import { redirectFor, surfaceOf } from '@/lib/site';
 
 /**
  * A Content-Security-Policy with a real `script-src`, which needs a nonce, which
@@ -240,6 +240,11 @@ export function middleware(request: NextRequest) {
   // notice from the header alone: it is how Next learns the nonce to stamp on
   // its own inline scripts.
   headers.set('content-security-policy', policy);
+  // Which surface this address is, for the layout to stamp on `<html>`: the
+  // public site paints light before a choice is made, the application follows
+  // the system. Set here, over anything the request carried, so a visitor
+  // cannot pick it with a header of their own.
+  headers.set('x-trazum-surface', surfaceOf(request.nextUrl.pathname));
 
   const response = NextResponse.next({ request: { headers } });
   response.headers.set('content-security-policy', policy);

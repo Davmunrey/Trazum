@@ -115,11 +115,30 @@ describe('every tab a visitor can open has a flow that opens it', () => {
     for (const step of ["name: 'Models'", "'Filter models'", 'data-state="retired"', 'sent']) {
       assert.ok(modelsSource.includes(step), `the models flow no longer does: ${step}`);
     }
-    for (const flow of FLOWS.filter((candidate) => candidate !== site && candidate !== docs && candidate !== models)) {
+    /*
+      The landing's own flows (#744) start at / too: the story told by
+      scrolling, and the public site's light-first appearance. Each says so in
+      its name; any other flow opening / is a mistake this still catches.
+    */
+    const landing = (flow) => flow.name.startsWith('landing: ') || flow.name.startsWith('appearance: the public site');
+    for (const flow of FLOWS.filter((candidate) => candidate !== site && candidate !== docs && candidate !== models && !landing(candidate))) {
       for (const [, path] of flow.run.toString().matchAll(/open\('([^']*)'\)/g)) {
         assert.ok(path.startsWith('/app'), `"${flow.name}" opens ${path}, which is not the application`);
       }
     }
+  });
+
+  it('the landing’s story is scrolled top to bottom and back, in every way a reader can get it', () => {
+    const named = (start) => FLOWS.filter((flow) => flow.name.startsWith(start));
+    const story = named('landing: ');
+    assert.ok(story.length >= 4, 'the landing lost a flow');
+    const sources = story.map((flow) => flow.run.toString()).join('\n');
+    for (const step of ['storyInOrder', 'addInitScript', 'noSidewaysScroll', '[data-landing-close] [data-dashboard-action]', "url.pathname === '/app'"]) {
+      assert.ok(sources.includes(step), `no landing flow does: ${step}`);
+    }
+    assert.ok(story.some((flow) => flow.context?.reducedMotion === 'reduce'), 'no landing flow reads the page with reduced motion');
+    assert.equal(named('appearance: the public site').length, 1);
+    assert.equal(named('appearance: the public site')[0].context?.colorScheme, 'dark');
   });
 
   it('every flow has a name of its own and something to run', () => {

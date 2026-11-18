@@ -6,7 +6,7 @@ import { ArrowRight, ArrowUpRight, Menu, Monitor, Moon, Sun, X } from 'lucide-re
 import { MARKETING_LOCALES, MARKETING_LOCALE_META, type MarketingLocale } from '../../lib/marketing-locales';
 import { HEADER_ENTRIES, HOME_PATH, SITE_LINKS, type SiteLinkId } from '../../lib/site';
 import type { SiteCopy } from '../../lib/site-copy';
-import { THEMES, applyTheme, saveTheme, storedTheme, type Theme } from '../../lib/theme';
+import { THEMES, applyTheme, saveTheme, storedTheme, surfaceDefault, type Theme } from '../../lib/theme';
 import { cn } from '../../lib/utils';
 import { GitHubButton } from './GitHub';
 
@@ -111,7 +111,9 @@ const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const;
 export function ThemeControl({ copy, className = '' }: { copy: SiteCopy; className?: string }) {
   const [theme, setTheme] = useState<Theme | null>(null);
   useEffect(() => {
-    setTheme(storedTheme());
+    // On the public site the default is Light, not System: the page is
+    // paper first, and the control says so until the visitor picks.
+    setTheme(storedTheme(surfaceDefault()));
   }, []);
   useEffect(() => {
     if (theme !== 'system') return;

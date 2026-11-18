@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { Landing } from '../components/Landing';
 import { marketingLocaleFromHeader } from '../lib/marketing-locales';
 import { landingMetadata } from '../lib/site-metadata';
+import './landing.css';
 
 /**
  * `/`: the landing, the site's front door. The application is at `/app`.
