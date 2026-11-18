@@ -1,7 +1,9 @@
 # Changelog
 
-Versioning policy: [VERSIONING.md](VERSIONING.md). Below 1.0, minor versions
-may contain breaking changes, and say so in their first line.
+Versioning policy: [VERSIONING.md](VERSIONING.md). Nothing breaks inside a
+major line, and 2.0.0 broke nothing either. A patch here can add a feature,
+and the policy says why. Below 1.0, minor versions could contain breaking
+changes, and said so in their first line.
 
 `Unreleased` holds what is merged into `main` but not yet tagged. A change that
 alters nothing installable — a test, a document — still lands there rather than
@@ -426,6 +428,26 @@ merged commit with no entry is a change only `git log` remembers.
   to 13 (#696).
 
 ### Fixed
+
+- **The versioning policy described a line that ended in August.**
+  `VERSIONING.md` still had "The 1.x freeze", "a breaking change waits for
+  2.0" and `^1.50.0` as the pin to copy, with the manifests at 2.7.12, and
+  this file opened with the rule for versions below 1.0 and no other. It now
+  says what holds inside 2.x, that a breaking change waits for the next major,
+  and what 2.0.0 was: a major that broke nothing, as `ROADMAP.md` records. One
+  promise had come due unnoticed. The 1.8.0 entry that deprecated `tier` on a
+  model said it would be removed in 2.0, and 2.0.0 removed nothing. The policy
+  now lists it under what is deprecated and still working, says the removal
+  did not happen, and leaves whether it goes in 3.0 undecided, because nobody
+  has decided it. The field's own comment said "removed in 2.0" and says the
+  same now. Nothing is removed and no behaviour changes. The release steps
+  said the type-check covers four workspaces and it covers six.
+  `versioning.test.js` holds the policy to the major in the manifest, the pins
+  to that major, the list of deprecations to every `@deprecated` in the
+  packages' sources, and the two workspace counts to the workspaces. It found
+  a second `~1.50.0` in the first run. Sixteen faults were planted, among them
+  the manifest moved to 3.0.0 with the policy untouched, and it failed on each
+  (#747).
 
 - **Nine places where two documents disagreed now agree, and two were not
   contradictions.** An issue listed eleven candidates; each was read on both

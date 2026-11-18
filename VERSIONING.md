@@ -9,7 +9,8 @@ than left to be inferred from the tags.
 
 **Major** is the only one that carries risk, and it means exactly what semver
 says: something in [the public API](#what-counts-as-public-api) changed shape,
-disappeared, or started throwing. Nothing inside 1.x does that.
+disappeared, or started throwing. Nothing inside 2.x does that, and nothing
+inside 1.x did.
 
 **Minor** closes an arc. Work here is planned in arcs of about ten releases
 with a single thesis — `docs/plan-1.41-1.50.md` was *the loop is complete and
@@ -25,22 +26,23 @@ own right, until the arc's last chapter lands as 1.51.0.
 
 **Under strict semver a patch adds nothing, and here it does.** A patch release
 of Trazum can add a command, a flag, a document format or a rule. Somebody
-pinning `~1.50.0` expecting only bug fixes will receive features.
+pinning `~2.7.0` expecting only bug fixes will receive features.
 
-It cannot break them — the 1.x freeze below is unchanged and is the promise
+It cannot break them — the freeze below is unchanged and is the promise
 that actually matters — but "you get more than you expected" is a real
 surprise and it is fair to want to know about it in advance rather than from a
 diff.
 
-The reason the field was available to reassign: inside a frozen 1.x line, minor
+The reason the field was available to reassign: inside a frozen line, minor
 and patch are *both* additions-only, so the distinction between them was never
 load-bearing for safety. It was carrying nothing. It now carries where you are
 in the story, which is the more useful thing for it to say.
 
-**Pin `^1.50.0`** if you want everything non-breaking, which is the intended
+**Pin `^2.0.0`** if you want everything non-breaking, which is the intended
 range and behaves identically under either scheme. Pin an exact version if you
-want to choose your upgrades. `~1.50.0` no longer means what it means
-elsewhere, and this paragraph exists so nobody finds that out the hard way.
+want to choose your upgrades. A tilde range such as `~2.7.0` does not mean
+here what it means elsewhere, and this paragraph exists so nobody finds that
+out the hard way.
 
 ### 1.8.0 through 1.50.0
 
@@ -50,14 +52,28 @@ described ten releases that looked from the outside like ten unrelated ones.
 The numbering changed at 1.50.1. Nothing about those releases is different in
 retrospect; only what the next ones are called.
 
-## The 1.x freeze
+## The freeze
 
-**The public API is frozen.** A breaking change waits for 2.0. Nothing in the
-list below changes shape, disappears, or starts throwing where it used to
-return, inside the 1.x line.
+**The public API is frozen.** A breaking change waits for the next major.
+Nothing in the list below changes shape, disappears, or starts throwing where
+it used to return, inside the 2.x line. The same sentence held for the whole
+of 1.x.
+
+### What 2.0.0 was
+
+A major is the only release allowed to break something. It is not obliged to,
+and 2.0.0 did not: it added nothing and removed nothing. It was spent on a
+statement, which `ROADMAP.md` records under 2.0.0: the surface is what is
+promised, *"a command that exists will keep existing and keep meaning what it
+means"*. Its changelog entry has no Removed section, and no release from
+2.0.0 to 2.7.12 has one.
+
+The count of commands was frozen with it, at 46, and that part was lifted on
+purpose in 2.4.0, which added commands. An addition is not a break, so the
+promise above was not touched by it.
 
 That is a promise about *the surface*, not a promise to stop working on it.
-Things that will still change in any 1.x release, minor or patch, and are not
+Things that will still change in any 2.x release, minor or patch, and are not
 breaking:
 
 - **New** exports, options, commands, flags, rules and advisories. An addition
@@ -70,8 +86,8 @@ breaking:
 
 ### Deprecating something
 
-Removal inside 1.x is not allowed, so a thing that should not exist any more
-gets deprecated instead. The full procedure, so it is not decided case by case:
+Removal inside a major line is not allowed, so a thing that should not exist
+any more gets deprecated instead. The full procedure, so it is not decided case by case:
 
 1. It is marked `@deprecated` in its JSDoc, naming the replacement. That is what
    makes an editor strike it through — the only warning most people will see.
@@ -87,8 +103,19 @@ gets deprecated instead. The full procedure, so it is not decided case by case:
    span of whoever wrote it, and a longer window serves that better. It was not
    rewritten to keep the old duration, because the old duration was never the
    thing being promised.
-4. It is removed in the next **major**, and the major's changelog repeats the
+4. It is removed only in a **major**, and that major's changelog repeats the
    migration rather than pointing back at an older entry.
+
+### Deprecated, and still working
+
+What is marked `@deprecated` in the packages today. Each still works exactly
+as it did.
+
+- `tier` on a model in the pricing catalogue, deprecated in 1.8.0 in favour of
+  `capability`. The changelog entry that deprecated it said it would be
+  removed in 2.0. It was not: 2.0.0 removed nothing. Whether it goes in 3.0 has
+  not been decided, and until a major's changelog says so it stays, kept in
+  step with `capability`.
 
 A deprecated export never starts warning at runtime. A library that prints to
 somebody else's stderr because *we* changed our mind is a library people vendor
@@ -224,8 +251,8 @@ To release:
    tokenizer, web app and editor extension — including every pinned
    `@trazum/core` dependency. Regenerate the lockfile and follow the plugin
    and MCP registry steps in the release procedure.
-3. `npm run verify` must be green — build, tests, typecheck across all four
-   workspaces, and the web build. The web build in particular catches things
+3. `npm run verify` must be green — the linter, build, tests, typecheck
+   across all six workspaces, and the web build. The web build in particular catches things
    nothing else does: `@trazum/core` is bundled for the browser, so one
    `node:fs` import anywhere in its import graph breaks it while `tsc` and the
    tests stay happy.
