@@ -119,6 +119,35 @@ token, and on `main` the step fails when Codecov refuses an upload. On a pull
 request from a branch of this repository a refusal is a warning, with
 Codecov's reason above it.
 
+### `CODACY_PROJECT_TOKEN`
+
+A repository secret, read by one step and no other: the last step of
+`.github/workflows/coverage.yml`, which hands it to Codacy's coverage reporter
+through the environment. Like `CODECOV_TOKEN` it has to be a repository secret,
+because the job names no environment. It is a repository API token of
+Codacy's, and it is wider than its use here. Codacy's page on API tokens, read
+on 2026-11-18, says such a token reaches only the one repository it was made
+for, and that besides sending coverage it can read that repository's findings
+in Codacy and ask for a commit to be analysed again. It cannot reach this
+repository on GitHub. Nothing here gates on what Codacy says, so the worst a
+leaked one does is put false figures on Codacy's pages and read findings that
+are public anyway.
+
+The same page says a token has to expire within a year of being made, so this
+one is rotated on a date whether or not it leaked. When it lapses nothing
+fails: the step warns that Codacy did not take the coverage, and the figures
+measured in the run stand.
+
+1. In Codacy, open the repository's *Settings → API tokens* and, under
+   *Repository API tokens*, create a new one. Its value is shown once.
+2. Replace the `CODACY_PROJECT_TOKEN` repository secret with the new value.
+3. Delete the old token on the same page.
+4. Push to `main`, or re-run the `Coverage` workflow there.
+
+Check it: the step's log says whether a token was set, never the token, and
+whether Codacy took the reports. Without the secret it says nothing is sent,
+and fetches nothing.
+
 ### `N0_GITEA_HOST`, `N0_GITEA_USER`, `N0_GITEA_TOKEN`
 
 Read only by `.github/workflows/mirror-to-n0.yml`, which mirrors the repository

@@ -15,6 +15,22 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Codacy and DeepSource read the repository from a configuration that is in it, and Codacy is sent the coverage.**
+  The owner installed both on 2026-11-18. `.codacy.yaml` and `.deepsource.toml` leave out the two directories a
+  script writes (`wiki/`, `plugin/skills/`), so a finding is reported once and against the file a person edits, and
+  `.deepsource.toml` says what the code is: TypeScript, ES modules, for Node, with React. Without it DeepSource's first
+  review of a pull request reported the CLI's own printing as "console in code that runs on the browser" and every
+  function at the top of a module as a declaration in global scope. The `Coverage` workflow's last step sends
+  Codacy the reports it already writes: Codacy's reporter at a pinned version, 14.1.3, refused unless its SHA-512 is
+  the one its publisher lists, never its install script and never an action; the token from the repository secret
+  `CODACY_PROJECT_TOKEN`, read from the environment and never on a command line; nothing fetched where there is no
+  token, as on a fork's pull request. Codecov stays where the record is kept, and the step cannot fail the job because
+  of Codacy: no token, a failed download and a refusal each leave a line in the log. A reporter whose checksum is not
+  the pinned one does fail it, and is not run. Neither service is a required check, and a test holds the ruleset to
+  that. `CONTRIBUTING.md`, "The machines", names both and holds them to the rule already there for a review bot: a
+  finding is traced in the code first, and a wrong one is not quieted by changing code that was right. The first
+  reading of Codacy's 794 findings, group by group, is in the issue; none read so far is a defect in shipped code.
+  (#767)
 - **One command turns on everything that speaks without being asked, and one turns it off: `trazum proactive`.** Trazum can
   speak first in three places, each off until somebody wired it by hand: what the session has cost, in Claude Code's status
   line, with a `Stop` hook that refreshes it; `trazum watch`, which says when measured spend crossed a budget, from a

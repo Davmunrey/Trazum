@@ -1,0 +1,47 @@
+# What DeepSource reads in this repository, and how.
+#
+# DeepSource was installed by the repository's owner on 2026-11-18. It reviews
+# and reports; it is not a required check and writes nothing here: no code
+# formatter is configured, so it opens no pull request and pushes no commit.
+# CONTRIBUTING.md, "Review", says how a finding of its is handled: traced in
+# the code before anybody acts on it.
+
+version = 1
+
+# Where the tests are, so that a rule meant for shipped code is not applied to
+# a fixture: every package keeps them in a directory named `test`.
+test_patterns = [
+  "test/**",
+  "**/test/**",
+]
+
+# The same two paths .codacy.yaml leaves out, for the same reason: both are
+# written by a script from a source that is read anyway. A test holds the two
+# lists to each other.
+exclude_patterns = [
+  "wiki/**",
+  "plugin/skills/**",
+]
+
+# The packages are TypeScript and every file is an ES module; the web app is
+# React.
+#
+# The environment is Node and only Node, said here because the analyzer's
+# default adds the browser. Before this file existed its first review of a
+# pull request (#766) reported ten uses of `console` in the CLI as "console in
+# code that runs on the browser", and every `function` at the top of a module
+# as a declaration in global scope. A command-line tool prints with `console`
+# on purpose, and five of the six workspaces never run anywhere but Node. The
+# web app's own browser code is held by its tests and by the linter.
+[[analyzers]]
+name = "javascript"
+
+  [analyzers.meta]
+  plugins = ["react"]
+  environment = ["nodejs"]
+  dialect = "typescript"
+  module_system = "es-modules"
+
+# The status line, the hooks and the release scripts.
+[[analyzers]]
+name = "shell"

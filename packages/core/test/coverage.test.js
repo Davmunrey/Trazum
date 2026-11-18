@@ -151,7 +151,7 @@ describe('the workflow measures, and cannot stand between a pull request and mai
     const [, job] = workflow.match(/^ {4}name: (.+)$/m) ?? [];
     assert.ok(job, 'the job has no name');
     assert.ok(!required.includes(job), `${job} is required: a measurement must not block a merge`);
-    assert.ok(!required.some((name) => /coverage|codecov/i.test(name)));
+    assert.ok(!required.some((name) => /coverage|codecov|codacy|deepsource/i.test(name)));
   });
 
   it('builds before it measures, and measures with the command a person runs', () => {
@@ -183,7 +183,10 @@ describe('the workflow measures, and cannot stand between a pull request and mai
 
   it('gives the uploader its token through the environment, and never on a command line', () => {
     const secrets = workflow.split('\n').filter((line) => line.includes('secrets.'));
-    assert.deepEqual(secrets.map((line) => line.trim()), ['CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}']);
+    assert.deepEqual(secrets.map((line) => line.trim()), [
+      'CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}',
+      'CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}',
+    ]);
     const runs = [...workflow.matchAll(/^ {8}run: \|\n((?: {10}.*\n|\n)+)/gm)].map((match) => match[1]).join('\n');
     assert.ok(runs.includes('upload-process'));
     assert.doesNotMatch(runs, /\$\{\{/, 'no expression is interpolated into a run body');
@@ -218,6 +221,84 @@ describe('the workflow measures, and cannot stand between a pull request and mai
     const checkouts = workflow.match(/uses: actions\/checkout@/g) ?? [];
     assert.equal(checkouts.length, 1);
     assert.match(workflow, /persist-credentials: false/);
+  });
+});
+
+describe('Codacy is sent the same reports, and cannot stand in the way either', () => {
+  const workflow = read('.github/workflows/coverage.yml');
+  const from = workflow.indexOf('      - name: Send the same reports to Codacy');
+  const step = workflow.slice(from);
+  const body = step.slice(step.indexOf('        run: |\n'));
+
+  it('is the last step, after Codecov has the record', () => {
+    assert.ok(from !== -1, 'there is no Codacy step');
+    assert.ok(workflow.indexOf('- name: Upload the reports to Codecov') < from);
+    assert.equal(step.split('\n      - name: ').length, 1, 'a step follows it');
+  });
+
+  it('fetches the reporter at a pinned version, from its publisher, and never its install script', () => {
+    const [, version] = workflow.match(/^ {6}CODACY_REPORTER_VERSION: (\d+\.\d+\.\d+)$/m) ?? [];
+    const [, sum] = workflow.match(/^ {6}CODACY_REPORTER_SHA512: ([0-9a-f]{128})$/m) ?? [];
+    assert.ok(version, 'the reporter has no exact version');
+    assert.ok(sum, 'the reporter has no sha512');
+    assert.ok(
+      body.includes('"https://artifacts.codacy.com/bin/codacy-coverage-reporter/${CODACY_REPORTER_VERSION}/codacy-coverage-reporter-linux"'),
+      'the reporter is fetched from its publisher, at the pinned version',
+    );
+    assert.equal(workflow.split('artifacts.codacy.com/').length - 1, 1, 'the reporter is fetched from one address');
+    // As text: each is one exact string, and a literal needs no anchoring.
+    for (const moving of ['codacy-coverage-reporter/latest', 'get.sh', 'bash <(']) {
+      assert.ok(!body.includes(moving), `${moving}: what is fetched at run time has no fixed checksum`);
+    }
+    assert.doesNotMatch(workflow, /uses: codacy\//, 'the reporter is fetched and checked here, not taken as an action');
+  });
+
+  it('asks for a token first, then fetches, checks, and only then makes it runnable and runs it', () => {
+    const order = [
+      'if [ -z "$CODACY_PROJECT_TOKEN" ]; then',
+      'curl -fsSL --retry 3 -o "$reporter"',
+      'echo "${CODACY_REPORTER_SHA512}  $reporter" | sha512sum --check --strict -',
+      'chmod +x "$reporter"',
+      '"$reporter" report ',
+    ].map((text) => body.indexOf(text));
+    assert.ok(order.every((at) => at !== -1), `a step is missing: ${order}`);
+    assert.deepEqual([...order].sort((a, b) => a - b), order, 'out of order');
+  });
+
+  it('a checksum that is not the pinned one stops the step: nothing softens that line', () => {
+    const [line] = body.split('\n').filter((text) => text.includes('sha512sum --check'));
+    assert.equal(line.trim(), 'echo "${CODACY_REPORTER_SHA512}  $reporter" | sha512sum --check --strict -');
+    assert.doesNotMatch(body, /set \+e/);
+  });
+
+  it('cannot fail the job because of Codacy: no token, no download and a refusal each stop with a line in the log', () => {
+    assert.doesNotMatch(body, /\bexit [1-9]/, 'the step exits with a failure of its own');
+    assert.match(body, /if \[ -z "\$CODACY_PROJECT_TOKEN" \]; then\n\s+echo "No Codacy token here[^\n]*\n\s+exit 0\n/);
+    assert.match(body, /if ! curl [^\n]+; then\n\s+echo "::warning::[^\n]+\n\s+exit 0\n/);
+    assert.match(body, /if ! "\$reporter" report [^\n]+; then\n\s+echo "::warning::[^\n]+\n\s+fi\n$/);
+  });
+
+  it('gives the reporter its token through the environment, and the commit that was pushed', () => {
+    assert.doesNotMatch(body, /--project-token|\s-t\s/, 'the token is read from the environment by name');
+    assert.doesNotMatch(body, /echo[^\n]*\$\{?CODACY_PROJECT_TOKEN/, 'the token is never printed');
+    assert.ok(step.includes('COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}'), 'a pull request is measured at a merge commit Codacy has never seen');
+    assert.ok(body.includes('--commit-uuid "$COMMIT"'));
+  });
+
+  it('sends every report the script wrote, read as what they are', () => {
+    assert.ok(body.includes('for report in coverage/*.lcov; do'));
+    assert.ok(body.includes('reports+=(-r "$report")'));
+    assert.ok(body.includes('--force-coverage-parser lcov "${reports[@]}"'));
+  });
+
+  it('is explained where the workflow says the rest is', () => {
+    const section = sectionOf(read('docs/coverage.md'), '## Codacy\n');
+    assert.ok(section, 'docs/coverage.md has no section on Codacy');
+    const [, version] = workflow.match(/CODACY_REPORTER_VERSION: (\S+)/);
+    assert.ok(section.includes(version), `the document does not name the pinned version ${version}`);
+    for (const said of ['CODACY_PROJECT_TOKEN', 'repository', 'cannot fail', 'checksum']) {
+      assert.ok(section.includes(said), `the section does not say "${said}"`);
+    }
   });
 });
 
