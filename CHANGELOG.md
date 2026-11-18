@@ -53,6 +53,30 @@ merged commit with no entry is a change only `git log` remembers.
   end-to-end flow goes from `/` through Docs, a search, a result, and the
   heading. (#735)
 
+- **A brand page: the wordmark, the colours, the type and how to use them.**
+  `/brand`, linked from the footer, offers the wordmark and the plain T, each
+  for a light ground and a dark one, as SVG and as PNG: eight files in
+  `apps/web/public/brand`, written by `scripts/draw-icon.mjs` and held byte for
+  byte by `brand.test.js` like the icons. The wordmark is outlines of Space
+  Grotesk at weight 700, placed with the font's own advances, pair kerning and
+  the header's tracking, read from the font the app ships by
+  `scripts/wordmark.mjs` (the WOFF2 container, `gvar`, `HVAR` and the `kern`
+  feature, with no dependency); against a browser's rendering of the same text
+  it has the same bounding box, and 314 of 878,005 inked pixels differ, the
+  soft edges. The PNGs are filled from the same path by a scanline rasteriser
+  in `scripts/brand-files.mjs`. Every value on the page is read when the site
+  is built: the colours from `globals.css` by the role each row of
+  `DESIGN.md`'s token table names, the typeface from where the stylesheet
+  declares it, and the voice, in three sentences, and the list of what not to
+  do from `DESIGN.md`, which gained a `## Using the brand` section to hold
+  them. Each token has a copy button that writes the clipboard and sends
+  nothing. The page states no trademark policy: it points at the licensing
+  page, which says there is none. The social card each page draws now sets the
+  name as that wordmark, `docs/assets/social-preview.html` carries the same
+  outlines between two markers the icon script rewrites, and `brand.test.js`
+  holds both to the palette. A seventeenth end-to-end flow follows Brand from
+  the footer, fetches every file it offers and copies a colour. (#737)
+
 - **Models and prices, the roadmap and the changelog are pages of the site.**
   `/models` is the catalogue the product bills with: every row of
   `@trazum/core`'s `MODELS` (91 at this commit) by provider, its rates in

@@ -66,6 +66,31 @@ Icons: `favicon.ico` (16, 32, 48), a 180px Apple touch icon, 192px and 512px man
 - Disclosures from the document (`<details>`) are real ones, open when they hold the page's headings; a link to a heading inside a closed one opens it.
 - Language: the shell is in every site language; the document stays English, is marked `lang="en"`, and the page says so in the reader's language.
 
+## Using the brand
+
+For somebody who writes about Trazum, lists it, or builds something beside it. `/brand` draws this section and reads its values from the files that hold them.
+
+### Voice
+
+Clear: say what the thing does in plain words, and put the answer before the reason. Precise: name the file, the command or the figure, and say when a figure is an estimate. Direct: a number is measured or it is not written, and what could not be measured is said to be unknown.
+
+### What not to do
+
+- Do not add a symbol. The full name leads, the plain T appears only where the name cannot fit, and there is no standalone abstract mark. The rejected geometric logo does not return.
+- Do not set the acid yellow as text on paper. It is a fill, and the accent text colour is the one for text.
+- Do not set the wordmark in another typeface, or tighten its tracking below -0.04em. Use the files.
+- Do not use gradients, rounded cards, nested cards, stickers, decorative geometry or coloured noise.
+- Do not put the hard offset shadow on passive content. It belongs to actions.
+- Do not invent a colour. The palette is the token table above and the semantic colours for success, caution and error.
+
+## Brand page (Read mode)
+
+- Surface: `/brand`, linked from the footer and not from the header. Read, not Persuade: somebody needs an asset or a rule and leaves.
+- Order: the wordmark large on paper and on the dark canvas, with the downloads under it; the plain T; the colours; the typeface; the voice; what not to do. One band each, rules between, no cards.
+- Downloads: the wordmark and the plain T, light and dark, as SVG and PNG, eight files written by `scripts/draw-icon.mjs` into `apps/web/public/brand`. The wordmark is outlines of Space Grotesk at weight 700 with no ground; the T keeps its acid fill and ink T on either ground and its border follows the theme's ink. A button says the format and the ground.
+- Colours: one swatch per row of the token table, with its role, its custom property and its value in the mono stack with tabular figures, light and dark side by side, and a copy button that writes to the clipboard and sends nothing.
+- The page states no trademark policy and makes no legal claim: it points at `docs/licensing.md`, which says there is none yet.
+
 ## Layout and controls
 
 Desktop rail: 252px, collapsible to 72px. Below 1024px: existing accessible drawer and compact brand bar. Task headings range from 38px to 56px. Strong 2px borders identify working regions; thinner rules separate data rows. No rounded card language. Cards inside cards reduce to section rules and transparent backgrounds.

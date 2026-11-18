@@ -116,12 +116,23 @@ describe('every tab a visitor can open has a flow that opens it', () => {
       assert.ok(modelsSource.includes(step), `the models flow no longer does: ${step}`);
     }
     /*
+      And the brand flow, which starts there too: the page is in the footer,
+      and a visitor finds it at the foot of the front door.
+    */
+    const brand = FLOWS.find((flow) => flow.name.startsWith('brand: '));
+    assert.ok(brand, 'no flow follows the Brand entry');
+    const brandSource = brand.run.toString();
+    assert.match(brandSource, /^[\s\S]*?await open\('\/'\);/, 'the brand flow does not start at /');
+    for (const step of ['[data-site-footer]', "name: 'Brand'", 'data-download', 'content-type', 'Copied: #f6f4ec', 'sent']) {
+      assert.ok(brandSource.includes(step), `the brand flow no longer does: ${step}`);
+    }
+    /*
       The landing's own flows (#744) start at / too: the story told by
       scrolling, and the public site's light-first appearance. Each says so in
       its name; any other flow opening / is a mistake this still catches.
     */
     const landing = (flow) => flow.name.startsWith('landing: ') || flow.name.startsWith('appearance: the public site');
-    for (const flow of FLOWS.filter((candidate) => candidate !== site && candidate !== docs && candidate !== models && !landing(candidate))) {
+    for (const flow of FLOWS.filter((candidate) => candidate !== site && candidate !== docs && candidate !== models && candidate !== brand && !landing(candidate))) {
       for (const [, path] of flow.run.toString().matchAll(/open\('([^']*)'\)/g)) {
         assert.ok(path.startsWith('/app'), `"${flow.name}" opens ${path}, which is not the application`);
       }

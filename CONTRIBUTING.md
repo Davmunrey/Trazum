@@ -125,7 +125,7 @@ The ones that write files rather than check them:
 npm run draw:architecture  # redraws docs/assets/boundary.svg from the code
 npm run draw:bill          # redraws docs/assets/bill.svg from what `trazum bill` prints
 npm run draw:demo          # redraws docs/assets/demo.svg from what `trazum optimize` prints
-npm run draw:icon          # rewrites the extension's icon and the web app's favicon, touch icon and manifest icons
+npm run draw:icon          # rewrites the extension's icon, the web app's favicon, touch icon and manifest icons, and the brand page's wordmark and T files
 npm run measure:tokens     # re-measures the estimator against a real counter
 ```
 
@@ -317,7 +317,7 @@ log and reads the bill to the cent, optimises and compares a prompt, loads a
 recorded run, changes the theme and the language, and reaches the tabs on a
 phone, follows the landing into the dashboard, and scrolls the landing's
 story from top to bottom and back.
-[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-one flows,
+[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-two flows,
 what they do not check, and the lines that install the browser driver outside
 the workspace.
 

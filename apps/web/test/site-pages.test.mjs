@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { register } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -33,7 +33,7 @@ const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 const web = (relative) => readFileSync(new URL(`../${relative}`, import.meta.url), 'utf8');
 
 let core, pages, builder, md, view, locales, copy, site, metadata, manifest, React, server, built;
-let ModelsPage, RoadmapPage, ChangelogIndexPage, ReleasePage, DocBody, DocsIndex;
+let ModelsPage, RoadmapPage, ChangelogIndexPage, ReleasePage, DocBody, DocsIndex, BrandPage, brandModule, brandFiles;
 
 before(async () => {
   core = await import('@trazum/core');
@@ -52,6 +52,9 @@ before(async () => {
   ({ RoadmapPage } = await import('../components/history/RoadmapPage.tsx'));
   ({ ChangelogIndexPage, ReleasePage } = await import('../components/history/ChangelogPages.tsx'));
   ({ DocBody } = await import('../components/docs/DocBody.tsx'));
+  ({ BrandPage } = await import('../components/brand/BrandPage.tsx'));
+  brandFiles = await import('../../../scripts/brand-files.mjs');
+  brandModule = await import('../../../scripts/brand.mjs');
   ({ DocsIndex } = await import('../components/docs/DocsIndex.tsx'));
   built = pages.buildSitePages();
 });
@@ -572,6 +575,8 @@ describe('what the three pages never do', () => {
     'components/models/ModelsPage.tsx',
     'components/history/RoadmapPage.tsx',
     'components/history/ChangelogPages.tsx',
+    'app/brand/page.tsx',
+    'components/brand/BrandPage.tsx',
     'lib/models/view.ts',
     'lib/history/load.ts',
   ];
@@ -655,7 +660,7 @@ describe('the words, in every language', () => {
         out.push([path, sample]);
       } else if (value !== null && typeof value === 'object') for (const [k, v] of Object.entries(value)) walk(v, `${path}.${k}`, out);
     };
-    for (const [name, table] of [['models', copy.MODELS_COPY], ['roadmap', copy.ROADMAP_COPY], ['changelog', copy.CHANGELOG_COPY], ['blurbs', copy.PAGE_BLURBS]]) {
+    for (const [name, table] of [['models', copy.MODELS_COPY], ['roadmap', copy.ROADMAP_COPY], ['changelog', copy.CHANGELOG_COPY], ['blurbs', copy.PAGE_BLURBS], ['brand', copy.BRAND_COPY]]) {
       const english = [];
       walk(table.en, name, english);
       assert.ok(english.length >= 5, name);
@@ -699,5 +704,165 @@ describe('the build is wired in, and ignored', () => {
   it('adds no dependency', () => {
     const pkg = JSON.parse(web('package.json'));
     for (const name of Object.keys({ ...pkg.dependencies, ...pkg.devDependencies })) assert.ok(!/markdown|remark|rehype|mdx|marked|micromark|unified|sanitize|dompurify/i.test(name), name);
+  });
+});
+
+
+/**
+ * `/brand`: the wordmark and the T to download, the colours, the typeface, the
+ * voice and what not to do. Each value on it is held to the file it is read
+ * from, which this reads again by itself: the colours from `globals.css`, the
+ * voice and the rules from `DESIGN.md` by heading, the files from the script
+ * that writes them.
+ */
+describe('/brand says what the files say', () => {
+  const brandHtml = (brand = built.brand, locale = 'en') => render(h(BrandPage, { initialLocale: locale, brand }));
+  const css = () => read('apps/web/app/globals.css').toLowerCase();
+  const blockAfter = (opening) => {
+    const at = css().indexOf(opening);
+    assert.notEqual(at, -1, `${opening} is not in globals.css`);
+    return css().slice(at, css().indexOf('\n}', at));
+  };
+  /** The custom property each role of DESIGN.md's token table is, written again here and not imported. */
+  const VARIABLE = { Canvas: '--paper', Raised: '--paper-raised', Sunken: '--paper-sunken', Text: '--ink', Secondary: '--ink-soft', 'Muted text': '--ink-faint', Rule: '--rule', 'Strong rule': '--rule-strong', 'Primary fill': '--acid', 'Accent text': '--terracotta', 'Accent wash': '--terracotta-wash' };
+  const valueIn = (block, variable) => new RegExp(`${variable}:\\s*(#[0-9a-f]{6})`).exec(block)?.[1] ?? null;
+
+  it('builds without a problem', () => {
+    assert.deepEqual(built.brand.errors, [], built.brand.errors.join('; '));
+  });
+
+  it('has a swatch for every row of the design document’s token table, with the values globals.css declares', () => {
+    const table = sectionOf(read('DESIGN.md'), '## Tokens');
+    const rows = [...table.matchAll(/^\| ([^|]+?) \| (#[0-9a-f]{6}) \| (#[0-9a-f]{6}) \|$/gim)].map(([, role, light, dark]) => ({ role, light, dark }));
+    assert.equal(rows.length, 11, 'the token table has moved');
+    const html = brandHtml();
+    const lightBlock = blockAfter(':root {');
+    const darkBlock = blockAfter(":root[data-theme='dark'] {");
+    for (const row of rows) {
+      const variable = VARIABLE[row.role];
+      assert.ok(variable !== undefined, `${row.role} has no custom property here`);
+      const light = valueIn(lightBlock, variable);
+      const dark = valueIn(darkBlock, variable) ?? light;
+      assert.equal(light, row.light.toLowerCase(), `${row.role}: globals.css says ${light}, DESIGN.md ${row.light}`);
+      assert.equal(dark, row.dark.toLowerCase(), `${row.role}: globals.css says ${dark} in the dark theme, DESIGN.md ${row.dark}`);
+      const at = html.indexOf(`data-token="${variable}"`);
+      assert.notEqual(at, -1, `${row.role} is not on the page`);
+      const item = html.slice(at, html.indexOf('</li>', at));
+      assert.ok(item.includes(`data-copy="${light}"`) && item.includes(`data-copy="${dark}"`), `${row.role}: the page does not carry ${light} and ${dark}`);
+      assert.ok(item.includes(`>${light}</code>`) && item.includes(`>${dark}</code>`), `${row.role}: the values are not printed`);
+    }
+    assert.equal((html.match(/data-token="/g) ?? []).length, rows.length, 'the page has a swatch the table does not');
+  });
+
+  it('agrees with brand.mjs wherever that names a colour', () => {
+    const byRole = Object.fromEntries(built.brand.tokens.map((token) => [token.role, token]));
+    const { LIGHT, DARK, ACID, INK } = brandModule;
+    const pairs = [['Canvas', 'canvas'], ['Raised', 'raised'], ['Sunken', 'sunken'], ['Text', 'text'], ['Secondary', 'secondary'], ['Rule', 'rule']];
+    for (const [role, key] of pairs) assert.equal(byRole[role].light, LIGHT[key], `${role} on paper`);
+    for (const [role, key] of [...pairs, ['Muted text', 'muted'], ['Strong rule', 'strong'], ['Accent wash', 'wash']]) assert.equal(byRole[role].dark, DARK[key], `${role} on the dark canvas`);
+    assert.equal(byRole['Primary fill'].light, ACID);
+    assert.equal(byRole.Text.light, INK);
+  });
+
+  it('reads the voice and the rules from the design document, by heading, and says them as it does', () => {
+    const using = sectionOf(read('DESIGN.md'), '## Using the brand');
+    const parts = Object.fromEntries(using.split(/^### /m).slice(1).map((part) => [part.split('\n')[0].trim(), part.split('\n').slice(1).join('\n')]));
+    const voice = parts.Voice.replace(/\s+/g, ' ').trim();
+    assert.equal(built.brand.voice.join(' '), voice, 'the voice on the page is not the design document’s');
+    assert.equal(built.brand.voice.length, 3, 'the voice is three sentences');
+    const rules = parts['What not to do'].split('\n').filter((line) => line.startsWith('- ')).map((line) => line.slice(2).replace(/`/g, ''));
+    assert.deepEqual(built.brand.dont, rules);
+    const html = textOf(brandHtml());
+    for (const sentence of built.brand.voice) assert.ok(html.includes(sentence), sentence);
+    for (const rule of rules) assert.ok(html.includes(rule), rule);
+    assert.ok(rules.some((rule) => /symbol/i.test(rule)), 'the list no longer says not to add a symbol');
+  });
+
+  it('names the typeface the stylesheet declares, and sets its specimen in the face the app uses', () => {
+    const family = /--font-display:\s*'([^']+)'/.exec(read('apps/web/app/globals.css'))[1];
+    assert.equal(built.brand.typeface.family, family);
+    assert.equal(built.brand.typeface.name, family.replace(/ Variable$/, ''));
+    assert.match(read('DESIGN.md'), new RegExp(`${family}`), 'the design document names another face');
+    const html = brandHtml();
+    assert.ok(html.includes(`data-typeface="${built.brand.typeface.name}"`));
+    assert.ok(html.includes('data-specimen="name"') && codeOf('components/brand/BrandPage.tsx').includes('data-specimen="name"\n                      className="mt-2 font-display'), 'the specimen is not in the display face');
+    assert.ok(html.includes(built.brand.typeface.mono.replace(/'/g, '&#x27;')) || textOf(html).includes(built.brand.typeface.mono), 'the monospace stack is not printed');
+    for (const weight of [built.brand.typeface.weights.min, built.brand.typeface.weights.max]) assert.ok(html.includes(`data-weight="${weight}"`), `weight ${weight}`);
+  });
+
+  it('offers each file the script writes, links only to files that exist, and lists no other', () => {
+    const html = brandHtml();
+    const links = [...html.matchAll(/href="(\/brand\/[^"]+)" download/g)].map(([, href]) => href).sort();
+    assert.deepEqual(links, brandFiles.BRAND_FILES.map((file) => `/brand/${file.name}`).sort());
+    for (const href of links) {
+      const file = join(ROOT, 'apps/web/public', href);
+      assert.ok(readFileSync(file).length > 0, `${href} is a download link to a file that is not there`);
+    }
+    assert.equal(readdirSync(join(ROOT, 'apps/web/public/brand')).length, links.length, 'a file sits in public/brand that the page does not list');
+    // Each button says the format and the ground, in its name.
+    for (const file of built.brand.files) {
+      const label = new RegExp(`aria-label="[^"]*${file.format.toUpperCase()}[^"]*${copy.BRAND_COPY.en.ground[file.ground].toLowerCase()} ground`);
+      assert.match(html, label, file.name);
+    }
+    assert.ok(built.brand.files.every((file) => file.bytes === readFileSync(join(ROOT, 'apps/web/public/brand', file.name)).length), 'a size on the page is not the file’s');
+  });
+
+  it('introduces no symbol: the only pictures are the two marks the design document names', () => {
+    const html = brandHtml();
+    const images = [...html.matchAll(/<img[^>]*src="([^"]+)"/g)].map(([, src]) => src).sort();
+    assert.deepEqual(images, ['/brand/trazum-t-dark.svg', '/brand/trazum-t-light.svg', '/brand/trazum-wordmark-dark.svg', '/brand/trazum-wordmark-light.svg']);
+    const code = codeOf('components/brand/BrandPage.tsx');
+    assert.ok(!/<path |<circle |<polygon |<rect /.test(code), 'the page draws a shape of its own');
+  });
+
+  it('states no trademark claim, and points at the licensing page for what there is to say', () => {
+    for (const locale of locales.MARKETING_LOCALES) {
+      const text = textOf(brandHtml(built.brand, locale)) + JSON.stringify(copy.BRAND_COPY[locale]);
+      assert.ok(!/[™®©]|\(tm\)|\(r\)|registered trademark|trademark of|all rights reserved/i.test(text), `${locale}: a trademark claim`);
+    }
+    const html = brandHtml();
+    assert.ok(html.includes('href="/docs/licensing"'), 'the page does not point at the licensing page');
+    assert.match(read('docs/licensing.md'), /no trademark policy here yet/i, 'the licensing page no longer says there is no policy: this page repeats it');
+    assert.ok(textOf(html).includes('no trademark policy yet'));
+  });
+
+  it('keeps what a token or a rule is called as text, whatever it holds', () => {
+    const hostile = { ...built.brand, tokens: [{ role: '<img src=x onerror=alert(1)>', variable: '--<script>x</script>', light: '#000000', dark: '#ffffff' }], dont: ['<script>alert(1)</script>'] };
+    const html = brandHtml(hostile);
+    assert.ok(!/<script/i.test(html) && !/<img[^>]*onerror/i.test(html), 'a name reached the page as markup');
+    assert.ok(html.includes('&lt;script&gt;'));
+    assert.ok(!/dangerouslySetInnerHTML/.test(web('components/brand/BrandPage.tsx')));
+  });
+
+  it('has a copy button that writes the clipboard from the click and sends nothing', () => {
+    const code = codeOf('components/brand/BrandPage.tsx');
+    assert.match(code, /navigator\.clipboard\.writeText\(value\)/);
+    assert.ok(!/\bfetch\s*\(|XMLHttpRequest|sendBeacon|localStorage|sessionStorage|document\.cookie/.test(code), 'the page sends or stores something');
+  });
+
+  it('is in the footer and not the header, in every language', () => {
+    const footer = site.FOOTER_GROUPS.flatMap((group) => group.links);
+    assert.ok(footer.includes('brand'));
+    assert.ok(!site.HEADER_ENTRIES.includes('brand'));
+    assert.equal(site.SITE_LINKS.brand.href, '/brand');
+    assert.equal(site.SITE_LINKS.brand.external, false);
+  });
+
+  it('keeps its titles and its card in the brand', () => {
+    for (const locale of locales.MARKETING_LOCALES) assert.match(metadata.brandMetadata(locale).title.absolute, /· Trazum$/);
+    const page = web('app/brand/opengraph-image.tsx');
+    assert.match(page, /return socialCard\(/);
+    assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(codeOf('lib/social-card.tsx')), 'the social card types a colour');
+  });
+
+  it('takes its language from the visitor, and says the rules are English when it is not', () => {
+    for (const locale of locales.MARKETING_LOCALES.filter((l) => l !== 'en')) assert.ok(brandHtml(built.brand, locale).includes(copy.BRAND_COPY[locale].englishNote), locale);
+    assert.ok(!brandHtml().includes(copy.BRAND_COPY.en.englishNote));
+  });
+
+  it('is built with the Docker image’s other files, from the design document', () => {
+    const docker = read('Dockerfile');
+    for (const file of ['DESIGN.md', 'brand.mjs', 'brand-files.mjs', 'wordmark.mjs']) assert.ok(docker.includes(file), `the image build lacks ${file}`);
+    assert.ok(read('.dockerignore').includes('!DESIGN.md'));
   });
 });

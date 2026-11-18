@@ -39,16 +39,29 @@
  * and no date is ever made up for it. A heading that is neither fails the
  * build.
  *
+ * ## And the brand page
+ *
+ * `/brand` is the same kind of page: nothing on it is typed. The colour
+ * values are read from `apps/web/app/globals.css`, by the custom property each
+ * row of `DESIGN.md`'s token table names; the typeface from where the
+ * stylesheet declares it and the font package it imports; the voice and the
+ * list of what not to do from `DESIGN.md`, by heading; and the downloadable
+ * files from the list `scripts/brand-files.mjs` draws them from, with the size
+ * of each file as it is on disk. A file the script writes and the disk lacks
+ * stops the build and says which command writes it.
+ *
  * Usage:
  *   node scripts/build-site-pages.mjs
  */
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { REPOSITORY } from '../apps/web/lib/docs/manifest.ts';
 import { UnknownConstruct, inlineText, parseMarkdown, walkBlocks, walkInlines } from './docs-markdown.mjs';
 import { buildDocs, literal, moduleOf } from './build-docs-site.mjs';
+import { BRAND_FILES, pngSize } from './brand-files.mjs';
+import { fontPath } from './wordmark.mjs';
 import { DELIBERATELY_UNPRICED } from './price-drift.mjs';
 import { FILE as MILESTONES_FILE, milestoneUrl, problemsWithFile } from './milestones.mjs';
 
@@ -59,7 +72,7 @@ export const GENERATED = join(ROOT, 'apps/web/lib/history/generated');
 /** What a release's number may be. It becomes a file name, an address and a key. */
 export const VERSION = /^(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})$/;
 
-const WRITER = "scripts/build-site-pages.mjs from CHANGELOG.md, ROADMAP.md, .github/milestones.json and the catalogue's source";
+const WRITER = "scripts/build-site-pages.mjs from CHANGELOG.md, ROADMAP.md, .github/milestones.json, DESIGN.md, globals.css and the catalogue's source";
 
 /** How many releases, besides the unreleased changes, `/changelog` draws in full. */
 export const FEATURED = 3;
@@ -372,6 +385,153 @@ export function deliberatelyUnpriced() {
 }
 
 /* ------------------------------------------------------------------ */
+/* The brand                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The custom property each role of `DESIGN.md`'s token table is declared as in
+ * `globals.css`. This is the one place a role is tied to a name; the values
+ * are never written here. A role the table has and this lacks, or the reverse,
+ * stops the build.
+ */
+export const TOKEN_VARIABLES = {
+  Canvas: '--paper',
+  Raised: '--paper-raised',
+  Sunken: '--paper-sunken',
+  Text: '--ink',
+  Secondary: '--ink-soft',
+  'Muted text': '--ink-faint',
+  Rule: '--rule',
+  'Strong rule': '--rule-strong',
+  'Primary fill': '--acid',
+  'Accent text': '--terracotta',
+  'Accent wash': '--terracotta-wash',
+};
+
+/** The declarations of one block of `globals.css`: the text from its opening to its closing brace. */
+function blockOf(css, opening) {
+  const start = css.indexOf(opening);
+  if (start === -1) return null;
+  const end = css.indexOf('\n}', start);
+  return end === -1 ? null : css.slice(start, end);
+}
+
+/** The six-digit colour a custom property is given in a block, or `null`. */
+export function declared(block, variable) {
+  const found = new RegExp(`${variable.replaceAll('-', '\\-')}:\\s*(#[0-9a-fA-F]{6})\\s*;`).exec(block ?? '');
+  return found === null ? null : found[1].toLowerCase();
+}
+
+/** The sentences of a paragraph, each ending at its full stop. */
+export function sentencesOf(text) {
+  return text.split(/(?<=[.!?])\s+/).map((sentence) => sentence.trim()).filter((sentence) => sentence !== '');
+}
+
+/**
+ * Everything `/brand` draws.
+ * @param {{ root?: string }} options
+ */
+export function buildBrand({ root = ROOT } = {}) {
+  /** @type {string[]} */
+  const errors = [];
+  const design = readFileSync(join(root, 'DESIGN.md'), 'utf8');
+  const css = readFileSync(join(root, 'apps/web/app/globals.css'), 'utf8');
+
+  // The colours: the roles DESIGN.md names, the values globals.css declares.
+  const light = blockOf(css, ':root {');
+  const dark = blockOf(css, ":root[data-theme='dark'] {");
+  if (light === null || dark === null) errors.push('apps/web/app/globals.css no longer opens with a light block and an explicit dark one');
+  const table = sectionText(design, 2, 'Tokens');
+  const roles = [];
+  if (table === null) errors.push('DESIGN.md has no "## Tokens" section');
+  else {
+    for (const line of table.split('\n')) {
+      const cells = line.split('|').map((cell) => cell.trim());
+      if (cells.length >= 4 && /^#[0-9a-f]{6}$/i.test(cells[2])) roles.push(cells[1]);
+    }
+  }
+  const tokens = [];
+  for (const role of roles) {
+    const variable = Object.hasOwn(TOKEN_VARIABLES, role) ? TOKEN_VARIABLES[role] : null;
+    if (variable === null) {
+      errors.push(`DESIGN.md's token table has a role, "${role}", that scripts/build-site-pages.mjs does not know a custom property for`);
+      continue;
+    }
+    const lightValue = declared(light, variable);
+    // A token the dark theme does not redeclare is the light one, as the cascade has it.
+    const darkValue = declared(dark, variable) ?? lightValue;
+    if (lightValue === null || darkValue === null) errors.push(`globals.css declares no ${variable} in one of its themes, which is the token DESIGN.md calls "${role}"`);
+    else tokens.push({ role, variable, light: lightValue, dark: darkValue });
+  }
+  for (const role of Object.keys(TOKEN_VARIABLES)) if (!roles.includes(role)) errors.push(`${role} is named here and is not a row of DESIGN.md's token table`);
+
+  // The typeface: where the stylesheet declares it, and the package it imports.
+  const family = /--font-display:\s*'([^']+)'/.exec(css);
+  const mono = /--font-mono:\s*([^;]+);/.exec(css);
+  let typeface = null;
+  if (family === null || mono === null) errors.push('globals.css declares no --font-display or --font-mono');
+  else {
+    const folder = dirname(dirname(fontPath()));
+    let metadata = {};
+    let manifest = {};
+    try {
+      metadata = JSON.parse(readFileSync(join(folder, 'metadata.json'), 'utf8'));
+      manifest = JSON.parse(readFileSync(join(folder, 'package.json'), 'utf8'));
+    } catch (error) {
+      errors.push(`the font package could not be read: ${error.message}`);
+    }
+    const axis = metadata.variable?.wght;
+    typeface = {
+      family: family[1],
+      name: family[1].replace(/ Variable$/, ''),
+      mono: mono[1].trim(),
+      weights: axis === undefined ? null : { min: Number(axis.min), max: Number(axis.max) },
+      license: typeof manifest.license === 'string' ? manifest.license : null,
+      packageName: typeof manifest.name === 'string' ? manifest.name : null,
+    };
+  }
+
+  // The voice and what not to do: DESIGN.md's own words.
+  const voiceText = sectionText(design, 3, 'Voice');
+  const dontText = sectionText(design, 3, 'What not to do');
+  let voice = [];
+  let dont = [];
+  try {
+    if (voiceText === null) errors.push('DESIGN.md has no "### Voice" section');
+    else {
+      const { blocks } = parseMarkdown(voiceText, { file: 'DESIGN.md' });
+      voice = sentencesOf(blocks.filter((block) => block.t === 'p').map((block) => inlineText(block.c).replace(/\s+/g, ' ').trim()).join(' '));
+      if (voice.length !== 3) errors.push(`DESIGN.md's "### Voice" is ${voice.length} sentences, and the brand page says it in three`);
+    }
+    if (dontText === null) errors.push('DESIGN.md has no "### What not to do" section');
+    else {
+      const { blocks } = parseMarkdown(dontText, { file: 'DESIGN.md' });
+      const list = blocks.find((block) => block.t === 'ul');
+      dont = list === undefined ? [] : list.c.map((item) => inlineText(item.c.flatMap((block) => (block.t === 'p' ? block.c : []))).replace(/\s+/g, ' ').trim());
+      if (dont.length === 0) errors.push('DESIGN.md\'s "### What not to do" has no list');
+    }
+  } catch (error) {
+    if (error instanceof UnknownConstruct) errors.push(error.message);
+    else throw error;
+  }
+
+  // The files, from the list the script that writes them uses, as they are on disk.
+  const files = [];
+  for (const file of BRAND_FILES) {
+    let bytes = null;
+    try {
+      bytes = statSync(join(root, file.path)).size;
+    } catch {
+      errors.push(`${file.path} is not there: node scripts/draw-icon.mjs writes it`);
+      continue;
+    }
+    const size = file.format === 'png' ? pngSize(file.mark) : null;
+    files.push({ mark: file.mark, ground: file.ground, format: file.format, name: file.name, href: `/brand/${file.name}`, bytes, width: size?.width ?? null, height: size?.height ?? null });
+  }
+  return { errors, tokens, typeface, voice, dont, files };
+}
+
+/* ------------------------------------------------------------------ */
 /* Writing                                                            */
 /* ------------------------------------------------------------------ */
 
@@ -380,8 +540,9 @@ export function buildSitePages({ root = ROOT } = {}) {
   const docs = buildDocs({ root });
   const changelog = buildChangelog({ root, docs });
   const roadmap = buildRoadmap({ root, docs });
+  const brand = buildBrand({ root });
   let sources = {};
-  const errors = [...docs.errors.filter((message) => message.startsWith('CHANGELOG.md') || message.startsWith('ROADMAP.md')), ...changelog.errors, ...roadmap.errors];
+  const errors = [...docs.errors.filter((message) => message.startsWith('CHANGELOG.md') || message.startsWith('ROADMAP.md')), ...changelog.errors, ...roadmap.errors, ...brand.errors];
   try {
     sources = providerSources(readFileSync(join(root, 'packages/core/src/pricing.ts'), 'utf8'));
   } catch (error) {
@@ -392,7 +553,7 @@ export function buildSitePages({ root = ROOT } = {}) {
   for (const image of docs.images) {
     if (/^CHANGELOG|^ROADMAP/.test(image)) errors.push(`${image}: the changelog and the roadmap pages do not copy images`);
   }
-  return { docs, changelog, roadmap, sources, unpriced: deliberatelyUnpriced(), errors };
+  return { docs, changelog, roadmap, brand, sources, unpriced: deliberatelyUnpriced(), errors };
 }
 
 /** Write what `buildSitePages` returned, replacing what a previous run wrote. */
@@ -431,6 +592,8 @@ export function writeSitePages(result, { generated = GENERATED } = {}) {
     ].join('\n'),
   );
   writeFileSync(join(generated, 'roadmap.ts'), moduleOf({ milestones: result.roadmap.milestones, consideration: result.roadmap.consideration, hasConsideration: result.roadmap.hasConsideration }, 'RoadmapData', '../types', WRITER));
+  const { tokens, typeface, voice, dont, files } = result.brand;
+  writeFileSync(join(generated, 'brand.ts'), moduleOf({ tokens, typeface, voice, dont, files }, 'BrandData', '../types', WRITER));
   writeFileSync(join(generated, 'models.ts'), moduleOf({ sources: result.sources, unpriced: result.unpriced }, 'ModelsExtra', '../types', WRITER));
   return { indexBytes: Buffer.byteLength(moduleOf(index, 'ChangelogIndex', '../types', WRITER)), pages: pages.length };
 }
@@ -445,7 +608,7 @@ function main() {
   const written = writeSitePages(result);
   const { index } = changelogModules(result.changelog);
   console.log(
-    `site pages: ${result.changelog.releases.length} changelog entries (${index.featured.length} drawn in full, ${written.indexBytes} bytes of module), ${result.roadmap.milestones.length} milestones, ${Object.keys(result.sources).length} provider sources, ${result.unpriced.length} unpriced models listed`,
+    `site pages: ${result.changelog.releases.length} changelog entries (${index.featured.length} drawn in full, ${written.indexBytes} bytes of module), ${result.roadmap.milestones.length} milestones, ${Object.keys(result.sources).length} provider sources, ${result.unpriced.length} unpriced models listed, ${result.brand.tokens.length} colour tokens and ${result.brand.files.length} brand files`,
   );
 }
 

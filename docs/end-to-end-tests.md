@@ -13,8 +13,8 @@ page.
 
 ## What is checked
 
-Twenty-one flows, each from an empty browser. Most drive the application at
-`/app`, where it has lived since the landing took `/`; eight start on the
+Twenty-two flows, each from an empty browser. Most drive the application at
+`/app`, where it has lived since the landing took `/`; nine start on the
 landing:
 
 | Flow | What the page must show |
@@ -31,6 +31,7 @@ landing:
 | Site | the landing's headline and command, its GitHub button, its way into the dashboard, the sample month loaded there and priced at `$1.05` over eight calls, and an old `/?tab=` address landing on its panel at `/app` |
 | Docs | from the landing, the Docs entry to `/docs`, a search for `baseline gate`, the result for the heading "The CI gate: a budget is a ceiling, a baseline is a gate", and the command reference open at `#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate` with that heading scrolled into view, the document marked English, and View on GitHub going to `docs/commands.md` |
 | Models | from the landing, the Models entry to `/models`, the count of every model, one provider chosen so that only its rows are left, a text filter that keeps `deepseek-v4-pro` and drops `deepseek-flash`, the sentence for a filter nothing matches, nothing written to the address, `gemini-2.5-pro` drawn with the Retired tab and marked retired, and no request made by the page while it was filtered |
+| Brand | from the footer, the Brand entry to `/brand`, the wordmark shown for a light ground and for a dark one, eight files offered and each fetched with the kind of file its name says, the canvas shown as `#f6f4ec` on paper and `#1c211b` on the dark ground, a copy of `#f6f4ec` confirmed, and no request made by the page when it was copied |
 | Tour | all ten steps: the bill, the optimiser and the comparison each run their sample, and the terminal types and runs each of its three commands once |
 | Landing, the story | scrolled from top to bottom a percent at a time: the bill's total, the gate's verdict, the trimming's token counts, what never leaves on the screen and what leaves beside the closed machine each come into view, in that order; the lid's computed rotation is closed (below -95°) at the end, open again halfway back and at the top; no control inside the pinned stage; the last call to action takes focus and leads to `/app` |
 | Landing, the fallback | the same story with `CSS.supports` saying no to scroll-driven animation, so the script writes the progress (`data-story="script"`) |
@@ -108,12 +109,12 @@ of a tenth.
 
 A step of the `Build and tests` job, after the web app is built and the
 privacy probe has run, on a server of its own. It is part of the required
-check, so a pull request that breaks a flow cannot merge. All twenty-one took
+check, so a pull request that breaks a flow cannot merge. All twenty-two took
 67 seconds by the times the runner printed, against a local production build
-on a machine three other jobs were sharing, on 2026-11-18. The tour is ten of
-them, because it waits for a hand that types. The five flows of the landing
-are 22: the three that play the story each scroll the page a hundred and one
-times and read it at each stop.
+on a machine three other jobs were sharing, on 2026-11-18. The tour is eleven
+of them, because it waits for a hand that types. The five flows of the
+landing are 22: the three that play the story each scroll the page a hundred
+and one times and read it at each stop.
 
 ## Adding a flow
 
