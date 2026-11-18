@@ -32,7 +32,9 @@
           { "context": "GitHub Action self-test (examples/sample-prompt.es.txt)" },
           { "context": "CodeQL" },
           { "context": "npm audit" },
-          { "context": "PR readiness" }
+          { "context": "PR readiness" },
+          { "context": "Signed-off-by on every commit" },
+          { "context": "cla" }
         ]
       }
     },

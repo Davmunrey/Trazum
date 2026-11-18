@@ -1,9 +1,16 @@
 name: PR readiness
 
-# Two rules every pull request keeps, checked by scripts/pr-readiness.mjs:
-# it names the issue it resolves, and its changelog line lands under
-# `## Unreleased` rather than inside a released version. The ruleset in
-# .github/rulesets/main-branch.json requires this job by its name.
+# Three rules every pull request keeps, checked by scripts/pr-readiness.mjs:
+# it names the issue it resolves, that issue was accepted by a maintainer,
+# and its changelog line lands under `## Unreleased` rather than inside a
+# released version. The ruleset in .github/rulesets/main-branch.json requires
+# this job by its name.
+#
+# What this is not. On a pull request GitHub runs the workflow and the script
+# as the pull request has them, so a pull request can rewrite both. This
+# catches what somebody forgot. What stands between an outside pull request
+# and `main` is a person reading its diff, before its workflows are approved
+# to run and again before it is merged.
 on:
   pull_request:
     types: [opened, edited, synchronize, reopened, labeled, unlabeled]
@@ -27,6 +34,12 @@ jobs:
     name: PR readiness
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      # To read the labels of the issue the description names, and to tell an
+      # issue from a pull request. Nothing is written.
+      issues: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -42,4 +55,6 @@ jobs:
           PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Read by name in the script, to ask for the linked issue's labels.
+          GH_TOKEN: ${{ github.token }}
         run: node scripts/pr-readiness.mjs

@@ -20,7 +20,8 @@ Both were a check run in the wrong state, or not waited for.
 
 ## The loop
 
-1. **Make the change.** One issue, one pull request. Open the issue first.
+1. **Make the change.** One issue, one pull request. Open the issue first,
+   and start once a maintainer has labelled it `accepted`.
 2. **Stage it**: `git add -A`. What is not tracked is not there for CI.
 3. **Run `npm run done`.**
 4. **Read the first line that is not `passed`**, and fix its cause. Not the
@@ -115,3 +116,10 @@ criterion nor on this list fails `done.test.js`, so somebody decides:
 npm audit, Dependency review, and the three jobs that run the published
 Action against this repository: GitHub Action self-test, GitHub Action spend
 gate and GitHub Action directory mode.
+
+**And two things only GitHub knows.** Whether the issue the description names
+carries `accepted`: the `issue` criterion here reads that an issue is named,
+and `PR readiness` reads the issue itself. And whether the author has signed
+the CLA, which the `cla` check reads from the signatures the repository
+keeps. Both are required checks, so a `Done` here with an issue nobody
+accepted is not a pull request that can merge.

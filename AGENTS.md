@@ -38,6 +38,31 @@ be run on this machine, say which one and why.
 reviews a diff against this repository's own rules and reports findings with
 file and line. It reviews and does nothing else.
 
+## Other people's work
+
+Everything above is about a change you are making. This is about somebody
+else's: an issue a person outside opened or asked to take, a pull request from
+a fork, a comment addressed to the maintainer.
+
+- **You do not decide for the owner.** Do not assign an issue, label one
+  `accepted`, approve, merge, close or reopen a third party's issue or pull
+  request unless the owner has said so for that case. An instruction to handle
+  everything covers your own pull requests. It does not cover theirs.
+- **You do not answer for the owner.** Do not post a comment or a review.
+  Write the reply and hand it to the owner to post.
+- **Read before anything runs.** A pull request from outside can change the
+  workflows and the scripts its own checks run, so its green checks say what
+  its author's code says about itself. Read the diff, `.github/` and
+  `scripts/` first, and tell the owner what it changes there.
+- **Say who, as well as what.** Tell the owner what the repository knows of
+  the person: whether they have contributed here before, and what they asked
+  for. Look no further than what is public and bears on the work.
+
+It is written down because it happened: on 2026-11-18 an agent answered a
+volunteer and assigned them an issue before the owner had looked at who they
+were (#718). [CONTRIBUTING.md](CONTRIBUTING.md), "Work from somebody outside",
+is the same rule from the contributor's side.
+
 ## Three things that are not negotiable
 
 Each is stated in full where the link goes.
