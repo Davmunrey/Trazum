@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 /**
@@ -38,9 +38,37 @@ describe('the linter runs on everything, and a warning fails', () => {
     assert.ok(config.includes(`"$schema": "https://biomejs.dev/schemas/${version}/schema.json"`));
   });
 
-  it('excludes only what is not this repository\'s to edit, and what git ignores', () => {
-    assert.match(config, /"files": \{ "includes": \["\*\*", "!\.claude\/skills\/synced"\] \}/);
+  it('excludes only what is not this repository\'s to edit, what it has no rule for, and what git ignores', () => {
+    assert.match(config, /"files": \{ "includes": \["\*\*", "!\.claude\/skills\/synced", "!\*\*\/\*\.md"\] \}/);
     assert.match(config, /"vcs": \{ "enabled": true, "clientKind": "git", "useIgnoreFile": true \}/);
+  });
+
+  it('is given no file over the size it warns about, and the limit is the default', () => {
+    /*
+      Biome warns about a file larger than 1 MiB, and a warning is an error
+      here. CHANGELOG.md reached that on 2026-11-18, with 1,071 bytes to
+      spare on main: the next pull request with a changelog entry would have
+      failed the required check for nothing it changed, and every one after
+      it (#751). Markdown is not read any more. This is for the next file:
+      it fails here, by name, before it fails as a warning in somebody
+      else's pull request.
+
+      Raising `files.maxSize` is not the way out. A source file of a mebibyte
+      is worth the warning.
+    */
+    const LIMIT = 1024 * 1024;
+    assert.doesNotMatch(config, /maxSize/, 'the size limit was changed: a source file over 1 MiB is worth a warning');
+    const given = execFileSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8' })
+      .split('\0')
+      .filter((path) => /\.(?:[cm]?[jt]s|[jt]sx|jsonc?|css|html|graphql|gql)$/.test(path) && !path.startsWith('.claude/skills/synced/'));
+    assert.ok(given.length > 500, `only ${given.length} files found: the listing is broken`);
+    const sizes = given.map((path) => ({ path, bytes: statSync(new URL(path, ROOT)).size })).sort((a, b) => b.bytes - a.bytes);
+    assert.ok(sizes[0].bytes > 100_000, 'the largest file read is implausibly small: the sizes are not being read');
+    for (const { path, bytes } of sizes) {
+      assert.ok(bytes < LIMIT, `${path} is ${bytes.toLocaleString('en-US')} bytes, and the linter warns from ${LIMIT.toLocaleString('en-US')}: split it, or say in biome.jsonc why it is not read`);
+    }
+    const markdown = execFileSync('git', ['ls-files', '-z', '*.md'], { cwd: ROOT, encoding: 'utf8' }).split('\0').filter(Boolean);
+    assert.ok(markdown.includes('CHANGELOG.md') && markdown.length > 50);
   });
 
   it('lints and does not format', () => {

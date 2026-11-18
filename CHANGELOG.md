@@ -483,6 +483,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The linter was 1,071 bytes from failing every pull request.** Biome warns
+  about any file over 1 MiB that it is given, a warning is an error here, and
+  this file was 1,047,505 bytes on `main`. The next entry longer than what
+  was left would have failed the required check for a pull request that had
+  done nothing wrong, and so would every one after it. It was found when a
+  change with an ordinary entry did exactly that. Biome read 102 Markdown
+  files and has no rule that reports on any of them: without them the same
+  run checks 857 files in place of 959 and finds the same things. So the
+  linter does not read Markdown any more, and `biome.jsonc` says why. The
+  limit itself is not raised, because a source file of a mebibyte is worth
+  the warning. `lint.test.js` now fails by name on the next file the linter
+  reads that reaches the limit, and on a changed limit. Three faults were
+  planted and it failed on each: Markdown read again, the limit raised, and
+  a source file of 1.1 MiB added (#751).
+
 - **The versioning policy described a line that ended in August.**
   `VERSIONING.md` still had "The 1.x freeze", "a breaking change waits for
   2.0" and `^1.50.0` as the pin to copy, with the manifests at 2.7.12, and
