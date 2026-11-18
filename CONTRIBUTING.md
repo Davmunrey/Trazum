@@ -467,6 +467,16 @@ migration.
 
 Run `npm run verify` before pushing and read its exit code, not its output.
 
+`npm run done` asks the wider question: is this change done? It runs every
+check that can be run before a push, the ones `verify` runs and the rest of
+what CI's required job runs, in order, and answers each with `passed`,
+`FAILED` and the reason, or `not run` and what is missing. It also checks the
+state `verify` cannot: that every new file is tracked, that the commits are
+signed off, that the changelog line is there and the issue is named. It adds
+no criterion of its own, fixes nothing, and exits 0 only when everything that
+applies passed. [docs/done.md](docs/done.md) is the loop it belongs to, and
+[AGENTS.md](AGENTS.md) points a coding agent at both.
+
 ### Issue first
 
 A pull request names the issue it resolves: `Fixes #<n>` in its description.
