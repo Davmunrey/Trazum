@@ -30,6 +30,14 @@
  * is the required job's to say, and a second verdict from a slower run would
  * be noise on every pull request. It exits 1 only when it measured nothing,
  * which is its own way of being broken.
+ *
+ * It does name the test that failed, the line it is at and the first line of
+ * its error. The first version said "a test failed" and no more, and on
+ * 2026-11-18 two of five runs on a runner said it of the core, on commits
+ * the required job had passed: a test that fails some of the time under a
+ * slower clock, and nothing left behind to say which (#712). The runner's
+ * own account of each run is kept beside the report, as
+ * `coverage/<package>.tap`.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -62,6 +70,11 @@ export const NOT_MEASURED = {
   'apps/vscode': 'Its tests run against a stand-in for the editor\'s API, and the extension is not published yet (#640). Left for when it is.',
 };
 
+/** Where the test runner's own account of a run is kept, beside its report. */
+export function tapOf(out) {
+  return out.replace(/\.lcov$/, '.tap');
+}
+
 /** The arguments Node is given for one suite, with the report at `out`. */
 export function nodeArgs(suite, out) {
   return [
@@ -75,6 +88,10 @@ export function nodeArgs(suite, out) {
     "--test-coverage-exclude=**/scripts/**",
     '--test-reporter=lcov',
     `--test-reporter-destination=${out}`,
+    // A second reporter, paired with its own destination in the order given:
+    // what passed and what failed, which the lcov report does not carry.
+    '--test-reporter=tap',
+    `--test-reporter-destination=${tapOf(out)}`,
     suite.tests,
   ];
 }
@@ -170,6 +187,56 @@ export function together(reports) {
   return { rows, all: { ...all, percent: percent(all) } };
 }
 
+/**
+ * The tests that failed, from the runner's TAP output: each with its name,
+ * where it is, and the first line of its error. A group that failed only
+ * because a test inside it did is left out, and so are a test marked todo
+ * and one that was skipped: the runner prints the first two as "not ok" as
+ * well, and neither is a failure of its own.
+ */
+export function failures(tap, root = ROOT) {
+  const found = [];
+  const lines = tap.split('\n');
+  for (let at = 0; at < lines.length; at += 1) {
+    const result = /^(\s*)not ok \d+ - (.*)$/.exec(lines[at]);
+    if (result === null) continue;
+    const [, indent, title] = result;
+    if (/ # (?:TODO|SKIP)\b/.test(title)) continue;
+    // The block of details under a result is indented two further and runs
+    // from `---` to `...`.
+    const inside = `${indent}  `;
+    // A result with no block under it is still a failure; it only has nothing
+    // more to say, and the next test's block is not read as its own.
+    const detailed = lines[at + 1] === `${inside}---`;
+    const field = (name) => new RegExp(`^${inside}${name}: (.*)$`);
+    let location = null;
+    let error = null;
+    let group = false;
+    for (let next = at + 2; detailed && next < lines.length && lines[next] !== `${inside}...`; next += 1) {
+      const line = lines[next];
+      const where = field('location').exec(line);
+      const why = field('error').exec(line);
+      if (where !== null) location = where[1].replace(/^'|'$/g, '');
+      else if (field('failureType').exec(line)?.[1] === "'subtestsFailed'") group = true;
+      else if (why !== null) {
+        // Either on the same line in quotes, or a block whose first line that
+        // is not empty is the message.
+        if (why[1].startsWith('|')) {
+          let text = next + 1;
+          while (text < lines.length && lines[text].trim() === '') text += 1;
+          error = (lines[text] ?? '').trim();
+        } else error = why[1].replace(/^'|'$/g, '');
+      }
+    }
+    if (group) continue;
+    // `/abs/path/file.js:12:3` as the runner writes it; the column is noise
+    // and the path is given from the repository's root.
+    const place = location === null ? null : location.replace(/:\d+$/, '').replace(`${root}/`, '');
+    found.push({ name: title, location: place, error });
+  }
+  return found;
+}
+
 /** Whether a report is worth uploading: it names sources, and nothing but sources. */
 export function usable(report) {
   return report.files.length > 0 && report.percent !== null && strangers(report.files).length === 0;
@@ -213,7 +280,20 @@ async function main(argv) {
         + `  (${report.lines.hit.toLocaleString('en-US')} of ${report.lines.found.toLocaleString('en-US')}, in ${report.files.length} files, ${seconds} s)  ${out}`,
     );
     if (cleaned.dropped.length > 0) console.log(`  left out, not a source of this repository: ${cleaned.dropped.length} file(s), the first ${cleaned.dropped[0]}`);
-    if (code !== 0) console.log(`  a test failed in this run (exit ${code}). The report is still written; whether the tests pass is the required job's to say.`);
+    if (code !== 0) {
+      let failed = [];
+      try {
+        failed = failures(readFileSync(join(ROOT, tapOf(out)), 'utf8'));
+      } catch {
+        // The runner left no account of the run: said below.
+      }
+      console.log(`  a test failed in this run (exit ${code}). The report is still written; whether the tests pass is the required job's to say.`);
+      for (const test of failed) {
+        console.log(`    ${test.name}${test.location === null ? '' : `  (${test.location})`}`);
+        if (test.error !== null && test.error !== '') console.log(`      ${test.error}`);
+      }
+      if (failed.length === 0) console.log(`    which one is not in ${tapOf(out)}: the runner stopped without naming a test.`);
+    }
   }
   if (empty > 0) {
     console.error(`\n${empty} package(s) measured no source. Run \`npm run build\` first: the report is mapped through the build's source maps, and without them it names built files, which are left out.`);
