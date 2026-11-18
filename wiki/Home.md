@@ -14,6 +14,7 @@ what to change and checks whether the change arrived.
 
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
+[![Coverage](https://codecov.io/gh/Davmunrey/Trazum/graph/badge.svg)](https://app.codecov.io/gh/Davmunrey/Trazum)
 [![npm](https://img.shields.io/npm/v/%40trazum%2Fcli.svg?label=npm)](https://www.npmjs.com/package/@trazum/cli)
 [![npm downloads](https://img.shields.io/npm/dm/%40trazum%2Fcli.svg)](https://www.npmjs.com/package/@trazum/cli)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue.svg)](https://github.com/Davmunrey/Trazum/blob/main/LICENSE)

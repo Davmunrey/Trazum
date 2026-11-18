@@ -228,6 +228,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The coverage document no longer says its figure is Codecov's.** The
+  script's comment and `docs/coverage.md` said the combined figure "is the
+  figure Codecov shows". That was written before Codecov had taken an upload.
+  The first, for `main` on 2026-11-18, came out at 93.3% (65,907 lines run,
+  111 partly, 4,615 not) where the same run's `npm run coverage` printed
+  94.5% (66,809 run), over the same 70,633 lines in the same 152 files. The
+  document now gives both and what is known: the script counts a line by its
+  line record; Codecov's ratio is hits over hits, partials and misses, and it
+  judges a line that carries a branch record by the branch, so a line that ran
+  108 times with an `if` nobody takes is, to Codecov, not run. Of 1,044 lines
+  the two disagree on, 1,023 carry a branch record. It also says what is not
+  known: Codecov called 353 lines run although every report says a branch on
+  the line was never taken, and why was not tested. The README has a coverage
+  badge, showing Codecov's figure (#709).
 - **A quick edit to a description no longer leaves a cancelled required
   check.** `PR readiness` runs when a pull request is opened and again when
   its description is edited, and the second run cancelled the first. Edited

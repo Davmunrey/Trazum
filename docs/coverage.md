@@ -25,8 +25,57 @@ lines, in 152 source files.
 
 A row is a package's sources, and a line counts as run if any package's tests
 ran it: the CLI's tests run most of the core, and the core's run part of the
-CLI. Figures are rounded down. Codecov has the current ones and this table is
-a dated reading, not a live one.
+CLI. Figures are rounded down. This table is a dated reading, not a live one:
+every run of the `Coverage` workflow prints the current one in its log.
+
+## Two figures, and why they differ
+
+Codecov shows a lower figure than `npm run coverage` prints for the same
+reports. For `main` at `414b058`, on 2026-11-18, from the one run that made
+the reports and uploaded them:
+
+| | Lines | Run | Partly run | Not run | Coverage |
+| --- | --- | --- | --- | --- | --- |
+| `npm run coverage` | 70,633 | 66,809 | not counted | 3,824 | 94.5% |
+| Codecov | 70,633 | 65,907 | 111 | 4,615 | 93.3% |
+
+The same 152 files and the same number of lines, and 902 lines apart. An
+earlier version of this document, and a comment in the script, said the two
+were the same figure. That was written before Codecov had taken an upload.
+
+What is known:
+
+- **The script counts a line by its line record.** A line ran if any report
+  says it ran at least once.
+- **Codecov's ratio is hits over hits, partials and misses**, as its
+  [documentation](https://docs.codecov.com/docs/about-code-coverage) states:
+  65,907 of 70,633. A partly run line counts against the figure.
+- **Codecov judges a line that carries a branch record by the branch.** Node
+  writes a branch record on the line where a branch starts. So a line such as
+  `if (schema['additionalProperties'] !== false) return [];`, line 85 of
+  `packages/mcp/src/rpc.ts`, which the MCP package's tests ran 108 times, is
+  to Codecov a line that did not run, because no test takes its branch.
+  Comparing Codecov's verdict on every line of `c220615` with the reports of
+  a local run the same day, 1,044 lines differ, and 1,023 of them carry a
+  branch record.
+
+What is not known:
+
+- **Codecov's figure is not simply the stricter one.** Where a file is in
+  more than one upload, and the CLI's tests run most of the core, Codecov
+  called 353 lines run although every report with a branch record on the line
+  says a branch there was never taken. Line 466 of `packages/cli/src/index.ts`
+  is one. The two reports give that branch different numbers, 20 in one and 9
+  in the other. Whether that is why was not tested.
+- **The other 21 differing lines** carry no branch record. The two runs were
+  on different machines, and their own totals differ by a few lines too. They
+  were not traced further.
+
+So neither figure is the true one. For "which lines does no test reach", the
+script's count and Codecov's line view agree on all but those 1,044 of 70,633
+lines. For "which branch does no test take", Codecov's line view is the place
+to look, one file at a time. The badge in the README shows Codecov's figure, because that is the
+one a visitor can click through to.
 
 Of the 154 TypeScript files under `packages/*/src`, two are in no report.
 `packages/cli/src/i18n/types.ts` holds only types, so nothing of it exists

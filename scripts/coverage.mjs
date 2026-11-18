@@ -130,8 +130,15 @@ export function clean(lcov) {
 
 /**
  * Every report together, by the package a source belongs to: a line ran if
- * any package's tests ran it. This is the figure Codecov shows, worked out
- * here so that it can be read without an account.
+ * any package's tests ran it. It is worked out here so that it can be read
+ * without an account.
+ *
+ * It is not the figure Codecov shows for the same reports. This comment said
+ * it was, before Codecov had taken an upload; the first one, on 2026-11-18,
+ * came out at 93.3% against this function's 94.5%. This counts a line by its
+ * line record. Codecov judges a line that carries a branch record by the
+ * branch. docs/coverage.md has the two side by side and what is known about
+ * the difference.
  */
 export function together(reports) {
   const lines = new Map();
