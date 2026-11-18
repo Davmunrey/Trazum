@@ -577,6 +577,19 @@ describe('the record is what the last whole run found', () => {
     assert.equal(groups.reduce((sum, count) => sum + count, 0), record.survivors.length);
   });
 
+  it('states no other count of survivors on record than the one the record has', () => {
+    // The audit paragraph once said "over all 38 recorded survivors" while the
+    // table and the reading above it said 35. A count of what is on record
+    // now is held to the record; a count of what was on record on the day of a
+    // run is a dated measurement and says so, in the words "that were on record".
+    const doc = read('docs/mutation-testing.md');
+    const mentions = [...doc.matchAll(/\b(\d+) recorded survivors\b|\brecord holds (\d+) now\b/g)];
+    assert.ok(mentions.length >= 1, 'the page no longer states a count of the survivors on record');
+    for (const mention of mentions) {
+      assert.equal(Number(mention[1] ?? mention[2]), record.survivors.length, mention[0]);
+    }
+  });
+
   it('prints caught and alive, a total row, and a dash where there is no score', () => {
     const table = scoreTable({
       recorded: '2026-01-02',

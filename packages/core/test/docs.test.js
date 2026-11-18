@@ -103,6 +103,59 @@ describe('the documentation index lists the documentation', () => {
   });
 });
 
+describe('the plan index says what became of each plan', () => {
+  /**
+   * `docs/README.md` indexes the plans, and a plan is a record that is not
+   * rewritten, so the index is the one place that can say a plan was carried
+   * out. Two rows said otherwise for as long as it took the work to land:
+   * the 1.83 to 2.0 plan read *"Written, nothing delivered yet"* after 2.0.0
+   * had shipped, and the 2.4 plan read *"In progress"* after 2.4.0 had.
+   *
+   * The release a plan ends at is read off its file name and looked up in
+   * `CHANGELOG.md`. A row that still says nothing has been delivered, or that
+   * the plan is in progress, while the changelog has the heading of the
+   * release the plan ends at, is out of date. A plan that has not reached its
+   * last release may say either, and is not asked to say more.
+   */
+  const SAYS_UNFINISHED = /^(Written\b|In progress\b|Not started\b)/i;
+
+  const rows = async () => {
+    const index = await readFile(join(repoRoot, 'docs', 'README.md'), 'utf8');
+    const table = sectionOf(index, '## The arcs, as they were planned');
+    return [...table.matchAll(/^\| \[([^\]]+)\]\((plan-[^)]+\.md)\) \|[^|]*\|\s*(.+?)\s*\|$/gm)].map(
+      ([, label, file, landed]) => {
+        const named = /^plan-(\d+)\.(\d+)(?:-(\d+)\.(\d+))?\.md$/.exec(file);
+        assert.ok(named, `${file} is not a plan file name this guard can read`);
+        const [, major, minor, laterMajor, laterMinor] = named;
+        return { label, landed, last: `${laterMajor ?? major}.${laterMinor ?? minor}.0` };
+      },
+    );
+  };
+
+  const released = async () => {
+    const changelog = await readFile(join(repoRoot, 'CHANGELOG.md'), 'utf8');
+    return new Set([...changelog.matchAll(/^## (\d+\.\d+\.\d+)\b/gm)].map((match) => match[1]));
+  };
+
+  it('reads the plans it claims to read', async () => {
+    const found = await rows();
+    assert.ok(found.length >= 20, `only ${found.length} plan rows read from docs/README.md`);
+    assert.ok(found.some((row) => row.label.startsWith('2.4')), 'the 2.4 plan is not in the index');
+    assert.ok(
+      (await released()).has('2.4.0'),
+      'CHANGELOG.md has no 2.4.0 heading, so this guard would pass every row',
+    );
+  });
+
+  it('does not call a plan unfinished once the release it ends at is in the changelog', async () => {
+    const shipped = await released();
+    const stale = (await rows())
+      .filter((row) => SAYS_UNFINISHED.test(row.landed) && shipped.has(row.last))
+      .map((row) => `${row.label} ends at ${row.last}, which CHANGELOG.md has, and its row says "${row.landed.slice(0, 40)}"`);
+    assert.deepEqual(stale, [], `the plan index is behind the changelog: ${stale.join('; ')}`);
+  });
+});
+
 describe('the outside instrument, and the sentence it changed', () => {
   /**
    * `our-own-medicine.md` used to say every miss on it had been found by the

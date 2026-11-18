@@ -129,8 +129,9 @@ asked at the start of the expression.
 runs each against every test file it was *not* given. One failure means the
 choice of tests is wrong and no score should be read until it is fixed.
 
-Last run on 2026-11-18, over all 38 recorded survivors: none was killed by a
-test it had not been given. It took 614 seconds.
+Last run on 2026-11-18, over the 38 survivors that were on record that day:
+none was killed by a test it had not been given. It took 614 seconds. The
+record holds 35 now.
 
 It costs a whole suite per mutant, so it is run when the way tests are chosen
 changes, not on every run.

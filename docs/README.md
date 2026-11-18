@@ -142,7 +142,7 @@ reference and release notes before relying on a capability.
 | [1.36–1.40](plan-1.36-1.40.md) | The estimating half and the measuring half had never met | 1.40.0 |
 | [1.41–1.50](plan-1.41-1.50.md) | The loop is complete and inert; nothing runs on its own | 1.50.0 |
 | [1.51](plan-1.51.md) | Every figure is a denominator with no numerator | 1.51.0 |
-| [1.52–1.60](plan-1.52-1.60.md) | Nine arcs: finish what shipped incomplete, then widen | **six of nine** — 1.52.0, 1.53.0, 1.55.0, 1.56.0, 1.59.0 and 1.60.0 landed; 1.54.0 and 1.57.0 blocked on provider keys; 1.58.0 is a distribution commitment |
+| [1.52–1.60](plan-1.52-1.60.md) | Nine arcs: finish what shipped incomplete, then widen | **six of nine** — 1.52.0, 1.53.0, 1.55.0, 1.56.0, 1.59.0 and 1.60.0 landed; 1.54.0 and 1.57.0 blocked on provider keys; 1.58.0 is a distribution commitment. Since: the editor extension was built as `trazum-vscode` in 1.86.0 and is not on the Marketplace yet (#640), and the 1.82.0 changelog entry has the gateway fronting Mistral, so the plan's unfronted providers are now xAI and Moonshot (#643) |
 | [1.61](plan-1.61.md) | Trazum has only ever read prompts somebody else wrote | 1.61.0 — all six chapters; the model-assisted polish stays named and unbuilt |
 | [1.62–1.63](plan-1.62-1.63.md) | Held to its own standard, then measured: fuzz as a fixture, perf as a gate | 1.62.0 and 1.63.0 — both arcs, all nine chapters; the ratio gate is live in CI |
 | [1.64](plan-1.64.md) | The report somebody forwards: an HTML door, with the caveats travelling | 1.64.0 — all four chapters; the parity guard holds both pages |
@@ -150,7 +150,7 @@ reference and release notes before relying on a capability.
 | [1.68](plan-1.68.md) | The browser catches up: the position in the tab, from the same functions, with nothing uploaded | 1.68.0 — all four chapters |
 | [1.69](plan-1.69.md) | The agent's own bill: Claude Code transcripts as a usage log, with nothing read but the numbers | 1.69.0 — all four chapters |
 | [1.70](plan-1.70.md) | One drag: the transcripts folder onto the web app, converted in the tab, nothing uploaded | 1.70.0 — all four chapters, and the landing in five languages |
-| [1.71](plan-1.71.md) | The universal cost lens: read OpenTelemetry GenAI (and, in time, every observability export) as a usage log | 1.71.0 — all four chapters, `from-otel` the fortieth command and the web tab's third arm |
+| [1.71](plan-1.71.md) | The universal cost lens: read OpenTelemetry GenAI (and, in time, every observability export) as a usage log | 1.71.0 — all four chapters, `from-otel` the fortieth command and the web tab's third arm. The vendor converters it deferred shipped afterwards: `from-helicone` in 1.82.0, `from-langsmith` in 1.83.0, and `from-litellm` |
 | [1.72](plan-1.72.md) | The playground: the CLI's pure subset, runnable in the page on sample files | 1.72.0 — all four chapters, ten commands in the tab and the honest CLI-only note |
 | [1.73](plan-1.73.md) | The guided tour: five doors walked once, offered never imposed | 1.73.0 — all four chapters, no library and no auto-play |
 | [1.74](plan-1.74.md) | Any model's money: bring your own price card, and the switch priced honestly | 1.74.0 — all four chapters, commands forty-one and forty-two and the web card |
@@ -158,8 +158,8 @@ reference and release notes before relying on a capability.
 | [1.76](plan-1.76.md) | The tour that does the work: every step performs its page, and the terminal types | 1.76.0 — all four chapters, three commands typed and a guard that runs them |
 | [1.77](plan-1.77.md) | The agent's bill, told honestly: the four things a real profile should not have had to say | 1.77.0 — all five chapters, and a dated id prices as the model it is |
 | [1.79](plan-1.79.md) | The dash the sweep left behind: an instruction obeyed by hand on one surface, finished on the other and turned into a rule | 1.79.0 — both chapters, 338 em-dashes out of the Spanish catalogues and a guard that holds them out |
-| [1.83–2.0](plan-1.83-2.0.md) | The finish line, named: when this tool is done, and the last stretch walked on purpose rather than grown into | Written, nothing delivered yet. The one row in this table whose third column is a forecast, and it says so |
-| [2.4](plan-2.4.md) | One door, and where the spend is: the plan that starts from a download count rather than a feature | In progress. `from-openai`, `from-openrouter` and `bill` delivered; Cursor and Hugging Face named as blocked until their schemas can be read |
+| [1.83–2.0](plan-1.83-2.0.md) | The finish line, named: when this tool is done, and the last stretch walked on purpose rather than grown into | 2.0.0 — the receipt (1.83.0), the optional OpenAI tokenizer (1.85.0) and the editor extension (1.86.0) landed, 1.84.0 was absorbed into 1.85.0, and the surface was frozen at 46 commands |
+| [2.4](plan-2.4.md) | One door, and where the spend is: the plan that starts from a download count rather than a feature | 2.4.0 — `from-openai`, `from-openrouter` and `bill` delivered, which is everything of it not held outside the repository; the Cursor converter (#645) and the Hugging Face Space (#646) wait on something outside |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

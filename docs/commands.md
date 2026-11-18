@@ -2931,7 +2931,8 @@ standardised the cache-write TTL split, so an OTel-sourced record carries no
 a fabricated one — the same refusal as inventing a price. Cache reads are
 taken only where a `gen_ai.usage.cache_read_input_tokens`-shaped key is
 actually present. Vendor-specific converters (LangSmith, Helicone, LiteLLM)
-are named as next, not built now: each ships when a real export of it is seen.
+were deferred when this command shipped, and each was built once its
+format could be read; all three follow below.
 
 ### The gateway everybody already runs: `trazum from-litellm`
 
