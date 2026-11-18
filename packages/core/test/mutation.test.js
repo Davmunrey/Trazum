@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-import { TARGETS, createGate, readsAClock } from '../../../scripts/mutate.mjs';
+import { TARGETS, createGate, functionsOf, pathOf, readsAClock } from '../../../scripts/mutate.mjs';
 import {
   OPERATORS,
   againstBaseline,
@@ -10,6 +10,7 @@ import {
   changedLines,
   decodeMappings,
   failureSummary,
+  functionRanges,
   isCovered,
   lineAt,
   mutantsOf,
@@ -19,6 +20,7 @@ import {
   summarise,
   withIds,
   withScoreTable,
+  withinFunctions,
 } from '../../../scripts/mutation.mjs';
 
 /**
@@ -165,6 +167,104 @@ describe('a mutant is one small change, put exactly where the operator is', () =
       binary('a * b;', '*'), binary('a += b;', '+=', 'AssignmentExpression'),
     ].flatMap((tree, index) => mutantsOf(tree, ['a < b;', 'a === b;', 'a && b;', 'a * b;', 'a += b;'][index]));
     for (const mutant of everything) assert.ok(OPERATORS.includes(mutant.operator), mutant.operator);
+  });
+});
+
+describe('a target can be some functions of a file, and nothing else in it', () => {
+  // Only the top level of the tree is read, so only its top level is written.
+  const text = [
+    'export function chosen() { a < b; }',
+    'function other() { a < b; }',
+    'const arrow = () => a < b;',
+    'const helpers = { add() { a < b; } };',
+    'export const rates = [1, 2];',
+  ].join('\n');
+  const at = (name) => text.indexOf(name);
+  const line = (name) => {
+    const start = text.lastIndexOf('\n', at(name)) + 1;
+    const end = text.indexOf('\n', start);
+    return { start, end: end === -1 ? text.length : end };
+  };
+  const fn = (name) => ({ type: 'FunctionDeclaration', start: text.lastIndexOf('function', at(name)), end: line(name).end, id: id(text, name) });
+  const declare = (name, init) => {
+    const { start, end } = line(name);
+    return { type: 'VariableDeclaration', start, end, declarations: [{
+      type: 'VariableDeclarator', start: at(name), end: end - 1, id: id(text, name), init: { type: init, start: 0, end: 0 },
+    }] };
+  };
+  const exported = (declaration) => ({ type: 'ExportNamedDeclaration', start: declaration.start, end: declaration.end, declaration });
+  const tree = program(
+    text,
+    exported(fn('chosen')),
+    fn('other'),
+    declare('arrow', 'ArrowFunctionExpression'),
+    declare('helpers', 'ObjectExpression'),
+    exported(declare('rates', 'ArrayExpression')),
+  );
+  /** One mutant on the `<` of each line, and one on the first number. */
+  const mutants = [
+    ...['chosen', 'other', 'arrow', 'helpers'].map((name) => {
+      const start = text.indexOf('<', at(name));
+      return { start, end: start + 1, replacement: '<=', fn: name };
+    }),
+    { start: text.indexOf('1'), end: text.indexOf('1') + 1, replacement: '2', fn: '<module>' },
+  ];
+
+  it('finds a function however it is declared at the top level, exported or not', () => {
+    assert.deepEqual(functionRanges(tree, ['chosen', 'other', 'arrow']).map((range) => text.slice(range.start, range.end)), [
+      'export function chosen() { a < b; }'.slice('export '.length),
+      'function other() { a < b; }',
+      'arrow = () => a < b',
+    ]);
+  });
+
+  it('keeps the mutants inside the listed functions and drops every other, the data included', () => {
+    const kept = withinFunctions(mutants, functionRanges(tree, ['chosen', 'arrow']));
+    assert.deepEqual(kept.map((mutant) => mutant.fn), ['chosen', 'arrow']);
+  });
+
+  it('keeps every listed function, not only the first', () => {
+    const kept = withinFunctions(mutants, functionRanges(tree, ['arrow', 'other', 'chosen']));
+    assert.deepEqual(kept.map((mutant) => mutant.fn).sort(), ['arrow', 'chosen', 'other']);
+  });
+
+  it('takes a mutant at a function\'s first character and none past its last', () => {
+    const [range] = functionRanges(tree, ['other']);
+    const edges = [
+      { start: range.start, end: range.start + 1, fn: 'first' },
+      { start: range.end, end: range.end + 1, fn: 'after' },
+      { start: range.end - 1, end: range.end + 1, fn: 'across' },
+    ];
+    assert.deepEqual(withinFunctions(edges, [range]).map((mutant) => mutant.fn), ['first']);
+  });
+
+  it('refuses a name that is not a top-level function, so a rename cannot empty a target', () => {
+    assert.throws(() => functionRanges(tree, ['chosen', 'renamed']), /no top-level function named renamed/);
+    // A method of the same name inside an object is not the function a target names.
+    assert.throws(() => functionRanges(tree, ['add']), /no top-level function named add/);
+    assert.throws(() => functionRanges(tree, ['rates']), /no top-level function named rates/);
+    const twice = program(text, fn('other'), fn('other'));
+    assert.throws(() => functionRanges(twice, ['other']), /declared 2 times/);
+  });
+
+  it('refuses a listed function that contributes nothing', () => {
+    const ranges = functionRanges(tree, ['chosen', 'other']);
+    assert.throws(() => withinFunctions(mutants.filter((mutant) => mutant.fn !== 'other'), ranges), /nothing to mutate in other/);
+  });
+
+  it('names, for every partial target, functions its source declares, each once', () => {
+    const partial = TARGETS.filter((target) => functionsOf(target) !== null);
+    assert.ok(partial.length > 0);
+    for (const target of partial) {
+      const names = functionsOf(target);
+      assert.ok(names.length > 0, pathOf(target));
+      assert.equal(new Set(names).size, names.length, `${pathOf(target)} lists a function twice`);
+      const source = read(pathOf(target));
+      for (const name of names) {
+        const declared = new RegExp(`^(?:export )?(?:function ${name}\\(|const ${name} = )`, 'gm');
+        assert.equal([...source.matchAll(declared)].length, 1, `${pathOf(target)} does not declare ${name} once at the top level`);
+      }
+    }
   });
 });
 
@@ -410,7 +510,8 @@ describe('a pull request can be asked about only the lines it changes', () => {
 describe('what is mutated, and how it is served', () => {
   it('targets files that exist', () => {
     assert.ok(TARGETS.length > 0);
-    for (const target of TARGETS) assert.ok(existsSync(new URL(target, ROOT)), target);
+    for (const target of TARGETS) assert.ok(existsSync(new URL(pathOf(target), ROOT)), pathOf(target));
+    assert.equal(new Set(TARGETS.map(pathOf)).size, TARGETS.length, 'a file is a target twice');
   });
 
   it('serves a mutant to one process and leaves the built file alone', () => {
@@ -433,6 +534,14 @@ describe('what is mutated, and how it is served', () => {
     const told = runner.indexOf('reportLeftBehind(treeBefore);\n    report(targets, results, options);');
     assert.notEqual(told, -1, 'the run no longer compares the tree before its own record is written');
     assert.match(runner, /reportLeftBehind\(treeBefore\);\n {6}return;/, 'the audit does not say what it left');
+  });
+
+  it('narrows a target that is part of a file before any mutant is named or run', () => {
+    const runner = read('scripts/mutate.mjs');
+    const narrowed = runner.indexOf('found = withinFunctions(found, functionRanges(tree, functions));');
+    assert.notEqual(narrowed, -1, 'the runner no longer narrows a partial target to its functions');
+    assert.match(runner, /const functions = functionsOf\(entry\);\n\s+let found = mutantsOf\(tree, text\);\n\s+if \(functions !== null\) \{/);
+    assert.ok(narrowed < runner.indexOf('withIds(found, text, target)'), 'mutants are named before the target is narrowed');
   });
 
   it('checks that every mutant parses, so a syntax error is never counted as a kill', () => {
@@ -526,7 +635,7 @@ describe('the record is what the last whole run found', () => {
   const record = JSON.parse(read('mutation.baseline.json'));
 
   it('has a score for every target and for no other file', () => {
-    assert.deepEqual(Object.keys(record.files).sort(), [...TARGETS].sort());
+    assert.deepEqual(Object.keys(record.files).sort(), TARGETS.map(pathOf).sort());
   });
 
   it('adds up: per file, in total, and against the list of survivors', () => {
@@ -550,7 +659,7 @@ describe('the record is what the last whole run found', () => {
   it('names every survivor once, with the line it is on and the change that lived', () => {
     assert.equal(new Set(record.survivors.map((survivor) => survivor.id)).size, record.survivors.length);
     for (const survivor of record.survivors) {
-      assert.ok(TARGETS.includes(survivor.file), survivor.file);
+      assert.ok(TARGETS.map(pathOf).includes(survivor.file), survivor.file);
       assert.ok(OPERATORS.includes(survivor.operator), survivor.operator);
       assert.ok(['survived', 'uncovered'].includes(survivor.status), survivor.status);
       assert.notEqual(survivor.before, survivor.after);

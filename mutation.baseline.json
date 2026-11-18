@@ -2,12 +2,12 @@
   "about": "What mutation testing found the last time it was recorded: the score of each file, and every mutant no test killed. Written by `node scripts/mutate.mjs --write`; `--check` fails on a survivor that is not listed here. A survivor is a line a test should hold and does not yet, or a change that makes no difference; docs/mutation-testing.md says how to tell.",
   "recorded": "2026-11-18",
   "total": {
-    "mutants": 510,
-    "killed": 463,
+    "mutants": 801,
+    "killed": 731,
     "timeout": 8,
-    "survived": 38,
+    "survived": 61,
     "uncovered": 1,
-    "score": 92.4
+    "score": 92.3
   },
   "files": {
     "packages/core/src/optimize.ts": {
@@ -57,6 +57,22 @@
       "survived": 4,
       "uncovered": 0,
       "score": 88.6
+    },
+    "packages/core/src/pricing.ts": {
+      "mutants": 212,
+      "killed": 190,
+      "timeout": 0,
+      "survived": 22,
+      "uncovered": 0,
+      "score": 89.6
+    },
+    "packages/core/src/usage.ts": {
+      "mutants": 79,
+      "killed": 78,
+      "timeout": 0,
+      "survived": 1,
+      "uncovered": 0,
+      "score": 98.7
     }
   },
   "survivors": [
@@ -169,6 +185,226 @@
       "status": "survived",
       "before": "if (current === atPassStart)",
       "after": "if (false)"
+    },
+    {
+      "id": "53e5472b39ff",
+      "file": "packages/core/src/pricing.ts",
+      "line": 267,
+      "function": "multipliersFor",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (period !== model)",
+      "after": "if (true)"
+    },
+    {
+      "id": "42526f649521",
+      "file": "packages/core/src/pricing.ts",
+      "line": 272,
+      "function": "multipliersFor",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (cached !== undefined)",
+      "after": "if (false)"
+    },
+    {
+      "id": "edf376aa0958",
+      "file": "packages/core/src/pricing.ts",
+      "line": 274,
+      "function": "multipliersFor",
+      "operator": "call-removed",
+      "status": "survived",
+      "before": "batchMultipliersMemo.set(model, result);",
+      "after": ";"
+    },
+    {
+      "id": "35125ebdd315",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2928,
+      "function": "serviceTierRow",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (rows === undefined) {",
+      "after": "if (true) {"
+    },
+    {
+      "id": "4e7d31851dc9",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2930,
+      "function": "serviceTierRow",
+      "operator": "call-removed",
+      "status": "survived",
+      "before": "serviceTierMemo.set(model, rows);",
+      "after": ";"
+    },
+    {
+      "id": "3f067d5a9ffd",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2933,
+      "function": "serviceTierRow",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (row === undefined) {",
+      "after": "if (true) {"
+    },
+    {
+      "id": "56dacb193f8e",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2939,
+      "function": "serviceTierRow",
+      "operator": "condition",
+      "status": "survived",
+      "before": "...(sheet.tiers !== undefined ? { tiers: sheet.tiers } : {}),",
+      "after": "...(true ? { tiers: sheet.tiers } : {}),"
+    },
+    {
+      "id": "15250d2aa320",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2941,
+      "function": "serviceTierRow",
+      "operator": "call-removed",
+      "status": "survived",
+      "before": "rows.set(tier, row);",
+      "after": ";"
+    },
+    {
+      "id": "e247c82370ef",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2960,
+      "function": "pricedAt",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (history === undefined || history.length === 0)",
+      "after": "if (false)"
+    },
+    {
+      "id": "fad8d9901285",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2960,
+      "function": "pricedAt",
+      "operator": "logical",
+      "status": "survived",
+      "before": "if (history === undefined || history.length === 0)",
+      "after": "if (history === undefined && history.length === 0)"
+    },
+    {
+      "id": "696dea6574c9",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2962,
+      "function": "pricedAt",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (periods === undefined) {",
+      "after": "if (true) {"
+    },
+    {
+      "id": "5310be482924",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2970,
+      "function": "pricedAt",
+      "operator": "condition",
+      "status": "survived",
+      "before": "...(period.tiers !== undefined ? { tiers: period.tiers } : {}),",
+      "after": "...(true ? { tiers: period.tiers } : {}),"
+    },
+    {
+      "id": "5c95b30799c1",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2973,
+      "function": "pricedAt",
+      "operator": "condition",
+      "status": "survived",
+      "before": ": model.multipliers !== undefined",
+      "after": ": true"
+    },
+    {
+      "id": "3549956e799e",
+      "file": "packages/core/src/pricing.ts",
+      "line": 2979,
+      "function": "pricedAt",
+      "operator": "call-removed",
+      "status": "survived",
+      "before": "periodMemo.set(model, periods);",
+      "after": ";"
+    },
+    {
+      "id": "284428c4e49c",
+      "file": "packages/core/src/pricing.ts",
+      "line": 3009,
+      "function": "cache",
+      "operator": "call-removed",
+      "status": "survived",
+      "before": "pricingMemo.set(model, entry);",
+      "after": ";"
+    },
+    {
+      "id": "f6befd79b107",
+      "file": "packages/core/src/pricing.ts",
+      "line": 3066,
+      "function": "effectivePricing",
+      "operator": "condition",
+      "status": "survived",
+      "before": "const factor = geo === undefined ? undefined : model.inferenceGeoMultipliers?.[geo];",
+      "after": "const factor = false ? undefined : model.inferenceGeoMultipliers?.[geo];"
+    },
+    {
+      "id": "28401796c307",
+      "file": "packages/core/src/pricing.ts",
+      "line": 3086,
+      "function": "effectivePricing",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (model.history !== undefined) {",
+      "after": "if (true) {"
+    },
+    {
+      "id": "e67e89bdd746",
+      "file": "packages/core/src/pricing.ts",
+      "line": 3094,
+      "function": "effectivePricing",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (context.serviceTier !== undefined && model.serviceTiers !== undefined) {",
+      "after": "if (true) {"
+    },
+    {
+      "id": "d5f0b44f06f1",
+      "file": "packages/core/src/pricing.ts",
+      "line": 3094,
+      "function": "effectivePricing",
+      "operator": "logical",
+      "status": "survived",
+      "before": "if (context.serviceTier !== undefined && model.serviceTiers !== undefined) {",
+      "after": "if (context.serviceTier !== undefined || model.serviceTiers !== undefined) {"
+    },
+    {
+      "id": "3570693666db",
+      "file": "packages/core/src/pricing.ts",
+      "line": 3096,
+      "function": "effectivePricing",
+      "operator": "condition",
+      "status": "survived",
+      "before": "const row = named === undefined ? undefined : serviceTierRow(model, named);",
+      "after": "const row = false ? undefined : serviceTierRow(model, named);"
+    },
+    {
+      "id": "881eb1f4ec95",
+      "file": "packages/core/src/pricing.ts",
+      "line": 3136,
+      "function": "effectivePricing",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "const dearest = undecided.reduce((worst, tier) => tier.inputPerMTok > worst.inputPerMTok ? tier : worst);",
+      "after": "const dearest = undecided.reduce((worst, tier) => tier.inputPerMTok >= worst.inputPerMTok ? tier : worst);"
+    },
+    {
+      "id": "514bdb70e103",
+      "file": "packages/core/src/pricing.ts",
+      "line": 3144,
+      "function": "effectivePricing",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "const ceiling = dearest.inputPerMTok > model.inputPerMTok",
+      "after": "const ceiling = dearest.inputPerMTok >= model.inputPerMTok"
     },
     {
       "id": "30f12370f30c",
@@ -449,6 +685,16 @@
       "status": "survived",
       "before": "if (!model)",
       "after": "if (false)"
+    },
+    {
+      "id": "606e0fd7c1e4",
+      "file": "packages/core/src/usage.ts",
+      "line": 1324,
+      "function": "add",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "if (searches > 0 && model.webSearchPerThousandUsd === undefined)",
+      "after": "if (searches >= 0 && model.webSearchPerThousandUsd === undefined)"
     }
   ]
 }

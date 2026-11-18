@@ -53,6 +53,27 @@ merged commit with no entry is a change only `git log` remembers.
   end-to-end flow goes from `/` through Docs, a search, a result, and the
   heading. (#735)
 
+- **Mutation testing reaches the code that chooses a rate and multiplies by
+  it.** A target in `scripts/mutate.mjs` can now be part of a file,
+  `{ file, functions }`, found by name among the built file's top-level
+  declarations; a name the file does not declare, or a listed function with
+  nothing to change, stops the run. `pricing.ts` is mutated in the ten
+  functions that choose a rate and give the cache and batch ratios, 212
+  mutants and none of the catalogue's numbers, and `usage.ts` in `add`, 79.
+  Their first runs caught 178 of 212 and 62 of 79. Two new test files,
+  `rate-choice.test.js` and `bill-lines.test.js`, each from a rule the code's
+  own comments state, killed 12 and 16 of the survivors: a Sunday billed at
+  DeepSeek's weekday peak, a promotion ended a millisecond early, a period of
+  the price history without ratios of its own priced at the defaults, the
+  undecided band billed at a cheaper band than the dearest, and the batch,
+  band, cut-off and unpriced-search lines of a bill, none of which a test
+  read. The other 23 are recorded with their reasons, so the record holds
+  62 survivors and 739 of 801 mutants caught, 92.3%, 5.1% of the core's
+  15,800. `docs/mutation-testing.md` also counts the catalogue's own
+  question: 681 published prices, of which a sample of 69 was measured and
+  50 are held by a test. `--list` counts each target's mutants and runs
+  nothing. Eight faults planted against the selection, eight caught. No
+  price, rate or date changed (#745).
 - **A brand page: the wordmark, the colours, the type and how to use them.**
   `/brand`, linked from the footer, offers the wordmark and the plain T, each
   for a light ground and a dark one, as SVG and as PNG: eight files in

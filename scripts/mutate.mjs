@@ -8,6 +8,7 @@
  *   node scripts/mutate.mjs --acorn <dir> --write       record this run, and its score in the docs
  *   node scripts/mutate.mjs --acorn <dir> --since <ref> only lines changed since a commit
  *   node scripts/mutate.mjs --acorn <dir> --only rules  only targets whose path contains a word
+ *   node scripts/mutate.mjs --acorn <dir> --list        each target's mutants, counted, and nothing run
  *   node scripts/mutate.mjs --acorn <dir> --survivors   only the mutants on record, to see which a new test kills
  *   node scripts/mutate.mjs --acorn <dir> --without a.test.js,b.test.js
  *                                                       as if those test files did not exist: what do they hold?
@@ -72,6 +73,7 @@ import {
   changedLines,
   decodeMappings,
   failureSummary,
+  functionRanges,
   isCovered,
   lineAt,
   mutantsOf,
@@ -81,6 +83,7 @@ import {
   summarise,
   withIds,
   withScoreTable,
+  withinFunctions,
 } from './mutation.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -90,12 +93,20 @@ const PAGE = join(ROOT, 'docs/mutation-testing.md');
 const LOADER = pathToFileURL(join(ROOT, 'scripts/mutant-loader.mjs')).href;
 
 /**
- * The source files mutated, by their TypeScript path.
+ * What is mutated, by TypeScript path: a whole file, or `{ file, functions }`
+ * for the named top-level functions of one and nothing else in it.
  *
  * Chosen for what a wrong line in them costs: these turn a prompt into a
  * shorter prompt, and a call's token counts into money. The list grows a file
  * at a time; each addition is a run, a record and whatever tests it shows to
  * be missing.
+ *
+ * Two are parts of a file (#745). `pricing.ts` is mostly the catalogue, whose
+ * numbers are a different question from the code that chooses one of them;
+ * its functions here are that code: the band, the promotion, the period, the
+ * service tier, the geography, the batch ratio and the cache ratios.
+ * `usage.ts` is mostly the log parser and the reports; `add` is where a
+ * record's tokens are multiplied by those rates for the bill.
  */
 export const TARGETS = [
   'packages/core/src/optimize.ts',
@@ -104,20 +115,35 @@ export const TARGETS = [
   'packages/core/src/savings.ts',
   'packages/core/src/session-cost.ts',
   'packages/core/src/billing.ts',
+  {
+    file: 'packages/core/src/pricing.ts',
+    functions: [
+      'effectivePricing', 'holds', 'pricedAt', 'cache', 'serviceTierOf', 'serviceTierRow',
+      'inferenceGeoOf', 'scaleRates', 'scaled', 'multipliersFor',
+    ],
+  },
+  { file: 'packages/core/src/usage.ts', functions: ['add'] },
 ];
 
-const builtPath = (target) => join(ROOT, target.replace('/src/', '/dist/').replace(/\.ts$/, '.js'));
+/** A target's TypeScript path, which is also what the record names it by. */
+export const pathOf = (target) => (typeof target === 'string' ? target : target.file);
+
+/** The functions a target is limited to, or `null` for the whole file. */
+export const functionsOf = (target) => (typeof target === 'string' ? null : target.functions);
+
+const builtPath = (target) => join(ROOT, pathOf(target).replace('/src/', '/dist/').replace(/\.ts$/, '.js'));
 
 function parseArgs(argv) {
   const options = {
     acorn: null, since: null, only: null, without: null, audit: null, check: false, write: false, survivors: false,
-    json: null, jobs: null,
+    json: null, jobs: null, list: false,
   };
   for (let at = 0; at < argv.length; at += 1) {
     const arg = argv[at];
     if (arg === '--check') options.check = true;
     else if (arg === '--write') options.write = true;
     else if (arg === '--survivors') options.survivors = true;
+    else if (arg === '--list') options.list = true;
     else if (['--acorn', '--since', '--only', '--without', '--audit', '--json', '--jobs'].includes(arg)) {
       at += 1;
       if (argv[at] === undefined) throw new Error(`${arg} needs a value`);
@@ -131,9 +157,9 @@ function parseArgs(argv) {
         + '  node scripts/mutate.mjs --acorn "$DIR/node_modules/acorn"',
     );
   }
-  if (options.write && (options.since || options.only || options.survivors || options.without || options.audit)) {
+  if (options.write && (options.since || options.only || options.survivors || options.without || options.audit || options.list)) {
     throw new Error(
-      '--write records a whole run: it cannot be combined with --since, --only, --survivors, --without or --audit',
+      '--write records a whole run: it cannot be combined with --since, --only, --survivors, --without, --audit or --list',
     );
   }
   if (options.audit !== null && !(Number.isInteger(Number(options.audit)) && Number(options.audit) > 0)) {
@@ -280,12 +306,12 @@ async function main() {
   const { parse } = await import(pathToFileURL(join(resolve(options.acorn), 'dist/acorn.mjs')).href);
   const parseModule = (text) => parse(text, { ecmaVersion: 'latest', sourceType: 'module' });
 
-  const chosen = TARGETS.filter((target) => !options.only || target.includes(options.only));
+  const chosen = TARGETS.filter((target) => !options.only || pathOf(target).includes(options.only));
   if (chosen.length === 0) throw new Error(`no target matches --only ${options.only}`);
 
   let changed = null;
   if (options.since) {
-    const diff = execFileSync('git', ['diff', '-U0', options.since, '--', ...chosen], { cwd: ROOT, encoding: 'utf8' });
+    const diff = execFileSync('git', ['diff', '-U0', options.since, '--', ...chosen.map(pathOf)], { cwd: ROOT, encoding: 'utf8' });
     changed = changedLines(diff);
   }
 
@@ -295,12 +321,24 @@ async function main() {
 
   // 1. Every mutant of every target, with the source line it came from.
   const targets = [];
-  for (const target of chosen) {
-    const built = builtPath(target);
+  for (const entry of chosen) {
+    const target = pathOf(entry);
+    const built = builtPath(entry);
     if (!existsSync(built)) throw new Error(`${relative(ROOT, built)} is not built: run npm run build first`);
     const text = readFileSync(built, 'utf8');
     const decoded = decodeMappings(JSON.parse(readFileSync(`${built}.map`, 'utf8')).mappings);
-    let mutants = withIds(mutantsOf(parseModule(text), text), text, target).map((mutant) => {
+    const tree = parseModule(text);
+    // Part of a file: the listed functions only, chosen before anything is named or run.
+    const functions = functionsOf(entry);
+    let found = mutantsOf(tree, text);
+    if (functions !== null) {
+      try {
+        found = withinFunctions(found, functionRanges(tree, functions));
+      } catch (error) {
+        throw new Error(`${target}: ${error.message}`);
+      }
+    }
+    let mutants = withIds(found, text, target).map((mutant) => {
       const at = lineAt(text, mutant.start);
       return { ...mutant, file: target, line: sourcePosition(decoded, at.line, at.column)?.line ?? null };
     });
@@ -320,6 +358,11 @@ async function main() {
   }
 
   const total = targets.reduce((sum, target) => sum + target.mutants.length, 0);
+  if (options.list) {
+    for (const { target, mutants } of targets) console.log(`${String(mutants.length).padStart(6)}  ${target}`);
+    console.log(`${String(total).padStart(6)}  all`);
+    return;
+  }
   console.log(
     `${total} mutants in ${targets.length} files`
       + (options.since ? `, on the lines changed since ${options.since}` : '')

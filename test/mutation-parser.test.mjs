@@ -4,8 +4,8 @@ import { join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
 
-import { TARGETS } from '../scripts/mutate.mjs';
-import { OPERATORS, applyMutant, mutantsOf, withIds } from '../scripts/mutation.mjs';
+import { TARGETS, functionsOf, pathOf } from '../scripts/mutate.mjs';
+import { OPERATORS, applyMutant, functionRanges, mutantsOf, withIds, withinFunctions } from '../scripts/mutation.mjs';
 
 /**
  * The mutation tool against the real parser.
@@ -111,13 +111,51 @@ describe('acorn\'s trees are mutated where the operators really are', () => {
   });
 });
 
+describe('a target that is part of a file is found in acorn\'s tree', () => {
+  const text = [
+    'export function chosen(a, b) { const inner = () => a < b; return inner() && a > 0; }',
+    'function other(a, b) { return a < b; }',
+    'export const arrow = (a, b) => a * b;',
+    'const helpers = { add(a, b) { return a + b; } };',
+    'export const RATES = [1.25, 2, 0.1];',
+  ].join('\n');
+  const parsed = tree(text);
+  const chosen = (names) => withinFunctions(mutantsOf(parsed, text), functionRanges(parsed, names));
+
+  it('takes everything inside an exported function, its inner functions included, and nothing outside', () => {
+    const mutants = chosen(['chosen']);
+    assert.deepEqual([...new Set(mutants.map((mutant) => mutant.fn))].sort(), ['chosen', 'inner']);
+    for (const mutant of mutants) assert.ok(mutant.end <= text.indexOf('\n'), mutant.replacement);
+  });
+
+  it('finds a function written as an exported arrow, and leaves the numbers of the data alone', () => {
+    const mutants = chosen(['arrow', 'other']);
+    assert.deepEqual(mutants.map((mutant) => applyMutant(text, mutant).split('\n').find((line, at) => line !== text.split('\n')[at])), [
+      'function other(a, b) { return a <= b; }',
+      'function other(a, b) { return a >= b; }',
+      'export const arrow = (a, b) => a / b;',
+    ]);
+  });
+
+  it('does not take a method of an object for a top-level function of the same name', () => {
+    assert.throws(() => chosen(['add']), /no top-level function named add/);
+  });
+});
+
 describe('every mutant of every target is real code with a name of its own', () => {
   const root = new URL('../', import.meta.url);
-  for (const target of TARGETS) {
+  for (const entry of TARGETS) {
+    const target = pathOf(entry);
     it(`${target}: each mutant parses, differs from the original and is named once`, () => {
       const built = new URL(target.replace('/src/', '/dist/').replace(/\.ts$/, '.js'), root);
       const text = readFileSync(built, 'utf8');
-      const mutants = withIds(mutantsOf(tree(text), text), text, target);
+      const parsed = tree(text);
+      const functions = functionsOf(entry);
+      // Part of a file: every listed function is found, and each has something in it to change.
+      const found = functions === null
+        ? mutantsOf(parsed, text)
+        : withinFunctions(mutantsOf(parsed, text), functionRanges(parsed, functions));
+      const mutants = withIds(found, text, target);
       assert.ok(mutants.length > 0, 'nothing to mutate in a target');
       for (const mutant of mutants) {
         assert.ok(OPERATORS.includes(mutant.operator), mutant.operator);
