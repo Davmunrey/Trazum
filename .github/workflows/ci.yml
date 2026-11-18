@@ -161,6 +161,22 @@ jobs:
             --cpu-throttle 6 \
             || { cat "$RUNNER_TEMP/web.log"; exit 1; }
 
+      # The things a visitor does, in the same browser against the same build:
+      # paste a log and read the bill to the cent, optimise and compare a
+      # prompt, answer a question, run a command, change the theme and the
+      # language, and reach the tabs on a phone. The probe above holds one
+      # promise; a page can keep it and print the wrong total. Every expected
+      # figure is written by hand in scripts/e2e.mjs, and test/e2e.test.mjs
+      # fails when a tab has no flow. A server of its own, on a port of its
+      # own: the flows never read a page another step left running.
+      - name: End-to-end tests (the page, in a browser)
+        run: |
+          PORT=3124 HOSTNAME=127.0.0.1 node apps/web/.next/standalone/apps/web/server.js > "$RUNNER_TEMP/e2e-web.log" 2>&1 &
+          node scripts/e2e.mjs --url http://127.0.0.1:3124 \
+            --chrome "$(command -v google-chrome || command -v chromium)" \
+            --playwright "$RUNNER_TEMP/pw/node_modules/playwright-core" \
+            || { cat "$RUNNER_TEMP/e2e-web.log"; exit 1; }
+
       - name: Stress the packed release in an isolated installation
         run: npm run verify:packages
 

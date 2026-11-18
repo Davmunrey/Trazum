@@ -30,6 +30,9 @@ Then, if you want to know whether to trust the numbers:
 - **[Any input](hardening.md)** — what is promised about input this tool was
   never meant to see, and the seeded fuzz suite in CI that holds each promise:
   never throws, never grows, idempotent, masks intact, money never negative.
+- **[End-to-end tests](end-to-end-tests.md)**: the web app in a real browser,
+  doing what a visitor does: the twelve flows, the figures they expect and
+  where those come from, and what a green run does not say.
 - **[Mutation testing](mutation-testing.md)**: whether the tests would notice
   if the code stopped doing what they check: the files it runs on, the score as
   measured, and what it does not mutate.

@@ -13,6 +13,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **End-to-end tests of the web app.** The web app had 51 test files and none
+  of them opened the page. The one thing that drove a browser, the privacy
+  probe, checks a single promise, and a page can keep it and print the wrong
+  total. `scripts/e2e.mjs` runs twelve flows in a real browser against the
+  production build, each from an empty browser: a pasted log priced to the
+  cent by part, label and model; a paste that is not a log refused with the
+  lines it could not read; the same bill at phone width with no sideways
+  scroll; a prompt optimised and two compared; the prompt writer's next
+  question; a playground command; a recorded run read into a report on the
+  Tasks tab; every tab by click and by address; dark mode and Spanish
+  surviving a reload; the phone's menu. A flow also fails on any error the
+  page throws. Every expected figure is worked out by hand in a comment
+  ($1.43 for the bill, $1.575 for the run), and `e2e.test.mjs` holds the
+  three prices that arithmetic assumes, so a price change says to re-price
+  the log before a browser says it waited for a total. The same test fails
+  when a tab a visitor can open has no flow, when a flow claims a tab it
+  never names, when the step leaves CI or is made unable to fail, and when
+  the runner is asked for a flow that does not exist. The library tab is left
+  out by name: it needs an account. Twelve faults were planted in the app in
+  two builds and every one was caught, eleven by the flow written for it and
+  the last by every flow that had nothing else to fail on: a cache read at a
+  fifth of input ($1.47), a theme not remembered, a `lang` attribute not
+  following the switcher, a tab that no longer rewrites the address, a paste
+  box wider than a phone, a comparison without its percentage, a count the
+  wrong way round, one answer too many asked for, unreadable lines counted
+  and not named, a chosen file dropped, a menu button that opens nothing, and
+  an error thrown after mount. Eighteen more were planted against
+  `e2e.test.mjs`. Two escaped and each has a test now: a tab opened only by
+  the flow that walks the rail counted as covered, and a build step removed
+  outright passed a check that it came first. The flows are a step of the required
+  `Build and tests` check, with the browser driver the probe already
+  installs; they took 17 seconds locally. `npm run e2e`,
+  [docs/end-to-end-tests.md](docs/end-to-end-tests.md) (#692).
 - **A linter, and the dead code it found.** Nothing linted this repository:
   strict TypeScript and CodeQL catch type errors and known security patterns,
   and neither says a word about a name nobody reads. `npm run lint` runs

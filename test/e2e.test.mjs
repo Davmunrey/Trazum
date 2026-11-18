@@ -1,0 +1,203 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
+
+import { getModel, multipliersFor } from '../packages/core/dist/index.js';
+import { FLOWS, plain } from '../scripts/e2e.mjs';
+
+/**
+ * The end-to-end tests, without a browser.
+ *
+ * The flows need Chrome and a running build, so they run in CI as their own
+ * step. What is held here is everything about them that can rot in silence: a
+ * tab added with no flow, a flow that claims a tab it never opens, a step
+ * taken out of CI, a runner that reports success having run nothing, and a
+ * price that moved under the bill the flows price by hand.
+ */
+
+const root = fileURLToPath(new URL('../', import.meta.url));
+const read = (path) => readFileSync(new URL(path, new URL('../', import.meta.url)), 'utf8');
+const runner = fileURLToPath(new URL('../scripts/e2e.mjs', import.meta.url));
+
+/** The runner, with nothing inherited that could stand in for a flag. */
+const run = (...args) => {
+  const env = { ...process.env };
+  delete env.CHROME_PATH;
+  delete env.PLAYWRIGHT_CORE_PATH;
+  return spawnSync(process.execPath, [runner, ...args], { cwd: root, env, encoding: 'utf8', timeout: 20_000 });
+};
+
+/** The tabs the app's rail is built from, and the ones only a signed-in reader gets. */
+const app = read('apps/web/components/App.tsx');
+const tabs = [...app.matchAll(/\{ value: '([a-z]+)', label: t\./g)].map(([, tab]) => tab);
+const signedInOnly = [...app.matchAll(/signedIn \? \[\{ value: '([a-z]+)'/g)].map(([, tab]) => tab);
+const open = tabs.filter((tab) => !signedInOnly.includes(tab));
+
+describe('every tab a visitor can open has a flow that opens it', () => {
+  it('found the tabs it is about to check', () => {
+    // Both lists, because either one being empty passes every assertion below.
+    assert.ok(open.length >= 6, `only ${open.length} tabs found in App.tsx: has the rail moved?`);
+    assert.ok(FLOWS.length >= 10, `only ${FLOWS.length} flows`);
+  });
+
+  it('a tab without a flow fails here, by name', () => {
+    const covered = new Set(FLOWS.flatMap((flow) => flow.covers));
+    assert.deepEqual(open.filter((tab) => !covered.has(tab)), [], 'add a flow to scripts/e2e.mjs for each of these tabs');
+  });
+
+  it('and a flow of its own, not only the one that walks the rail', () => {
+    /*
+      The flow that clicks through every tab opens each of them, and checks
+      nothing a tab does. Counted alone it would cover the whole app. So each
+      tab needs a flow named for it, which is the one that uses it.
+    */
+    const named = (tab) => FLOWS.some((flow) => flow.name.startsWith(`${tab}: `) && flow.covers.includes(tab));
+    assert.deepEqual(open.filter((tab) => !named(tab)), [], 'each of these tabs needs a flow named "<tab>: ..." that covers it');
+  });
+
+  it('a flow claims only tabs that exist, and opens each one it claims', () => {
+    for (const flow of FLOWS) {
+      const source = flow.run.toString();
+      for (const tab of flow.covers) {
+        assert.ok(open.includes(tab), `"${flow.name}" covers ${tab}, which is not a tab a visitor can open`);
+        assert.ok(
+          source.includes(`'${tab}'`) || source.includes(`tab=${tab}`) || source.includes(`panel-${tab}`),
+          `"${flow.name}" says it covers ${tab} and never names it`,
+        );
+      }
+    }
+  });
+
+  it('the one tab left out is the one that needs an account, and it is still the only one', () => {
+    /*
+      The library is rendered only for a signed-in reader, and signing in needs
+      a database and a session the build under test does not have. If a second
+      tab goes behind a session, somebody decides whether it gets a flow: this
+      does not decide it for them by leaving it out.
+    */
+    assert.deepEqual(signedInOnly, ['library']);
+    assert.ok(!FLOWS.some((flow) => flow.covers.includes('library')));
+  });
+
+  it('every flow has a name of its own and something to run', () => {
+    const names = FLOWS.map((flow) => flow.name);
+    assert.equal(new Set(names).size, names.length);
+    for (const flow of FLOWS) {
+      assert.equal(typeof flow.run, 'function', flow.name);
+      assert.ok(Array.isArray(flow.covers), flow.name);
+    }
+  });
+});
+
+describe('the runner cannot report success having run nothing', () => {
+  it('lists its flows without a browser', () => {
+    const listed = run('--list');
+    assert.equal(listed.status, 0, listed.stderr);
+    assert.deepEqual(listed.stdout.trim().split('\n'), FLOWS.map((flow) => flow.name));
+  });
+
+  it('stops with a usage error when it is given no browser to drive', () => {
+    const bare = run();
+    assert.equal(bare.status, 2);
+    assert.match(bare.stderr, /pass --chrome <executable> and --playwright/);
+  });
+
+  it('fails when --only matches no flow, where passing would look like a green run', () => {
+    const none = run('--only', 'a-flow-no-one-wrote');
+    assert.equal(none.status, 1);
+    assert.match(none.stderr, /no flow's name contains "a-flow-no-one-wrote"/);
+  });
+});
+
+describe('a failed step is reported in a line somebody can read', () => {
+  it('keeps what timed out and what it waited for, and drops the colour codes and the retry log', () => {
+    const raw = [
+      'locator.click: Timeout 6000ms exceeded.',
+      'Call log:',
+      "\u001b[2m  - waiting for getByRole('tab', { name: 'Optimise' })\u001b[22m",
+      '\u001b[2m    - retrying click action\u001b[22m',
+    ].join('\n');
+    assert.equal(plain(raw), "locator.click: Timeout 6000ms exceeded. It was waiting for getByRole('tab', { name: 'Optimise' }).");
+  });
+
+  it('and leaves a message of its own alone', () => {
+    assert.equal(plain('the theme after a reload: "light", expected "dark"'), 'the theme after a reload: "light", expected "dark"');
+  });
+});
+
+describe('CI runs the flows against the build the pull request would deploy', () => {
+  const ci = read('.github/workflows/ci.yml');
+  /** One step's text: from its name to the next step or job. */
+  const stepOf = (name) => {
+    const start = ci.indexOf(`- name: ${name}`);
+    assert.notEqual(start, -1, `no step named "${name}" in ci.yml`);
+    const rest = ci.slice(start + 1);
+    const end = rest.search(/\n {6}- (?:name|uses): |\n {2}[a-z-]+:\n/);
+    return rest.slice(0, end === -1 ? rest.length : end);
+  };
+
+  it('after the web app is built, with every flow', () => {
+    const step = stepOf('End-to-end tests (the page, in a browser)');
+    assert.match(step, /node scripts\/e2e\.mjs /);
+    assert.ok(!step.includes('--only'), 'the CI step must run every flow');
+    const built = ci.indexOf('- name: Build the web app\n        run: npm run build:web\n');
+    assert.notEqual(built, -1, 'no step builds the web app');
+    assert.ok(built < ci.indexOf('- name: End-to-end tests'), 'the flows run against the built app');
+  });
+
+  it('and the step can fail', () => {
+    const step = stepOf('End-to-end tests (the page, in a browser)');
+    assert.ok(!step.includes('continue-on-error'), 'a step that cannot fail checks nothing');
+    assert.ok(!/\|\|\s*true/.test(step), 'a step that cannot fail checks nothing');
+    assert.match(step, /\|\| \{ cat "\$RUNNER_TEMP\/e2e-web\.log"; exit 1; \}/);
+  });
+
+  it('with one pinned browser driver for the whole job, installed without its scripts', () => {
+    const versions = [...ci.matchAll(/playwright-core@([0-9.]+)/g)].map(([, version]) => version);
+    assert.equal(versions.length, 1, 'the driver is installed once, by the privacy probe step, and reused');
+    assert.match(versions[0], /^\d+\.\d+\.\d+$/);
+    assert.match(ci, /--ignore-scripts[^\n]* playwright-core@/);
+    assert.match(stepOf('End-to-end tests (the page, in a browser)'), /--playwright "\$RUNNER_TEMP\/pw\/node_modules\/playwright-core"/);
+  });
+
+  it('on a server of its own, so it never reads a page another step left running', () => {
+    const step = stepOf('End-to-end tests (the page, in a browser)');
+    const [, port] = step.match(/PORT=(\d+) /) ?? [];
+    assert.ok(port, 'the step starts its own server');
+    assert.ok(step.includes(`--url http://127.0.0.1:${port}`), 'and drives that one');
+    assert.ok(!stepOf('Privacy probe (a pasted log never leaves the browser)').includes(`PORT=${port} `), 'on a port the probe does not use');
+  });
+});
+
+describe('the bill the flows expect is still the bill the price list gives', () => {
+  it('Claude Opus 5 is priced as the hand arithmetic in scripts/e2e.mjs assumes', () => {
+    /*
+      The flows expect $1.43 and its parts, worked out by hand. When one of
+      these three figures changes the flows fail in a browser with "waited for
+      the total": this fails first and says why. Re-price the log in
+      scripts/e2e.mjs by hand, then change the figure here.
+    */
+    const model = getModel('claude-opus-5');
+    assert.equal(model.inputPerMTok, 5);
+    assert.equal(model.outputPerMTok, 25);
+    assert.equal(multipliersFor(model).cacheRead, 0.1);
+  });
+
+  it('and the hand arithmetic adds up', () => {
+    const cents = (tokens, perMTok) => Math.round((tokens * perMTok) / 10_000);
+    const input = cents(120_000 + 150_000, 5);
+    const reads = cents(40_000 + 40_000, 0.5);
+    const output = cents(800 + 800, 25);
+    assert.deepEqual([input, reads, output], [135, 4, 4]);
+    assert.equal(input + reads + output, 143);
+    const source = read('scripts/e2e.mjs');
+    // The recorded run on the Tasks tab: 300,000 in and 3,000 out, in thousandths of a dollar.
+    assert.equal(100_000 + 1_000 + 200_000 + 2_000, 303_000);
+    assert.equal((300_000 * 5 + 3_000 * 25) / 1_000, 1_575);
+    for (const shown of ['2 calls · $1.43', '\\$1\\.35', '\\$0\\.0400', '270,000', '80,000', '1,600', '303,000', '$1.575']) {
+      assert.ok(source.includes(shown), `scripts/e2e.mjs no longer expects ${shown}`);
+    }
+  });
+});
