@@ -1,0 +1,38 @@
+# What Codecov does with the reports the Coverage workflow uploads.
+# docs/coverage.md says what the figure is and what it is not.
+
+coverage:
+  # One decimal, rounded down: a figure that rounds up claims a line nobody ran.
+  precision: 1
+  round: down
+  status:
+    # Both statuses report and neither can fail. The required checks are
+    # listed in .github/rulesets/main-branch.json and this is not one of them:
+    # a percentage is a thing to read, and a threshold invites tests written
+    # to move a number.
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+# No comment on pull requests. The two statuses carry the figures, and every
+# pull request here already has a guide comment and a preview comment.
+comment: false
+
+# One flag for each package measured, set by the workflow from the report's
+# name. A package whose report did not arrive keeps its last figure.
+flag_management:
+  default_rules:
+    carryforward: true
+
+# Not sources: what is generated, what is vendored, and the tests themselves.
+ignore:
+  - "**/dist/**"
+  - "**/test/**"
+  - "test-utils/**"
+  - "scripts/**"
+  - "wiki/**"
+  - "plugin/**"
+  - ".claude/**"

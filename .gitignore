@@ -30,3 +30,6 @@ skills-lock.json
 # `main` and sat there for two releases. Ignored so the documented command
 # cannot cost somebody that.
 *.vsix
+
+# Written by `npm run coverage`; the Coverage workflow uploads it and nothing keeps it.
+/coverage/

@@ -13,6 +13,33 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Line coverage, measured and sent to Codecov.** The repository said how
+  many tests it had and, on five files, whether they would notice a change;
+  nothing said which lines the tests run at all. `npm run coverage` runs the
+  four published packages' tests with Node's own coverage, mapped back through
+  the build's source maps so every path is a TypeScript file, and writes one
+  report for each package. Measured on 2026-11-18 with every suite together:
+  94.5% of 70,633 lines in 152 source files (`core` 95.9%, `cli` 94.0%, `mcp`
+  77.1%, `tokenizer-openai` 98.0%), figures rounded down. Two source files
+  are in no report: one holds only types, and the MCP server's entry point is
+  started and killed by its tests, and a killed process writes no count. The
+  `Coverage` workflow uploads the reports on every pull request and on
+  `main`. It is not a required check and is built so it cannot block a merge:
+  a test that fails under coverage does not fail it, an upload that fails
+  does only on `main`, and both of Codecov's statuses are informational, with
+  no target. The uploader is Codecov's command-line tool at a pinned version,
+  refused unless its checksum matches; the token is a repository secret that
+  reaches it through the environment. The workflow's first run was refused by
+  Codecov and went red: the secret had not reached the job, Codecov takes an
+  upload without a token only from a fork, and the uploader exits 1 on a
+  refusal whether or not it was asked to. A refusal on a pull request is a
+  warning now, as it was meant to be, and the log says whether a token was
+  set. The web app and the editor extension
+  are not measured yet, each for a stated reason. `npm run done` stopped the
+  change once before the push: a guard requires a rotation procedure for
+  every secret a workflow reads, and `CODECOV_TOKEN` had none. It has one
+  now, in `docs/compliance/secret-rotation.md`.
+  [docs/coverage.md](docs/coverage.md) (#706).
 - **One command that says whether a change is done, and why not.** The pieces
   of the loop were all here: `npm run verify`, the required checks,
   `PR readiness`. What joined them was one session's habit, and on 2026-11-17
