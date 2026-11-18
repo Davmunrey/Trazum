@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { NOT_MEASURED, OUT, SUITES, clean, nodeArgs, strangers, summarise, together, usable } from '../../../scripts/coverage.mjs';
+import { SPAWN_ENV } from '../../cli/test/env.mjs';
+import { NOT_MEASURED, OUT, SUITES, clean, failures, nodeArgs, strangers, summarise, tapOf, together, usable } from '../../../scripts/coverage.mjs';
 
 /**
  * The coverage measurement, and the workflow that sends it away.
@@ -100,6 +102,16 @@ describe('the tests are run so that the report names the TypeScript', () => {
       assert.ok(args.includes(flag), `${flag} is not passed`);
     }
     assert.equal(args.at(-1), 'packages/core/test/*.test.js');
+  });
+
+  it('and keeps the runner\'s own account beside the report, each reporter next to its destination', () => {
+    const args = nodeArgs({ name: 'core', tests: 'packages/core/test/*.test.js' }, 'coverage/core.lcov');
+    // Reporters and destinations are paired by the order they are given in.
+    // Two reporters and one destination, or the pairs crossed, and the lcov
+    // file would be TAP: a report with no source, which fails the command.
+    const paired = args.filter((arg) => arg.startsWith('--test-reporter'));
+    assert.deepEqual(paired, ['--test-reporter=lcov', '--test-reporter-destination=coverage/core.lcov', '--test-reporter=tap', '--test-reporter-destination=coverage/core.tap']);
+    assert.equal(tapOf('coverage/tokenizer-openai.lcov'), 'coverage/tokenizer-openai.tap');
   });
 
   it('measures every published package that has tests, and says which trees it leaves out', () => {
@@ -277,5 +289,89 @@ describe('the script\'s figure is not passed off as Codecov\'s', () => {
     const readme = read('README.md');
     assert.ok(readme.includes('[![Coverage](https://codecov.io/gh/Davmunrey/Trazum/graph/badge.svg)](https://app.codecov.io/gh/Davmunrey/Trazum)'));
     assert.doesNotMatch(readme, /badge\.svg\?token=/);
+  });
+});
+
+describe('a test that fails under coverage is named', () => {
+  // The runner is asked, here, what it writes for a failure: a sample kept in
+  // this file would describe the Node it was copied from. `NODE_TEST_CONTEXT`
+  // is what tells a child it is a test inside this run; with it the child
+  // reports to this process and writes no file.
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'trazum-tap-')));
+  after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(join(dir, 'sample.test.js'), [
+    "import assert from 'node:assert/strict';",
+    "import { describe, it } from 'node:test';",
+    "describe('a group', () => {",
+    "  it('passes', () => {});",
+    "  it('fails with a comparison', () => { assert.equal(1 + 1, 3, 'two is not three'); });",
+    "  describe('an inner group', () => {",
+    "    it('throws', () => { throw new Error('boom: first line\\nsecond line'); });",
+    "    it('is skipped', { skip: true }, () => { assert.ok(false); });",
+    "  });",
+    "});",
+    "it('at the top', () => { assert.ok(false); });",
+    "it('not written yet', { todo: true }, () => { assert.ok(false); });",
+    '',
+  ].join('\n'));
+  const env = { ...SPAWN_ENV };
+  delete env.NODE_TEST_CONTEXT;
+  const args = nodeArgs({ name: 'sample', tests: 'sample.test.js' }, 'sample.lcov');
+  const run = spawnSync(process.execPath, args, { cwd: dir, env, encoding: 'utf8', timeout: 60_000 });
+  const tap = existsSync(join(dir, 'sample.tap')) ? readFileSync(join(dir, 'sample.tap'), 'utf8') : '';
+  const found = failures(tap, dir);
+
+  it('the run fails, and both reports are written by the arguments the script passes', () => {
+    assert.equal(run.status, 1, run.stderr);
+    assert.match(tap, /^TAP version 13$/m);
+    assert.match(readFileSync(join(dir, 'sample.lcov'), 'utf8'), /^SF:/m);
+  });
+
+  it('each failing test is listed with its file and line and the first line of its error', () => {
+    assert.deepEqual(found.map((test) => [test.name, test.location]), [
+      ['fails with a comparison', 'sample.test.js:5'],
+      ['throws', 'sample.test.js:7'],
+      ['at the top', 'sample.test.js:11'],
+    ]);
+    assert.equal(found[0].error, 'two is not three');
+    assert.equal(found[1].error, 'boom: first line');
+    assert.ok(found[2].error.length > 0, 'a failure with no word of why');
+  });
+
+  it('a group is not listed for the test inside it, nor a todo, nor a skip', () => {
+    const names = found.map((test) => test.name);
+    for (const name of ['a group', 'an inner group', 'is skipped', 'not written yet', 'passes']) assert.ok(!names.includes(name), name);
+    // The runner does print the first, the second and the todo as `not ok`.
+    for (const name of ['a group', 'an inner group', 'not written yet']) assert.match(tap, new RegExp(`^\\s*not ok \\d+ - ${name}`, 'm'));
+  });
+
+  it('a result with nothing under it is still listed, and does not borrow the next one\'s details', () => {
+    const bare = ['not ok 1 - bare', 'not ok 2 - detailed', '  ---', "  location: '/x/y.test.js:9:1'", "  error: 'why'", '  ...', ''].join('\n');
+    assert.deepEqual(failures(bare, '/x'), [
+      { name: 'bare', location: null, error: null },
+      { name: 'detailed', location: 'y.test.js:9', error: 'why' },
+    ]);
+  });
+
+  it('nothing is listed when nothing failed', () => {
+    assert.deepEqual(failures('TAP version 13\nok 1 - fine\n  ---\n  duration_ms: 1\n  ...\n1..1\n'), []);
+  });
+
+  it('the script prints them where it says a test failed, and says so when the runner named none', () => {
+    const script = read('scripts/coverage.mjs');
+    const said = script.indexOf('a test failed in this run (exit ${code})');
+    assert.ok(said > 0);
+    const after = script.slice(said, said + 700);
+    assert.match(after, /for \(const test of failed\)/);
+    assert.match(after, /test\.location/);
+    assert.match(after, /test\.error/);
+    assert.match(after, /the runner stopped without naming a test/);
+  });
+
+  it('the account is kept out of git and out of the upload', () => {
+    assert.match(read('.gitignore'), new RegExp(`^/${OUT}/$`, 'm'));
+    const workflow = read('.github/workflows/coverage.yml');
+    assert.match(workflow, /for report in coverage\/\*\.lcov; do/);
+    assert.doesNotMatch(workflow, /\.tap/);
   });
 });

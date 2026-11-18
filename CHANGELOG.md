@@ -228,6 +228,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **A test that fails under coverage is named.** `npm run coverage` said "a
+  test failed in this run" and nothing else: the report was the run's only
+  output, so which test, where and why were in no log and no file. On
+  2026-11-18 two of the five `Coverage` runs that completed on a runner said
+  it of the core, on commits the required job had passed, and there was no
+  way to learn which test it was. The runner now writes its own account of
+  each run beside the report, as `coverage/<package>.tap`, and the output
+  lists every failing test with its file and line and the first line of its
+  error. A group that failed only because a test inside it did is not listed
+  twice, and a test marked todo or skipped is not listed at all. The job
+  still does not fail on it: the verdict stays the required job's (#712).
 - **The coverage document no longer says its figure is Codecov's.** The
   script's comment and `docs/coverage.md` said the combined figure "is the
   figure Codecov shows". That was written before Codecov had taken an upload.

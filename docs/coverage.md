@@ -121,6 +121,10 @@ The four packages measured are `core`, `cli`, `mcp` and `tokenizer-openai`.
 `coverage.test.js` fails when a published package with tests is not on that
 list.
 
+Beside each report the runner's own account of the run is kept, as
+`coverage/<package>.tap`: what passed, what failed and why. It is not
+uploaded anywhere.
+
 A record whose path is not `packages/<name>/src/….ts` is left out of the
 report and named in the output: a test can load a file it wrote to a temporary
 directory, and that file is nobody's to cover. A report left with no source at
@@ -138,7 +142,10 @@ it, and it is built so that it cannot stand between a pull request and `main`:
 
 - A test that fails under coverage does not fail the job. Whether the tests
   pass is the required `Build and tests` job's to say; this one runs them
-  again, more slowly, to count.
+  again, more slowly, to count. The log does name it: the test, the file and
+  line it is at, and the first line of its error. A test that passes in the
+  required job and fails here some of the time is a test that depends on the
+  clock, and that is worth an issue of its own.
 - An upload that fails on a pull request leaves a warning and does not fail
   the job. On `main` it does, because that is where the record is kept and
   nobody's merge is waiting.
