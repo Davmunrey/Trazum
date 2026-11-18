@@ -380,6 +380,35 @@ gating on it with the same threshold would produce a red build for somebody
 else's latency. It sits beside the runs because a reader wants both, and it is
 a different fact.
 
+## The proactive document
+
+`trazum proactive --json`, for `status`, `on` and `off`. What speaks first, and whether it is on.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `action` | `status`, `on` or `off`: what was asked. `status` never writes. |
+| `dryRun` | True when nothing was written because it was a dry run: asked for with `--dry-run`, or forced because the input was not a terminal and `--yes` was not given. Always true for `status`. |
+| `home` | The home directory every path was resolved against. |
+| `project` | The directory it ran in: where `watch` is scheduled and where project MCP config files live. |
+| `items[]` | One per item in a fixed order: `statusline`, `watch`, `mcp`. Limited by `--only`. Read **after** the action, from the files rather than assumed. |
+| `items[].item` | `statusline`, `watch` or `mcp`. |
+| `items[].state` | `on`, `off`, `not-ready` (it would work once something is done, and `reason` says what), `not-available` (it cannot work on this machine) or `could-not-tell` (a file could not be read, so no claim is made). |
+| `items[].reason` | A stable identifier for why, such as `watch.noBudget` or `file.symlink`. Branch on this, never on `detail`. |
+| `items[].detail` | The same reason as a sentence in the reader's language. |
+| `items[].files` | The files the item reads or would write, as absolute paths; the crontab is the word `crontab`. |
+| `items[].notes[]` | Things left alone, each with `reason` and `detail`: a status line somebody else configured, a file it could not parse, a managed crontab line for another project. |
+| `changes[]` | One per item the action looked at, empty for `status`. |
+| `changes[].item` | Which item. |
+| `changes[].outcome` | `written`, `would-write` (dry run), `declined` (the answer was no), `nothing` (nothing to change) or `failed`. |
+| `changes[].error` | `null`, or `{ reason, detail }` for a refusal or a failed write. A refusal to write names the files the command may touch. |
+| `changes[].files[]` | Each file it touched or would touch, with `file`, and the lines it `added` and `removed` as they would be read in the file. A file it created has every line added; a crontab is the word `crontab`. |
+
+**It carries no prompt text and no spend figure.** The `detail` of a `watch.noBudget` reason may carry the
+store's measured total, because that is the figure a person is shown before choosing a limit; no
+field holds one. The exit code is 1 when any change `failed`, and 0 otherwise: an item that is
+`not-ready` or `could-not-tell` is a report, not an error.
+
 ## The bench document
 
 `trazum bench --json`. What this machine measures, one shot per workload.

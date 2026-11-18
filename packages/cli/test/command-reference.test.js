@@ -23,7 +23,7 @@ const reference = readFileSync(REFERENCE, 'utf8');
 describe('the command reference', () => {
   it('reads the CLI\'s own list of commands', () => {
     assert.equal(help.status, 0, help.stderr);
-    assert.ok(commands.length >= 55, `only ${commands.length} commands read from --help`);
+    assert.ok(commands.length >= 56, `only ${commands.length} commands read from --help`);
     for (const known of ['bill', 'plan', 'init', 'filter']) assert.ok(commands.includes(known), `${known} is not in --help`);
   });
 

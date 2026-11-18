@@ -132,6 +132,8 @@ const OUT_OF_SCOPE = {
   serve: 'starts a server and does not exit',
   write: 'waits on the reader and does not exit',
   bench: 'runs a measurement rather than reading a path',
+  /* It reads the person's home directory and crontab, which a test must not: `proactive.test.js` runs it on a made-up home. It has no network code at all. */
+  proactive: 'reads the home directory and the crontab; held on a made-up home by proactive.test.js',
 };
 
 /** A workspace with something real for every command to read. */

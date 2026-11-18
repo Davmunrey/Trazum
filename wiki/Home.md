@@ -21,7 +21,6 @@ what to change and checks whether the change arrived.
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-3c873a.svg)](https://github.com/Davmunrey/Trazum/blob/main/package.json)
 [![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-2f855a.svg)](https://github.com/Davmunrey/Trazum/blob/main/README.md#layout)
 
-</div>
 
 ## Pages
 

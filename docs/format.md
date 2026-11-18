@@ -2,8 +2,8 @@
 
 [Documentation](README.md) / [JSON output](json-output.md) · [Usage inputs](usage-logs.md) · [Library](../packages/core/README.md)
 
-Trazum emits **twenty-four** documents as data, and it
-defines a twenty-fifth it does not emit. The task document is one versioned
+Trazum emits **twenty-five** documents as data, and it
+defines a twenty-sixth it does not emit. The task document is one versioned
 family with report, comparison and policy-receipt variants. This index names
 the formats and the boundaries a consumer needs before depending on output.
 
@@ -51,6 +51,7 @@ changes what you can actually do:
 | **store inventory** | `trazum store --json` | `store-inventory` | [json-output.md](json-output.md#the-store-inventory-document) |
 | **conformance** | `trazum conform --json` | `conformance` | [json-output.md](json-output.md#the-conformance-document) |
 | **watch cycle** | `trazum watch --json` | `watch-cycle` | [json-output.md](json-output.md#the-watch-cycle-document) |
+| **proactive** | `trazum proactive --json` | — | [json-output.md](json-output.md#the-proactive-document) |
 | **task document** | `trazum task analyze`, `compare`, `apply` and `revert`; MCP analysis/comparison | — | [json-output.md](json-output.md#the-task-document) |
 
 The count above said **seven** for as long as the table had ten rows in it, and

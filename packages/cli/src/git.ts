@@ -219,6 +219,42 @@ export function runSelf(scriptPath: string, args: readonly string[]): string {
   return result.stdout;
 }
 
+/** What `crontab` said: its exit status and both streams, or the error that kept it from starting. */
+export interface CrontabResult {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+  /** `ENOENT` when there is no `crontab` program on this machine. */
+  errorCode: string | null;
+}
+
+/**
+ * Runs the system `crontab` with one of its two fixed argument lists.
+ *
+ * `trazum proactive` reads the user's crontab with `crontab -l` and writes it
+ * back with `crontab -`, the text on stdin. It is here, beside the other two
+ * spawns, so the invariant the security suite asserts, that child_process
+ * appears in exactly one file, stays whole. The same rules: no shell, and
+ * **no argument of anybody's**: the argv is one of two literals, and the text
+ * that changes travels on stdin, where a `;` is a character and not a command.
+ */
+export function runCrontab(args: readonly ['-l'] | readonly ['-'], input?: string): CrontabResult {
+  const result = spawnSync('crontab', [...args], {
+    shell: false,
+    encoding: 'utf8',
+    timeout: TIMEOUT_MS,
+    maxBuffer: MAX_BUFFER,
+    ...(input === undefined ? {} : { input }),
+  });
+  const code = result.error !== undefined && 'code' in result.error ? String((result.error as { code: unknown }).code) : null;
+  return {
+    status: result.status,
+    stdout: typeof result.stdout === 'string' ? result.stdout : '',
+    stderr: typeof result.stderr === 'string' ? result.stderr : '',
+    errorCode: result.error === undefined ? null : (code ?? 'ERROR'),
+  };
+}
+
 /**
  * Commits that touched `repoPath`, newest first.
  *

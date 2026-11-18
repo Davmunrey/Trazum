@@ -2,7 +2,7 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 55 commands
+## The 56 commands
 
 | Command | What it answers |
 |---|---|
@@ -40,6 +40,7 @@
 | [`trazum schema`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#building-on-the-format-trazum-conform) | Which fields must a document of this format carry? *A JSON Schema, for validators that are not Trazum.* |
 | [`trazum conform`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rollup`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
+| [`trazum proactive`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#speaking-first-trazum-proactive) | What speaks without being asked, and is it on? *Turns on the status line, a scheduled watch and the MCP server, one asked-for item at a time, and turns them off again.* |
 | [`trazum pulse`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum position`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
 | [`trazum receipt`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#a-figure-that-still-answers-elsewhere-trazum-receipt) | What did this cost, in a form that still answers when read somewhere else? *Counts, and the money split so it can be added up rather than believed. No prompt text, no answers, no paths: there is no field for them.* |

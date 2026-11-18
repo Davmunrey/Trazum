@@ -47,6 +47,12 @@ claude plugin marketplace add Davmunrey/Trazum
 claude plugin install trazum@trazum
 ```
 
+To have Trazum speak first (the status line, a scheduled `watch`, the MCP server
+in the project's client config), `trazum proactive` offers each one, shows every
+file and line it would write, writes only after a yes, and removes exactly what it
+added with `trazum proactive off`. See
+[speaking first](commands.md#speaking-first-trazum-proactive).
+
 The plugin's skill is [the same document](../plugin/skills/trazum/SKILL.md) this
 repository's own agents work from, derived by
 `scripts/build-plugin-skill.mjs` with only the invocation changed — a test

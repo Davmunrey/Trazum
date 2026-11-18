@@ -224,7 +224,7 @@ describe('links and images', () => {
     const quick = built.documents.find((doc) => doc.slug === 'commands');
     const hrefs = [];
     md.walkInlines(quick.blocks, (node) => node.t === 'a' && hrefs.push(node.href));
-    for (const wanted of ['/docs/quick-start', '/docs/setup', '/docs/usage-logs', '/docs/json-output', '/docs/overview#the-55-commands', '/docs']) {
+    for (const wanted of ['/docs/quick-start', '/docs/setup', '/docs/usage-logs', '/docs/json-output', '/docs/overview#the-56-commands', '/docs']) {
       assert.ok(hrefs.includes(wanted), `the command reference has no link to ${wanted}`);
     }
     const tasks = JSON.stringify(built.tasks);
@@ -392,7 +392,7 @@ describe('the address of a heading is GitHub’s', () => {
   it('keeps an old anchor the README wrote by hand', () => {
     const overview = built.documents.find((doc) => doc.slug === 'overview');
     const html = render(h(DocBody, { blocks: overview.blocks }));
-    for (const id of ['the-51-commands', 'the-52-commands', 'the-53-commands']) assert.ok(html.includes(`id="${id}"`), id);
+    for (const id of ['the-51-commands', 'the-52-commands', 'the-53-commands', 'the-55-commands']) assert.ok(html.includes(`id="${id}"`), id);
   });
 
   it('never collides with an address the site itself uses', () => {

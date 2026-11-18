@@ -93,6 +93,7 @@ trazum bill
 | `trazum history <dir>` | the long run: series from stored `--json` reports, the climbs and decays no pairwise comparison finds, and plans nobody is executing. Shapes named, nothing forecast |
 | `trazum connect <provider>` | your bill read from the provider's usage API — no export by hand. The credential is borrowed from the environment and never stored; a connected report is restricted on purpose and names the findings a sum cannot support |
 | `trazum store` | what the local store holds and what a prune would take. Re-pulls converge instead of doubling; records it cannot tell apart are kept as two and named; pruning refuses without a retention policy and says what went |
+| `trazum proactive [status\|on\|off]` | what speaks first, and whether it is on: the status line and its Stop hook, a scheduled `watch`, the MCP server. Offers each one, says which files and which lines, writes only after a yes, and removes exactly what it added. Sends nothing anywhere |
 | `trazum watch` | the spend gates evaluated as the money moves, not three weeks later. Measured crossings only, a day half-measured is not-yet-judgeable rather than passed, a restart neither re-alerts nor calls a blown budget clean |
 | `trazum serve` | a loopback endpoint answering what a call will cost and whether there is budget, in milliseconds. The measured half and the estimated half stay apart, and the verdict says which it rests on |
 | `trazum doctor [dir]` | the whole workspace: what nothing is watching, and what fixing would be worth |

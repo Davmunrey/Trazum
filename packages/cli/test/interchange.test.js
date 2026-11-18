@@ -104,6 +104,8 @@ describe('--json means JSON, not JSON after a report', () => {
       'rule-yield.test.js measures the arithmetic directly against fixtures whose answer is known before the harness runs; --json is the same report serialised',
     write:
       'write-cli.test.js drives it through --answers and parses stdout whole, on a draft and on a refusal; write-assembly.test.js pipes the same document through conform',
+    proactive:
+      'proactive.test.js drives it against a made-up home, parses stdout whole and holds the document to its json-output.md table in both directions',
     bench:
       'bench.test.js drives one workload and the whole run, parses stdout whole, and holds the document to its json-output.md table in both directions',
   };
@@ -328,7 +330,7 @@ describe('the format page and the contracts it documents', () => {
       twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
       sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
       twenty: 20, 'twenty-one': 21, 'twenty-two': 22, 'twenty-three': 23,
-      'twenty-four': 24,
+      'twenty-four': 24, 'twenty-five': 25,
     };
     const rows = [...page.matchAll(/^\| \*\*[^*]+\*\* \|/gm)].length;
     assert.ok(rows > 5, `only ${rows} contract rows parsed out of docs/format.md — has the table moved?`);
@@ -351,6 +353,7 @@ describe('the format page and the contracts it documents', () => {
       16: 'sixteenth', 17: 'seventeenth', 18: 'eighteenth', 19: 'nineteenth',
       20: 'twentieth', 21: 'twenty-first', 22: 'twenty-second',
       23: 'twenty-third', 24: 'twenty-fourth', 25: 'twenty-fifth',
+      26: 'twenty-sixth',
     };
     const ordinal = ordinals[rows];
     assert.ok(ordinal !== undefined, `no ordinal known for ${rows} rows, add it above`);

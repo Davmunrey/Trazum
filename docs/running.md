@@ -57,6 +57,11 @@ required anyway.
 Each of these runs the same command. Pick whichever your machines already have;
 none is better than the others and Trazum does not care which.
 
+**On Linux and macOS, `trazum proactive on` writes the watch line for you**: one managed line in your crontab for the
+project you run it in, only after you say yes, and `trazum proactive off` removes it. It does not run `connect`, which
+reads from the provider over the network, so the line below that pulls is still yours. See
+[speaking first](commands.md#speaking-first-trazum-proactive).
+
 **cron** — the exit code is the transport. A non-zero exit makes cron mail the
 output to the crontab's owner, which is alerting nobody had to build.
 

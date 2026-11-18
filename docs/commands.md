@@ -13,11 +13,11 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 | Read and reconcile spend | [bill](#one-door-trazum-bill) · [profile](#where-the-money-actually-went-trazum-profile) · [connect](#your-bill-without-the-export-trazum-connect) · [reconcile](#what-you-were-actually-billed-trazum-reconcile) · [import OpenTelemetry](#the-universal-cost-lens-trazum-from-otel) |
 | Plan and measure changes | [plan](#the-plan-trazum-plan) · [verify](#did-it-work-trazum-verify) · [switch](#when-does-the-switch-pay-trazum-switch) · [route](#is-the-cheaper-model-good-enough-trazum-route) · [history](#the-long-run-trazum-history) |
 | Review an agent task | [task](#task-efficiency-trazum-task): analyze repetitions, apply a reviewed policy and compare explicit outcomes; since 2.6.0 |
-| Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
+| Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [proactive](#speaking-first-trazum-proactive) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
 | Improve prompts | [use measured traffic](#the-multiplication-stops-guessing---from-log) · [reorder](#reordering-for-the-cache---reorder) · [rank](#which-prompt-to-fix-first-trazum-rank) · [prune](#which-few-shot-examples-earn-their-tokens-trazum-prune) · [evaluate](#does-the-shorter-prompt-still-work) |
 | Integrate and report | [MCP](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) · [conform](#building-on-the-format-trazum-conform) · [rollup](#more-than-one-machine-trazum-rollup) · [receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt) · [report](#the-year-from-what-was-already-written-down-trazum-report) |
 
-[All commands](../README.md#the-55-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
+[All commands](../README.md#the-56-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
 
 <details>
 <summary>All chapters on this page</summary>
@@ -36,6 +36,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 - [Your bill, without the export: `trazum connect`](#your-bill-without-the-export-trazum-connect)
 - [Keeping it: `trazum store`](#keeping-it-trazum-store)
 - [The afternoon it happened: `trazum watch`](#the-afternoon-it-happened-trazum-watch)
+- [Speaking first: `trazum proactive`](#speaking-first-trazum-proactive)
 - [Before the call is sent: `trazum serve`](#before-the-call-is-sent-trazum-serve)
 - [The counterpart: recording an outcome](#the-counterpart-recording-an-outcome)
 - [What an outcome costs](#what-an-outcome-costs)
@@ -786,6 +787,179 @@ already go. A webhook URL carrying credentials is refused (URLs end up in logs
 and shell history) and plain http is refused off loopback (an alert carries
 your spend figures). A receiver that is down is reported and swallowed — the
 crossing already went out through the other two.
+
+### Speaking first: `trazum proactive`
+
+Three things Trazum can say without being asked, and each is off until somebody
+finds its page and wires it by hand: what the session has cost, at the bottom of
+Claude Code ([the status line](../plugin/README.md#the-status-line-which-costs-nothing));
+a `watch` that says when measured spend crossed a budget, which needs a cron
+entry you write; and `spend_guard`, which answers "may I spend this?" before a
+call, which needs the MCP server in each client. `proactive` turns each on, says
+what it will write and where first, and turns each off again.
+
+```bash
+trazum proactive              # what is on and what is off; writes nothing
+trazum proactive on           # offer each one that is off, and ask before each
+trazum proactive on --dry-run # every file and every line, and writes nothing
+trazum proactive off          # remove exactly what on added
+trazum proactive on --only mcp --yes   # one item, without asking
+```
+
+```
+Trazum, speaking first ───────────────────────────────────────────────────
+  status line  off             Not in ~/.claude/settings.json. Turning it on adds
+                               a status line, and a Stop hook that refreshes it
+                               after each turn.
+  watch        not ready       A budget is a policy, so none is written for you.
+                               The store holds $1.00 measured. Set spend.maxUsd,
+                               spend.maxDayUsd or spend.maxCacheLossUsd in
+                               trazum.config.json to a limit you choose.
+  MCP server   off             Turning it on adds the trazum server to
+                               ~/app/.cursor/mcp.json.
+```
+
+*Real output of `trazum proactive` in a made-up home with the project at
+`~/app`: a store holding one measured day, no spend limit in the config, and a
+`.cursor` folder.* The watch is `not ready` and says why; nothing was written,
+and nothing here ever is by `status`. With a limit in `trazum.config.json`, the
+same command with `on --dry-run` ends like this, trimmed to the crontab and the
+MCP file, with the absolute paths shortened to `…`:
+
+```
+  watch: would write
+    your crontab
+      + 17 * * * * cd '…/h/app' && '/opt/node22/bin/node' '…/packages/cli/dist/index.js' watch --once # trazum watch (managed)
+
+  MCP server: would write
+    ~/app/.cursor/mcp.json
+      + {
+      +   "mcpServers": {
+      +     "trazum": {
+      +       "command": "npx",
+      +       "args": [
+      +         "-y",
+      +         "@trazum/mcp"
+      +       ]
+      +     }
+      +   }
+      + }
+
+  The first time a file you own changes, a copy of it is kept beside it as
+    <name>.trazum-backup. It is never replaced.
+
+  Dry run: nothing was written.
+```
+
+**A command of its own and not a mode of `init`.** `init` proposes a
+`trazum.config.json` for one repository, and its `--dry-run` and `--yes` mean
+that config. This edits files in a home directory and the project's MCP config.
+Two jobs under one name would have made `init --dry-run` ambiguous about which
+one it printed.
+
+**Nothing is written without a yes.** `on` and `off` ask once per item and show
+the file and every line first. With `--dry-run`, or when the input is not a
+terminal and `--yes` was not given, it prints the same and writes nothing, and
+says that it is a dry run. `--yes` is the only way to say yes without being
+asked. Every write goes through one function that refuses a file outside the
+list below, a symbolic link, and a file that changed since it was read; it
+writes a temporary file beside the target and renames it over, keeps the file's
+mode, and keeps one copy of the original as `<name>.trazum-backup` the first
+time it changes a file, never replacing it. A file is opened once, told not to
+follow a link, and what it is and what it says both come from that one open, so
+nothing can be swapped in between the look and the read.
+
+**An item is written whole or not at all.** An item is more than one write: the
+script and the settings, or two MCP files, and then the record of what was
+added. If one of them fails, what the item had already written is put back
+through the same function, newest first, and nothing is recorded. If putting
+back fails too, the report names the files it left (`write.partial`), because
+nothing then records them as this command's.
+
+**A crontab that cannot be read is not an empty one.** The crontab is read
+again just before it is written. If that read fails, nothing is written
+(`write.unreadable`): "no crontab" a moment ago and "could not read it" now
+would otherwise have looked the same, and the write would have replaced
+whatever you have with one line.
+
+| Item | What it writes | How `off` knows the lines are its own |
+|---|---|---|
+| `statusline` | `~/.claude/settings.json`: a `statusLine` and a `Stop` hook; and a copy of `trazum-statusline.sh` in `~/.trazum/statusline/` | The exact command it wrote, which names that script path. The hook is appended to the `Stop` array; hooks that were there stay |
+| `watch` | your crontab: one line, `17 * * * * cd '<project>' && '<node>' '<cli>' watch --once # trazum watch (managed)` | The trailing `# trazum watch (managed)` and the shape of the line. A line of yours that only mentions trazum is not touched |
+| `mcp` | `.mcp.json` or `.cursor/mcp.json` in the directory it runs in: `{"trazum": {"command": "npx", "args": ["-y", "@trazum/mcp"]}}` under `mcpServers` | A record in `~/.trazum/proactive.json` of the entries it added, and the entry still being exactly what it wrote. One that you pasted from the README is left when it is turned off |
+
+Besides those it writes `~/.trazum/proactive.json`, which holds only what it
+created (so `off` can remove a `Stop` array or a file it made and leave one you
+had), and a copy of the crontab as `~/.trazum/crontab.trazum-backup`.
+
+**The status line script has to be somewhere that stays.** It lives in
+`plugin/`, which a person who ran `npx @trazum/cli` does not have, so the CLI
+package carries a copy (`assets/trazum-statusline.sh`, held byte for byte equal
+to `plugin/statusline/trazum-statusline.sh` by a test). `trazum proactive on`
+copies it into `~/.trazum/statusline/` and writes that path into the settings.
+`off` removes the copy, if it is still the one that was written: the record
+keeps its sha256. A copy you changed, or a file of your own that was already
+there, is not written over by `on` and not removed by `off`; the item reports
+`not ready` (`statusline.scriptChanged`) until you move it. The script calls the
+CLI, so the CLI has to stay too: the
+settings carry `TRAZUM_BIN` set to the CLI that ran the command. An `npx` run
+unpacks into a cache nobody promised to keep, and `proactive` recognises that and
+refuses the status line and the scheduled watch (reporting them as not ready,
+with the reason) rather than write a path that is gone tomorrow. Install it where
+it stays, `npm install -g @trazum/cli`, or point `TRAZUM_BIN` at a CLI you keep.
+Both paths go into one shell line in single quotes, and the script's is under
+your home directory, so a home directory with a quote in its name is refused
+for the same reason as a CLI path with one (`cli.unsafe`).
+The hook starts that CLI by its path, so a CLI file that is not executable is
+refused for the status line too (`cli.notExecutable`): the hook is silent by
+design, and the line would show Claude Code's figure for ever with nothing
+saying why. The scheduled watch is not refused for it, because its crontab line
+names node and then the file. The status line is a bash script, so it is not
+available on Windows.
+
+**JSON is edited as data.** Key order and indentation (two spaces, four, a tab,
+CRLF, a final newline or none) are kept. A file that is not valid JSON, one
+whose top level is not an object, one whose `hooks` is not an object, and one
+that would lose a duplicate key or a number's spelling when written back, is
+left alone and named, and its item reports `could not tell` with the reason. A
+file whose spacing differs from what is written, such as inline arrays, is
+rewritten with its keys and values intact, and the report says that its layout
+will be normalised. A symbolic link is left alone: edit the file it points to.
+
+**A status line somebody else configured is never replaced.** It is reported,
+the item is `not ready`, and the hook is not added either, because a refresh
+nobody displays is noise. Switching is by hand, from
+[the plugin page](../plugin/README.md#the-status-line-which-costs-nothing).
+
+**It never wires the refresh to `SessionStart`.** That hook's output is handed
+to the model, so it would charge you for being told what you spend. The refresh
+is a `Stop` hook, whose output goes to a log. A test refuses the other wiring.
+
+**`watch` needs a store with something in it and a budget, and `proactive`
+supplies neither.** With either missing the item is `not ready`, naming
+`trazum connect <provider> --store` for the store and `spend.maxUsd`,
+`spend.maxDayUsd` or `spend.maxCacheLossUsd` in `trazum.config.json` for the
+limit. A budget is a policy: when the store holds measured spend the line
+shows the figure, and the limit is yours to choose. The cron line does not run
+`connect`, because that reads from the provider over the network; everything
+`proactive` turns on reads files already on this machine. Reading the agents'
+sessions directly instead of a store is not part of this.
+
+**MCP clients it knows**, because the repository's documents state their file:
+Claude Code's `.mcp.json` and Cursor's `.cursor/mcp.json`, in the directory it
+runs in. Claude Code is also installed as a plugin, which is a command and not
+a file, so when there is a `~/.claude` and no `.mcp.json` it prints the two
+`claude plugin` lines from the README for you to run. Other clients read the
+same JSON; the README says where to paste it.
+
+**What it does per platform.** Linux and macOS: cron, through `crontab -l` and
+`crontab -`, with the text on stdin and no shell. Windows: the status line and
+the watch are reported `not available` with the reason (`docs/running.md` has
+the Task Scheduler line to run by hand); the MCP entry works anywhere the file
+does.
+
+The report is one line per item: `on`, `off`, `not ready` (why), `not available`
+(why) or `could not tell` (why). `--json` is [documented](json-output.md#the-proactive-document).
 
 ### Before the call is sent: `trazum serve`
 
@@ -1847,7 +2021,7 @@ believe a limit is set.
 
 ### Building on the format: `trazum conform`
 
-Trazum emits twenty-four documents, defines a twenty-fifth it does not emit, and
+Trazum emits twenty-five documents, defines a twenty-sixth it does not emit, and
 [docs/format.md](format.md) is the index. `conform` checks its twenty-four named
 contracts; the task document family introduced in 2.6.0 has a separate `version` / `kind`
 contract and is validated by the task workflow. This is how you check your own

@@ -69,6 +69,7 @@ ${bold('USO')}
   trazum switch <uso.jsonl> --to <modelo> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
+  trazum proactive [status|on|off] [--only <item,...>] [--dry-run | --yes] [--json]
   trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
   trazum models
@@ -397,6 +398,35 @@ ${bold('OPCIONES DE from-claude-code')}
   la conversión. Una llamada a la API se escribe como una línea por bloque de
   contenido, así que las líneas se colapsan por id de petición; lo colapsado o
   descartado se dice en stderr, nunca en silencio.
+
+${bold('OPCIONES DE proactive')}
+  status                      Qué habla primero, activo o apagado: la línea de
+                              estado y su hook Stop, un watch programado, el
+                              servidor MCP. Una línea cada uno. Es lo
+                              predeterminado y no escribe nada.
+  on                          Ofrece cada uno que esté apagado, dice qué archivos
+                              tocaría y cada línea que añadiría, y solo escribe
+                              tras un sí para ese elemento.
+  off                         Quita exactamente las líneas que añadió. Nada más
+                              cambia en esos archivos.
+  --only <item,...>           Limita a statusline, watch o mcp.
+  --dry-run                   Imprime cada archivo y cada línea, no escribe nada.
+                              Es lo que hace hasta que alguien dice que sí: sin
+                              terminal y sin --yes es un simulacro.
+  --yes                       Dice que sí a todos, sin preguntar.
+  --json                      El informe como datos. Ver docs/json-output.md.
+
+  Las tres cosas que Trazum puede decir sin que se lo pidan, apagadas hasta que
+  alguien las conecta a mano. Edita ~/.claude/settings.json, tu crontab y la
+  configuración MCP del proyecto donde se ejecuta (.mcp.json,
+  .cursor/mcp.json), y nada más. Un archivo que no puede leer, o un enlace
+  simbólico, se deja como está y se nombra. Una línea de estado ya configurada
+  nunca se reemplaza. No envía nada a ningún sitio: las tres leen archivos que
+  ya están en esta máquina.
+
+  Nunca inventa un presupuesto ni llena el almacén. Un watch sin almacén o sin
+  límite de gasto está "no listo", con el comando o la clave que lo dejaría
+  listo.
 
 ${bold('OPCIONES DE pulse')}
   --max-stale-hours <n>       Sale con 1 cuando algo que corre aquí lleva más
@@ -2377,6 +2407,86 @@ ${bold('EJEMPLOS')}
       'Medido solo desde este log, registro a registro. La posición mensual facturada por el proveedor que guarda el almacén es otra medición (la imprime «trazum store») y las dos nunca se funden en una cifra.',
     noLog: () => 'position necesita un log de uso: trazum position uso.jsonl',
   },
+  proactive: {
+    heading: () => 'Trazum, hablando primero',
+    item: { statusline: 'línea de estado', watch: 'watch', mcp: 'servidor MCP' },
+    verdict: { on: 'activo', off: 'apagado', 'not-ready': 'no está listo', 'not-available': 'no disponible', 'could-not-tell': 'no se sabe' },
+    reason: {
+      'statusline.on': (p) => `La línea de estado y su hook Stop están en ${p.file}.`,
+      'statusline.off': (p) => `No está en ${p.file}. Activarlo añade una línea de estado y un hook Stop que la refresca tras cada turno.`,
+      'statusline.partial': (p) =>
+        `${p.file} tiene una parte: falta ${p.missing === 'hook' ? 'el hook Stop' : 'la línea de estado'}. Activarlo añade esa parte.`,
+      'statusline.stale': (p) => `Las entradas de ${p.file} apuntan a un script o a una CLI que ya no está. Activarlo las repara.`,
+      'statusline.windows': () => 'La línea de estado es un script de bash, y todavía no existe una versión para Windows.',
+      'statusline.noClaude': (p) => `${p.dir} no existe: Claude Code no se ha ejecutado en esta máquina, así que no hay un archivo de ajustes al que añadir.`,
+      'statusline.foreign': (p) =>
+        `${p.file} ya tiene una línea de estado (${p.command}). Se deja como está. Para cambiarla a mano, sigue plugin/README.md.`,
+      'watch.on': (p) => `Programado en tu crontab para ${p.project} (${p.schedule}), leyendo allí el almacén y el presupuesto.`,
+      'watch.off': (p) => `No está programado para ${p.project}. Activarlo añade una línea al crontab que ejecuta "trazum watch --once" allí cada hora.`,
+      'watch.stale': (p) => `La línea del crontab para ${p.project} apunta a una CLI que ya no está. Activarlo la repara.`,
+      'watch.windows': () => 'Aquí programar es cron, y Windows no lo tiene. docs/running.md trae la línea del Programador de tareas para ejecutar a mano.',
+      'watch.noCrontab': () => 'No hay programa crontab en esta máquina, así que aquí no se puede programar nada.',
+      'watch.crontabError': (p) => `"crontab -l" falló: ${p.why}`,
+      'watch.configError': (p) => `No se pudo leer trazum.config.json: ${p.why}`,
+      'watch.noStore': () => 'El almacén está vacío. Llénalo antes con "trazum connect <proveedor> --store".',
+      'watch.noBudget': (p) =>
+        `Un presupuesto es una decisión, así que no se escribe ninguno por ti.${p.measured === '' ? '' : ` El almacén tiene ${p.measured} medidos.`} Pon spend.maxUsd, spend.maxDayUsd o spend.maxCacheLossUsd en trazum.config.json con un límite que elijas.`,
+      'watch.noStoreNoBudget': () =>
+        'Necesita un almacén con algo dentro ("trazum connect <proveedor> --store") y un límite que elijas (spend.maxUsd, spend.maxDayUsd o spend.maxCacheLossUsd en trazum.config.json).',
+      'watch.scheduledNotReady': (p) =>
+        `Programado para ${p.project}, pero cada ejecución se negará hasta que el almacén tenga algo y trazum.config.json tenga un límite de gasto. Todavía no vigila.`,
+      'watch.otherProjects': (p) => `Quedan ${p.count} línea(s) gestionadas del crontab para otros proyectos. Ejecuta esto en cada uno para quitarlas.`,
+      'mcp.on': (p) => `El servidor trazum está en ${p.files}.`,
+      'mcp.off': (p) => `Activarlo añade el servidor trazum a ${p.files}.`,
+      'mcp.noClient': (p) => `No hay .mcp.json ni carpeta .cursor en ${p.dir}, así que no hay configuración de cliente a la que añadir.`,
+      'mcp.noClientClaude': (p) =>
+        `No hay .mcp.json en ${p.dir}. Claude Code recibe el servidor por su plugin; ejecuta tú estos comandos: claude plugin marketplace add Davmunrey/Trazum, y luego claude plugin install trazum@trazum.`,
+      'mcp.other': (p) => `${p.file} ya tiene una entrada trazum distinta de la que esto escribe. Se deja como está.`,
+      'mcp.changed': (p) => `${p.file} tiene una entrada trazum que añadió este comando y alguien ha cambiado después. Se deja como está.`,
+      'mcp.notAdded': (p) => `${p.file} ya tiene exactamente esta entrada, puesta a mano. Se queda al apagar esto.`,
+      'cli.unstable': (p) =>
+        `La CLI en ${p.path} no estará mañana: una ejecución puntual de npx, o el archivo ya no existe. Instálala donde se quede (npm install -g @trazum/cli) y vuelve a ejecutar esto.`,
+      'cli.unsafe': (p) => `La ruta ${p.path} tiene una comilla, un signo de porcentaje o un salto de línea, y no se puede escribir con seguridad en una línea de shell ni en un crontab.`,
+      'cli.notExecutable': (p) =>
+        `La CLI en ${p.path} no es ejecutable, y el hook Stop la arranca por su ruta: la línea de estado nunca tendría una cifra. Hazla ejecutable (chmod +x) o instala la CLI (npm install -g @trazum/cli), y vuelve a ejecutar esto.`,
+      'file.unparseable': (p) => `${p.file} no se pudo leer como JSON (${p.why}). Se deja como está.`,
+      'file.symlink': (p) => `${p.file} es un enlace simbólico. Se deja como está: edita a mano el archivo al que apunta.`,
+      'file.shape': (p) => `${p.file} tiene un ${p.key} que no es del tipo esperado. Se deja como está.`,
+      'file.notExact': (p) =>
+        `${p.file} es JSON, pero volver a escribirlo cambiaría un valor, una clave o un escape (una clave duplicada, por ejemplo). Se deja como está, para que nada más cambie.`,
+      'file.reformat': (p) => `${p.file} dispone algunas líneas de otro modo que lo que esto escribe (arrays en línea, por ejemplo). Su espaciado y sus saltos de línea se normalizan al escribirlo; todas las claves y valores se conservan.`,
+      'file.unreadable': (p) => `No se pudo leer ${p.file}: ${p.why}.`,
+      'file.outside': (p) => `${p.file} resuelve fuera del directorio al que pertenece. Se deja como está.`,
+      'write.not-allowed': (p) => `Se rechazó escribir ${p.file}: no es uno de los archivos que este comando puede tocar (${p.allowed}).`,
+      'write.symlink': (p) => `Se rechazó escribir ${p.file}: es un enlace simbólico.`,
+      'write.outside': (p) => `Se rechazó escribir ${p.file}: resuelve fuera del directorio al que pertenece.`,
+      'write.changed': (p) => `${p.file} cambió mientras esto se ejecutaba. No se escribió nada en él. Vuelve a ejecutarlo.`,
+      'write.unreadable': (p) => `No se pudo volver a leer ${p.file} justo antes de escribir, así que no se escribió nada en él. Vuelve a ejecutarlo.`,
+      'write.partial': (p) =>
+        `Una escritura falló a medias, y lo que ya se había escrito no se pudo devolver a como estaba: ${p.files}. Nada los registra como escritos por este comando, así que revísalos a mano.`,
+      'write.failed': (p) => `No se pudo escribir: ${p.why}.`,
+      'statusline.scriptChanged': (p) =>
+        `El archivo en ${p.script} no es el script que escribió este comando: se cambió, o es de otra persona. Se deja como está y no se escribe nada encima. Apártalo y vuelve a ejecutar esto para instalar la línea de estado.`,
+    },
+    unknownAction: (given) => `Acción desconocida "${given}". Usa: trazum proactive [status|on|off].`,
+    unknownItem: (given, allowed) => `Elemento desconocido "${given}" en --only. Los elementos son: ${allowed}.`,
+    wouldTurnOn: (item) => `${item}: escribiría`,
+    wouldTurnOff: (item) => `${item}: quitaría`,
+    nothingToChange: (item) => `${item}: nada que cambiar.`,
+    dryRunAsked: () => 'Simulacro: no se escribió nada.',
+    dryRunNoTerminal: () =>
+      'Esto no es una terminal y no se pasó --yes, así que es un simulacro: no se escribió nada. Ejecútalo en una terminal para que te pregunte por cada elemento, o pasa --yes para decir que sí a todos.',
+    askOn: (item, files) => `¿Escribir ${item} (${files})? [s/N] `,
+    askOff: (item, files) => `¿Quitar ${item} (${files})? [s/N] `,
+    didTurnOn: (item) => `${item}: escrito`,
+    didTurnOff: (item) => `${item}: quitado`,
+    declined: (item) => `${item}: no se escribió, dijiste que no.`,
+    failed: (item, reason) => `${item}: no se escribió. ${reason}`,
+    backupNote: (suffix) =>
+      `La primera vez que cambia un archivo tuyo, se guarda una copia al lado como <nombre>${suffix}. Nunca se reemplaza.`,
+    crontab: () => 'tu crontab',
+  },
+
   pulse: {
     heading: () => '¿Corrieron las cosas que tienen que correr?',
     kind: (kind) => {
