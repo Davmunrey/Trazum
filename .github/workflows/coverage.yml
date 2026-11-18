@@ -96,6 +96,15 @@ jobs:
             flag="$(basename "$report" .lcov)"
             "$RUNNER_TEMP/codecov" upload-process --disable-search --fail-on-error -F "$flag" -f "$report" || refused=1
           done
+          # The same run's test results, for Codecov's test analytics: each
+          # test's name, how long it took and, when it failed, why. That is
+          # what tells a test that fails now and then from one that fails,
+          # which the core has one of (#712). Same uploader, same token, same
+          # rule for a refusal.
+          for results in coverage/*.junit.xml; do
+            flag="$(basename "$results" .junit.xml)"
+            "$RUNNER_TEMP/codecov" upload-process --disable-search --fail-on-error --report-type test_results -F "$flag" -f "$results" || refused=1
+          done
           if [ "$refused" = "1" ] && [ "$EVENT" = "push" ]; then
             echo "::error::Codecov did not take an upload from main. The log above says why."
             exit 1

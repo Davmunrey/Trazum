@@ -7,7 +7,8 @@ import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { SPAWN_ENV } from '../../cli/test/env.mjs';
-import { NOT_MEASURED, OUT, SUITES, clean, failures, nodeArgs, strangers, summarise, tapOf, together, usable } from '../../../scripts/coverage.mjs';
+import { sectionOf } from '../../../test-utils/section.mjs';
+import { NOT_MEASURED, OUT, SUITES, clean, failures, junitOf, nodeArgs, strangers, summarise, tapOf, together, usable } from '../../../scripts/coverage.mjs';
 
 /**
  * The coverage measurement, and the workflow that sends it away.
@@ -110,8 +111,13 @@ describe('the tests are run so that the report names the TypeScript', () => {
     // Two reporters and one destination, or the pairs crossed, and the lcov
     // file would be TAP: a report with no source, which fails the command.
     const paired = args.filter((arg) => arg.startsWith('--test-reporter'));
-    assert.deepEqual(paired, ['--test-reporter=lcov', '--test-reporter-destination=coverage/core.lcov', '--test-reporter=tap', '--test-reporter-destination=coverage/core.tap']);
+    assert.deepEqual(paired, [
+      '--test-reporter=lcov', '--test-reporter-destination=coverage/core.lcov',
+      '--test-reporter=tap', '--test-reporter-destination=coverage/core.tap',
+      '--test-reporter=junit', '--test-reporter-destination=coverage/core.junit.xml',
+    ]);
     assert.equal(tapOf('coverage/tokenizer-openai.lcov'), 'coverage/tokenizer-openai.tap');
+    assert.equal(junitOf('coverage/tokenizer-openai.lcov'), 'coverage/tokenizer-openai.junit.xml');
   });
 
   it('measures every published package that has tests, and says which trees it leaves out', () => {
@@ -244,8 +250,14 @@ describe('the script\'s figure is not passed off as Codecov\'s', () => {
   // that nothing says they are the same again.
   const script = read('scripts/coverage.mjs');
   const doc = read('docs/coverage.md');
-  const start = doc.indexOf('\n## Two figures, and why they differ\n');
-  const section = start < 0 ? '' : doc.slice(start, doc.indexOf('\n## ', start + 4));
+  // A section that is gone throws. Caught here so that the file still loads
+  // and the first test below is what says so.
+  let section = '';
+  try {
+    section = sectionOf(doc, '## Two figures, and why they differ\n');
+  } catch {
+    section = '';
+  }
 
   it('the script says its figure is not the one Codecov shows', () => {
     assert.doesNotMatch(script, /This is the figure Codecov shows/);
@@ -321,10 +333,17 @@ describe('a test that fails under coverage is named', () => {
   const tap = existsSync(join(dir, 'sample.tap')) ? readFileSync(join(dir, 'sample.tap'), 'utf8') : '';
   const found = failures(tap, dir);
 
-  it('the run fails, and both reports are written by the arguments the script passes', () => {
+  it('the run fails, and all three reports are written by the arguments the script passes', () => {
     assert.equal(run.status, 1, run.stderr);
     assert.match(tap, /^TAP version 13$/m);
     assert.match(readFileSync(join(dir, 'sample.lcov'), 'utf8'), /^SF:/m);
+    // What Codecov's test analytics is sent: a name, a time and a verdict for
+    // each test, and for a failure its message.
+    const junit = readFileSync(join(dir, 'sample.junit.xml'), 'utf8');
+    assert.match(junit, /^<\?xml /);
+    assert.match(junit, /<testcase name="passes" time="[\d.]+"/);
+    assert.match(junit, /<testcase name="fails with a comparison"[^>]*>\s*<failure [^>]*message="two is not three/);
+    assert.equal(run.stderr, '', 'the run warns about something on every run');
   });
 
   it('each failing test is listed with its file and line and the first line of its error', () => {
@@ -366,6 +385,27 @@ describe('a test that fails under coverage is named', () => {
     assert.match(after, /test\.location/);
     assert.match(after, /test\.error/);
     assert.match(after, /the runner stopped without naming a test/);
+  });
+
+  it('the test results are uploaded as test results, from the same run, under the same rule for a refusal', () => {
+    const workflow = read('.github/workflows/coverage.yml');
+    const upload = workflow.slice(workflow.indexOf('refused=0'));
+    assert.match(upload, /for results in coverage\/\*\.junit\.xml; do\n\s+flag="\$\(basename "\$results" \.junit\.xml\)"\n\s+"\$RUNNER_TEMP\/codecov" upload-process --disable-search --fail-on-error --report-type test_results -F "\$flag" -f "\$results" \|\| refused=1\n/);
+    // Before the verdict, so that one rule covers both kinds of upload.
+    assert.ok(upload.indexOf('--report-type test_results') < upload.indexOf('if [ "$refused" = "1" ] && [ "$EVENT" = "push" ]; then'));
+    // And never a coverage report sent as test results, or the other way round.
+    assert.doesNotMatch(upload, /--report-type test_results[^\n]*\$report\b/);
+    assert.equal((upload.match(/--report-type/g) ?? []).length, 1);
+  });
+
+  it('the document says what of a test is sent, and that a failure here still fails nothing', () => {
+    const doc = read('docs/coverage.md');
+    const section = sectionOf(doc, '## Test results\n');
+    assert.match(section, /What is sent: each test's name, how long it took, whether it passed/);
+    assert.match(section, /host\s+name/);
+    assert.match(section, /No source/);
+    assert.match(section, /still does not fail the job/);
+    assert.ok(section.includes('`coverage/<package>.junit.xml`'));
   });
 
   it('the account is kept out of git and out of the upload', () => {

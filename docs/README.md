@@ -35,7 +35,9 @@ Then, if you want to know whether to trust the numbers:
   from, what each verdict means, and what only CI can say.
 - **[Coverage](coverage.md)**: which lines the tests run, as measured and by
   package, what a covered line does not mean, and how the report reaches
-  Codecov without being able to block a merge.
+  Codecov without being able to block a merge. Also what else goes there:
+  each run's test results, to find the test that fails now and then, and the
+  size of the web app's built files.
 - **[End-to-end tests](end-to-end-tests.md)**: the web app in a real browser,
   doing what a visitor does: the thirteen flows, the figures they expect and
   where those come from, and what a green run does not say.
