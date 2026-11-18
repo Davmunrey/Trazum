@@ -14,7 +14,7 @@ where a wrong line costs most.
 ## Where it stands
 
 <!-- mutation-score:start -->
-Recorded on 2026-11-18: **92.4%** of 510 mutants caught.
+Recorded on 2026-11-18: **92.3%** of 801 mutants caught.
 
 | File | Mutants | Caught | Alive | Score |
 | --- | --- | --- | --- | --- |
@@ -24,13 +24,16 @@ Recorded on 2026-11-18: **92.4%** of 510 mutants caught.
 | `savings.ts` | 62 | 60 | 2 | 96.8% |
 | `session-cost.ts` | 74 | 71 | 3 | 95.9% |
 | `billing.ts` | 35 | 31 | 4 | 88.6% |
-| **All** | 510 | 471 | 39 | 92.4% |
+| `pricing.ts` | 212 | 190 | 22 | 89.6% |
+| `usage.ts` | 79 | 78 | 1 | 98.7% |
+| **All** | 801 | 739 | 62 | 92.3% |
 <!-- mutation-score:end -->
 
 A survivor is not a bug. It is a place where a bug would not be noticed.
 
 The first whole run, on 2026-11-17, caught **62.1%**: 277 of 446. Five test
-files written from what it found brought that to the figure above. What it
+files written from what it found, and the tests written for each target added
+since, brought that to the figure above. What it
 found was specific. A cache read could be divided by its multiplier instead of
 multiplied, in the cost of a conversation. The median could take the wrong
 element of any list whose middle values differ. The percentage a prompt was
@@ -43,7 +46,8 @@ itself and should hold itself.
 
 ## What is mutated
 
-The built JavaScript of six files, chosen for what a mistake in them does:
+The built JavaScript of six files, and of the functions that choose and apply
+a rate in two more, chosen for what a mistake in them does:
 
 - `optimize.ts`, `segment.ts` and `rules.ts` turn a prompt into a shorter
   prompt. A wrong line there changes what somebody's model is told.
@@ -51,6 +55,22 @@ The built JavaScript of six files, chosen for what a mistake in them does:
 - `billing.ts` says, for every call the bill and its findings price, the
   moment it was billed at, the size of prompt that picks its band, how it ran,
   and what its web searches cost. A wrong line there misprices every call.
+- In `pricing.ts`, the code and not the numbers: `effectivePricing` and what
+  it calls to choose a call's rate (`holds` for a band or an hour,
+  `pricedAt` for the price history, `cache` for a promotion,
+  `serviceTierOf` and `serviceTierRow` for a service tier,
+  `inferenceGeoOf`, `scaleRates` and `scaled` for a geography and the batch
+  ratio), and `multipliersFor`, which gives the cache and batch ratios.
+- In `usage.ts`, `add`: where a record's tokens are multiplied by those rates
+  for the bill and for the lines said apart from it.
+
+A target is a whole file, or `{ file, functions }` in `TARGETS`: the named
+top-level functions of one file and nothing else in it. They are found in the
+built file's syntax tree, and a name the file does not declare, or a listed
+function with nothing in it to change, stops the run before a mutant is made,
+so a renamed function cannot leave a target quietly empty.
+`npm run mutate -- --acorn "$ACORN" --list` counts each target's mutants and
+runs nothing.
 
 Twelve kinds of change:
 
@@ -80,13 +100,40 @@ So the score is not read as more than it is:
 - **What a `for` loop counts with**, however it is written. Sent the other
   way it never reaches its bound: the only possible outcome is a hang, which
   says nothing about the tests. The loop's start and its bound are mutated.
-- **Every file not listed above.** The whole core has about 15,700 possible
-  mutants; this runs 3% of them. The price table alone has 801 numbers, and
-  whether a test holds each one is the next question worth asking. The code
-  that chooses a call's rate from that table, `effectivePricing` and
-  `multipliersFor`, is in the same file, `pricing.ts`, and is not mutated
-  either; nor is `usage.ts`, where the bill multiplies a call's tokens by
-  those rates.
+- **Every file and function not listed above.** The whole core had 15,800
+  possible mutants on 2026-11-18, over its 121 built files; this runs 801 of
+  them, 5.1%. Before `pricing.ts` and `usage.ts` were added it ran 510, 3.2%.
+- **The price table's numbers.** They are a different question from the code
+  that chooses one of them, and they have their own answer below.
+
+### The catalogue's numbers
+
+Whether a test would fail if a published price were wrong. Measured on
+2026-11-18 by the same kind of change the tool makes, one number moved up by
+one at a time in the built `pricing.ts`, served through the same loader to
+every test file of the core but `mutation.test.js`, 200 of them, until one
+failed. A test that reads a clock and failed was believed only when it failed
+again. Moving a ratio of 0.025 by one is a large mistake, so this asks whether
+anything notices a price that is plainly wrong, not a price that is a cent
+off.
+
+`pricing.ts` has 786 numbers outside its functions that the tool would
+change. 681 of them are published prices: an input or output rate per million
+tokens, of a row, a band, a promotion, a period of the price history or a
+service tier; a cache read, cache write or batch ratio; the US-only
+multiplier; and the web search fee. The other 105 are cache minimums, the
+hours of a clock-priced band and cache lifetimes.
+
+**Of the 681, a sample was measured, not all of them**: every tenth in the
+order they appear in the file, the first included, 69 prices. They took 1,017
+seconds on the four-core machine described below; the 681 would take about
+ten times that. **50 of the 69 are held**: a test fails when the number moves.
+19 are not. 12 of those are in OpenAI's service-tier tables, the Flex and Fast
+rows and their long-prompt bands. 4 are cache-write ratios of 1, on
+GPT-4.1, Gemini 2.5 Flash, DeepSeek V4 Flash and DeepSeek V4.1 Flash. 3 are
+Mistral's: Large 2's input rate, Medium 3.5's output rate and Small 4's batch
+ratio. Nothing in this change holds the rest. Which of them a test should
+hold, and how, is a question for its own issue.
 
 ## How a mutant is run
 
@@ -139,7 +186,8 @@ choice of tests is wrong and no score should be read until it is fixed.
 
 Last run on 2026-11-18, over the 38 survivors that were on record that day:
 none was killed by a test it had not been given. It took 614 seconds. The
-record holds 39 now.
+record holds 62 now; the 23 added with `pricing.ts` and `usage.ts` have not
+been audited.
 
 It costs a whole suite per mutant, so it is run when the way tests are chosen
 changes, not on every run.
@@ -158,6 +206,7 @@ ACORN="$DIR/node_modules/acorn"
 
 npm run mutate -- --acorn "$ACORN"                    # every target, and every survivor
 npm run mutate -- --acorn "$ACORN" --only segment     # one file
+npm run mutate -- --acorn "$ACORN" --list             # count each target's mutants, run nothing
 npm run mutate -- --acorn "$ACORN" --since origin/main --check   # only the lines you changed
 npm run mutate -- --acorn "$ACORN" --survivors        # only the recorded survivors
 npm run mutate -- --acorn "$ACORN" --write            # record a whole run, and its score above
@@ -174,6 +223,15 @@ of 446, file by file, with no test failing once and passing alone. On a
 four-core machine shared with other test runs, the whole run took 1,405
 seconds over five files and 475 mutants, and 1,400 seconds over six files and
 510, both on 2026-11-18.
+
+With `pricing.ts` and `usage.ts` added, the whole run, eight targets and 801
+mutants, took 2,122 seconds on 2026-11-18. The machine was four cores of an
+Intel Xeon at 2.10 GHz with 15 GB of memory, and another checkout's test
+suite was running beside it for part of that time. `pricing.ts` alone took
+230 seconds and `usage.ts` alone 110, with every test file run once for
+coverage in each. What the same run takes on a GitHub-hosted runner is read
+from the first run of the workflow after this change; it was not measured
+here, and the workflow's limit of 120 minutes is above every time measured.
 
 ## In CI
 
@@ -223,9 +281,9 @@ There are three honest outcomes:
 
 ### What is on record
 
-Of the 39 on record, as read on 2026-11-18. This is a reading, not a proof:
+Of the 62 on record, as read on 2026-11-18. This is a reading, not a proof:
 
-- **10 are changes that make no difference.** Six are shortcuts: a test for
+- **29 are changes that make no difference.** Six are shortcuts: a test for
   "is there anything to do" in front of code that does nothing when there is
   not (`segment.ts` 194, 196, 310), and the early exit from the fixed-point
   loop (`optimize.ts` 187). Forcing them changes the time and not the answer.
@@ -233,21 +291,38 @@ Of the 39 on record, as read on 2026-11-18. This is a reading, not a proof:
   (`billing.ts` 38, 39, 40): everything that reads the field asks whether it
   is undefined, and an absent field is. One lets a call with no web searches
   through to the arithmetic (`billing.ts` 56), where no searches cost nothing.
-- **13 guard an input that does not arrive.** A match of no length, where no
+  In the code that chooses a rate, nine are its memos, forced to build again
+  or not to keep what they built (`pricing.ts` 272, 274, 2928, 2930, 2933,
+  2941, 2962, 2979, 3009): the same row comes back, later. Six more are
+  shortcuts: a dated question that finds the current period asked again
+  without the date (`pricing.ts` 267), the price history asked about a row
+  that has none (3086), a service tier looked for when none was named or the
+  row has no table of them (3094 twice, 3096), and a geography other than
+  `us`, which finds no multiplier either way (3066). Three write bands or
+  ratios a row does not have as present and undefined (`pricing.ts` 2939,
+  2970, 2973), which is read as having none. And a call with no web searches
+  adds no unpriced searches whether or not it is counted (`usage.ts` 1324).
+- **15 guard an input that does not arrive.** A match of no length, where no
   pattern can produce one (`segment.ts` 288, 289, 293). More protected spans
   than there are masks, where the cap moving by one only matters on a
   collision (`optimize.ts` 27, 57). An unpriced model, turned away twice (`session-cost.ts` 119, 144). A
   percentile's index clamped to a bound it never passes (`session-cost.ts`
   109). A zero already handled a line earlier (`savings.ts` 140). An empty
-  replacement, which no entry has (`rules.ts` 137).
+  replacement, which no entry has (`rules.ts` 137). The price history of a
+  row that has none (`pricing.ts` 2960, twice): both callers ask whether it
+  has one first.
 - **3 are a cap nothing reaches.** Five passes to a fixed point
   (`optimize.ts` 141, 142). No prompt in the suite needs the fifth.
-- **13 are not settled.** The longest-phrase-first sorts (`rules.ts` 115,
+- **15 are not settled.** The longest-phrase-first sorts (`rules.ts` 115,
   210, 226), two lines of the rule about a thanks under a colon (`rules.ts`
   271, 278), one branch of keeping a capital (`rules.ts` 139), the 0.92
   similarity at which a block is a near-copy (`rules.ts` 422), a promotion
   that applies to one side of a comparison (`savings.ts` 63), and how the scan
-  resumes after a reservation (`segment.ts` 300). Each of these is either
+  resumes after a reservation (`segment.ts` 300). And which is the dearer
+  of two rates with the same input price and different output prices, when
+  a band cannot be decided: two bands (`pricing.ts` 3136), or a band and the
+  base (3144). The ceiling is the dearer candidate, and no document says
+  which of those is dearer. Each of these is either
   a missing test or a line that can be simpler. They are the work this record
   leaves.
 
@@ -261,12 +336,14 @@ gone.
 ## Adding a file
 
 Add its path to `TARGETS` in `scripts/mutate.mjs`, run it with `--only`, kill
-what is worth killing, and record a whole run. The pull request says what the
+what is worth killing, and record a whole run. For part of a file, add
+`{ file, functions }` instead, naming its top-level functions; `--list` says
+how many mutants that makes before anything is run. The pull request says what the
 first run found. A file is not added with its survivors unread.
 
 Until the record names the new file, `mutation.test.js` fails before any
 mutant is run, because it holds the record to `TARGETS`. That test file
 reaches none of the core's source, so the `--only` run can leave it out with
-`--without mutation.test.js`. The whole run cannot, and `billing.ts` was
-recorded by first giving it a row of zeros in the record and the table, which
-`--write` then replaced.
+`--without mutation.test.js`. The whole run cannot, and `billing.ts`,
+`pricing.ts` and `usage.ts` were recorded by first giving each a row of zeros
+in the record and the table, which `--write` then replaced.

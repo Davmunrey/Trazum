@@ -16,6 +16,8 @@
  * so `mutation.test.js` can hold each decision without running a mutant:
  *
  *   mutantsOf        which changes one built file admits, from its syntax tree
+ *   functionRanges   where the functions a target names lie, for part of a file
+ *   withinFunctions  the changes inside those functions, and no others
  *   isCovered        whether a test ran the code a change sits in
  *   sourcePosition   which line of TypeScript a place in the built file came from
  *   withIds          a name for each change that survives unrelated edits
@@ -244,6 +246,66 @@ export function mutantsOf(ast, text) {
 
   visit(ast, null, null, '<module>');
   return mutants.sort((a, b) => a.start - b.start || a.end - b.end || a.replacement.localeCompare(b.replacement));
+}
+
+/**
+ * Where each named function of a module lies, for a target that is part of a
+ * file.
+ *
+ * `pricing.ts` holds the catalogue's numbers and the code that chooses a rate
+ * from them, and `usage.ts` holds the log parser and the one function that
+ * multiplies a record's tokens by that rate. A target can be those functions
+ * alone. They are found among the module's own top-level declarations, written
+ * `function name`, `export function name` or `const name = () => ...`, and not
+ * by the name `mutantsOf` gives a mutant: that is the nearest named function,
+ * which inside `effectivePricing` can be a helper of another name, and
+ * elsewhere in `usage.ts` an object's method that is also called `add`.
+ *
+ * Each range is `{ name, start, end }`, in the order the names were given.
+ * **A name that is not found throws**, and so does one declared twice: a
+ * renamed function would otherwise leave its target with nothing in it, and
+ * an empty target scores nothing and fails nothing.
+ */
+export function functionRanges(ast, names) {
+  const declared = new Map();
+  const note = (name, node) => declared.set(name, [...(declared.get(name) ?? []), node]);
+  for (const statement of ast.body) {
+    const node = ['ExportNamedDeclaration', 'ExportDefaultDeclaration'].includes(statement.type) && statement.declaration
+      ? statement.declaration
+      : statement;
+    if (node.type === 'FunctionDeclaration' && node.id) note(node.id.name, node);
+    if (node.type === 'VariableDeclaration') {
+      for (const declarator of node.declarations) {
+        if (declarator.id.type === 'Identifier' && isFunction(declarator.init)) note(declarator.id.name, declarator);
+      }
+    }
+  }
+  return names.map((name) => {
+    const found = declared.get(name) ?? [];
+    if (found.length === 0) throw new Error(`no top-level function named ${name}: was it renamed?`);
+    if (found.length > 1) throw new Error(`${name} is declared ${found.length} times at the top level`);
+    return { name, start: found[0].start, end: found[0].end };
+  });
+}
+
+/**
+ * The mutants that sit wholly inside one of `ranges`. Throws when a range has
+ * none: a function listed
+ * for a target that contributes nothing to it is a selection that has gone
+ * wrong, or a list that should be shorter.
+ */
+export function withinFunctions(mutants, ranges) {
+  const chosen = [];
+  const counts = new Map(ranges.map((range) => [range.name, 0]));
+  for (const mutant of mutants) {
+    const range = ranges.find((candidate) => candidate.start <= mutant.start && mutant.end <= candidate.end);
+    if (range === undefined) continue;
+    counts.set(range.name, counts.get(range.name) + 1);
+    chosen.push(mutant);
+  }
+  const empty = [...counts].filter(([, count]) => count === 0).map(([name]) => name);
+  if (empty.length > 0) throw new Error(`nothing to mutate in ${empty.join(', ')}`);
+  return chosen;
 }
 
 /** `text` with one mutant in it. */
