@@ -104,7 +104,18 @@ describe('every tab a visitor can open has a flow that opens it', () => {
     for (const step of ["name: 'Docs'", '/docs/commands', 'getByRole(\'searchbox\'', '#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate']) {
       assert.ok(docsSource.includes(step), `the docs flow no longer does: ${step}`);
     }
-    for (const flow of FLOWS.filter((candidate) => candidate !== site && candidate !== docs)) {
+    /*
+      The models flow starts there too: the catalogue is a page of the site and
+      the way to it is the header's Models entry.
+    */
+    const models = FLOWS.find((flow) => flow.name.startsWith('models: '));
+    assert.ok(models, 'no flow follows the Models entry');
+    const modelsSource = models.run.toString();
+    assert.match(modelsSource, /^[\s\S]*?await open\('\/'\);/, 'the models flow does not start at /');
+    for (const step of ["name: 'Models'", "'Filter models'", 'data-state="retired"', 'sent']) {
+      assert.ok(modelsSource.includes(step), `the models flow no longer does: ${step}`);
+    }
+    for (const flow of FLOWS.filter((candidate) => candidate !== site && candidate !== docs && candidate !== models)) {
       for (const [, path] of flow.run.toString().matchAll(/open\('([^']*)'\)/g)) {
         assert.ok(path.startsWith('/app'), `"${flow.name}" opens ${path}, which is not the application`);
       }

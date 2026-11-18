@@ -308,7 +308,19 @@ export const FLOWS = [
       is(new URL(page.url()).hash, '#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate', 'the heading the result names');
       const heading = page.getByRole('heading', { level: 3, name: /^The CI gate: a budget is a ceiling, a baseline is a gate/ });
       await see(heading, 'the heading, on its page');
-      const top = await heading.evaluate((element) => Math.round(element.getBoundingClientRect().top));
+      /*
+        The page scrolls to the heading once it has arrived, which is after the
+        heading exists: the document streams in and the scroll follows it. So
+        the position is read until it is right or five seconds have passed. One
+        read straight away failed once in a run on a loaded machine, on
+        2026-11-18, with the page still at the top.
+      */
+      let top = Number.NaN;
+      for (let attempt = 0; attempt < 50; attempt += 1) {
+        top = await heading.evaluate((element) => Math.round(element.getBoundingClientRect().top));
+        if (top >= 0 && top < 400) break;
+        await page.waitForTimeout(100);
+      }
       is(top >= 0 && top < 400, true, 'whether the heading is scrolled into view, not left below the fold');
       is(await page.locator('[data-doc="commands"]').getAttribute('lang'), 'en', 'the language the document is marked in');
       is(
@@ -316,6 +328,42 @@ export const FLOWS = [
         'https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md',
         'where View on GitHub goes',
       );
+    },
+  },
+  {
+    name: 'models: from the landing, follow Models, filter by provider and by name, see a retired model drawn as retired, and send nothing',
+    covers: [],
+    async run({ page, open, see, gone, is }) {
+      await open('/');
+      await page.locator('[data-site-header]').getByRole('link', { name: 'Models', exact: true }).click();
+      await page.waitForURL((url) => url.pathname === '/models');
+      await page.locator('html[data-started="true"]').waitFor({ state: 'attached' });
+      await see(page.getByRole('heading', { level: 1, name: 'Models and prices' }), 'the catalogue page');
+      const rows = () => page.locator('[data-model]').count();
+      const all = await rows();
+      await see(page.getByRole('status').filter({ hasText: `Showing ${all} of ${all} models` }), 'the count of every model before a filter');
+      await see(page.getByRole('button', { name: new RegExp(`^All providers\\s*${all}$`) }), 'the same count on the filter for every provider');
+
+      // Nothing typed or clicked from here on may leave the page.
+      const sent = [];
+      page.on('request', (request) => sent.push(request.url()));
+      await page.getByRole('button', { name: /^DeepSeek/ }).click();
+      is(await page.locator('[data-provider-section]').count(), 1, 'the provider sections left after choosing one provider');
+      is(await page.locator('[data-model]').evaluateAll((rows) => rows.every((row) => row.getAttribute('data-provider') === 'deepseek')), true, 'whether every row left is that provider’s');
+      await page.getByRole('searchbox', { name: 'Filter models' }).fill('v4 pro');
+      await see(page.locator('[data-model="deepseek-v4-pro"]'), 'the model the words name');
+      await gone(page.locator('[data-model="deepseek-flash"]'), 'a model of the same provider the words do not name');
+      await page.getByRole('searchbox', { name: 'Filter models' }).fill('zzzz-no-such-model');
+      await see(page.locator('[data-no-match]'), 'the sentence for a filter nothing matches');
+      is(await page.getByRole('searchbox', { name: 'Filter models' }).evaluate(() => window.location.search + window.location.hash), '', 'what the filter wrote to the address');
+
+      // A retired model is drawn as retired, in a tab of its own and not by colour alone.
+      await page.getByRole('button', { name: /^All providers/ }).click();
+      await page.getByRole('searchbox', { name: 'Filter models' }).fill('gemini-2.5-pro');
+      const retired = page.locator('[data-model="gemini-2.5-pro"]');
+      await see(retired.locator('[data-state="retired"]'), 'the Retired tab on a model the provider refused');
+      is(await retired.getAttribute('data-retired'), '', 'whether the row is marked retired');
+      is(sent.join(' '), '', 'the requests the page made while it was filtered');
     },
   },
   {

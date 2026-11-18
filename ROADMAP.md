@@ -64,7 +64,7 @@ closed, not when somebody remembers this page. Live:
 [open to a first contribution](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
-**Ready to be picked up (13).**
+**Ready to be picked up (12).**
 
 | Issue | What | Area |
 | --- | --- | --- |
@@ -76,7 +76,6 @@ closed, not when somebody remembers this page. Live:
 | [#682](https://github.com/Davmunrey/Trazum/issues/682) | Review the Portuguese dictionary: 36 entries nobody who reads Portuguese has agreed to | core |
 | [#683](https://github.com/Davmunrey/Trazum/issues/683) | Review the Italian dictionary: 36 entries nobody who reads Italian has agreed to | core |
 | [#684](https://github.com/Davmunrey/Trazum/issues/684) | Review the Dutch dictionary: 30 entries nobody who reads Dutch has agreed to | core |
-| [#725](https://github.com/Davmunrey/Trazum/issues/725) | ROADMAP.md opens with what comes next, and the release history moves to its own file | - |
 | [#736](https://github.com/Davmunrey/Trazum/issues/736) | Models and prices, the roadmap and the changelog as pages of the site | web |
 | [#737](https://github.com/Davmunrey/Trazum/issues/737) | A brand page: the wordmark, the colours, the type and how to use them | web |
 | [#744](https://github.com/Davmunrey/Trazum/issues/744) | The landing tells the product as you scroll: a laptop, the CLI at work, and a lid that closes | web |

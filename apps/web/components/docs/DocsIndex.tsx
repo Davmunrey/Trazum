@@ -6,7 +6,8 @@ import { DOCS_COPY } from '../../lib/docs/copy';
 import { DOC_GROUPS, KEPT, docHref, docsOf, githubUrl } from '../../lib/docs/manifest';
 import type { Block } from '../../lib/docs/types';
 import type { MarketingLocale } from '../../lib/marketing-locales';
-import { DOCS_ON_GITHUB } from '../../lib/site';
+import { PAGE_BLURBS } from '../../lib/pages-copy';
+import { DOCS_ON_GITHUB, SITE_LINKS } from '../../lib/site';
 import { SiteFrame } from '../site/SiteFrame';
 import { DocBody } from './DocBody';
 import { DocsSearch } from './DocsSearch';
@@ -106,6 +107,33 @@ export function DocsIndex({
                 </div>
               </section>
             ))}
+
+            <section aria-labelledby="docs-also" className="border-t-2 border-foreground bg-layer">
+              <div className={`${WRAP} grid gap-6 py-10 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:gap-14 lg:py-14`}>
+                <div>
+                  <h2 id="docs-also" className="font-display text-[clamp(28px,3.2vw,44px)] leading-[1.06] font-bold tracking-[-0.035em]">
+                    {PAGE_BLURBS[locale].alsoTitle}
+                  </h2>
+                  <p className="mt-3 max-w-[34ch] text-[15px] leading-relaxed text-muted-foreground">{PAGE_BLURBS[locale].alsoLede}</p>
+                </div>
+                <ul className="border-t-2 border-foreground">
+                  {(['models', 'roadmap', 'changelog'] as const).map((id) => (
+                    <li key={id} className="border-b border-rule">
+                      <a
+                        href={SITE_LINKS[id].href}
+                        data-site-page={id}
+                        className={`group block px-1 py-4 transition-colors hover:bg-layer-hover sm:px-3 ${FOCUS} focus-visible:-outline-offset-2`}
+                      >
+                        <span className="block font-display text-[21px] leading-tight font-bold tracking-[-0.02em] underline-offset-4 group-hover:underline">
+                          {site.links[id]}
+                        </span>
+                        <span className="mt-1.5 block max-w-[78ch] text-[14.5px] leading-relaxed text-muted-foreground">{PAGE_BLURBS[locale][id]}</span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
 
             <section aria-labelledby="docs-kept" className="border-t-2 border-foreground">
               <div className={`${WRAP} grid gap-6 py-10 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:gap-14 lg:py-14`}>

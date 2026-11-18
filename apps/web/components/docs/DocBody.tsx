@@ -63,6 +63,12 @@ function inline(node: Inline, key: number): ReactNode {
           <Inlines nodes={node.c} />
         </strong>
       );
+    case 'del':
+      return (
+        <del key={key}>
+          <Inlines nodes={node.c} />
+        </del>
+      );
     case 'sub':
       return (
         <sub key={key}>

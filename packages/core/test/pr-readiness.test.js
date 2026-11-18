@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +14,7 @@ import {
   ACCEPTED,
   addedLines,
   changelogChanges,
+  fileAt,
   linkedIssues,
   readIssues,
   readiness,
@@ -287,6 +289,90 @@ describe('the script itself, with a stand-in for GitHub', () => {
     const labelled = await run({ status: 500 }, { PR_LABELS: '["no-issue"]' });
     assert.deepEqual(labelled.asked, []);
     assert.doesNotMatch(labelled.out, /could not be read/);
+  });
+});
+
+describe('a changelog of any size is read, and one that cannot be read is not judged', () => {
+  /**
+   * `CHANGELOG.md` passed 1 MiB on 2026-11-18. The script read it through
+   * `execFileSync` with Node's default limit on a child's output, which is
+   * 1 MiB, and swallowed the failure: a pull request that added twenty-two
+   * lines under `Unreleased` was told to add one, and so would every pull
+   * request after it have been (#754). So the script runs here on a real
+   * repository whose changelog is larger than that.
+   */
+  const big = (extra = '') =>
+    `# Changelog\n\n## Unreleased\n\n${extra}- **Something earlier.** It happened.\n\n## 1.0.0\n\n${'- A line of a released version, long enough to count for something.\n'.repeat(18_000)}`;
+
+  function repository(before, after) {
+    const dir = mkdtempSync(join(tmpdir(), 'readiness-'));
+    const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', '-c', 'commit.gpgsign=false', ...args], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    git('init', '-q');
+    writeFileSync(join(dir, 'README.md'), 'A repository.\n');
+    if (before !== null) writeFileSync(join(dir, 'CHANGELOG.md'), before);
+    git('add', '-A');
+    git('commit', '-q', '--no-verify', '-m', 'base');
+    const base = git('rev-parse', 'HEAD');
+    writeFileSync(join(dir, 'CHANGELOG.md'), after);
+    git('add', '-A');
+    git('commit', '-q', '--no-verify', '-m', 'head');
+    return { dir, base, head: git('rev-parse', 'HEAD') };
+  }
+
+  async function judge({ dir, base, head }) {
+    const child = spawn(process.execPath, [join(ROOT, 'scripts/pr-readiness.mjs')], {
+      cwd: dir,
+      env: { ...SPAWN_ENV, PR_BODY: 'A change.', PR_AUTHOR: 'somebody', PR_LABELS: '["no-issue"]', BASE_SHA: base, HEAD_SHA: head },
+    });
+    let out = '';
+    child.stdout.on('data', (chunk) => { out += chunk; });
+    child.stderr.on('data', (chunk) => { out += chunk; });
+    const status = await new Promise((resolve) => child.on('close', resolve));
+    return { status, out };
+  }
+
+  it('finds the line a pull request added under Unreleased in a changelog over 1 MiB', async () => {
+    assert.ok(Buffer.byteLength(big()) > 1024 * 1024 + 100_000, 'the changelog made for this is not over the limit');
+    const made = repository(big(), big('- **Something new.** It was added (#1).\n'));
+    try {
+      const { status, out } = await judge(made);
+      assert.equal(status, 0, out);
+      assert.match(out, /^Ready:/m);
+    } finally {
+      rmSync(made.dir, { recursive: true, force: true });
+    }
+  });
+
+  it('still refuses one that adds nothing there, in the same changelog', async () => {
+    const made = repository(big(), big().replace('## 1.0.0\n\n', '## 1.0.0\n\n- A line slipped into a released version.\n'));
+    try {
+      const { status, out } = await judge(made);
+      assert.equal(status, 1, out);
+      assert.match(out, /line\(s\) added inside `## 1\.0\.0`/);
+    } finally {
+      rmSync(made.dir, { recursive: true, force: true });
+    }
+  });
+
+  it('reads a changelog the base did not have as an empty one', async () => {
+    const made = repository(null, '# Changelog\n\n## Unreleased\n\n- **The first line.** It was added (#1).\n');
+    try {
+      const { status, out } = await judge(made);
+      assert.equal(status, 0, out);
+    } finally {
+      rmSync(made.dir, { recursive: true, force: true });
+    }
+  });
+
+  it('tells a file the commit does not have from a file it could not read', () => {
+    const missing = () => { throw Object.assign(new Error('Command failed'), { status: 128, stderr: "fatal: path 'CHANGELOG.md' does not exist in 'abc1234'\n" }); };
+    assert.equal(fileAt('abc1234', 'CHANGELOG.md', missing), '');
+    const onDisk = () => { throw Object.assign(new Error('Command failed'), { status: 128, stderr: "fatal: path 'CHANGELOG.md' exists on disk, but not in 'abc1234'\n" }); };
+    assert.equal(fileAt('abc1234', 'CHANGELOG.md', onDisk), '');
+    const tooLarge = () => { throw Object.assign(new Error('spawnSync git ENOBUFS'), { code: 'ENOBUFS', stderr: '' }); };
+    assert.throws(() => fileAt('abc1234', 'CHANGELOG.md', tooLarge), /CHANGELOG\.md could not be read at abc1234 \(ENOBUFS\); refusing to judge without it\./);
+    const corrupt = () => { throw Object.assign(new Error('Command failed'), { status: 128, stderr: 'fatal: bad object abc1234\n' }); };
+    assert.throws(() => fileAt('abc1234', 'CHANGELOG.md', corrupt), /could not be read at abc1234 \(fatal: bad object abc1234\)/);
   });
 });
 

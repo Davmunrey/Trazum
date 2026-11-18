@@ -182,14 +182,27 @@ export function readiness({ body, author, labels = [], issues = [], changelogBef
 }
 
 function git(...args) {
-  return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  // Node stops reading a child's output at 1 MiB unless told otherwise, and
+  // `CHANGELOG.md` is larger than that (#754).
+  return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 * 1024 * 1024 });
 }
 
-function fileAt(sha, path) {
+/**
+ * A file as a commit has it, or `''` when that commit does not have the file.
+ *
+ * Those are the two answers. Anything else is thrown, and the run ends with
+ * the code for "could not judge". It used to return `''` for every failure:
+ * when the changelog passed 1 MiB the read failed, both sides came back
+ * empty, and a pull request with twenty-two lines under `Unreleased` was told
+ * to add one (#754). What could not be read is not the author's mistake.
+ */
+export function fileAt(sha, path, run = git) {
   try {
-    return git('show', `${sha}:${path}`);
-  } catch {
-    return '';
+    return run('show', `${sha}:${path}`);
+  } catch (error) {
+    const said = String(error?.stderr ?? '');
+    if (/does not exist in '|exists on disk, but not in '/.test(said)) return '';
+    throw new Error(`${path} could not be read at ${String(sha).slice(0, 12)} (${error?.code ?? said.trim().split('\n')[0] ?? 'git show failed'}); refusing to judge without it.`);
   }
 }
 

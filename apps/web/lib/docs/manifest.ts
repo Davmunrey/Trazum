@@ -140,7 +140,10 @@ export type NotPublishedKind =
  * - `policy`: files GitHub itself reads by name (security reporting, support,
  *   conduct). The site links them where they are read.
  * - `history`: the changelog, the releases, the roadmap and the release
- *   history, which are pages of their own to come or records read on GitHub.
+ *   history. The changelog and the roadmap are pages of the site of their own
+ *   (`SITE_PAGES`, `/changelog` and `/roadmap`), built from the same files and
+ *   not documents of `/docs`; the releases and the release history stay on
+ *   GitHub.
  * - `index`: `docs/README.md`, which the site's `/docs` replaces.
  */
 export const NOT_PUBLISHED: readonly { readonly path: string; readonly kind: NotPublishedKind }[] = [
@@ -162,17 +165,18 @@ export const NOT_PUBLISHED_FAMILIES: readonly { readonly pattern: RegExp; readon
   { pattern: /^docs\/compliance\/[^/]+\.md$/, kind: 'compliance' },
 ];
 
-export type KeptId =
-  | 'plans'
-  | 'compliance'
-  | 'audit'
-  | 'cla'
-  | 'security'
-  | 'support'
-  | 'conduct'
-  | 'changelog'
-  | 'releases'
-  | 'roadmap';
+export type KeptId = 'plans' | 'compliance' | 'audit' | 'cla' | 'security' | 'support' | 'conduct' | 'releases';
+
+/**
+ * Files of the repository that are pages of the site of their own and not
+ * documents of `/docs`: a link to one of them, without an anchor, leads to
+ * the page. With an anchor it stays on GitHub, because the page draws
+ * releases and sections, not every heading the file has.
+ */
+export const SITE_PAGES: readonly { readonly path: string; readonly href: string }[] = [
+  { path: 'CHANGELOG.md', href: '/changelog' },
+  { path: 'ROADMAP.md', href: '/roadmap' },
+];
 
 /**
  * Where `/docs` sends a reader for each kept-out record, on GitHub. A path,
@@ -188,9 +192,7 @@ export const KEPT: readonly { readonly id: KeptId; readonly path: string; readon
   { id: 'security', path: 'SECURITY.md' },
   { id: 'support', path: 'SUPPORT.md' },
   { id: 'conduct', path: 'CODE_OF_CONDUCT.md' },
-  { id: 'changelog', path: 'CHANGELOG.md' },
   { id: 'releases', path: 'RELEASES.md' },
-  { id: 'roadmap', path: 'ROADMAP.md' },
 ];
 
 /** The reason a path is left out, or `null` when it is not left out. */

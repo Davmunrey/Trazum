@@ -17,10 +17,13 @@ action
 !README.md
 !CONTRIBUTING.md
 !VERSIONING.md
+!CHANGELOG.md
+!ROADMAP.md
 !docs
 .env*
 .trazum
 .gitea
 .github
+!.github/milestones.json
 .claude
 .agents
