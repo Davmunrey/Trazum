@@ -155,7 +155,13 @@ const SPELLED = [
  * history, so they are out — by name, so a new page is in by default rather
  * than out by oversight.
  */
-const DATED = new Set(['CHANGELOG.md', 'RELEASES.md', 'ROADMAP.md']);
+/**
+ * `wiki/Roadmap.md` is `ROADMAP.md`'s `Next` section copied verbatim by
+ * `scripts/build-wiki.mjs`, and that section keeps the record of what each
+ * plan said when it was written ("reaching 51 commands at that point"). The
+ * copy is as dated as the file it is a copy of.
+ */
+const DATED = new Set(['CHANGELOG.md', 'RELEASES.md', 'ROADMAP.md', 'wiki/Roadmap.md']);
 
 /**
  * A line that names the release it is about is a record of that release.

@@ -433,6 +433,16 @@ gh issue list --state open --limit 200 --json number,title,labels > issues.json
 node scripts/triage.mjs roadmap issues.json
 ```
 
+- **An accepted issue is put in a milestone.** `.github/milestones.json` is the
+  ordered plan, first is next, and an issue labelled `accepted` or `blocked`
+  is listed under one of its milestones. The file allows no date: the order is
+  the commitment. `npm run milestones` compares it with GitHub's milestones and
+  exits 1 on a difference, among them an accepted issue the file places
+  nowhere; the weekly `Milestones` run fails on the same. The workflow applies
+  the file to GitHub when a change to it merges, and `ROADMAP.md`'s ordered
+  list is drawn from it by `node scripts/milestones.mjs roadmap`, which
+  `milestones.test.js` holds to the file.
+
 The other labels say what kind of work an issue or pull request is: `bug`,
 `correctness`, `pricing`, `enhancement`, `documentation`, `dependencies` (what
 Dependabot opens) and `ci`.

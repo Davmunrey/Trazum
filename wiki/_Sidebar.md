@@ -11,3 +11,4 @@
 - [Where the money actually went](https://github.com/Davmunrey/Trazum/wiki/Where-The-Money-Went)
 - [Limitations, stated plainly](https://github.com/Davmunrey/Trazum/wiki/Limitations)
 - [Analytics and privacy](https://github.com/Davmunrey/Trazum/wiki/Privacy)
+- [What comes next](https://github.com/Davmunrey/Trazum/wiki/Roadmap)

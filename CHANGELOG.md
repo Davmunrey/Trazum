@@ -13,6 +13,23 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The roadmap's order is held in a file, and GitHub's milestones are made to
+  match it.** `.github/milestones.json` is an ordered array, first is next:
+  each entry has a title, a description and the issues that belong to it, and
+  none has a date, because the order is the commitment and the calendar is not.
+  `npm run milestones` reads GitHub's milestones and open issues through `gh`
+  and prints each difference as a sentence, exiting 1 on one: a milestone the
+  file has and GitHub lacks, a different description, an issue in another
+  milestone or in none, an `accepted` or `blocked` issue the file places
+  nowhere, an issue in two milestones of the file, and a due date. A milestone
+  only on GitHub is printed and left alone. `apply` says what it would change;
+  `apply --yes` creates, corrects and places, never deletes, then reads GitHub
+  again and judges that reading. The `Milestones` workflow applies the file
+  when a change to it merges, from the one job that holds `issues: write`,
+  reports on a pull request, and fails every Monday when GitHub has drifted.
+  `ROADMAP.md` carries the ordered list, each title linking its live milestone,
+  drawn from the file by `node scripts/milestones.mjs roadmap`, and the wiki
+  gains a `Roadmap` page generated from its `Next` section (#720).
 - **Codecov groups the coverage by package.** `codecov.yml` now defines one
   component for each package the coverage run measures, `core`, `cli`, `mcp`
   and `tokenizer-openai`, each by the path of its sources:

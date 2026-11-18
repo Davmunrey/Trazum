@@ -1,0 +1,42 @@
+[
+  {
+    "title": "2.7.13: repeated-task evaluation",
+    "description": "Validate the instruction policy over repeated experiments on accepted tasks before it becomes a default: cost per accepted task, quality, retries and controller overhead, measured together.",
+    "issues": [638]
+  },
+  {
+    "title": "A repository a stranger can contribute to",
+    "description": "What a visitor and a contributor need that is not the product: a roadmap that opens with what comes next, a wiki that publishes itself, documents that agree with each other, and Discussions with a form for each kind of question.",
+    "issues": [725, 726, 727, 732]
+  },
+  {
+    "title": "Tests that would notice a wrong price",
+    "description": "Line coverage says the code that prices a call runs under test. Mutation testing says whether a test would notice it pricing a call wrongly, and today it reaches five files of the core. Next: the code that turns a usage record into dollars.",
+    "issues": [731]
+  },
+  {
+    "title": "Every agent's sessions",
+    "description": "The bill reads what each coding agent already keeps on disk. Next: OpenCode's SQLite sessions, and a reader for Cursor, GitHub Copilot CLI, Cline and Amp as soon as somebody supplies one real session of each.",
+    "issues": [645, 648, 728, 729, 730]
+  },
+  {
+    "title": "Every provider, counted and priced exactly",
+    "description": "The estimator's error measured against each provider's own counter, a tokenizer package where the error is large, retired models marked on the provider's own evidence, and the gateway in front of the providers it does not front yet.",
+    "issues": [641, 642, 643, 647]
+  },
+  {
+    "title": "Seven dictionaries, each read by a speaker",
+    "description": "Five of the seven trimming dictionaries were never read by somebody who reads the language. Each needs a reviewer; docs/language-maintainer.md says what the role is.",
+    "issues": [680, 681, 682, 683, 684]
+  },
+  {
+    "title": "Where people meet Trazum",
+    "description": "The editor extension on the VS Code Marketplace, the playground as a Hugging Face Space, and the hosted web app measured for how fast it loads, off unless its operator asks.",
+    "issues": [640, 646, 723]
+  },
+  {
+    "title": "The optional model pass",
+    "description": "Choose and test a model-side optimiser candidate, behind the opt-in layer, with the deterministic core unchanged.",
+    "issues": [644]
+  }
+]

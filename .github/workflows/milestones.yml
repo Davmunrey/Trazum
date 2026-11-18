@@ -1,0 +1,127 @@
+name: Milestones
+
+# .github/milestones.json is the ordered plan, and GitHub's milestones are a
+# copy of it. This makes the copy match: every milestone in the file is
+# created or has its description corrected, and every issue the file lists is
+# put in its milestone. A milestone that is only on GitHub is left alone,
+# because deleting it would take its issues out of it, and an issue is never
+# taken out of a milestone the file does not mention. What is compared, and
+# what is left alone, is in scripts/milestones.mjs and is held by
+# milestones.test.js; this file only says when, and with which permission.
+#
+# The write permission exists in one job and nowhere else. A pull request that
+# changes the file differs from GitHub by design until it merges, so it
+# reports and does not fail. The weekly run fails when GitHub has drifted from
+# the file, and does not write: a failure there lands on main, where GitHub
+# tells the owner.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/milestones.json
+      - scripts/milestones.mjs
+      - .github/workflows/milestones.yml
+  pull_request:
+    paths:
+      - .github/milestones.json
+      - scripts/milestones.mjs
+      - .github/workflows/milestones.yml
+  schedule:
+    # Mondays at 09:31. The other weekly runs are at 04:17, 06:41, 07:23, 07:53
+    # and 08:47, and none of them uses minute 31, so this one arrives on its
+    # own and not in the same email as a failure from another.
+    - cron: '31 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One at a time, and a run in progress finishes: two writes to the same
+# milestones must not interleave, and a cancelled run could leave one
+# half made.
+concurrency:
+  group: milestones-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: GitHub's milestones are made to match the file
+    # Only from main: a manual run on another branch would write that
+    # branch's file to the repository's milestones.
+    if: >-
+      github.event_name == 'push'
+      || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/milestones.mjs
+            scripts/ruleset.mjs
+            .github/milestones.json
+            package.json
+          sparse-checkout-cone-mode: false
+
+      - name: Create or correct every milestone in the file and place its issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node scripts/milestones.mjs apply --yes
+
+  report:
+    name: What a pull request changes in the milestones
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/milestones.mjs
+            scripts/ruleset.mjs
+            .github/milestones.json
+            package.json
+          sparse-checkout-cone-mode: false
+
+      - name: Print the differences between the file and GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node scripts/milestones.mjs --report
+
+  compare:
+    name: GitHub has the milestones the file states
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/milestones.mjs
+            scripts/ruleset.mjs
+            .github/milestones.json
+            package.json
+          sparse-checkout-cone-mode: false
+
+      # A scheduled failure is a milestone changed by hand, an issue accepted
+      # and not planned, or a file that merged and was never applied.
+      - name: Compare GitHub's milestones with the file
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: node scripts/milestones.mjs
