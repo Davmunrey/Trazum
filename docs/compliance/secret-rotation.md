@@ -98,19 +98,21 @@ this repository made.
 
 ### `CODECOV_TOKEN`
 
-A repository secret, read only by the upload step of
+A repository secret, read by two steps and no other: the upload step of
 `.github/workflows/coverage.yml`, which hands it to Codecov's uploader through
-the environment. It has to be a repository secret and not an environment's:
-the job names no environment, and a job reads an environment's secrets only
-when it does. It is Codecov's upload token: what it authorises is sending a
-coverage report. Nothing in this repository gates on what Codecov says, both
-of its statuses being informational, so the worst a leaked one does here is
-put a false figure on the coverage page.
+the environment, and the last step of `.github/workflows/bundle.yml`, where
+`scripts/bundle-report.mjs` reads it from the environment by name. It has to
+be a repository secret and not an environment's: neither job names an
+environment, and a job reads an environment's secrets only when it does. It is
+Codecov's upload token: what it authorises is sending a coverage report, a
+test results file or a bundle report. Nothing in this repository gates on what
+Codecov says, every one of its statuses being informational, so the worst a
+leaked one does here is put false figures on Codecov's pages.
 
 1. In Codecov, open the repository's or the account's settings and regenerate
    the upload token.
 2. Replace the `CODECOV_TOKEN` repository secret with the new value.
-3. Push to `main`, or re-run the `Coverage` workflow there.
+3. Push to `main`, or re-run the `Coverage` and `Bundle` workflows there.
 
 Check it: the upload step's log says whether a token was set, never the
 token, and on `main` the step fails when Codecov refuses an upload. On a pull

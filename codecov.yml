@@ -36,3 +36,10 @@ ignore:
   - "wiki/**"
   - "plugin/**"
   - ".claude/**"
+
+# The web app's built files, sent by the Bundle workflow. Its status reports
+# and cannot fail, like the two above: growth of five per cent or more is
+# marked as a warning in the status, and that is all it does.
+bundle_analysis:
+  warning_threshold: "5%"
+  status: "informational"

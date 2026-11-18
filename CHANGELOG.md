@@ -13,6 +13,28 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Test results and the web app's bundle size go to Codecov.** Two things
+  Codecov offers were left unconfigured on purpose when coverage was set up,
+  and the owner asked for both. Test analytics: the coverage run now also
+  writes each package's results as `coverage/<package>.junit.xml`, which
+  Node's runner produces itself, and the `Coverage` workflow uploads them
+  with the uploader it already pins and checks. It answers what the required
+  job cannot: which test fails some of the time, as one in the core did on
+  two of five runs on 2026-11-18. Bundle analysis: a new `Bundle` workflow
+  builds the web app and `scripts/bundle-report.mjs` sends the size of
+  everything under `apps/web/.next/static`. Measured that day: 22 files,
+  1,851,354 bytes, 552,234 compressed. Codecov's Next.js plugin is for
+  webpack and the web app builds with Turbopack, so the standalone analyzer
+  is used and nothing is added to the web app's build; it is installed in CI
+  outside the workspace at one exact version with install scripts off, the
+  script refuses any other version, and its telemetry is switched off.
+  Neither is a required check, both statuses are informational, a report
+  Codecov does not take is a warning on a pull request and a failure only on
+  `main`, and the token is read from the environment by name. The build
+  names chunks by a hash of their contents, so the total is the figure to
+  read and the per-file difference is not. `docs/coverage.md` says what is
+  sent in each case: test names, durations and failure messages; file names
+  and sizes. No source (#714).
 - **The ruleset GitHub enforces is compared with the one in the repository.**
   `.github/rulesets/main-branch.json` is the branch policy, and GitHub
   enforces a copy an admin puts there. Nothing read the copy, and on

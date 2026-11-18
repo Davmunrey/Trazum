@@ -38,6 +38,11 @@
  * slower clock, and nothing left behind to say which (#712). The runner's
  * own account of each run is kept beside the report, as
  * `coverage/<package>.tap`.
+ *
+ * The same run also writes `coverage/<package>.junit.xml`: each test's name,
+ * how long it took and, when it failed, why. The workflow sends those to
+ * Codecov's test analytics, which is what tells a test that fails now and
+ * then from one that fails (#714). Nothing reads the file here.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -75,6 +80,11 @@ export function tapOf(out) {
   return out.replace(/\.lcov$/, '.tap');
 }
 
+/** Where the test results are written for Codecov's test analytics. */
+export function junitOf(out) {
+  return out.replace(/\.lcov$/, '.junit.xml');
+}
+
 /** The arguments Node is given for one suite, with the report at `out`. */
 export function nodeArgs(suite, out) {
   return [
@@ -86,12 +96,20 @@ export function nodeArgs(suite, out) {
     "--test-coverage-exclude=**/test/**",
     "--test-coverage-exclude=**/test-utils/**",
     "--test-coverage-exclude=**/scripts/**",
+    // Each reporter listens for the end of the run, and with three of them and
+    // coverage Node counts eleven listeners where it warns at ten. Measured
+    // on Node 22.23: the warning is about that count and nothing else, and
+    // it would otherwise be the first line of every run's output.
+    '--disable-warning=MaxListenersExceededWarning',
     '--test-reporter=lcov',
     `--test-reporter-destination=${out}`,
     // A second reporter, paired with its own destination in the order given:
     // what passed and what failed, which the lcov report does not carry.
     '--test-reporter=tap',
     `--test-reporter-destination=${tapOf(out)}`,
+    // And a third, in the one format Codecov's test analytics reads.
+    '--test-reporter=junit',
+    `--test-reporter-destination=${junitOf(out)}`,
     suite.tests,
   ];
 }

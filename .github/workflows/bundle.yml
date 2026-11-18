@@ -1,0 +1,79 @@
+name: Bundle
+
+# How much a visitor's browser can be made to download: the web app's built
+# files, measured by scripts/bundle-report.mjs and sent to Codecov's bundle
+# analysis. docs/coverage.md says what the figure is and what it is not.
+#
+# Its own workflow and not a required check, for the reason the Coverage
+# workflow gives: it measures, and an outage at somebody else's service must
+# never stand between a pull request and `main`. The required job builds the
+# web app too, and is the judge of whether it builds. An upload that fails
+# here on a pull request leaves a warning; on `main` it fails the job, since
+# that is where the record is kept and nobody's merge is waiting on it.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request makes the older measurement useless.
+concurrency:
+  group: bundle-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    name: Web bundle, reported
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      # The analyzer, at one exact version. It is installed below outside the
+      # workspace with install scripts off, the way `playwright-core` is in
+      # ci.yml, so no package depends on it and the lockfile does not change.
+      # scripts/bundle-report.mjs refuses any other version.
+      ANALYZER_VERSION: 2.0.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build
+        run: npm run build
+
+      - name: Build the web app
+        run: npm run build:web
+
+      - name: Install the analyzer, pinned, outside the workspace
+        run: npm install --prefix "$RUNNER_TEMP/analyzer" --no-save --ignore-scripts --no-audit --no-fund "@codecov/bundle-analyzer@${ANALYZER_VERSION}"
+
+      # The token is a repository secret and reaches the script through the
+      # environment, where the script reads it by name; it is never on a
+      # command line. A pull request from a fork has none, and Codecov takes a
+      # bundle report without one from a fork.
+      - name: Measure the bundle and send it to Codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          refused=0
+          node scripts/bundle-report.mjs --analyzer "$RUNNER_TEMP/analyzer/node_modules/@codecov/bundle-analyzer" || refused=1
+          if [ "$refused" = "1" ] && [ "$EVENT" = "push" ]; then
+            echo "::error::The bundle report for main was not taken. The log above says why."
+            exit 1
+          fi
+          if [ "$refused" = "1" ]; then
+            echo "::warning::The bundle report was not taken, so nothing is recorded on Codecov for this pull request."
+          fi

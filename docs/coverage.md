@@ -5,6 +5,10 @@ measures it, the `Coverage` workflow sends it to
 [Codecov](https://app.codecov.io/gh/Davmunrey/Trazum) on every pull request
 and on `main`, and Codecov shows it line by line.
 
+Two more things go to Codecov from the same place, each with a section
+below: the [test results](#test-results) of that run, and the size of the
+[web app's bundle](#the-web-apps-bundle).
+
 It answers the cheap first question, of which
 [mutation testing](mutation-testing.md) is the expensive second one. Coverage
 says a line was reached by a test. Mutation testing says whether the test
@@ -165,14 +169,71 @@ first run of this workflow, from a branch of this repository with no token,
 was refused with "Token required because branch is protected". The job's log
 says whether a token was set, and never the token.
 
-## What Codecov is not used for
+## Test results
 
-Codecov also offers bundle analysis and test analytics. Neither is set up:
+The same run that counts lines also writes each package's test results, as
+`coverage/<package>.junit.xml`, and the workflow sends them to Codecov's test
+analytics with the same pinned uploader. Node's test runner writes the format
+itself, so nothing is installed for it.
 
-- **Bundle analysis** needs a plugin in the web app's build, which is a
-  dependency for a figure nobody has asked for yet.
-- **Test analytics** reports slow and flaky tests from a JUnit file. The
-  repository's time-sensitive tests are few and named
-  ([mutation-testing.md](mutation-testing.md) lists how they are handled), and
-  a second service reading every test's name and duration is not worth that
-  yet.
+It is for one question the required job cannot answer: which test fails *some
+of the time*. On 2026-11-18 two of five coverage runs on a runner had a
+failing test in the core that the required job passed on the same commits
+(#712). One run says a test failed; only a record across runs says it fails
+one time in three, and that is what Codecov keeps.
+
+What is sent: each test's name, how long it took, whether it passed, and for
+a failure its message and stack. The file also carries the runner's host
+name, which Node writes into it. No source, and nothing a test read or wrote.
+
+A test that fails here still does not fail the job.
+
+## The web app's bundle
+
+The `Bundle` workflow builds the web app and sends the size of what it built
+to Codecov's bundle analysis, on every pull request and on `main`.
+
+```bash
+npm run build && npm run build:web
+DIR="$(mktemp -d)"
+npm install --prefix "$DIR" --no-save --ignore-scripts @codecov/bundle-analyzer@2.0.1
+node scripts/bundle-report.mjs --analyzer "$DIR/node_modules/@codecov/bundle-analyzer" --dry-run
+```
+
+Measured on 2026-11-18, with `--dry-run`, which sends nothing:
+
+```text
+trazum-web: 22 files, 1807.9 kB, 539.2 kB compressed  (1,851,354 and 552,234 bytes)
+```
+
+So it is not read as more than it is:
+
+- **It is everything under `apps/web/.next/static`**: the scripts, the styles,
+  the fonts and the icons a browser can be served. It is not what one page
+  loads. No visitor downloads every chunk.
+- **Read the total, not the per-file difference.** The build names each chunk
+  by a hash of its contents, so between two commits Codecov sees one file gone
+  and another arrive where a person would see one file that changed.
+- **There is no budget.** The status Codecov posts is informational, and
+  growth of five per cent or more is marked as a warning in it. Nothing fails.
+- **It is not Codecov's Next.js plugin.** That plugin is for webpack and the
+  web app builds with Turbopack. The standalone analyzer walks the built
+  directory, so nothing is added to the web app's build. It is installed in
+  CI outside the workspace, at one exact version, with install scripts off;
+  no package depends on it and the lockfile does not change. The script
+  refuses any other version, and turns the analyzer's own telemetry off.
+
+What is sent: file names, sizes and compressed sizes, with the commit and the
+branch. No source.
+
+Like the coverage upload, a report Codecov does not take leaves a warning on
+a pull request and fails the job on `main`, and the token is read from the
+environment by name.
+
+## What needs Codecov's paid plan
+
+Codecov's settings page lists project coverage, flags and components as
+available with its Pro plan. None is relied on. The uploads are still flagged
+with the package's name, which costs nothing and is what Codecov would group
+by; whether the figures by flag are shown depends on the plan, and the
+figures by package are in every run's log either way.
