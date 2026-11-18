@@ -23,6 +23,7 @@
  *   againstBaseline  which survivors are new, and which recorded ones are gone
  *   changedLines     the lines a diff touches, for a run limited to them
  *   scoreTable       the record as the table the documentation prints
+ *   failureSummary   what a failed test file said, short enough to read in a log
  *
  * **What is mutated is the built JavaScript**, not the TypeScript. The tests
  * import `dist`, the coverage V8 reports is in `dist`'s offsets, and a type is
@@ -483,4 +484,33 @@ export function withScoreTable(markdown, table) {
     throw new Error('docs/mutation-testing.md has lost the markers the score table is written between');
   }
   return markdown.slice(0, start) + table + markdown.slice(end + TABLE_END.length);
+}
+
+/**
+ * What a failed test file said, short enough to read in a CI log.
+ *
+ * The first whole run on a runner printed the names of four test files that
+ * failed and nothing else, and the cause of one of them stayed a guess
+ * (#698). This keeps each `not ok` line with the first `error:` under it, up
+ * to `limit` failures, and falls back to the end of the output for a file
+ * that died without getting as far as a test.
+ */
+export function failureSummary(output, limit = 8) {
+  const lines = output.split('\n');
+  const found = [];
+  lines.forEach((line, index) => {
+    if (!/^\s*not ok \d+ - /.test(line)) return;
+    const next = lines.slice(index + 1, index + 12).find((candidate) => /^\s*error: /.test(candidate));
+    // A suite's own line only repeats that something under it failed.
+    if (next && /error: '?\d+ subtests? failed/.test(next)) return;
+    const detail = next && !/error: \|-?\s*$/.test(next) ? next.trim() : (lines[index + 8] ?? '').trim();
+    found.push(`  ${line.trim()}${detail ? `\n      ${detail.slice(0, 300)}` : ''}`);
+  });
+  if (found.length === 0) {
+    const tail = lines.filter((line) => line.trim() !== '').slice(-12);
+    return tail.length === 0 ? '  (it printed nothing)' : tail.map((line) => `  ${line.slice(0, 300)}`).join('\n');
+  }
+  const shown = found.slice(0, limit);
+  if (found.length > limit) shown.push(`  and ${found.length - limit} more`);
+  return shown.join('\n');
 }

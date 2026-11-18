@@ -212,7 +212,18 @@ describe('text inside quotation marks is not prose to shorten', () => {
 });
 
 describe('none of it costs time on hostile input', () => {
-  const within = (label, text, ms = 1500) => {
+  /**
+   * A cliff detector, not a benchmark, with the budget `security.test.js`
+   * gives the same kind of test.
+   *
+   * It was 1,500 ms, which is a benchmark: these inputs are heavy without
+   * being hostile to the engine, and the slowest takes 795 ms on an idle
+   * four-core machine. On a CI runner one of them took 1,697 ms and failed a
+   * pull request that had not touched this code (#699). The fault this guards
+   * against took 47 seconds. Five seconds is three times what the slowest
+   * honest case has been seen to take, and nine times under what it catches.
+   */
+  const within = (label, text, ms = 5000) => {
     const started = performance.now();
     optimize(text, { level: 'aggressive' });
     const took = performance.now() - started;

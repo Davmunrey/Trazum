@@ -72,6 +72,30 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The whole mutation run can start on a runner, and says why when it
+  cannot.** Dispatched on `main` after #695, the `Mutation testing` workflow
+  stopped in 46 seconds: four of the core's test files failed before a single
+  mutant. The workflow built only the core and checked out one commit;
+  `own-gate.test.js` and `security.test.js` need the CLI built, and
+  `changelog-coverage.test.js` needs the tags. It builds everything and
+  fetches the history now, as CI's test job does. The fourth,
+  `courtesy.test.js`, needs neither: it asserted that hostile input is handled
+  within 1,500 ms, and its slowest case takes 795 ms on an idle machine. That
+  budget was a benchmark where the same tests elsewhere use a cliff detector,
+  and it failed in CI's ordinary test job too, on this very change:
+  `guillemet: 1697ms on 180000 characters`. It is 5,000 ms now, as in
+  `security.test.js`; the fault it guards against took 47 seconds. And since
+  any budget can be missed under enough load, a failure from a test file
+  that reads a clock is believed by the mutation run only when it fails
+  again with nothing else running, before any mutant and against one, and
+  those files are tried last. The tool printed which files failed and not
+  why; it prints each failing test and its error. And #695 merged green with
+  a workflow that could not run because a pull request that changes no target
+  returns before running a test: one that changes the tool, its record or
+  the workflow now runs one small target whole. Dispatched on this change,
+  the whole run passed on a runner in 1,259 seconds and caught the same 408
+  of 446 mutants the record holds, file by file. (#698)
+
 - **A release waits until its packages can be downloaded, not until npm knows
   their names.** `scripts/npm-serves.mjs` waited for npm's `latest` dist-tag
   to name the new version and stopped there. On 2.7.12, 2026-11-17, that check
