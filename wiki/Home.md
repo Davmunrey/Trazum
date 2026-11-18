@@ -32,6 +32,7 @@ what to change and checks whether the change arrived.
 - [Where the money actually went](https://github.com/Davmunrey/Trazum/wiki/Where-The-Money-Went)
 - [Limitations, stated plainly](https://github.com/Davmunrey/Trazum/wiki/Limitations)
 - [Analytics and privacy](https://github.com/Davmunrey/Trazum/wiki/Privacy)
+- [What comes next](https://github.com/Davmunrey/Trazum/wiki/Roadmap)
 
 Everything else lives in the repository: the [README](https://github.com/Davmunrey/Trazum/blob/main/README.md) and the
 [documentation index](https://github.com/Davmunrey/Trazum/blob/main/docs/README.md).

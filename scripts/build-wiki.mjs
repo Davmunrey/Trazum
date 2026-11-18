@@ -158,6 +158,12 @@ const PAGES = [
     source: 'README.md',
     heading: '## Analytics and privacy',
   },
+  {
+    name: 'Roadmap',
+    title: 'What comes next',
+    source: 'ROADMAP.md',
+    heading: '## Next',
+  },
 ];
 
 const pageFor = (page) =>

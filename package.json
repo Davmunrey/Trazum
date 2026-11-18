@@ -26,6 +26,7 @@
     "done": "node scripts/done.mjs",
     "coverage": "node scripts/coverage.mjs",
     "ruleset": "node scripts/ruleset.mjs",
+    "milestones": "node scripts/milestones.mjs",
     "lint": "biome lint --error-on-warnings .",
     "typecheck": "npm run typecheck -w @trazum/core && npm run typecheck -w @trazum/cli && npm run typecheck -w @trazum/mcp && npm run typecheck -w @trazum/tokenizer-openai && npm run typecheck -w trazum-vscode && npm run typecheck -w @trazum/web",
     "verify": "npm run lint && npm run build && npm run test && npm run typecheck && npm run build:web",

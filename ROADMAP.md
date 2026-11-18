@@ -2925,6 +2925,24 @@ retries and controller overhead together. Any broader shared-service or fleet
 claim requires workload-specific throughput, backpressure and isolation evidence;
 local stress tests alone do not establish that capacity.
 
+### In order
+
+The order of this list is the commitment, and there are no dates: the calendar
+is not promised. The list is drawn from `.github/milestones.json` by
+`node scripts/milestones.mjs roadmap`, and each title links the live
+milestone, which holds the same issues.
+
+<!-- milestones:start -->
+1. **[2.7.13: repeated-task evaluation](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%222.7.13%3A+repeated-task+evaluation%22)**. Validate the instruction policy over repeated experiments on accepted tasks before it becomes a default: cost per accepted task, quality, retries and controller overhead, measured together. Issues: [#638](https://github.com/Davmunrey/Trazum/issues/638).
+2. **[A repository a stranger can contribute to](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22A+repository+a+stranger+can+contribute+to%22)**. What a visitor and a contributor need that is not the product: a roadmap that opens with what comes next, a wiki that publishes itself, documents that agree with each other, and Discussions with a form for each kind of question. Issues: [#725](https://github.com/Davmunrey/Trazum/issues/725), [#726](https://github.com/Davmunrey/Trazum/issues/726), [#727](https://github.com/Davmunrey/Trazum/issues/727), [#732](https://github.com/Davmunrey/Trazum/issues/732).
+3. **[Tests that would notice a wrong price](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Tests+that+would+notice+a+wrong+price%22)**. Line coverage says the code that prices a call runs under test. Mutation testing says whether a test would notice it pricing a call wrongly, and today it reaches five files of the core. Next: the code that turns a usage record into dollars. Issues: [#731](https://github.com/Davmunrey/Trazum/issues/731).
+4. **[Every agent's sessions](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Every+agent%27s+sessions%22)**. The bill reads what each coding agent already keeps on disk. Next: OpenCode's SQLite sessions, and a reader for Cursor, GitHub Copilot CLI, Cline and Amp as soon as somebody supplies one real session of each. Issues: [#645](https://github.com/Davmunrey/Trazum/issues/645), [#648](https://github.com/Davmunrey/Trazum/issues/648), [#728](https://github.com/Davmunrey/Trazum/issues/728), [#729](https://github.com/Davmunrey/Trazum/issues/729), [#730](https://github.com/Davmunrey/Trazum/issues/730).
+5. **[Every provider, counted and priced exactly](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Every+provider%2C+counted+and+priced+exactly%22)**. The estimator's error measured against each provider's own counter, a tokenizer package where the error is large, retired models marked on the provider's own evidence, and the gateway in front of the providers it does not front yet. Issues: [#641](https://github.com/Davmunrey/Trazum/issues/641), [#642](https://github.com/Davmunrey/Trazum/issues/642), [#643](https://github.com/Davmunrey/Trazum/issues/643), [#647](https://github.com/Davmunrey/Trazum/issues/647).
+6. **[Seven dictionaries, each read by a speaker](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Seven+dictionaries%2C+each+read+by+a+speaker%22)**. Five of the seven trimming dictionaries were never read by somebody who reads the language. Each needs a reviewer; docs/language-maintainer.md says what the role is. Issues: [#680](https://github.com/Davmunrey/Trazum/issues/680), [#681](https://github.com/Davmunrey/Trazum/issues/681), [#682](https://github.com/Davmunrey/Trazum/issues/682), [#683](https://github.com/Davmunrey/Trazum/issues/683), [#684](https://github.com/Davmunrey/Trazum/issues/684).
+7. **[Where people meet Trazum](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Where+people+meet+Trazum%22)**. The editor extension on the VS Code Marketplace, the playground as a Hugging Face Space, and the hosted web app measured for how fast it loads, off unless its operator asks. Issues: [#640](https://github.com/Davmunrey/Trazum/issues/640), [#646](https://github.com/Davmunrey/Trazum/issues/646), [#723](https://github.com/Davmunrey/Trazum/issues/723).
+8. **[The optional model pass](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22The+optional+model+pass%22)**. Choose and test a model-side optimiser candidate, behind the opt-in layer, with the deterministic core unchanged. Issues: [#644](https://github.com/Davmunrey/Trazum/issues/644).
+<!-- milestones:end -->
+
 ### Open work, as issues
 
 Everything this project has agreed to do and has not done is an open issue
@@ -2937,7 +2955,7 @@ closed, not when somebody remembers this page. Live:
 [open to a first contribution](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
-**Ready to be picked up (8).**
+**Ready to be picked up (14).**
 
 | Issue | What | Area |
 | --- | --- | --- |
@@ -2949,8 +2967,14 @@ closed, not when somebody remembers this page. Live:
 | [#682](https://github.com/Davmunrey/Trazum/issues/682) | Review the Portuguese dictionary: 36 entries nobody who reads Portuguese has agreed to | core |
 | [#683](https://github.com/Davmunrey/Trazum/issues/683) | Review the Italian dictionary: 36 entries nobody who reads Italian has agreed to | core |
 | [#684](https://github.com/Davmunrey/Trazum/issues/684) | Review the Dutch dictionary: 30 entries nobody who reads Dutch has agreed to | core |
+| [#723](https://github.com/Davmunrey/Trazum/issues/723) | Speed Insights on the hosted web app, off unless the operator switches it on | web |
+| [#725](https://github.com/Davmunrey/Trazum/issues/725) | ROADMAP.md opens with what comes next, and the release history moves to its own file | - |
+| [#726](https://github.com/Davmunrey/Trazum/issues/726) | Publish the wiki from the repository on every merge | - |
+| [#727](https://github.com/Davmunrey/Trazum/issues/727) | Eleven places where two of the repository's documents disagree | - |
+| [#731](https://github.com/Davmunrey/Trazum/issues/731) | Mutation testing reaches the code that prices a call | core |
+| [#732](https://github.com/Davmunrey/Trazum/issues/732) | Discussions is on: give each category a form, and say on the front page where a question goes | - |
 
-**Waiting on something outside the repository (7).** Each issue says what.
+**Waiting on something outside the repository (10).** Each issue says what.
 
 | Issue | What | Area |
 | --- | --- | --- |
@@ -2961,6 +2985,9 @@ closed, not when somebody remembers this page. Live:
 | [#645](https://github.com/Davmunrey/Trazum/issues/645) | Build from-cursor from a real Cursor usage export | cli |
 | [#646](https://github.com/Davmunrey/Trazum/issues/646) | Publish the web playground as a Hugging Face Space | web |
 | [#647](https://github.com/Davmunrey/Trazum/issues/647) | Mark kimi-k2, the Kimi K2.x models and grok-4 retired on evidence | core |
+| [#728](https://github.com/Davmunrey/Trazum/issues/728) | Read GitHub Copilot CLI's sessions in the bill | cli |
+| [#729](https://github.com/Davmunrey/Trazum/issues/729) | Read Cline's task history in the bill | cli |
+| [#730](https://github.com/Davmunrey/Trazum/issues/730) | Read Amp's threads in the bill | cli |
 <!-- open-work:end -->
 
 A blocked issue is not a deferred one. Most of them wait on something only

@@ -213,7 +213,7 @@ function gh(args, input) {
 }
 
 /** The repository asked about: the flag, then the runner's, then package.json's. */
-function repositoryName(argv) {
+export function repositoryName(argv) {
   const flag = argv.includes('--repo') ? argv[argv.indexOf('--repo') + 1] : undefined;
   // Parsed as a URL and compared as a host: a pattern that finds "github.com"
   // somewhere in a string also finds it in "github.com.example.org".
