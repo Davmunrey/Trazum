@@ -61,7 +61,7 @@ const NAMED_AS = {
 /** Every document that tells a reader what the optimiser will not touch. */
 const DOCUMENTS = [
   'README.md',
-  'ROADMAP.md',
+  'HISTORY.md',
   'packages/core/README.md',
   'docs/authoring-rules.md',
   '.claude/skills/trazum/SKILL.md',

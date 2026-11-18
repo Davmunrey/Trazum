@@ -139,8 +139,8 @@ export type NotPublishedKind =
  * - `legal`: what a contributor signs.
  * - `policy`: files GitHub itself reads by name (security reporting, support,
  *   conduct). The site links them where they are read.
- * - `history`: the changelog, the releases and the roadmap, which are pages
- *   of their own to come.
+ * - `history`: the changelog, the releases, the roadmap and the release
+ *   history, which are pages of their own to come or records read on GitHub.
  * - `index`: `docs/README.md`, which the site's `/docs` replaces.
  */
 export const NOT_PUBLISHED: readonly { readonly path: string; readonly kind: NotPublishedKind }[] = [
@@ -153,6 +153,7 @@ export const NOT_PUBLISHED: readonly { readonly path: string; readonly kind: Not
   { path: 'CHANGELOG.md', kind: 'history' },
   { path: 'RELEASES.md', kind: 'history' },
   { path: 'ROADMAP.md', kind: 'history' },
+  { path: 'HISTORY.md', kind: 'history' },
 ];
 
 /** Whole families of documents that are not published, matched by where they are. */

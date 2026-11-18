@@ -116,8 +116,10 @@ In the order somebody actually meets them:
 - **[Changelog](../CHANGELOG.md)** — every decision, every reversal, every reason.
 - **[Releases](../RELEASES.md)** — the same facts written for a person with forty
   seconds.
-- **[Roadmap](../ROADMAP.md)** — the history as a story, oldest first, and what is
-  planned next.
+- **[Roadmap](../ROADMAP.md)** — what is planned next, in order, and what was
+  considered and left out.
+- **[Release history](../HISTORY.md)** — the reasoning behind each release,
+  from 0.1.0.
 
 ## I want to report a problem
 

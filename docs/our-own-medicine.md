@@ -9,8 +9,8 @@ so out loud.
 A tool that does that and never shows its own record has a double standard. So
 here is Trazum's, kept the way it asks yours to be kept.
 
-Everything below is drawn from `CHANGELOG.md`, `RELEASES.md` and `ROADMAP.md` in
-this repository. Nothing here is computed; it is a reading of documents that
+Everything below is drawn from `CHANGELOG.md`, `RELEASES.md`, `HISTORY.md` and
+`ROADMAP.md` in this repository. Nothing here is computed; it is a reading of documents that
 already exist, which is the same constraint `trazum report --year` operates
 under.
 

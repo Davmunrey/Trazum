@@ -148,7 +148,8 @@ const SPELLED = [
 /**
  * The pages that describe the product as it is now.
  *
- * `CHANGELOG.md`, `RELEASES.md`, `ROADMAP.md`'s record and `docs/plan-*.md` are
+ * `CHANGELOG.md`, `RELEASES.md`, `HISTORY.md` (the release history that used to
+ * be `ROADMAP.md`'s record, #725), `ROADMAP.md` and `docs/plan-*.md` are
  * dated: they say what was true at a release, and "Pricing seven providers
  * (1.5.0) made the next gap obvious" is a correct sentence about 1.5.0 no
  * matter how many providers there are now. Correcting those would be rewriting
@@ -161,7 +162,7 @@ const SPELLED = [
  * plan said when it was written ("reaching 51 commands at that point"). The
  * copy is as dated as the file it is a copy of.
  */
-const DATED = new Set(['CHANGELOG.md', 'RELEASES.md', 'ROADMAP.md', 'wiki/Roadmap.md']);
+const DATED = new Set(['CHANGELOG.md', 'RELEASES.md', 'HISTORY.md', 'ROADMAP.md', 'wiki/Roadmap.md']);
 
 /**
  * A line that names the release it is about is a record of that release.

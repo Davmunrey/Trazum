@@ -1,0 +1,2914 @@
+# Release history
+
+The reasoning behind each release: what one release made possible for the
+next. It starts at 0.1.0 and runs forwards to 1.53.3. The releases after that
+were written as they shipped and are not in one order: 2.5.1 back to 1.53.4,
+then the releases collapsed into 1.8.0, then 2.5.2 forwards to the newest.
+What each release changed is in [CHANGELOG.md](CHANGELOG.md) and
+[RELEASES.md](RELEASES.md), newest first. What comes next is in
+[ROADMAP.md](ROADMAP.md).
+
+---
+
+## Released
+
+**Oldest first, all the way down.** This section is a story rather than a
+noticeboard: each entry explains what the previous one made possible, so it
+only reads correctly forwards. `RELEASES.md` and `CHANGELOG.md` are the
+newest-first documents, and either of those is what you want if the question
+is "what changed recently".
+
+That is worth stating because the order broke once and nobody noticed for
+twenty-four releases: entries were being prepended at 1.26.0, so the file ran
+0.1.0 upward to 1.25.0, jumped to the newest release, and then counted
+*backwards* to 1.26.0 — a reader following it forwards went 1.25.0 → 1.50.2 →
+1.50.1 and out the bottom at 1.26.0.
+
+### 0.1.0 — Deterministic core
+
+The bet: rules first, model second. Most prompt bloat is mechanical —
+courtesy, filler, verbose phrasing, paragraphs pasted in twice — and a rules
+engine removes it reproducibly, for free, with no API key and no round trip.
+
+- 12 rules across two levels (`safe`, `aggressive`).
+- Protection pass: code fences, indented code blocks, inline code, URLs, email
+  addresses, template placeholders, XML/HTML tags and text inside quotation marks
+  are isolated *before* any
+  rule runs, so no rule can structurally break a prompt.
+- Dependency-free heuristic token estimator. Published at ±15% here, which was a
+  design target and not true; measured and made true in 1.9.0.
+- Pricing catalogue with promotional pricing and per-model cache minimums.
+- Advisories: caching, Batch API, model tier, context window.
+- Optional, pluggable LLM pass with safety checks — a candidate is only
+  accepted when it is shorter and leaves protected content byte-identical.
+- CLI (`optimize`, `check`, `models`, `rules`) and a Next.js web app.
+
+### 0.2.0 — Caching measured honestly
+
+Fixing a real imprecision: savings were computed over the whole prompt, but
+prompt caching is a byte-for-byte prefix match, so a template only caches up to
+its first placeholder. Reporting the full-prompt figure overstated the saving
+on exactly the prompts people cache most.
+
+- `analyzeCachePrefix` measures the true stable prefix.
+- New `cache-prefix-reorder` advisory: finds stable instructions stranded
+  *after* the first placeholder, which today never cache, and prices moving
+  them in front.
+- Packaged GitHub Action for `trazum check`, with a self-test in CI.
+
+### 0.3.0 — English-first, with real internationalisation
+
+The repository is English end to end: source, comments, tests, docs, CLI, web,
+CI. Spanish did not get deleted — it got promoted from hardcoded prose to a
+locale, which is the only version of "add a language" that survives contact
+with a second one.
+
+- Per-locale message catalogues in every package (`core`, `cli`, `web`).
+- `RuleId` is a typed union: adding a rule fails to compile until every
+  catalogue describes it.
+- `optimize()` and `refineWithLlm()` take a locale; the report carries it.
+- CLI `--locale`, then `TRAZUM_LOCALE`, then the POSIX variables.
+- Web negotiates `Accept-Language` server-side and offers a switcher whose
+  choice is remembered.
+- Catalogue-parity tests, so a locale cannot silently go stale.
+- Sample prompts per language, both exercised by the action self-test.
+
+### 0.4.0 — Reading structure, not just phrases
+
+Every rule until now matched a phrase. The waste this release goes after is a
+*relationship* between two places in the prompt — neither of which is wrong on
+its own, which is exactly why a dictionary cannot see it.
+
+Both findings are advisory. A contradiction has a right answer only the author
+knows, and an example that looks redundant may be demonstrating a boundary case
+on purpose. Trazum points; it does not cut.
+
+- **Contradictory instructions.** "Answer in English" three paragraphs above
+  "reply in the customer's own language" is a correctness bug that also costs
+  tokens twice. Four axes are checked: response language, output format,
+  response length, and whether to show the reasoning. Reported as a *warning*,
+  not an opportunity — it carries no dollar figure because being wrong has no
+  price tag.
+- **Redundant few-shot examples.** Examples that are near-copies of an earlier
+  one, priced per month. See the honest limit below.
+- **Advisory ordering by severity.** Sorting purely on money buried an
+  overflowing context window underneath a $2 saving. Warnings now come first.
+- **Bug found while building this:** the `duplicate-lines` rule was deleting
+  the shared `Output:` line from a second few-shot example, leaving it with an
+  input and no output. Two examples mapping different inputs to the same answer
+  is often the reason both are there. Labelled example fields are now exempt
+  from deduplication.
+
+**What the example detector does not do.** It finds near-copies — measured at
+~0.89 similarity for a copy-paste with one field changed, ~0.80 for a lightly
+edited one — and deliberately stops short of paraphrases, which score ~0.54,
+close enough to two genuinely distinct examples (~0.20) that catching them
+would mean flagging examples that teach different things. Recognising that
+"arrived quickly" and "arrived fast" teach the same lesson needs a model, not
+word-set overlap. That belongs to the optional LLM pass, and is listed under
+0.7.0 rather than pretended to here.
+
+**Shipped alongside it:** the security pass that took the repository open
+source — four SSRF filter bypasses, two ReDoS denial-of-service bugs (one in a
+`safe`-level rule since 0.1.0), enforced invariants in CI, and the Next 16
+upgrade that finally cleared the `postcss`/`sharp` advisories. See
+[SECURITY.md](SECURITY.md).
+
+### 0.5.0 — Output formats stated twice
+
+Third structural finding, same posture as the first two: it reports, it does
+not cut. A prompt that shows its schema in a code block and then walks the same
+fields in prose is paying for the schema twice, and the block is the version
+worth keeping — it is unambiguous, and the protection pass already guarantees
+Trazum will never edit it.
+
+- New `restated-output-format` advisory, priced per month.
+- Reads illustrative schemas, not just valid JSON. Prompts routinely show
+  trailing commas, `...` and `<placeholders>`; refusing to parse those would
+  skip exactly the prompts worth checking.
+- Only top-level keys count, so a nested field name cannot be mistaken for one.
+- Three restated fields minimum. Naming one or two in prose is ordinary
+  clarification — "set `escalate` to true when the customer asks for a human" —
+  and flagging it would turn the advisory into noise.
+
+### 0.6.0 — The aggressive level, made reviewable
+
+`aggressive` has always come with the advice "read the diff", and the diff was
+one undifferentiated block for every rule at once. That is not review, it is a
+wall of text with a warning attached — so in practice nobody ran the level that
+saves the most.
+
+Each rule now carries a short list of what it actually changed, so an
+aggressive run is judged rule by rule and a single rule you disagree with is
+disabled with `--disable`, instead of abandoning the whole level.
+
+- `RuleResult.changes`: capped before/after pairs, with `hits` carrying the
+  true total. Empty rather than truncated when the change is too large to
+  summarise — an empty list reads as "nothing to show", a truncated one would
+  read as "this is all that happened".
+- Bounded by construction, like everything else that touches untrusted text:
+  common prefix and suffix are trimmed in linear time, and anything still too
+  large is skipped rather than diffed.
+- Shown in the CLI and the web app for aggressive rules, and for every rule
+  under `--diff`.
+
+**It earned its keep immediately.** The first run surfaced a rule leaving
+`"You MUST double-check your answer before responding."` as `"You must."` — the
+phrase matched, the subject and modal in front of it did not, and the sentence
+that survived said nothing. Fixed by listing what can open one of these
+instructions ahead of the bare form. Two display bugs in the diff itself went
+the same way, both found by reading its own output.
+
+---
+
+### 0.7.0 — The paraphrase case, handed to a model
+
+The one finding the deterministic detector refuses to guess at. Two examples
+teaching the same lesson in different words score around 0.54 on word overlap,
+close enough to two genuinely distinct examples (~0.20) that catching them by
+similarity would mean flagging examples that teach different things.
+
+Deciding that "arrived quickly" and "arrived fast" demonstrate the same pattern
+needs a model, so `reviewExamples` lives behind the optional LLM layer, costs a
+call, and never runs during an ordinary `optimize()`.
+
+- Returns `null` below two examples rather than paying for a foregone answer.
+- Treats the response as untrusted input, because it is: indices are
+  range-checked against the examples that exist, self-references dropped,
+  overlapping groups collapsed so the same tokens are never counted twice, and
+  the model's reason truncated. A model answering with prose produces an empty
+  review, not a crash and not a saving the prompt could not deliver.
+- A provider **error** still throws. A bad answer is the model's problem and
+  gets absorbed; a broken endpoint is the caller's configuration and must not
+  be hidden.
+- Reports only. Nothing here edits a prompt, which is what makes it safe to be
+  relaxed about a model that answers badly — the worst outcome is a suggestion
+  you ignore.
+
+---
+
+### 0.8.0 — Measurement instead of estimation
+
+Every other number Trazum reports is arithmetic. This is the one question
+arithmetic cannot answer — does the shorter prompt still do the job? — and the
+README had been answering it with a caveat, because a rules engine genuinely
+cannot know.
+
+`trazum eval` runs both versions over a set of inputs and reports whether the
+optimisation changed the answers.
+
+**The part that makes it worth anything:** a model asked the same question
+twice does not answer identically, so "the optimised prompt diverged on 3 of 10
+cases" means nothing on its own — it might be *better* than the original
+manages against itself. So the original runs twice per case first, and that
+self-agreement is the yardstick. The rewrite is judged against the model's own
+variance, not against a determinism it never had.
+
+- Four verdicts, including `inconclusive` when the original cannot agree with
+  itself often enough to judge anything against. A confident verdict off an
+  inconsistent baseline would be worse than admitting the test does not work.
+- Three calls per case, and the count is printed before any of them goes out.
+- Exits 1 on `diverges`, so it can gate a pull request.
+- A template gets its first placeholder filled rather than the input appended:
+  appending would test a prompt nobody runs.
+
+Still open from the original entry: exact counts by default where a key is
+present, and real cache simulation from a call log.
+
+---
+
+### 0.9.0 — Fits into a workflow
+
+Optimising once is a demo. The value is in a prompt staying lean as it is
+edited over months, by people who never read this README.
+
+`trazum diff old.txt new.txt` answers the question a pull request actually
+raises — *somebody edited this; did it get worse?* — in tokens, in dollars per
+month, and in what the edit broke.
+
+**The sign convention is the design decision here.** Every other figure Trazum
+prints is a *saving*: before minus after, positive is good. Every figure `diff`
+prints is a *delta*: after minus before, positive is **bad**. Mixing those two
+conventions in one report is the easiest way to make a cost tool lie, so the
+comparison lives in its own module, nothing in it is called a saving, and the
+negation happens exactly once, at the boundary.
+
+- Reports what the edit *broke*, not only what it cost: advisories that
+  appeared, rules that started firing, and the same in reverse when the edit
+  improved things.
+- Measures the text **as written** by default, not what the rules would leave.
+  A pull request changed the file on disk, so the file on disk is what the
+  reviewer is being asked about — otherwise a prompt that doubled in length but
+  happened to double in courtesy would show as no change at all.
+  `--optimized` switches the figures to the post-rules text for a team that
+  already runs Trazum in its pipeline.
+- **The gate is opt-in.** Growth alone never fails a build; `--max-growth 10`
+  does. A tool that fails a build nobody armed gets removed from the pipeline
+  rather than fixed.
+- `--max-growh` is rejected with *"Did you mean --max-growth?"* rather than
+  ignored. A silently-swallowed gate flag means CI green while the author
+  believes a limit is set — which is the failure mode this whole command
+  exists to prevent.
+- Signed currency throughout: `+$9.25`, not `$-9.25`, and never `-$0`.
+
+Still open from the entry as originally written, and moved to 0.10.0 rather
+than dropped: PR comment mode, directory mode, and `trazum.config.json`.
+
+---
+
+### 0.10.0 — Governed as a repository
+
+`diff` made a single prompt reviewable. This makes a directory of them
+governable, and stops every project from re-typing the same four flags in every
+CI step — the one place they get out of step is the place the numbers stop
+meaning anything.
+
+`trazum.config.json` carries the project's defaults; `trazum check prompts/`
+checks every prompt under a directory against per-pattern budgets from it.
+
+**The config parser refuses anything it cannot validate, including an unknown
+key.** A lenient parser restores defaults silently, and for a budget the default
+is *no budget* — a green build for a prompt nobody measured. This is the same
+argument as 0.8.0's unknown-flag check and 0.9.0's `--max-growh`, and it is the
+third time it has been the right call.
+
+- Flags beat the config; the config beats the defaults. A config able to
+  override an explicit flag would make every flag a suggestion. `--no-<flag>`
+  exists so a boolean the config switched on is not one you have to edit the
+  repository to escape.
+- Budgets resolve to the most specific matching pattern, and "specific" is
+  *defined* — most literal characters wins — rather than left to be inferred. A
+  budget resolved from the wrong pattern is a number nobody can debug, so the
+  report names the pattern it came from.
+- A file no pattern covers is listed, not skipped. A run where nothing at all
+  was budgeted is an error. "Checked 40 files, 0 failures" from a run that
+  measured nothing is the most misleading thing this tool could say.
+- The glob matcher is a segment-wise dynamic program, not a regex translation:
+  `**` compiled to `(?:[^/]*\/)*` is exactly the nested quantifier that
+  backtracks exponentially, and on a pull request these patterns come from
+  whoever opened it.
+- The directory walk does not follow symlinks, bounds depth and width, and says
+  when a bound stopped it early. The config file is measured and read through a
+  single handle, so the size limit cannot be defeated by swapping the file
+  between the check and the read.
+- **`@trazum/core` gains a second entry point.** Everything that reads the
+  filesystem moved to `@trazum/core/node`, and a test now walks the import graph
+  to prove no Node builtin is reachable from the browser-safe one. The first
+  attempt at this had only a file allow-list, which passed while the same file
+  was re-exported from the main entry point — a file allow-list is not a
+  boundary. It matters past the build: the web app hands `optimize()` a prompt
+  from a request body, so a file read reachable from there is path traversal.
+- `locale` is the one config key the environment outranks: a repository choosing
+  the language of its CI logs should not choose the language of a contributor's
+  terminal.
+
+Still open, and moved to 0.11.0 rather than dropped: PR comment mode.
+
+---
+
+### 0.11.0 — Reporting where the review happens
+
+The gate worked. What it could not do was put the answer where the conversation
+is: a reviewer had to open the job log to find out what an edit cost.
+
+`trazum check` and `trazum diff` grow `--markdown-out <file>`; the Action writes
+that file to the run summary and, optionally, posts it as a pull request comment
+that replaces its own previous one.
+
+**Three bugs 0.10.0 left in the Action, all the same shape.** Config support
+shipped in the CLI while `action.yml` kept passing `--level safe` and
+`--locale en` unconditionally — and since the CLI layers flags over config over
+defaults, an always-present flag meant the project's own values were never read.
+`max-tokens` being required meant config budgets were unreachable through the
+Action; `file` being required meant neither directory mode nor `diff` was
+exposed. Every optional flag is now passed only when given. **A default that
+silently overrides a project's own setting is worse than no default.**
+
+- **The step summary is not behind an input.** It needs no token, no permission
+  and no pull request. The comment is opt-in because it needs all three.
+- **Commenting can never fail the build.** No pull request, a read-only token on
+  a fork, an unreachable API: each records a notice and carries on, because the
+  report already reached the summary. A tool that turns "could not comment" into
+  a red build gets deleted rather than configured.
+- **Found by the marker, not the author.** `gh pr comment --edit-last` matches by
+  author, so any other step commenting as the same bot would have had its comment
+  overwritten.
+- **Green collapses, red does not.** A green table that stays green on every push
+  is the thing a maintainer learns to skip — and then they skip the red one too.
+- **`pull_request_target` is asserted absent.** It is the natural wrong turn the
+  moment somebody discovers a fork PR cannot comment, and it runs a writable
+  token against code the contributor controls.
+- The verdict counts only what was measured, not what was listed.
+
+Deferred rather than dropped: a `diff` against the base branch needs
+`fetch-depth: 0` and a second checkout, which is a documented recipe rather than
+an input.
+
+---
+
+### 1.0.0 — A stable contract
+
+1.0 means the API stops moving, not that the feature list is finished.
+
+**The public API is frozen** and a breaking change waits for 2.0 —
+[VERSIONING.md](VERSIONING.md) now says exactly what that covers, including the
+`--json` shape, the exit codes, and the config and overlay schemas. It also
+states the deprecation procedure rather than leaving it to be decided case by
+case: `@deprecated` in the JSDoc, a **Deprecated** changelog section with the
+migration written out, at least two minors and six months of continued working,
+removal only in a major. A deprecated export never starts warning at runtime — a
+library that prints to somebody else's stderr because *we* changed our mind is a
+library people vendor to make quiet.
+
+**Pricing came off the release cycle.** A price is correctable from your own
+repository with a JSON overlay, so a stale bundled price is an inconvenience
+rather than a wrong budget. A separate `@trazum/pricing` package would not have
+achieved that — you would still have to install something. Every report says
+which models came from an overlay and when it was reviewed, because otherwise a
+bundled figure and one from your file are indistinguishable.
+
+**A rule can be contributed without reading the engine.**
+[docs/authoring-rules.md](docs/authoring-rules.md) is the walkthrough: the
+contract, what the masking pass already guarantees, why `safe` is a promise
+rather than a default, and the ReDoS fixture *shape* that finds real bugs —
+repeated tokens do not, which is how two shipped in 0.1.0.
+
+**The packages are publishable, and what would ship is asserted.** Both carry a
+`LICENSE` file rather than only a licence field, a real README (the npm page *is*
+the README), `engines`, and `prepublishOnly` — without which `npm publish` would
+happily ship the previous version's `dist` under the new version's number,
+silently. `src` is shipped too, because every source map points at `../src/*.ts`
+with no inlined content: shipping maps without the sources gives a debugger a
+file it cannot load, which is worse than no map at all.
+
+Still open, and deliberately so: publishing to npm is a manual step. It is the
+one action in this repository that cannot be undone after 72 hours.
+
+---
+
+### 1.8.0 — Prepared for the first publish
+
+**The version that will be the first thing anybody can `npm install`** — and is
+not yet. The manifests carry it and the notes are written; there is no tag and
+`npm view @trazum/core` returns 404. Publishing is a decision, and it is the
+maintainer's.
+
+It collapses the seven milestones below — 1.1.0 through 1.7.0 — into one
+version, because none of them was ever tagged or uploaded either. Those seven
+will never appear on the registry.
+
+What it adds over the last of those milestones is the entry that gave it its
+number:
+
+#### Not asking the model twice
+
+`optimize --suggest --cache-suggestions` answers from a local cache when the
+same prompt was asked about before. Re-run over forty prompts after editing
+two, and thirty-eight requests do not happen.
+
+**The roadmap item behind it was the API's prompt caching, and that turned out
+to be impossible rather than merely hard.** The minimum cacheable prefix is 512
+tokens on the most generous model and 4,096 on others; the suggest system prompt
+is 291 tokens; and a prefix below the minimum is *silently* not cached — no
+error, `cache_creation_input_tokens: 0`. Everything after it is the author's
+text, which differs every call. Marking it would have cost one line, saved
+nothing, and been undetectable. A test measures the prompt against the published
+per-model minima so the claim fails loudly if a model ever lowers its floor.
+
+Opt-in and never silent, because a hit is a week-old answer from something that
+is not a pure function. The **raw** response is stored rather than the checked
+suggestions, so every safety rule re-runs on a hit and an answer from March is
+judged by April's rules. 0600 files in a 0700 directory: the cache holds prompt
+text, which is the most sensitive thing this tool touches.
+
+---
+
+### 1.9.0 — The error band, measured
+
+**The entry that kept moving, and what it found when it finally ran.** The corpus,
+the harness and the test shipped in what was then 1.3.0; the measurement needed
+the official counting endpoint and a key, which is not something this repository
+could schedule. The maintainer supplied one on 2026-08-13 and the answer arrived
+in about a minute.
+
+**The band was false.** Two of eight samples were outside `±15%` and both
+underestimated — the numeric sample by 30.6%, Spanish prose by 22.1%.
+Underestimating tokens under-reports cost, which is the flattering direction and
+the worst one for this tool.
+
+Two separate faults, found in that order:
+
+- **Digits were counted at three per token.** Claude splits long runs far more
+  finely, because a merge table cannot cover every number. Corrected in isolation:
+  that sample went from -30.6% to -5.0% and nothing else moved four points.
+- **The estimator was calibrated for English, not for prose.** One divisor served
+  every language, and German measured -37.3%, Dutch -28.3%, Italian -23.8%,
+  Spanish -22.9%, Portuguese -18.1%, French -15.1% — against English at +1.0%.
+
+**This roadmap predicted the wrong culprit.** It said CJK would break the band, on
+the reasoning that the estimator treats CJK quite differently from words. CJK was
+fine: -3.2% and +11.2%. What broke it was every Latin language that is not
+English, which nothing here had thought to doubt.
+
+**And the first hypothesis about *why* was tested and killed.** Accent density
+separated the corpus perfectly — every non-Spanish Latin sample at 0.00%, Spanish
+at 1.71% — so a Spanish sample with zero diacritics was written specifically to
+falsify it. It measured -22.9% against -22.1% for accented Spanish. The signal is
+the language, not its marks, so `language.ts` counts function words and answers
+`null` when no answer is safe.
+
+**What shipped:** per-language divisors for seven languages, each with a held-out
+sample in a different register; a corpus of twenty-one measured samples that can
+grow one at a time, because the freshness digest is per sample rather than per
+corpus; a band of `±15%` that is measured, exported as one constant, and guarded
+so no file can state a different one; and `below-cache-minimum` no longer
+asserting from an estimate near a hard threshold.
+
+Worst error across the corpus: **11.2%**, on Japanese, which does not use the word
+branch at all.
+
+**What it did not settle.** The seven divisors rest on two or three samples each.
+That is enough for a held-out test to mean something and not enough for a
+distribution, so the band is still a worst case rather than a percentile. Going
+further needs samples from real prompts rather than written for the purpose —
+more of the same hand is more of the same bias, however many files it fills.
+
+### 1.10.0 through 1.25.0 — The other half of the product
+
+Sixteen releases in six days, and one sentence explains all of them: `optimize`
+recovers about **1%** of a real bill, and everything that moves 40–80% —
+which model, the Batch API, caching, re-sent conversation history — is only
+visible in what the provider actually charged. So the product grew a second
+half: `trazum profile` reads a usage log (counts, never content — the record
+shape has no field for prompt text) and says where the money went and which
+lever would actually move it.
+
+The full account of each release is in [RELEASES.md](RELEASES.md) and
+[CHANGELOG.md](CHANGELOG.md); the arc, compressed:
+
+- **1.10.0 — every hard edge, both sides.** The groundwork release.
+- **1.11.0–1.13.0 — the bill itself.** `profile` with exact billed splits,
+  per-workload labels, cache economics with the verdict read at its worst case,
+  the levers section, and the first money gates (`--max-usd`,
+  `--max-growth-usd`, `--max-cache-loss-usd`).
+- **1.14.0–1.17.0 — drill-downs and the same answer on every surface.**
+  `--label`, `--against` with drivers per label and per model, truncation
+  waste, conversation growth as a ceiling, and the web Bill tab reading the
+  log entirely in the browser — no fetch in the file, asserted by test.
+- **1.18.0–1.20.0 — where the decisions are made.** Directory mode for rotated
+  logs, `--since`/`--until` windows with clockless calls counted out loud,
+  per-day and per-hour spend shapes, session ledgers, and the `--json`
+  contract documented and enforced in both directions.
+- **1.21.0–1.22.0 — what the log does not say.** Field coverage counted rather
+  than boolean, per-conversation cost (median/p95/max), single-turn cache
+  writes as ceiling-or-fact, budget-vs-wire, CSV exports with no total row and
+  formula defusal, per-label spend budgets in `trazum.config.json`.
+- **1.23.0 — "What if it were the other model?"** `--what-if` reprices the
+  same tokens at another rate card — multiplication, not advice, with the
+  caveat printed above the figure and calls too large for the target's context
+  window named as impossible rather than priced as cheap. Plus
+  `duplicateLines`: a doubled bill, caught.
+- **1.24.0 — how big, how uneven, and the day it spiked.** `inputShapes`
+  (bucket ceilings, never interpolated percentiles), `--max-day-usd` — the
+  gate a total cannot arm — and the CI summary saying what the terminal says.
+- **1.25.0 — the retry, the archive and the shape in the tab.**
+  `repeatedTurns` (the same request sent again, named as a pattern and never a
+  cause), gzipped rotated logs read as they are, and the input shape in the
+  browser.
+
+### 1.26.0 — The release that releases itself
+
+No product change; a process one. Merging the release PR now publishes the
+packages, tags the merge commit and creates the GitHub release — with a
+registry preflight in front so ordinary merges skip in seconds, a token
+fallback so npm's broken trusted publishing cannot fail the publish, and
+OIDC-signed provenance on the tarballs either way. The documentation sweep
+became a test: a release whose version is missing from the changelog, the
+release notes or this file fails `verify`.
+
+**On npm, the registry went straight from 1.10.0 to 1.25.0.** The versions
+between are real releases of this repository — notes, changelog, merge commits
+— but npm's trusted publishing rejected the workflow on every attempt, so
+nothing shipped until 1.25.0 went out by hand. See
+[docs/releasing.md](docs/releasing.md) for the state of that fight.
+
+### 1.27.0 — The ceiling, the drift and the tab in step
+
+`contextPressure` reports each slice's largest call against its own model's
+context window — the failure a bill cannot show until the day the product
+breaks — loud from 85% and never predicting the crossing. `modelMixDrift`
+splits the log's days in half and states each model's exact share of each
+half's spend: the migration day totals and per-model totals both hide. And
+the web Bill tab caught up with all four of the CLI's newest findings, at
+the CLI's own thresholds.
+
+### 1.28.0 — The retry bill, the series and the standing word
+
+`truncationRetries` measures the "billed again" half of truncation — cut
+answers followed inside two minutes by another call in the same
+conversation, priced on both sides, with the checkable denominator.
+`--csv-shape model-day` ships the mix as a day-by-day series, and
+`spend.maxDayUsd` moves the day budget into the repository's standing
+config.
+
+### 1.29.0 — The budget, the overlay and the small log
+
+`--max-session-usd` (and `spend.maxSessionUsd`) judges the single most
+expensive conversation — the unit an agent product blows up in — failing
+loudly on a log with no sessions. The MCP's `profile_usage` gained
+`pricing_overlay`, the CLI's `--pricing` document as text, pricing the
+whole report including `what_if`. And where the session percentiles refuse
+a small log, every surface now states the count and the single worst cost
+instead of going silent.
+
+### 1.30.0 — The report as a diff
+
+`--against` gained the half the dollars cannot carry: coverage drift. A field
+the log stopped recording is not a finding that got fixed, and the report now
+names which findings went quiet with it. `--max-growth-usd` refuses the
+comparison outright rather than passing on a bill nobody could measure. All
+three surfaces render it at the same threshold.
+
+### 1.31.0 — The gate that explains itself
+
+Every spend gate failure names the slice holding the money and the largest
+lever the report already priced, with whether it covers the overage stated
+rather than inferred — pointing, never recommending. A pass within a tenth of
+the budget says how much room was left. And the verdict leads the markdown
+summary, so a red build in CI carries its reason where the reader actually is.
+
+### 1.32.0 — The routing decision, priced whole
+
+`--what-if` corrects the figure the target would refuse to bill — cache
+traffic under the target's cache minimum priced at the rates it would
+actually get — and states the move batched on the target's rates, never
+summed. The output-ceiling check stays out: the catalogue carries no output
+ceilings, and inventing them would be guessing.
+
+### 1.33.0 — The log it could not read yet
+
+Gemini's `usageMetadata` shape recognised — unambiguous, cached half
+subtracted through the same mechanism as OpenAI's, `MAX_TOKENS` in the
+truncation contract — and `--dry-run`, which states what the log could
+answer per capability, produces no dollar figure, and refuses to coexist
+with a gate. Bedrock's camelCase and OpenRouter's OpenAI shape were already
+readable, stated for the record.
+
+### 1.34.0 — Findings as policy
+
+`waive` in the config records a gate failure the team decided to live with:
+gate, reason in prose and expiry, all three required. Waived is shown as
+waived and never hidden, and an expired waiver fails the gate it silenced —
+the mechanism by which a waiver stays a decision rather than a habit. The
+growth gate's coverage refusal is deliberately unwaivable.
+
+### 1.35.0 — The reader who is not in the terminal
+
+`--markdown-summary` gives a pull-request body or a weekly note the three
+figures that changed and the one lever worth the most, as a view over the same
+report rather than a second set of figures. The web comparison the plan listed
+beside it was already shipped; the privacy promise above the drop zone was
+widened to name the second file it has accepted all along.
+
+### 1.36.0 — The estimate stops guessing
+
+`optimize --from-log` measures the call count, output size, cache share and
+model from a usage log instead of multiplying by typed guesses, names which
+figures are measured, refuses typed flags beside it, and scales to a month
+only past a full week of data. `--all-labels` ranks every mapped prompt by
+what optimising it is worth on its own measured traffic, with both coverage
+mismatches named. First of the five in docs/plan-1.36-1.40.md.
+
+### 1.37.0 — The fleet
+
+`profile --by-source` splits a directory of logs by the config's `sources`
+globs and names the service where the money is: split brains (one workload on
+different models in different sources, judged on each source's dearest model),
+caching underwater in a named source while the aggregate pays, mismatched
+spans said in the copy, and per-service budgets in `spend.bySource` that fail
+naming the service. Files matching no pattern are named, never dropped.
+Second of the five in docs/plan-1.36-1.40.md.
+
+### 1.38.0 — The plan
+
+`trazum plan` turns the report's findings into a ranked plan: route and batch
+on one slice pre-combined (never summed), projections and money already spent
+totalled apart, typed assumptions per action with the command that can check
+them, and the plan saved as a dated file with the catalogue that priced it —
+what makes 1.39's verification possible. `--min-usd` names what it drops and
+its worth, and the saved document never contradicts itself. Third of the five
+in docs/plan-1.36-1.40.md.
+
+### 1.39.0 — Did it work?
+
+`trazum verify` holds a saved plan to the log that came after it, with three
+outcomes and never two: arrived, did not arrive, or cannot be told — a
+vanished workload, fields that stopped being recorded, or a tier tokens
+cannot see. Differences carry the world's measured movement from the plan's
+recorded baseline, a repricing is flagged instead of silently priced
+through, and `--gate` fails CI on broken promises and on a log that degraded
+itself. Fourth of the five in docs/plan-1.36-1.40.md.
+
+### 1.40.0 — The long run
+
+`trazum history` builds the series no pairwise comparison can see, from
+stored `--json` reports rather than re-parsed logs: labels climbing for
+consecutive periods since a named report, model shares rising under flat
+totals, cache shares decaying too slowly for any single report to call, and
+plan actions planned again and again with nobody executing them. Shapes
+named, nothing forecast. Fifth and last of the five in
+docs/plan-1.36-1.40.md — the arc is delivered.
+
+### 1.41.0 — The connector
+
+`trazum connect` reads the bill from Anthropic's and OpenAI's usage APIs, so
+nothing has to be exported by hand. The credential is borrowed from the
+environment and never stored, never printed and never committed — four guards
+fail the build rather than promising it. A connected report is restricted on
+purpose: usage APIs serve sums, so every per-call finding is listed as
+unavailable with what would unlock it, in a document shape of its own so
+nothing can read a zero the connector wrote. First of the ten in
+docs/plan-1.41-1.50.md.
+
+### 1.42.0 — The store
+
+`connect --store` keeps what it pulled under `.trazum/store`, so a connector
+is something you can leave on: re-pulling an overlapping window converges
+instead of doubling, because a window pulled again is the same fact restated.
+Records the store cannot tell apart are kept as two and named, a broken line
+costs that line rather than the month, and pruning refuses without a written
+retention policy and says what went. `history --store` builds the series from
+what is kept, with the label series absent and said to be. Second of the ten
+in docs/plan-1.41-1.50.md.
+
+### 1.43.0 — The watch
+
+`trazum watch` evaluates the spend gates as the money moves rather than when
+somebody runs a command. One cycle is the primitive and the loop is that cycle
+in a timer, so cron, a foreground watcher and every test run the same code.
+Crossings are measured and never projected; a day half-measured is
+not-yet-judgeable rather than passed, while a day already over budget fires at
+any hour; and a restart neither re-alerts nor calls a blown budget clean —
+quiet is not clean. Three transports, and three build-failing guards over the
+new webhook surface. Third of the ten in docs/plan-1.41-1.50.md.
+
+### 1.44.0 — The answer in milliseconds
+
+`trazum serve` answers what a call will cost and whether there is budget, from
+loopback, in single-digit milliseconds — so a decision being made right now can
+consult what the reports know. The measured half and the estimated half stay
+apart and the verdict says which it rests on; three outcomes with their three
+distinct reasons; and it degrades to pricing the call alone when there is no
+store or no budget. Bound to 127.0.0.1 with no flag to change it and no auth
+theatre. Fourth of the ten in docs/plan-1.41-1.50.md.
+
+### 1.45.0 — The agent's budget
+
+`spend_guard` over MCP answers whether a call may be made — yes, no, or cannot
+tell — and a refusal never arrives bare: it carries the cheaper ways to make
+the same call, priced for that call rather than for a month, each naming what
+it assumes and each filtered to models the prompt actually fits inside. Route
+and batch combine rather than add. It never spends to answer and never says
+yes to what it cannot judge. Fifth of the ten in docs/plan-1.41-1.50.md.
+
+### 1.46.0 — Five minutes
+
+`trazum init` takes somebody from `npx @trazum/cli` to a finding worth money
+without a page of documentation: it walks for prompts, reads the code for which
+provider it calls, finds a usage log or a credential for one, writes a config
+out of what it can justify, and prints the single most valuable thing it found
+with the arithmetic before the figure. The substance is what it refuses to
+write — a budget (a policy no log answers), a monthly rate from a short window
+or from undated calls, a cache hit rate from a log with no cache columns, and
+`batchEligible` in either direction — each refusal naming what would settle it.
+`proposeInit` is pure, so every rule is tested without a filesystem. Sixth of
+the ten in docs/plan-1.41-1.50.md.
+
+### 1.47.0 — The browser sees the bill
+
+The plan and the verification join the bill in the tab, so the web app stops
+being a demo of the smallest half of the product. Ranked actions with the money
+as a projection or a measured stake and never both, each naming what it assumes
+and how to check it; **Save plan.json** writes byte-for-byte what `trazum plan
+-o` writes, so a decision made in a browser is committable, gateable in CI and
+openable back here; and opening a saved plan turns the log in the tab into the
+check on it, three outcomes with their reasons kept distinct. Saved as a file
+rather than a link, because a link means storing somebody's bill. One shared
+validator, `parsePlanDocument`, replaces two checks that were not the same.
+Seventh of the ten in docs/plan-1.41-1.50.md.
+
+### 1.48.0 — The cost review
+
+Waivers get their history, closing the gap 1.40 named and refused to fill by
+inference. A waiver that silences a gate writes down that it did — the gate, the
+reason and expiry as they stood at that moment, the commit, the figures judged —
+and `trazum history` reads those lines back into habits with a typed verdict
+that separates an expiry pushed forward under an unchanged reason from a reason
+somebody rethought. Nothing is back-filled, a waiver nobody's build has hit is
+reported as dead config rather than habit, and a failure to write never fails
+the build. Plus docs/ci.md: GitLab, Jenkins, CircleCI and a pre-commit hook, one
+binary and two exit codes, no vendor plugin. Eighth of the ten in
+docs/plan-1.41-1.50.md.
+
+### 1.49.0 — The live budget
+
+One measured number, wherever it is asked for. `budgetPositions` turns a budget
+into a standing — a limit, a calendar month, the measured spend inside it, and
+how much of that month was measured at all — and `store` and `serve` read the
+same call, so a CI failure and an agent's refusal cannot disagree about what is
+left. `spend.monthlyUsd` is a new key rather than a reuse of `maxUsd`, because
+one gates whatever period a log covers and the other gates a month, and a
+single key carrying both is how `serve` came to compare a year of store records
+against a monthly limit. A period nobody measured is `cannot-tell`, never
+`within`; the burn is a shape and never a date; and a floor can prove *ahead*
+and can never prove *behind*. Ninth of the ten in docs/plan-1.41-1.50.md.
+
+### 1.50.0 — The standard
+
+The close of the arc `docs/plan-1.41-1.50.md` opened. `trazum conform` turns
+the ten documents this project emits into contracts somebody else can build
+against: does this conform (required fields, right types, gates in CI) and what
+can a valid document of this shape not answer, with the field that unlocks each
+— the second never gating, because choosing not to log sessions is a decision
+and not a defect. docs/format.md gathers the contracts, what `schemaVersion`
+promises and what only a version bump may change, and the rules a provider
+connector must follow. And docs/doctrine.md writes down the twenty rules the
+first fifty releases learned by getting each one wrong first, which is the
+actual argument for trusting a cost figure from any tool. Tenth of ten.
+
+### 1.50.1 — The numbering
+
+A patch that changes what a patch means. The version number now carries the
+narrative: a chapter of the arc in progress is a patch, and the minor is spent
+only on the release that lands the arc's thesis — so the next arc runs 1.50.1
+through 1.50.9 and finishes at 1.51.0. Major is unchanged and remains the only
+number that carries risk. What it costs somebody pinning `~1.50.0` is stated in
+its own section of VERSIONING.md rather than left to be found in a diff, and
+the reason the field was free to reassign is that inside a frozen 1.x line
+minor and patch are both additions-only, so the distinction was carrying
+nothing.
+
+### 1.50.2 — The feedback loop
+
+Trazum has no telemetry and is not going to get any, which means the only signal
+about whether any of this works is what somebody chooses to say. `trazum
+feedback` makes saying it one word: where to report a wrong optimisation, a bug,
+a question or a security problem, plus a blank issue already carrying the
+version, runtime and platform — printed in full first, and never sent by the
+command. Four guards prove the claim, including one on install hooks, which is
+the route the other three would have missed. Plus `trazum --version`, which did
+not exist through fifty releases in a tool whose bug reports need it above
+everything, and SUPPORT.md, which GitHub surfaces in the issue flow and which
+says out loud that there is no support contract.
+
+### 1.50.3 — The gateway
+
+The first thing this product can *do* rather than report on. `trazum gateway`
+stands between the caller and the provider, speaking the provider's own wire
+format so no SDK changes, measuring usage from the response as it comes back —
+no export, no connector lag, no missing day. It refuses and never substitutes: a
+call over budget gets HTTP 402 with the cheaper alternatives named, and that is
+enforced in the type rather than in a comment, because `forward` carries nothing
+the caller did not send and `refuse` carries no body. 402 and never 429, since
+every provider SDK retries a 429 and would turn one refusal into a retry storm.
+`--on-cannot-tell` is required with no default — fail-open and fail-closed are
+both defensible and only the operator knows which failure their product
+survives. The credential is forwarded untouched and never read; the upstream is
+compiled in; nothing about the payload is written down, and the interfaces have
+nowhere to put it. Chapter one of docs/plan-1.51.md.
+
+
+### 1.50.4 — The outcome
+
+The counterpart every figure in this product was missing. Everything here is a
+cost: Trazum could say a workload got 40% cheaper and could not say whether it
+stopped working. An `outcome` on the usage record — the caller's own word for
+what happened — closes it, with the vocabulary declared in the config because
+which words mean success is a judgement about somebody's product rather than
+their bill. The rate is by spend and never by call, since the two diverge
+exactly when the expensive half is the half that fails: the worked example is
+73% by call and 48.2% by spend. Never inferred, and three guards prove it.
+Nothing recorded is null and never zero, because a rate of zero is a real and
+terrible measurement and "nobody told us" is a different sentence. An undeclared
+value is named rather than counted as a failure. Chapter two of
+docs/plan-1.51.md.
+
+
+### 1.50.5 — Cost per outcome
+
+The finding a total cannot make. With a numerator recorded, `profile` prints
+what a success costs per workload — and prints **both** orders, because
+cheapest per call and cheapest per outcome are different rankings and a
+workload can move up one while moving down the other. The worked example has
+one workload costing ten times more per call and half as much per resolution.
+The numerator is recorded spend and never the whole bill: dividing everything
+charges uninstrumented traffic to measured successes and reports a figure too
+high by exactly the uncovered share, in the direction that gets a working
+feature killed. Five reasons a figure is withheld instead of stated, each named
+in the cell, and a withheld slice gets no rank at all. Chapter three of
+docs/plan-1.51.md.
+
+
+### 1.50.6 — The ladder
+
+`trazum ladder`. "Cheap model first, escalate on failure" describes a policy
+that saves money and a policy that costs money equally well; one number
+separates them, and nobody computes it because an escalation pays **twice** —
+the cheap attempt is not refunded. The command prints the break-even escalation
+rate beside the measured one. Two identically configured ladders in the worked
+example: one saves 70% a call, the other costs 10% more than never having built
+it. No sign is claimed within two points of break-even. `escalateOn` is required
+and never defaulted, because "anything that is not a success" would mean
+documenting a new word silently starts sending traffic to a dearer model.
+`validateLadder` catches escalating on a declared success — the most expensive
+typo in the file — plus rungs that go down, ladders that never fire, duplicates
+and unknown models. Trazum does not run the escalation and says so. Chapter four
+of docs/plan-1.51.md.
+
+
+### 1.50.7 — The experiment
+
+`trazum experiment`. Two arms judged on recorded outcomes and cost together, on
+real traffic rather than in a laboratory. Three-valued: A wins, B wins, or **not
+separable** — and the third comes with the number of outcomes per arm that would
+settle it, so "run it longer" is an instruction rather than a shrug. Identical
+rates return null, because no sample size separates a difference of zero.
+`--min-outcomes` is required: a stopping rule declared after looking at the
+numbers is not one, and the report says whether it was honoured — printed even
+when the arms separated, since a separable result read too early is still both.
+And the figure the decision actually turns on: what one extra success costs,
+per call so arms with different traffic shares compare. Wilson per arm,
+Newcombe on the difference. Nothing is auto-promoted. Chapter five of
+docs/plan-1.51.md.
+
+
+### 1.50.8 — The quality gate
+
+`trazum quality`. CI could fail a build for tokens since 1.4 and for dollars
+since 1.21; a prompt edit that quietly made the product worse has never been
+gateable, so every saving this tool recommended went into a repository with its
+most important consequence unmeasured. Now it prints the sentence teams argue
+about — "the resolution rate moved from 71% to 64% on 16,800 measured outcomes,
+and this change saves $0.50 a call" — with both halves measured. It is a
+before-and-after rather than an experiment, so most of the module is spent
+looking for reasons **not** to blame the prompt: the model mix moving, the
+volume moving, and outcome coverage moving, each forcing "cannot tell" with the
+confounder named. A confounder outranks the statistics, so no build fails on a
+difference something else could explain. "Not measurably worse" is never "held",
+and cannot-tell exits 2. Shipped as `quality` rather than the plan's `check
+--against-outcomes`, because check reads prompt files and has never opened a
+usage log. Chapter six of docs/plan-1.51.md.
+
+
+### 1.50.9 — The semantic pass
+
+`trazum semantic`, and the oldest deferred item in the product. The rules engine
+has skipped paraphrase-level findings since 0.1.0 because a dictionary cannot
+see meaning and a hallucinated finding is worse than a missed one. What changed
+is not the model — it is that this arc built a way to check. The price is
+printed before anything is sent and `--yes` is required; without it the price is
+the entire output. Every quoted passage is checked character for character, near
+copies the rules engine already catches are dropped, a near-copy mislabelled a
+contradiction is rejected, and every token figure is counted rather than
+believed. A ceiling, never a saving — and a contradiction gets no figure at all.
+Three guards prove the pass never becomes a prerequisite. Chapter seven of
+docs/plan-1.51.md.
+
+
+### 1.50.10 — Whose money
+
+`trazum owners`. The fleet answered which service in 1.37; this answers whose
+budget, which is the question that decides whether anything else gets acted on.
+The unallocated is its own line and is **never** spread between the owners you
+do know — that is the most common lie in cost reporting, and it makes every
+team's figure wrong by an amount nobody can see, hardest on whoever instruments
+best. Shared cost is declared by a rule somebody wrote, and the rule is printed
+beside the numbers so the argument is about the rule. A split that does not sum
+to 1 sends the workload to unallocated whole rather than applying 90% and losing
+the rest. An owner with no measured data is "not measured", never "within" — the
+1.37 refusal applied to people. Chapter eight of docs/plan-1.51.md.
+
+
+### 1.50.11 — The commitment
+
+`trazum commitment`. Providers sell committed-use deals and every team that
+signs one is doing arithmetic in a spreadsheet against a guessed number — the
+highest-stakes instance of the failure this product exists to end, because the
+guess is annual and signed. It replays measured whole months against the deal's
+terms and prices **both directions**: a commitment is a floor as well as a
+discount, and the worked example is net positive with one month that cost
+$2,520, kept as its own figure because netted into the saving it disappears. An
+as-if calculation carrying `provenance: 'measured-past'` — nothing annualised or
+extrapolated. Shortfall risk is a count of real months and their spread, never a
+probability. Partial months dropped rather than scaled. Chapter nine of
+docs/plan-1.51.md.
+
+
+### 1.51.0 — The record, and the minor
+
+The release that closes the arc. Its thesis was that every figure this product
+printed was a denominator with no numerator — it could say a workload got 40%
+cheaper and could not say whether it stopped working. Ten chapters later it
+stands in the path of the call and refuses, records a numerator it never infers,
+divides by it and prints both rankings, prices a ladder and a contract in both
+directions, compares two arms without inventing a winner, fails a build for
+quality without blaming what it cannot attribute, finds what a dictionary cannot
+and discards most of it, and puts a name on the bill without ever spreading the
+unallocated.
+
+`trazum report --year` assembles the year from the store and the plans already
+kept — no new data, missing months named rather than filled, three outcomes
+never two, and a list of what the record cannot say. It deliberately has no
+dollar figure for what arrived, because a verification has never carried one and
+assembling a plausible number is the annual-report arithmetic this document
+replaces. It reports the record and not the team, asserted by a test.
+
+`docs/our-own-medicine.md` publishes this project's own record the way it asks
+users to keep theirs, ending without a score because every miss on it was found
+by the same process that made it. `conform` grows outcome and annual chapters
+plus cross-field rules, because the refusals worth carrying turned out to be
+relational. The doctrine reaches its second edition. Chapter ten of
+docs/plan-1.51.md.
+
+### 1.51.1 — A front door
+
+The documentation gets an index. Twenty-three Markdown files had accumulated
+with no way in: every one reachable from a link inside some other document, none
+of them findable. `docs/README.md` is arranged by what a reader came to do —
+deciding, using, extending, maintaining, reporting a problem — and closes with
+the four planned arcs presented as the delivered history they are.
+
+`CODE_OF_CONDUCT.md` and `.github/PULL_REQUEST_TEMPLATE.md` were both missing.
+The first is explicit that enforcement here is one person rather than implying a
+committee; the second asks what a change refuses to do and whether its guard was
+proven by planting the violation. The three delivered plans now say so at the
+top with their bodies unchanged, and `docs.test.js` asserts that every relative
+link resolves and every file in `docs/` is named by the index.
+
+**Nothing installable changed**, and nothing was deleted: every docs file was
+counted for inbound links first and the loneliest has three. The disorder was
+that there was no way in, not that there was junk. The guard's own probe found
+it blind to untracked files — the moment a document is most likely to be wrong.
+
+
+### 1.51.2 — The stream, and fourteen things nothing was checking
+
+The first chapter of the 1.52 arc. `trazum gateway` relayed every response with
+`await upstreamResponse.text()`, so for `"stream": true` — nearly all production
+traffic — the caller waited for the whole answer and then received it at once,
+and time to first token became the total generation time. The page had the
+argument against itself already: it says reading a budget file per request would
+put Trazum's latency between you and your provider. It now streams through while
+counting, holding three numbers and a partial line rather than the text.
+
+Two documents a machine could not read are fixed: `report --year --json` printed
+prose before the document, and `@trazum/core` emitted an `outcome-report`
+missing the `schemaVersion` its own contract requires — for nine releases.
+
+And a sweep of every markdown file whose content no test read: fourteen of
+thirty, a defect in every one opened but `docs/plan-format.md`, which is recorded
+as clean. The README's money table said Anthropic's cache floor was 512 when it
+spans 512 to 4,096; `docs/ci.md`'s Action example used an input that has never
+existed; `SKILL.md` told agents about nine config keys of seventeen. Each fix
+ships with a guard deriving its subject from the code rather than from a list
+typed beside it.
+
+
+### 1.52.0 — The gateway in a real path
+
+The minor that closes the first arc of the 1.52–1.60 plan. `trazum gateway`
+shipped at 1.50.3 with the right argument and an implementation nobody streaming
+could use: it buffered the whole answer before writing a byte back, so time to
+first token became the total generation time. It now relays as the answer
+arrives, counting off the events while holding no text.
+
+A refusal arrives before the first byte or not at all — on a refusal the
+provider is not contacted at all, so the prompt never leaves the machine, and
+once bytes flow the call is committed. The cost of that is stated rather than
+discovered: a call beginning inside the budget can end outside it, by one
+answer.
+
+And it names the calls it could not measure, with the cause. The common one is
+not a failure: on OpenAI a streamed call carries no counts unless the caller
+passed `stream_options.include_usage`, so a gateway that stayed silent would
+under-report most of a bill and look precise doing it.
+
+It still fronts fewer of the providers Trazum prices than it does not, which is
+what 1.53 is for — and how many is a question for `trazum gateway`, which
+derives the answer, rather than for this sentence, which said *two* through a
+release that made it three.
+
+
+### 1.52.1 — Two more providers, from facts already here
+
+Three chapters of the 1.53 arc. The gateway stood in front of two of the seven
+providers Trazum prices and now stands in front of four, and neither addition
+required anybody to type a hostname from memory: DeepSeek's endpoint was already
+in the token-band harness, and Google's endpoint, credential header and response
+shape were already in the Gemini provider and the Gemini importer.
+
+A provider Trazum prices but cannot front is no longer refused as though it were
+a typo — the refusal names the gap, offers `trazum profile` on an exported log,
+and says what that does not give you. Both refusals derive their subject from
+the catalogue and the upstream table, so a provider that gains support leaves
+the gap with nothing edited.
+
+Google's model lives in the URL, so the one forwarded path became an anchored
+pattern with a restricted model segment, and the outgoing URL is rebuilt rather
+than echoed. Eight hostile paths are refused by test, each proving the provider
+was never contacted. The security allowlist learned to extract pattern paths as
+exactly as literal ones — without that, the first pattern would have reached a
+credential-forwarding proxy without appearing in the allowlist at all.
+
+It also found the buffered path recording nothing and saying nothing where 1.52
+had taught the streaming path to speak, a refusal message that would have told a
+Gemini user about an OpenAI setting, and two documents carrying provider counts
+that had gone stale in a release about that very number.
+
+
+### 1.53.0 — Four of the seven, and why the other three are not here
+
+The minor that closes the second arc of the 1.52–1.60 plan, on a number smaller
+than the plan hoped for. Trazum prices seven providers. The gateway now fronts
+four; two more can never be fronted by a proxy of this kind; and the last three
+are missing one fact nobody here can supply honestly.
+
+DeepSeek and Google were added without anybody typing a hostname: both
+endpoints, Google's credential header and Google's response shape were already
+committed in this repository, in the token-band harness and in the Gemini
+provider and importer. Google's model lives in the URL, so the one forwarded
+path became an anchored pattern with a restricted model segment, and the
+outgoing URL is rebuilt rather than echoed — eight hostile paths are refused by
+test, each proving the provider was never contacted.
+
+A provider Trazum prices but cannot front is no longer refused as though it were
+a typo; both refusals derive their subject from the catalogue and the upstream
+table.
+
+Every `https://` host this repository names is now decided about, from a fixed
+vocabulary, checked against the compiled upstream table in both directions. A
+new host fails by name, untracked files included. Nothing may carry *"model
+call, not yet fronted"*, so the day a Mistral, xAI or Moonshot host arrives it
+fails the build with the chapter to write.
+
+Bedrock and Vertex are recorded as permanently unfrontable, for a reason proven
+from `llm.ts` rather than assumed: both interpolate a region into the host,
+SigV4 signs that host, and a per-caller origin is exactly what the compiled-in
+upstreams exist to prevent.
+
+It also found the buffered path recording nothing and saying nothing where 1.52
+had taught the streaming path to speak, a refusal whose `else` would have told a
+Gemini user about an OpenAI setting, and two documents carrying provider counts
+that had gone stale in a release about that very number.
+
+
+### 1.53.1 — The band stays inside the family it was measured in
+
+Two chapters of the 1.54 arc, and the second is a fault that had been in the
+product since the estimator learned to price more than one provider. The
+published ±10% is measured against Claude's tokenizer and `--exact-tokens`
+counts with Anthropic's endpoint; both facts were written down and neither was
+enforced.
+
+`optimize --exact-tokens` was handing the caller's own model id to Anthropic's
+counter — right on a Claude model, and on `gpt-5` either an upstream error or a
+number from the wrong tokenizer labelled *exact*. It refuses by name now, before
+asking for a key. The context-overflow advisory has stopped telling other
+families that a call **will** fail on a margin measured against Claude: where
+the band was never measured, how far over the line a prompt really is cannot be
+said, and saying so beats inventing a second band. The advice to run
+`--exact-tokens` is bounded to the family it works for rather than deleted.
+
+The band harness measures four families now — OpenAI and Google became
+measurable when 1.53 made their endpoints committed facts — and is tied to the
+gateway's allowlist, so adding a family needs the same security-test edit that
+adding an upstream does. Nothing has been run against a real service: what
+shipped is the shape, and every unmeasured family is named as unmeasured with
+the command that would settle it.
+
+
+### 1.53.2 — What the tool says about itself
+
+Four faults with one shape, found by an angle nobody had tried: extracting every
+documented `trazum` invocation and comparing it against what the tool actually
+says. Every guard in this repository that watches for a stale list was pointed
+at the documentation; the product's own help text was checked by nothing.
+
+The USAGE block said the gateway fronts two providers while the gateway itself
+answered four. `trazum profile` — the command almost every refusal points a
+reader at — was absent from the command list entirely. `ladder` and `owners`
+had no options section, so nothing said they take a window, which is the only
+thing either command is for. `eval` had two sections under one heading, each
+holding half the answer.
+
+And an Action pin could name a commit that is not on `main`: the pre-squash head
+of a feature branch says the right version, satisfies every existing check, and
+is deleted when the pull request merges. Caught while preparing this release,
+on this release's own pin.
+
+Three new guards, each derived from the code and each proved against a planted
+defect as well as against the corrected text. Two negative results recorded
+rather than assumed: no documented flag is missing from the CLI, and the
+"thirty-two commands" figure is right.
+
+
+### 1.53.3 — Two surfaces, two formats
+
+The doc-drift hunt continued into the two places it had not looked: the page npm
+renders, and the transcripts that claim to be real output.
+
+`packages/cli/README.md` showed twenty-one of the thirty-two commands as though
+they were all of them, with `trazum gateway` — the only thing here that can
+refuse a call before the money is spent — absent entirely. The fix is to say the
+table is a selection, not to list them all on a page like that.
+
+`trazum doctor`'s transcript wrote its money column `~$4,912` where the command
+prints `~ $4,912`. A rule banning that sequence across the documentation would
+have broken the correct surface: `optimize`'s advisory suffix has no space by
+design, and two READMEs show it exactly as the tool prints it. The guard takes
+the column's shape from running the command instead.
+
+Three things this found in its own work: writing the disclaimer reproduced the
+defect it was fixing twice in one paragraph; the check written to catch the
+second was case-sensitive and did not catch it; and an existing guard caught
+this work's own test bounding a section by its neighbour.
+
+
+## 2.5.1 — A bill for a period — released
+
+A patch, and no command. `bill` and `receipt` take `--since`/`--until`, refuse
+a period the log does not reach rather than print $0, and name the undated
+calls a window leaves out, on the receipt as a new gap. A bill spanning months
+adds a table by month. A Claude Code bill says it is priced at API rates, which
+a Pro or Max plan did not pay, on every surface. A prefixed model id is no
+longer called an OpenRouter slug by default.
+
+## 2.5.0 — Each request at its own size — released
+
+A minor for two fields in published formats, and no command. A model priced by
+prompt length is billed one request at a time: a call in its own band, a
+usage report's summed row at the dearer rate with the cheaper figure beside it,
+on every surface. That let in Claude Haiku 5.5, Gemini 3.1 Pro Preview,
+OpenAI's GPT-5.6 and later, Moonshot's Kimi K3 and K2.7 and xAI's current
+Grok family. A model states how long its cache entry lives. A Responses API log
+had billed every cached token as plain input, and `grok-4` had kept its old
+price after xAI retired it onto Grok 4.3's.
+
+## 2.4.3 — Each call at its own price — released
+
+A patch, and no command. `bill` with no path reads Claude Code's own folder,
+labels sessions by project and prints a statement on a terminal. Every call is
+billed at its own timestamp, and a row can carry the prices it had before a
+published change, which DeepSeek's 2026-09-10 cut needed. Google, DeepSeek,
+Mistral and OpenAI re-read: DeepSeek's V4 Flash price had been cut, three
+providers' cache figures were wrong, and OpenAI's snapshot ids price. The new OpenAI generation and Claude Haiku 5.5
+wait for per-request prompt sizes.
+
+## 2.4.2 — The bill as an attachment — released
+
+A patch, and no command. The Anthropic catalogue carries the models Claude
+Code runs today, so `bill ~/.claude/projects` prices an Opus 5.5 or Fable 5.1
+log at all; Haiku 5.5 waits, named, for per-request tier pricing. `bill` and
+`profile` write a PDF through a new zero-dependency `PdfDocument` in core,
+and `bill` writes every report `profile` does. Three silent wrong answers
+fixed: a glob billed one file, `bill` and `profile` disagreed on a directory,
+and `spend_guard` said yes to a misspelt argument. The web app closes sign-in
+by default, sends only named analytics events, and refuses impossible usage.
+
+## 2.4.1 — The same door from the browser — released
+
+A patch on 2.4.0's own terms, and no command. The README and the landing page
+open with `npx @trazum/cli bill ~/.claude/projects`, the web app's drop zone
+reads every shape `bill` reads with the same detectors and converters, and
+`bill` names `--pricing-live` when an unpriced id is an OpenRouter slug. Two
+fixes from the release itself: the Action pin moved to the commit `v2.4.0`
+names, and the release job checks out the whole history so `verify` sees the
+tags.
+
+## 2.4.0 — One door, and where the spend is — released
+
+The first release since 2.0.0 that adds commands, and the freeze at 46 is
+lifted on purpose rather than slipped past: [the plan](docs/plan-2.4.md)
+starts from about two hundred downloads a month behind forty-nine commands,
+names three causes and a move for each, and this release carries every move
+that did not need something this repository does not hold. `bill` is one door
+that reads anything the converters read and never guesses a shape.
+`from-openai` and `from-openrouter` read two more providers from their
+published schemas, and `reconcile` sets a receipt beside OpenAI's bill as well
+as Anthropic's. The README tells every MCP client how to install, the weekly
+bill has its cron recipe, and `adoption.mjs` writes the figures beside each
+version so the next plan starts from a number too. Cursor and Hugging Face
+stay named as blocked rather than written from memory.
+
+## 2.3.0 — The warning that cried wolf — released
+
+Three surfaces decided whether prices were stale from the catalogue's oldest
+provider, then printed a sentence saying the table behind *every dollar here*
+was reviewed on that date. On a report of Claude and OpenAI calls it was false
+by two months, and it fired on every run — which is the worse half, because a
+warning that always fires is one nobody reads on the day it is true.
+
+The skill was rewritten in the same release, for the same reason one level up:
+it described one door to a reader who might have any of four. An agent with an
+MCP client and no shell had been handed a document about a shell, and the MCP
+server — the whole product, for that reader — was mentioned nowhere in it. Its
+three new guards are derived from the code, and the first thing they caught was
+this file's own claim that three shipped converters were not built.
+
+
+## 2.2.1 — One price table read, two that no longer describe our models — released
+
+OpenAI's figures were re-read after 68 days and none had moved; the date moves
+because the reading happened. `moonshot` and `xai` stay where they were, because
+`grok-4` and `kimi-k2` are no longer on their providers' pricing pages at all —
+so their prices cannot be checked, and neither can be marked retired without a
+refusal this project has not received. Naming a blocked arc rather than closing
+it is the behaviour, not the exception.
+
+
+## 2.2.0 — Tested against inputs nobody wrote — released
+
+Four thousand tests found nearly every defect this repository has ever fixed,
+and every one of them shares a blind spot: a fixture only contains what somebody
+thought to put in it. This release adds thirty properties that draw from a
+seeded generator instead, and holds the product to the two rules at the top of
+this file rather than to the answers an example happens to produce.
+
+Rule 2 is the one that most needed it. *A locale changes the report, never the
+optimisation* is a claim about every prompt in every language, and until now it
+was illustrated on the prompts somebody wrote down. It is now asserted across
+every locale on thousands of drawn prompts — with a second assertion insisting
+the prose genuinely differs somewhere, so the property could not pass against a
+translation file emptied to English. Rule 1 is checked in the same pass: the
+generators are written here rather than installed, so nothing new is depended
+on to check that nothing is depended on.
+
+It found one defect immediately, and it is the defect this repository keeps
+meeting: `requiredFieldsOf` did not name `schemaVersion`, a field `conform`
+requires and refuses documents for, and both callers had quietly been adding it
+back themselves. One fact, three copies. That is the shape every guard here is
+built to make impossible, and finding it in the module written to prevent it is
+the most honest argument for testing this way.
+
+
+## 2.1.0 — The receipt can be repriced — released
+
+**A promise the format had already made in writing, made true.** Since 1.83.0
+the two cache-write TTL fields on a receipt line have carried a comment saying
+they exist *"so a consumer can reprice this traffic against another model's
+rates"*. No consumer could.
+
+`repriceProfile` refuses to price traffic the target could not have accepted —
+a cheaper model with a smaller context window does not make a 400k-token call
+cheaper, it makes it impossible, and counting an impossible call's price
+difference as a saving is the flattering direction this repository refuses.
+**That refusal needs the largest single call in a slice, and a receipt did not
+carry it.** The format was built for repricing and stopped one field short.
+
+So `ReceiptLine` gains `maxCallInputTokens` and, with it, the per-line count of
+calls whose write TTL the log did not state — the document already reported
+that organisation-wide as a gap, and a comparison needs the resolution it
+travels at. `repriceReceipt` asks a receipt the question `repriceProfile` asks a
+log.
+
+**It is not a second implementation, and that was the design constraint rather
+than a nicety.** The loop that refuses over-context traffic, excludes calls
+already on the target, keeps the write TTLs apart and states
+`sameTokensAssumed` is reached through a narrow `RepriceableSlice`, and both
+entry points map onto it. Two loops reading two shapes would drift on which
+traffic is refused, and a refusal that quietly stops happening reads as a
+saving. The guard holds them to `deepEqual`: repricing a receipt answers
+**exactly** what repricing its own profile answers, refusals included.
+
+**Why it lands here rather than in the paid product.** A comparison only the
+holder of the log can make is a comparison only the person who least needs it
+can make — by the time anybody asks *what would these calls have cost on the
+small model*, the log has usually been aged out, or is on a runner that no
+longer exists. And `docs/licensing.md` promises no analysis this repository can
+perform will ever leave it: the entry point for receipt-shaped input is part of
+that analysis, so it is here, free and offline, and the paid product consumes it
+like anybody else.
+
+**It is new development after a release that said the tool was finished, and
+that is a statement rather than an oversight.** What 2.0.0 froze is the
+*surface*: 46 commands, each keeping its meaning. This adds no command. It adds
+two numbers to a published format and one function.
+
+---
+
+## 2.0.0 — "Done" — released
+
+**The arc's closing release, and it adds nothing.** No analysis, no command. It
+exists to make one promise a number people can point at: **the surface is frozen
+at 46 commands**, and the 46th was the receipt.
+
+The arc plan set four conditions for saying the product is finished. Three held
+when they were audited: the estimator names which counter produced each figure
+and which families nobody has measured (`band-domain`, `measured-profile`,
+`token-band`); every rule of the doctrine names the test that fails when the
+product stops obeying it, or why no test can (`doctrine-ledger`); and the CLI
+dispatches exactly 46 commands.
+
+**The fourth did not hold, and this file was the reason.** *Under
+consideration* was offering to build the editor extension and the
+per-model-family tokenizer, both of which this same file recorded as released
+two hundred lines above. `roadmap-truth.test.js` holds it now, derived from the
+workspaces rather than from a list of products.
+
+**What 2.0 promises, and what it does not.** It promises the surface: a command
+that exists will keep existing and keep meaning what it means. It does not
+promise the prices, which are facts about other people's businesses and are
+re-read on their own clocks — three providers are 67 days stale as this ships,
+and the product says so rather than hiding it.
+
+**After 2.0.** Maintenance, indefinitely. Prices re-reviewed per provider,
+models added and retired, corrections, security. The entries left under *Under
+consideration* are blocked on people rather than on code and stay exactly where
+they are, still named, still unfaked.
+
+## 1.86.0 — "The cheapest place somebody meets this product" — released
+
+**The editor extension, which this file has called unblocked and unscheduled
+since 0.10.0.** The entry under *Under consideration* was right about the
+reason and wrong to leave it there forever: the blocker was never the code, it
+was that an extension is a distribution commitment — a marketplace listing, an
+update cadence, and a second place where a bug is somebody's afternoon. The
+1.83–2.0 arc takes that commitment on purpose, because the problem this whole
+ledger names is that almost nobody has met this product, and a status bar is
+the cheapest place they could.
+
+**It sends the buffer nowhere.** `@trazum/core` runs in the editor's own
+process against text already on the machine. That is the product's first rule
+applied to a new surface, so it is held the same way the rest of it is: every
+source file in the package is scanned for a way out, and the permitted set is
+empty. The two core modules that exist to make calls are forbidden by name,
+because importing one would put a network path in the editor without the word
+`fetch` appearing anywhere.
+
+**Testable without an editor, which is the design and not a convenience.** A VS
+Code extension is normally tested by downloading VS Code and driving it: a
+network dependency, a version to track, and a suite that cannot run without a
+display — none of it compatible with a product whose argument is that it works
+offline. Every judgement lives in a module that has never heard of an editor,
+and a guard holds the shim to being a wire.
+
+**And no types package.** The editor supplies `vscode` at runtime and never
+installs it, so `@types/vscode` would exist only to compile — the exact shape
+that cost 1.85.0 three Action jobs when an optional package became one the
+repository could not build without. The contract is written out instead.
+
+---
+
+## 1.85.0 — "The tokenizer, and a measurement this repository already had" — released
+
+**1.84.0 did not ship, and the plan said so before the code was written.** It
+needed a key for each of four families' own counting endpoints. Three never
+arrived, [the plan](docs/plan-1.83-2.0.md) wrote down that the arc would
+continue at 1.85.0 rather than publish a figure derived from Claude's tokenizer,
+and that is what happened. The gap keeps its number: renumbering it away would
+rewrite the one document whose value is having been written first.
+
+**The fourth family never needed a key.** A fixture of 47 samples measured
+against `gpt-5` through OpenAI's own API had been committed here since
+2026-08-28. `MEASURED_FOREIGN_ERROR_PCT` had no entry for it, so
+`measuredForeignError('openai')` answered `null`, a test *pinned* that null, and
+every report touching a GPT model told its reader nobody had measured the
+estimator against their tokenizer. The answer was **112.4%** -- the worst of the
+four measured, on German prose, because `o200k_base` packs Latin text far more
+densely than the estimator's Claude-calibrated divisors expect.
+
+The guard this repository already had covers the opposite direction: a claim
+with no fixture behind it. This was a **fixture with no claim in front of it**,
+and it is the same fault with the sign reversed. One overclaims; the other
+discards a measurement somebody paid an API bill for and leaves a
+true-sounding sentence standing where the number belongs. A family whose fixture
+exists and whose figure is missing now fails the build, excepting the one whose
+fixture *governs* the published band, since a second copy of that number would
+be the two-sources-of-truth problem the file exists to prevent.
+
+**`@trazum/tokenizer-openai`**, the plan's third chapter, delivered. OpenAI's own
+byte-pair ranks as an optional counter. Install it and a GPT prompt is counted
+exactly; do not, and nothing changes, because the core imports nothing from it
+and the counter arrives through the `TokenCounter` seam that has been there
+since the beginning. It reproduces the committed fixture **47 of 47, to the
+token** -- a paid API call and an offline rank table agreeing exactly on every
+sample, which is what makes the 112.4% a measurement rather than an assertion.
+
+It refuses a model it has no encoding for rather than reaching for the newest
+table, because a guessed count labelled *exact* is worse than no count. And it
+refuses to say whose a model is: a Claude id comes back `unknown-encoding` and
+not *wrong family*, because the catalogue owns that question already.
+
+**The no-dependency rule was spent once, and narrowed rather than softened.**
+The rule is a security property -- a dependency is code that runs over prompt
+text with no review from this project -- so the exception is one named package
+with one named dependency, in a single file both guards read, with
+`@trazum/core` asserted separately never to appear in it. `js-tiktoken` is held
+to what the rule is actually about: MIT, no network, no filesystem, no
+subprocess, no `eval`, **read out of the installed source on every run**,
+because reviewing something once is not a guarantee that survives a version
+bump. The exception exists for the case this product is built around: the rank
+tables are twenty-two megabytes, and a gate that pulls that into every build is
+a gate teams turn off.
+
+**Plants that fire.** The core given a dependency exception. A second dependency
+slipped into the excepted package. The `openai` entry deleted again. The figure
+edited to a flattering 12.4%.
+
+**And a derivation that could not see its own new workspace.**
+`contributing.test.js` matched `-w @trazum/[a-z]+`, which skips any name with a
+hyphen -- so a script could have driven a workspace its documented comment never
+mentioned, which is exactly the drift that file exists to catch, arriving
+through its derivation instead of its prose.
+
+## 1.83.0 — "A receipt, and the surfaces that could not disagree" — released
+
+**The release where the product started producing evidence somebody else can
+check, and then found its own first attempt at it unchecked.**
+
+`trazum receipt` writes a bill's counts with the provenance of every figure
+attached and nothing else: no prompt text, no answers, no paths, no branch names,
+no credentials, no session identifiers, absent rather than redacted because the
+emitter takes a usage profile and a profile has no field that can hold them. It
+sends nothing anywhere. It is the 46th command and the last the surface grows
+before 2.0.
+
+Its first version published the catalogue's rates beside a total the profiler had
+computed, and those are not always the same rates: a promotional window, a
+long-context tier, and above all a cached read, billed at a fraction of input
+that **no published field named at all**. Tokens times the stated rate disagreed
+with the stated total. Every line now carries the money as it was apportioned,
+four buckets summing to `usd`, so the rate really charged is recovered by
+dividing a bucket by its own tokens.
+
+The other half of the release is guards for claims that were true and unchecked,
+which is not the same as true. The landing says four surfaces cannot disagree
+because they are the same functions; that is an argument, and one log now goes
+through all four and is compared. The README opens by promising prompts never
+leave the machine; that was proven for three commands out of 46 and is now proven
+for all of them. A spend gate passed on a log nobody could read. Sonnet 5 was
+priced past the end of its own introductory window. One review date stood for
+seven providers. Three surfaces counted the commands by hand and were wrong.
+
+And the landing page was blank below the fold, and had been since it shipped.
+
+## 1.82.0 — "The band was a measurement of its own training set" — released
+
+**The release where the central claim was read against its own evidence.** For
+eight releases every report said `±10%` about every prompt. It was measured, it
+was committed, and a test asserted it — and the corpus it rested on held
+thirteen files of Latin prose and exactly one each of code, numeric and
+punctuation, which were the files the estimator's constants had been fitted to.
+The number was never about the estimator. It was about its own calibration set.
+
+Twenty-six ordinary samples in the thin classes broke it: 32.5% out on a CSV
+ledger, 25.1% on a run of identifiers, against a claim of ten. The band is a
+property of the text now — ±4% CJK, ±6% Latin prose, ±26% code and markup, ±33%
+tabular numbers — and the guard holds every sample against the band `bandFor`
+gives it, so a threshold cannot be tuned to make it pass.
+
+**It deliberately does not classify by text type.** The corpus says that
+classifier cannot be built: measured by character mix, code and punctuation
+overlap completely and two of three few-shot samples are indistinguishable from
+prose. So it sorts on the separations the evidence offers and, where two classes
+overlap, gives the worse band.
+
+**Two hypotheses were tested and rejected** — digit-run length and
+grouped-number density both fail to predict the numeric error — which is what a
+corpus of forty-seven buys over one of twenty-one. **One calibration succeeded**:
+hangul had been charged a placeholder nothing measured, two Korean samples agreed
+in lockstep, and 1.35 took the class from 10.6% out to 3.2%.
+
+**The blocked arc moved, and only as far as the keys reached.** 1.54.0 asks for
+the estimator's error against each family's own counter. Two of the six foreign
+families are now measured — DeepSeek 94.5% at worst, Mistral 103.1% — and the
+report prints those figures rather than a hedge with no number in it. OpenAI,
+Google, xAI and Moonshot are still unmeasured and still say so by name. The arc
+is not finished; it is smaller.
+
+`trazum from-helicone` shipped in the same release: the fourth converter, and
+the one that needs three columns to answer what model ran. Forty-four commands.
+
+## 1.81.0 — "The things nobody had checked" — released
+
+**The pass where the product read its own code.** Fourteen of this release's
+twenty-two changelog entries are things that had been here for weeks or months,
+looked finished, and had never been opened and read against what they claimed to
+do: a web app one environment variable away from spending the operator's
+credit on strangers, an account with no way to close it, a revocation the store
+could always do and nothing called, a ten-minute window only the browser was
+keeping, the one auth route nothing rate limited, and sessions that expired and
+were never swept.
+
+Two things here are new rather than audited: a Claude Code status line that
+costs nothing, because the surfaces it uses are the ones whose output never
+becomes context, and `from-claude-code --state`, which reads only what a
+transcript appended since last time.
+
+**Deleting an account** (`/api/account`). The accounts that arrived in 1.7.0
+could be signed out of and never closed: there was no `deleteUser` anywhere in
+the store, in either driver, so the only way out of this product was to stop
+using it. `DELETE /api/account` takes the account row and, with it, every
+session, every prompt, every version of each, and every `/c/<token>` link the
+account published. Postgres does that with the four `on delete cascade` clauses
+the schema already carried; the memory driver walks the same graph by hand,
+which is why the guard runs against the factory and not only through the route.
+
+Immediate, with no grace period and no recoverable state, because a screen that
+says deleted should mean deleted. Irreversible enough that the confirmation is
+checked on the server: the browser asks for the login to be typed, and a browser
+is bypassed by anyone with a terminal. Whose account is never a parameter, so
+the worst any caller can do is delete themselves.
+
+Published share links stop working, and that is the intended answer rather than
+an oversight. Keeping them would mean keeping the deleted person's prompt text
+and their login in `trazum_shares`, which is not a deletion.
+
+## 1.80.1 — "The capital letter the grant keeps" — released
+
+**The correction 1.80.0's own guard let through.** The MCP registry
+namespace carries the GitHub login exactly as GitHub spells it, and both
+manifests lowercased it, so the publish came back 403. The name is
+corrected in both files, and the guard no longer guesses the owner's
+shape: it reads the owner out of the repository URL `server.json`
+already carries. A release rather than a local fix, because the registry
+verifies the name by reading it off the published package.
+
+## 1.80.0 — "The doors somebody else walks through" — released
+
+**The distribution pass, with nothing new built.** The Action's
+Marketplace line names both of its gates instead of one; the MCP registry
+gets `server.json` and an `mcpName` in the version lockstep; the npm pages
+get a destination that is not the repository they already link; the tool
+descriptions are rewritten for the agent that selects on them, with
+`spend_guard` leading; the README opens on the agent loop and the
+Playground deep link actually lands, because it did not exist until this
+arc built it. Provenance underneath: a DCO gate and a licensing page whose
+open set is derived from the repository.
+
+## 1.79.0 — "The dash the sweep left behind" — released
+
+**An instruction obeyed on one surface, finished on the other and turned
+into a rule.** The em-dash had been swept out of the web app by hand and
+left standing in the terminal, where a Spanish paragraph printed two of
+them. 338 are gone from the two Spanish catalogues, judged one at a time;
+English keeps its own on purpose. The guard walks for every Spanish
+dictionary and fails on both spellings, the character and the escape,
+because the first pass searched for only one and missed 32.
+
+## 1.78.0 — "A sentence no locale could reach" — released
+
+**The position document joins its own family.** Its caveats were English
+prose baked into the document, so a Spanish reader met a localized
+heading over an untranslated block; its three siblings had used codes
+all along, for the reason the contract already stated. Codes now, with
+the sentences in both renderings and a guard that no code can reach a
+reader as a bare slug.
+
+## 1.77.1 — "The folder name stands" — released
+
+**A guess, retracted the day it shipped.** The project-folder label
+decoded Claude Code's path encoding, which is not invertible: `/` and
+`-` both become `-`. Real folders proved it within minutes of release,
+so the folder name stands as it is, and the two that found it are
+fixtures now.
+
+## 1.77.0 — "The agent's bill, told honestly" — released
+
+**Four things a real profile should not have had to say.** A folder of
+projects labels itself by project; a dated model id prices as the model
+it is, through aliases declared one line at a time and never derived
+from a pattern; the turns Claude Code writes itself are excluded by
+name and counted rather than priced at zero; and `stop_reason` reaches
+the log it was always in the transcript for. Every one of them was the
+converter handing the profiler less than the transcript already knew.
+
+## 1.76.0 — "The tour that does the work" — released
+
+**The tour performs instead of describing.** Every step demos its page
+through that page's own run path — sample prompt optimised, comparison
+judged, sample month priced — and the terminal types three real commands
+and runs them, ending on the line that installs the CLI. A typed demo
+bus with no DOM, a typing hand the visitor's keystroke cancels, and a
+guard that executes every demo command in CI so a broken sample fails
+before a visitor sees it. Asked for as "que el mismo tour paso a paso
+sea una demo", and shipped with the honest copy correction the samples
+forced: the playground's profile is the compact rendering, and the card
+now says so instead of overclaiming.
+
+## 1.75.0 — "The readable terminal" — released
+
+**The reports became scannable without changing a word.** A style module —
+ANSI-aware measurement, one table renderer, a proportion bar, a heading
+rule — and the profile, models and the rest repainted through it. The
+chapter-four guard makes "presentation only" enforceable: painted output,
+stripped, must equal plain output byte for byte, and a pipe never sees
+paint. Asked for as "que sea fácil de leer al 100%", and shipped with the
+two sentence-fragment headings deliberately left unruled.
+
+## 1.74.0 — "Any model's money" — released
+
+**The bill went fully vendor-agnostic where it still was not: the prices.**
+A dropped price card (overlay JSON or raw OpenRouter response, transformed
+by pure core in the page) widens the catalogue every figure prices with —
+Qwen included. `trazum switch` prices the switching decision: measured
+delta, declared migration cost over the measured daily saving with both
+refusals named, the required evaluation itself priced, quality always
+deferred to route. `trazum ownrate` derives a self-hosted $/MTok from the
+operator's own numbers, snippet proven to paste. Forty-two commands.
+
+## 1.73.1 — "The result follows the scenario" — released
+
+**The Optimizer re-prices when the scenario moves.** A model change used to
+leave a stale report on screen, priced for the previous model; now the free
+deterministic pass re-runs debounced on any scenario change, never before
+the first manual Optimise, never while a paid pass is enabled, and without
+touching the reader's history. Plus the `humanizer` skill vendored into the
+tracked skills tree with a persistent registry.
+
+## 1.73.0 — "The guided tour" — released
+
+**The app explains its own doors.** A guided tour — dimmed page, one ringed
+panel, a card per step — walks optimise, write, compare, the bill and the
+playground, opening each tab as it goes and ending where the visitor can
+type a first command. Offered on first visit, never auto-played, launched
+from the rail forever after. Steps are data, copy is dictionary in both
+locales, the overlay is ~180 lines of this repository's own rather than a
+library, and the suite pins every join: anchors must exist, locales must
+differ, no effect may open it, storage sits behind try/catch, reduced
+motion means instant scroll.
+
+## 1.72.0 — "The playground" — released
+
+**The CLI, runnable in the web app.** A terminal tab over the same
+`@trazum/core` functions the real CLI imports, on sample files already
+loaded: ten pure commands plus `ls`/`cat`/`clear`/`help`, converter output
+written with `-o` landing beside the samples so the 1.71 pipe runs in front
+of the visitor, both locales, a pinned demo clock, and nothing uploaded or
+fetched. The commands that need a network, a credential or a process are
+named as CLI-only rather than hidden. Also carried: codeql-action 4.37.8
+bumped in one commit, both halves together, superseding the two dependabot
+PRs that each fail the SHA-parity guard alone.
+
+## 1.71.2 — "The README the npm page never showed" — released
+
+**The npm page for every package now shows its README.** Publishing with `npm
+publish -w` from the repo root put the README in the tarball but not in the
+version metadata, so npmjs.com rendered "no README" over packages that shipped
+one, for three releases. Each package now publishes from its own directory.
+`publish.test.js` forbids the `-w` form and asserts the per-directory shape.
+
+## 1.71.1 — "The help, in the language it was asked in" — released
+
+**The Spanish `--help` documents `from-claude-code` and `from-otel` again.**
+Both were absent from the Spanish USAGE block and had no options section, so a
+Spanish reader could not learn from `--help` that the conversion commands
+exist. The help is one template per locale, invisible to the type system.
+Fixed, and `help-enumerations.test.js` now runs the help in every reviewed
+locale instead of only English, with a planted hole proving it fails on the
+shape.
+
+## 1.71.0 — "The universal cost lens" — released
+
+**Point Trazum at any OpenTelemetry export and it prices the LLM calls
+inside.** `trazum from-otel` — the fortieth command — generalises the
+`from-claude-code` pattern: a pure `otelRecords` converter turns the OTLP/JSON
+any GenAI exporter produces into usage-log records (model, timestamp, a label
+from the span's operation or service name, the token counts), and every
+command prices it from there. Non-LLM spans are counted and skipped. The web
+Bill tab's folder drop gained a third arm — a dropped OTLP export detected by
+`looksLikeOtel` and converted in the page. What OTel cannot give is not faked:
+no cache TTL split, so the cache verdicts read *cannot tell*; a privacy fixture
+greps the whole conversion for a planted prompt and trace id. Vendor-specific
+converters stay named and unbuilt until a real export of each is seen.
+
+## 1.70.0 — "One drag" — released
+
+**Drag ~/.claude/projects onto the web app; read your agent bill in
+seconds, nothing uploaded.** A new core `looksLikeClaudeCodeTranscript`
+routes each dropped file, the Bill tab descends a folder and converts
+every transcript in the page labelled by its project, and a banner says
+what it did — the numbers kept, the words not. The landing also gained
+machine-drafted French, German and Portuguese beside reviewed English and
+Spanish, each unreviewed language saying so. On more LLM vendors: the
+bundled table stays a reviewed snapshot; live coverage is OpenRouter's,
+because an invented price would be this product's one unforgivable sin.
+
+## 1.69.0 — "The agent's own bill" — released
+
+**The transcripts Claude Code already writes, priced — the numbers only,
+never the words.** `trazum from-claude-code` converts them to a usage log:
+deduplicated by request (one call is written as one line per content
+block), streamed responses kept at their final counts, the cache TTL
+split preserved for the verdicts that need it, and a privacy guard that
+greps the whole output for planted secrets. Measured against this
+repository's own 195 live transcripts before the design settled. Also
+carried: the Claude Code plugin and six vendored agent skills, merged
+unreleased.
+
+## 1.68.0 — "The browser catches up" — released
+
+**Everything the CLI can say about your money, the web app says in the
+reader's own tab, from the same functions, with nothing uploaded.** The
+Bill tab's Position card renders the 1.67 position document by the same
+`positionReport` the CLI, its HTML page and the MCP tool call; the
+ceilings come from the reader's own `trazum.config.json`, read by the
+same `parseConfig` — same validation, same error sentences verbatim; both
+locales speak the CLI catalogue's sentences word for word; and a parity
+guard holds the fourth door to the other three, textually and
+functionally. One honest correction recorded in the plan: "what-if in the
+browser" was sketched as a chapter and had already shipped.
+
+## 1.67.1 — "Ready to travel" — released
+
+**Nothing new to install and two ways the project now reaches further.**
+The repository became deployable on N0 — a root Dockerfile over the
+workspace, a manifest with Postgres and a migration service whose embedded
+SQL a test keeps byte-identical to the real files, and a mirror workflow
+that does nothing (and says so) until the owner adds the secrets. The web
+app's rail named its groups — work on a prompt, measure — and gained direct
+links to the GitHub repository, the npm CLI package and the documentation.
+And a real rendering defect died on the way: Tailwind named groups match
+any ancestor, so a horizontal Tabs nested in the vertical shell inherited
+its orientation and the active marker collapsed to a 2×2px dot; the
+primitive now reads its own `data-orientation`.
+
+## 1.67.0 — "The month ends on a measured position" — released
+
+**The product still refuses to forecast; what it stops refusing is to say
+where the month stands.** `trazum position` states every configured ceiling
+with its measured spend, window and denominators from one named log; the
+distance line is division labelled as division, absent under the seven-day
+floor, on an over and on a zero rate, with no date-shaped field anywhere.
+The same document travels: an HTML page with the caveats ahead of the
+tables, and a seventh MCP tool so an agent can ask "how much room is left"
+before it spends. `check --files-from -` turns the pre-commit hook into one
+pipe over `git diff --name-only`, drops counted out loud, baseline
+deliberately whole-repository. With this release the 1.65–1.67 plan — the
+owner's five open-source paths, as far as they go as code — is delivered in
+full.
+
+## 1.66.0 — "One policy, three doors" — released
+
+**Per-label, per-session and per-day USD ceilings, stated once, judged once,
+enforced identically at whichever door the call arrives.** A `limits` block
+validated like every other config key; `judgeLimits` in the core answering
+within, over or cannot-tell with the limit, the measured spend and the
+window on every judgement; the gateway's 402, `serve`'s cost answer and
+`spend_guard` all carrying that judgement verbatim, with a suite that pushes
+the same call through all three doors and requires field-for-field equality
+— then breaks a door to prove the property can fail. Refusals name the
+limit, the measured position and the period in one shared sentence; waivers
+apply to limits unchanged, and a waived ceiling keeps its measurement while
+the silence rides in every answer. On the way in, the arc's tests found
+`serve` crashing outright on a negative token count — a defect reproduced
+against the shipped build before it was fixed to a 400.
+
+## 1.65.0 — "The format anyone can adopt" — released
+
+**A document can be checked against this format by a tool that has never
+installed this product.** All eighteen documented contracts answer to a
+`--contract` name with required fields enforced both ways; `trazum schema`
+prints an authored JSON Schema (draft 2020-12) per contract, held to
+`conform` by a guard that compares every schema's `required` to the exact
+list `conform` enforces — it caught five drifted schemas and a missing field
+before the chapter was an hour old. The producer's page closes the arc:
+emit-this-minimum examples that the build extracts and runs through
+`trazum conform`, then guts and requires to fail, so an example that drifts
+breaks this build and not the first producer to copy it.
+
+## 1.64.0 — "The report somebody forwards" — released
+
+**The figures leave the terminal without losing their caveats.** The profile
+and the roll-up gain an HTML door — one self-contained file, both locales,
+printable — rendered from the same document `--json` prints, with the
+caveats in a bordered block ahead of the tables and a parity guard walking
+every dollar in both directions, proved by forging pages before being
+trusted. On the way in the arc's first test caught a defect shipped since
+1.59: `profile --json --markdown-out` crashed with a ReferenceError, on
+every release, because no test had ever driven both flags together.
+
+## 1.63.0 — "Scale is measured, not assumed" — released
+
+**The 1.63 arc closes on its stated condition: the gate is live.**
+`trazum.bench.json` is committed and CI fails past 3× a workload's recorded
+ratio — validated for free when this container's CPU changed between the
+recording and the gating run: wall clocks moved ~1.5×, ratios held. The
+refusal ceiling (chapter three) and the heap line (chapter four) landed just
+before the close: one constant in core behind every prompt door with
+`--max-input` to raise it deliberately, and the 25MB log profiling inside a
+384MB old-space cap the engine itself enforces. One CodeQL query —
+`js/file-access-to-http`, which accurately describes `--exact-tokens` and
+`--llm` — excluded with owner approval and the reasoning committed. With
+this minor the 1.62–1.63 plan is delivered in full: both arcs, all nine
+chapters.
+
+## 1.62.1 — "This machine, measured" — released
+
+**The 1.63 arc opens: the bench and the ratio gate, chapters one and two.**
+`trazum bench` runs the standard workloads one shot each — wall time and peak
+RSS, each workload in its own child process because a peak is a fact about a
+process — on inputs generated with the fuzzer's own LCG, never written to the
+project. The gate holds `wallMs` over an in-process calibration loop, because
+a CI runner lies about wall time to the workload and the yardstick alike and
+the ratio is what is left when the lie cancels out: `--record` writes a
+committed baseline, `--against` with a stated `--max-ratio` exits 1 past the
+factor. Landing it collected four debts from standing guards — a CLAIMED
+harvest, a format.md row and count, the `--json` partition, and the
+one-file-spawns rule that moved the child spawn into `git.ts`.
+
+## 1.62.0 — "Held to its own standard" — released
+
+**The 1.62 arc closes on the properties it promised**, stated in the release
+notes as the plan committed: never throws, never grows, idempotent, masks
+intact, money never negative, unreadable lines named. The chapters landed in
+1.61.1 and 1.61.2; the minor is the story finishing. New with the close:
+`docs/hardening.md`, the promises as a page — where each is enforced, what a
+bounded fuzzer does not prove, and the standing rule that every future crash
+joins the corpus as an atom. The documentation index also stops undercounting
+its own plans: it said five when there were seven.
+
+## 1.61.2 — "An input nobody had tried" — released
+
+**Seven defects, one stress session, one shape.** The first five chapters of
+the 1.62 arc: money can never be negative and no door disagrees with its
+sibling; `optimize` runs to a fixed point and is idempotent by property; the
+stress session is a seeded fixture in CI; masks survive byte-for-byte over the
+corpus; and a line the parser cannot read is named, never read past.
+
+The worst two: `spend_guard` said **yes** to `outputTokens: -500` because a
+negative estimate lowers projected spend — an agent that lies about its output
+bought an approval — and text inside a code span came out rewritten with every
+mask believed on, since the masker shipped, because the segmenter's scan
+position skipped a legitimate match after discarding an illegitimate one.
+
+The zero that proved nothing is on the record twice: the mask property could
+not fail until bait atoms — rules' own targets *inside* protected spans — went
+into the corpus, and defect seven fell out the same hour.
+
+## 1.61.1 — "Nothing was holding these" — released
+
+**A patch whose two entries are the same act**: take something this repository
+says about itself and find out what would fail if it stopped being true, by
+emptying it rather than by reading.
+
+**Four of the five promises `docs/json-output.md` opens with were prose.** Only
+*absence is null and never zero* was enforced. All four held — 414 dollar
+figures and 296 token counts, measured — which is exactly the state in which a
+promise quietly stops being true. Rounding is asserted backwards, because its
+absence cannot be proved from one document.
+
+**Six prose pages broke nothing when emptied**, including `SECURITY.md` and
+`VERSIONING.md`. One derived guard now holds every page to what a page goes
+wrong about quietly: that it says something, links only to files that are there,
+and shows only commands this CLI dispatches.
+
+It caught prose on its first run — an error message quoted in the changelog read
+as a command — and the pattern was tightened rather than the file exempted.
+
+## 1.61.0 — "A prompt this tool cannot improve" — released
+
+**The arc closes, and all six chapters landed.** Trazum had only ever read
+prompts somebody else wrote. `trazum write`, a `Write` tab and `prompt_writer`
+over MCP are three surfaces onto one interview and one document.
+
+**Nothing is generated.** The questions are fixed, the follow-ups are predicates
+over the answers, and the words are the author's — so the same answers assemble
+the same bytes on any machine and in any locale, and the offline rule holds
+without a footnote.
+
+`/api/write` is the web half, and it is **stateless on purpose**: the browser
+holds the answers and sends all of them every time. A session would mean that
+endpoint knowing what somebody is halfway through writing, which is the thing
+the rest of this product refuses to hold — and nothing there calls a model
+either, so the surface that has a network by definition is held to the same rule
+as the one that does not.
+
+**What it refuses to claim is the point.** Not that the prompt is good; that is a
+judgement about text nobody has run. Complete with its gaps named and no score,
+cheap with the estimate marked as one, and clean — `trazum optimize` recovering
+nothing from it, which is the only one of the three this product could have
+staked its name on, because the tool grading the output is the tool that would
+have to find the fault.
+
+**What it did not build**: the optional model-assisted polish, which needs a
+credential this repository does not have. Named in the plan from its first draft
+and still open, the same treatment 1.54.0 and 1.57.0 get.
+
+## 1.60.4 — "You describe it, it asks" — released
+
+**The first four chapters of the 1.61 arc**, and the answer to a question this
+product had never asked: every other command reads a prompt somebody already
+wrote. `trazum write` starts from nothing and asks — and what it asks is the
+product, because a question whose answer cannot change the output is waste.
+
+**Nothing is generated.** The catalogue of questions is fixed, the follow-ups are
+predicates over the answers, and the words in the prompt are the author's. The
+same answers assemble the same bytes on any machine and in any locale, so the
+offline rule holds without a footnote.
+
+**It refuses to claim the prompt is perfect** and prints three measurable things
+instead: complete with its gaps named and no score, cheap with the estimate
+marked as one, and clean — `trazum optimize` run over the draft, recovering
+nothing, with that zero proved non-vacuous.
+
+`prompt-draft` joined the interchange format as the eleventh contract, and four
+existing guards forced it to arrive documented and checked rather than quietly.
+
+**And the doctrine got a guard.** Emptying `docs/doctrine.md` broke no test,
+in the page whose subject is checking what enforces your own rules.
+
+Three defects in already-shipped code came out of building it: `optimize` took
+any string as a level and ran `safe` in silence, `-o` parsed and did nothing in
+two places, and a guard read a whole page instead of its own section.
+
+## 1.60.3 — "A document nobody lists" — released
+
+**Two chapters, one shape.** `docs/json-output.md` calls itself the contract and
+`docs/format.md` is the index a connector author works from. Six of the fifteen
+contracts had no guard at all, and three documents were on neither list — the
+second finding a consequence of the first.
+
+**The roll-up documented three of its nineteen top-level fields.** The merged
+bill, both periods, the duplicate and overlap findings and the typed caveats were
+absent from the contract a consumer builds against, and `notMerged` sat beside a
+documented `rejected`. The fleet document never mentioned `schemaVersion`.
+
+**The index said twelve documents while `pulse`, `rules --measure` and the
+gateway's 402 body were on neither list** — and the count had been guarded
+against the table since the day it said seven with ten rows. Both halves of that
+comparison were written by hand, so a document missing from both left the two
+agreeing.
+
+Both lists are derived now: the contracts that exist against the tables that
+document them, matched by the anchors the rows link to, with every count in the
+prose derived from the table. Proved by breaking each guard, and proved each does
+not fire on a change that is not its defect.
+
+## 1.60.2 — "Checked by running" — released
+
+**A patch whose every entry is the same act**: take a claim this project makes
+about itself, ask what enforces it, and measure by running rather than reading.
+Four findings; one reached installable code.
+
+**The profile was the only contract of the ten whose `schemaVersion` was stamped
+by the CLI**, so `@trazum/core` emitted a profile `trazum conform` refuses. No
+test could catch it, because every profile fixture added the field first — the
+way the CLI does.
+
+**Both rules this roadmap opens with are now checked by running.** *A locale
+changes the report, never the optimisation* was a single English sentence in two
+locales and is now a 35-prompt sweep across every locale and level, with the
+opposite direction asserted too. *The deterministic core stays free and offline*
+was enforced by two source-level checks, neither of which ran the command;
+`fetch` is now removed before the CLI loads and the report has to come back
+byte-identical.
+
+**And a guard that compared column padding and called it format** — for four
+releases — is fixed, along with the misaligned transcript it was hiding. A rule
+joined the doctrine out of it: *and prove it does not fire on anything else*.
+
+
+## 1.60.1 — "What else does this fail on" — released
+
+**A patch, and nothing installable changed.** With the plan finished as far as it
+can go, this is the shape of the work that follows one: a guard that had been
+checking the wrong thing for four releases, the document it was supposed to be
+checking, and the doctrine rule that would have caught both.
+
+The guard compared the `~ ` before a money figure in the `trazum doctor`
+transcript and called it format. That space is right-alignment — the command
+prints `~ $10.59`, `~  $8.82` and `~$0.5300` in one column — so the check agreed
+or disagreed on how wide this repository's own figures happened to be, and broke
+on a config change that never touched the README. It now measures what the column
+actually promises: the text starts at the same offset on every row, priced or
+not, measured on both sides.
+
+**And the defect it was written for was there**: the transcript's unpriced rows
+sat one column left of the priced ones, on a page headed *Real output,
+transcribed*.
+
+**A rule joined the doctrine**: *and prove it does not fire on anything else* —
+the half of the guard rule that keeps being skipped because the first half
+passed. Two instances on this project's record, both a proxy that correlated with
+the property until it did not.
+
+
+## 1.60.0 — "Our own medicine, measured" — released
+
+**The last arc the 1.52–1.60 plan named, and it does not close the plan.** Six of
+the nine arcs are delivered. 1.54.0 and 1.57.0 are blocked on provider
+credentials this repository does not have, and 1.58.0 is an editor extension — a
+distribution commitment rather than a feature. Those three stay open and named,
+which is the plan's own answer to an arc it cannot build.
+
+**The arc committed to a scoreboard before the code and reports one of three.**
+*The record is self-reported* is no longer true: five defects on the record were
+found by CodeQL and by nothing here, and the 1.8.0 entry is the one that carries
+the weight — CodeQL kept that alert open twice against this project's judgement
+and was right both times. What that does not establish is written beside it: an
+outside instrument this project turned on is narrower than an audit.
+
+**The tokens this project puts on other people's bills are counted for the first
+time.** Four system prompts ship inside `@trazum/core` and go to a model on every
+model-side run: 1176 tokens, from which this project's own rules recover six. That
+is one real outcome on the record — the feature this product leads with, measured
+on the only corpus this project owns — and it is why the second admission is
+weakened rather than untouched.
+
+**And the loop this product sells was inert in the repository that sells it.**
+`trazum init`, `trazum baseline` and `trazum check` shipped arcs ago and this
+repository had no config and no baseline of its own. Both are committed, CI runs
+the gate, and `ignore` is a new config key — the thing that had to exist first,
+because directory mode decided what a prompt was from the extension alone and read
+seventy-four documents and thirty-five fixtures as prompts.
+
+**The third admission stands in full**, and the reason is written down rather than
+worked around: this project would have to spend money on models and record it, and
+it does not spend. The one instrument available for *whether it is used* was
+refused on the record — npm download counts bound above and nothing bounds below.
+
+
+## 1.59.0 — "A language needs a maintainer" — released
+
+**The arc closes, out of order and deliberately.** 1.57.0 and 1.58.0 stay open —
+1.57's remaining chapter needs a provider credential this repository does not
+have, and 1.58 is an editor extension, a distribution commitment rather than a
+feature. An arc that can be finished beats a slot left idle waiting for one; the
+same call 1.55.0 made, and the gaps stay gaps rather than being renumbered away.
+
+**What the arc asked for**: make the maintainer requirement a real, documented
+role with a real bar, and then admit that whether it lands is not a scheduling
+question. It explicitly did not ask for an eighth language, and does not deliver
+one.
+
+**Five of the seven dictionaries had never been read by anybody who speaks the
+language.** `DICTIONARY_STANDING` records which is which. The report says so on
+two branches that are different claims: when nothing fired, where silence reads
+as *your prompt is already efficient*; and when a rule **did** fire on a prompt in
+one of the five, where the tool has just applied an unverified judgement to
+somebody's text. The second is gated on the prompt's own detected language and
+stays silent when the language cannot be placed.
+
+**[The role](docs/language-maintainer.md) is written down with its bar**, and
+`scripts/dictionary-worklist.mjs` prints the entries a maintainer would be
+judging — which corrected the page's own estimate from "a few hundred short
+phrases" to thirty-to-thirty-eight, and surfaced that the five unreviewed
+dictionaries are less than half the size of the two somebody read.
+
+**A rule joined the doctrine and no test can enforce it**: *a rule you wrote for
+yourself is a claim like any other.* This arc's own premise had been broken for as
+long as the premise existed — the promise not to judge a language nobody here
+reads sat in this roadmap while five such dictionaries shipped. No guard catches a
+rule and a catalogue disagreeing; only re-reading one against the other does.
+
+
+## 1.56.2 — "What this project was claiming about itself" — released
+
+**A patch with no new command, and two arcs each opened rather than closed.**
+1.59 — *a language needs a maintainer* — and 1.60 — *our own medicine, measured*
+— gained their first chapters here. Both chapters are the same act done twice: a
+sentence this project had been saying about itself turned out to be wrong, and
+was measured rather than argued with.
+
+**Five of the seven trimming dictionaries had never been read by anybody who
+speaks the language.** The report named all seven in one sentence, which reads as
+seven dictionaries of equal standing; two of them are languages Trazum reports
+in, and that is the only evidence in this repository that anybody here reads
+them. `DICTIONARY_STANDING` records which is which, the report says so on the
+branch where an empty result would otherwise reassure, and
+[docs/language-maintainer.md](docs/language-maintainer.md) makes the missing role
+real: what a maintainer decides, what is asked, what is deliberately not asked,
+and what happens when nobody holds it.
+
+**This roadmap had been saying the opposite for several arcs**, which is the
+uncomfortable half. An eighth language was held back on the stated grounds that a
+dictionary is a judgement about a language and this project will not make it in a
+language nobody here reads — while five such dictionaries were already shipping.
+The five stay: a Dutch prompt is better served by a dictionary that fires and
+says it was never reviewed than by silence. What stops is describing them as
+though somebody had read them.
+
+**And one of the three things this project could not say about itself stopped
+being true.** Five defects on the record were found by CodeQL — 1.8.0, 1.46.0,
+1.50.3, 1.53.4 and 1.55.0 — and not one by a test here. The 1.8.0 entry carries
+the weight: CodeQL kept that alert open twice against this project's judgement
+and was right both times, which is a shape a self-report cannot contain. What it
+does not establish is written beside it — CodeQL runs because this project turned
+it on, so it is an outside instrument rather than an independent audit. The other
+two admissions are untouched.
+
+**No promise of an eighth language.** Whether the maintainer role is ever filled
+is not a scheduling question, and the page says so rather than implying a queue.
+
+
+## 1.56.1 — "What the rules actually do" — released
+
+**A patch, and the number is the honest one.** A minor closes an arc, and the
+arc in progress is 1.57 — the optimiser earning its name again — whose thesis is
+what belongs on the model's side of the line. Nothing in this release answers
+that. What it does is make the other side legible enough to argue about.
+
+`trazum rules --measure` runs the optimiser once per rule alone and once per
+rule removed, keeps the two figures apart because they diverge wherever rules
+overlap, and separates the normalisation floor from the rules' own work. Twelve
+fixtures exercise every rule, so "inert" becomes a signal rather than the only
+answer available. And the catalogue's order — which decides whether a repeated
+stanza is reported as one paragraph or three lines, for the same saving — is
+pinned, because nothing had ever said out loud that the order decides what the
+reader is told.
+
+**Three findings the measurement produced immediately.** The first version
+credited the optimiser's normalisation to the rules and concluded that every
+rule was redundant. `emphasis` fires and recovers nothing — it lowercases
+shouted words, changing the instruction and not the count — which needed a field
+of its own, because "never fired" and "fired and saved nothing" look identical
+in a saving column and mean opposite things. And on the two sample prompts this
+repository ships, the deterministic rules recover **nothing at all**.
+
+**What the arc still owes is blocked, and named as such.** A model-side
+candidate that has never been run against a model is the measure-by-reading this
+repository refuses everywhere else. Same treatment as 1.54.0, same reason.
+
+
+## 1.56.0 — "Something that runs" — released
+
+**The arc that turned out not to need a runtime.** It asked whether alerting can
+be given without becoming a hosted service holding other teams' metrics, and
+committed in advance to publishing the reasoning if the answer was no.
+
+The answer is **yes for the noticing, no for the last hop**. What shipped is
+three ways of making the *absence* of a run visible, because a scheduled job
+that stopped does not announce itself — it goes quiet, and quiet is also what a
+healthy watcher with nothing to report produces.
+
+`history` names the calendar stretches no report covers, and puts the count on
+the run that spans them: "climbing for four periods" over an unmeasured
+fortnight was a sentence this tool should never have let anybody form.
+`trazum pulse` is the outside view of a scheduled job, because the file that
+would tell you the watcher stopped is read only by the watcher.
+`docs/running.md` is the argument, the recipes for four schedulers, and the
+section naming what a tool without a host cannot do: page you, retry a delivery,
+deduplicate across channels, or know you are on holiday.
+
+**It infers no schedule anywhere.** No expected cadence, no "this run is late"
+without a threshold somebody typed. A first-time reader gets ages and no
+opinion, which is the same refusal every gate in this product has carried since
+a budget was first called a policy.
+
+CodeQL was quiet this time. The defect worth recording is that
+`--max-stale-hours 36` built, ran, printed a full report and gated on nothing,
+because a flag that takes a value and is not declared as taking one parses as a
+boolean and its value becomes a positional argument. Found by running the
+command; now a derived guard over the whole class.
+
+**1.54.0 is still missing and still on purpose.**
+
+
+## 1.55.0 — "More than one machine" — released
+
+**The arc that had no answer at all.** Every command here operated on files one
+person had. `--by-source` and `owners` divide a bill somebody already collected;
+nothing combined bills nobody collected together, and the workaround was
+emailing logs around, which is the one thing this tool exists not to make anybody
+do.
+
+`trazum rollup` merges profile documents several people produced separately. **A
+format and a merge, not a service** — no upload, no account, and the transport is
+whatever the team already uses, because a tool whose argument is that it reads
+your bill without uploading it cannot also be where everybody's bill is uploaded.
+
+**The merge was the easy half.** Most of a profile does not merge: percentile
+shapes, conversation growth, repeated turns and truncation retries are all
+computed from individual calls, so the deliverable is as much a list of refusals
+as an arithmetic. A day drawn from two contributors has no dearest label. The
+largest single call is a maximum, never a sum. Each contributor's gaps stay with
+that contributor rather than being averaged into a figure that hides which
+machine is blind.
+
+**And one refusal no implementation can lift**: overlap between contributors is
+unmeasurable, because the raw lines a duplicate check needs are in no document.
+Every roll-up of more than one contributor says so, and `conform` fails one that
+does not — a format that carried the fields and lost that refusal would hand
+somebody a doubled total that looks audited.
+
+**Two questions the arc found rather than started with.** A span is not a
+period, so the window a contributor *claims* to cover travels beside the one it
+observed and every silent day inside it is named. And a roll-up is a
+contribution too, so three teams can roll up and an organisation can roll up the
+three — with every refusal surviving the nesting, which is the whole difficulty:
+a refusal that stops at a layer boundary is worse than one that never existed,
+because the layer makes it look audited.
+
+**1.54.0 is missing on purpose and stays missing.** The counter-per-family arc
+needs provider API keys this work did not have, and the hole in the sequence is
+the record that an arc was jumped rather than dropped. Renumbering the plan to
+close it would rewrite a document whose whole value is having been written
+before the code.
+
+CodeQL found a file-system race in the new command on the pull request that
+introduced it — `stat`, branch, then read — and the fix is to ask once rather
+than to check first. Three enumerations that had been retyped and gone stale
+were replaced by derivations, including the guard that was itself the stale
+count.
+
+
+## 1.53.4 — "What it says and what it does" — released
+
+The web app got a shell — a sidebar rail with a drawer below `lg`, an account
+menu at its foot, three waiting states in the shape of their own reports, and
+two exact columns whose every number is derived from the row's own padding
+rather than typed. Then two audits of that shell found fifteen defects in it,
+and a pass over the README found thirty-one more.
+
+**Every one is the same gap**: something said one thing and did another, and the
+saying was never wrong enough to notice by reading. A class list that merged
+correctly and computed to the primitive's value — three times, including an
+active row with no surface at all in either theme. A page headed *"Real output,
+transcribed"* whose transcripts stopped early, twenty of them, with the
+convention for marking that already in the file and used once. A `--max-growth`
+documented as a percentage that compares a token count. A headline figure six
+times too high, contradicted by another block on the same page.
+
+**Five of the nineteen defects were introduced while fixing the others**, and
+not one was visible in the source: a focus trap that read its container once
+while Escape kept working because it returns first; a retry that stopped at
+finding a candidate rather than at moving focus; an `outline-none` and an
+`outline-2` computing together to nothing; a comment written off a reading taken
+three percent into a transition; and an `overflow-x: visible` control that was
+not a control.
+
+Five guards, each derived from the thing it guards. **Four cried wolf on their
+first version** — a hover override that wins, an `_svg` rule that paints, a
+child's prop name, a working override sharing a property family — so state and
+element are each half the rule now. **And CodeQL found a ReDoS in one of them
+whose own proof would have passed against the vulnerable version.**
+
+What stayed out is written down: ten README figures that would have to be
+reconstructed from logs this work does not have, four transcripts needing a
+credential it does not have, and one sentence seen and deliberately not claimed.
+
+
+## Collapsed into 1.8.0
+
+**Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
+were written as release milestones and filed under "Released", which was not true
+of any of them at the time: there was no git tag, the `@trazum` scope did not
+exist, and [CHANGELOG.md](CHANGELOG.md) — the truthful record — held all of them
+under a single `Unreleased`.
+
+That is what this section was always going to become. Its previous heading said
+"the first publish collapses all of it into one version", and 1.8.0 is that
+publish. The numbering is kept because the ordering is the useful part: it says
+what landed in what sequence and why. A consumer will never see 1.1.0 through
+1.7.0, because they never existed anywhere one could reach.
+
+`## Released` above holds the versions with their own entry in the changelog.
+This section holds the ones that do not, and `publish.test.js` asserts the
+difference in both directions — so a milestone cannot be promoted to a release
+by moving a heading.
+
+### 1.1.0 — Doing the thing it had only been pricing
+
+Every rule in Trazum trims a few percent of a prompt's tokens. Since 0.2.0 the
+`cache-prefix-reorder` advisory has pointed at something an order of magnitude
+larger — stable instructions sitting *after* the first placeholder, which prompt
+caching therefore re-reads at full price on every call — and no command could act
+on it. Measured on a 1,178-token support prompt: **14 tokens cacheable as written,
+1,174 after rearranging the same content**, which at 50,000 calls a month on Opus
+is the difference between a $0 caching saving and a $184 one.
+
+`trazum optimize --reorder` now performs the rearrangement, and
+`reorderForCache` is exported for callers who want the decision without the CLI.
+
+**It is opt-in, and not part of `aggressive`** — the design decision in this
+release. Every other transformation here deletes text whose absence is local.
+This one *moves* text, and order carries meaning: "Summarise the text above" is
+correct where it sits and nonsense in front of the text it points at. `aggressive`
+promises "read the diff"; this asks whether the order mattered, which is a
+different question and cannot ride in on a level.
+
+So most of the module is about what it refuses:
+
+- **A block containing a backward reference stays put, and so does everything
+  after it.** Moving a later block past a pinned one changes their order relative
+  to each other, which is the same class of harm. The phrase list is deliberately
+  generous in both locales: a false positive costs a saving that was available, a
+  false negative silently changes what the prompt asks for.
+- **Only whole blank-line-separated blocks move**, so a sentence is never severed
+  from the paragraph that qualifies it, and the placeholder's own line travels
+  with it.
+- **Nothing moves without a placeholder**, or unless the resulting prefix clears
+  the model's cacheable minimum. A rearrangement that buys nothing is a diff for
+  its own sake — and the bar is on the prefix rather than on the amount moved,
+  because a head that already caches gains from any block that joins it.
+
+A refusal returns the prompt **byte-identical** and says which phrase caused it,
+because "no saving here" and "there was a saving and it was not safe to take" are
+different answers and only the second is actionable. `--diff` compares against
+what the author wrote rather than against the rearrangement, so the move is not
+hidden behind the deletions. `check` does not accept the flag: it is a gate, and a
+gate does not rewrite.
+
+Three things found by testing rather than by reading, all fixed here. A
+placeholder on the first line produced a leading blank line. A CRLF prompt came
+back with mixed line endings — which in a byte-for-byte prefix match is a changed
+price, and in a repository is a diff on every line nobody asked for. And two of
+the new module's own patterns were **quadratic**: 31 seconds on a 200 KB prompt,
+inside what the HTTP API accepts. The ReDoS suite drives `optimize`, which never
+reaches this code, so nothing covered it — a fixture list only asks the questions
+it encodes. It has ten fixtures of its own now.
+
+The same lesson applied to the help: `--reorder` shipped accepted and absent from
+`--help`, and so had `--markdown-out` since 0.11.0. The parity test named four
+*required* flags by hand; it now derives the list from what the binary accepts.
+
+---
+
+### 1.2.0 — Releasing without remembering
+
+Publishing is the one action in this repository that cannot be undone: npm allows
+unpublishing for 72 hours and then the version number is spent for good. Until now
+it was also entirely manual — build, tag, check the tarball, publish, remember all
+of it in the right order.
+
+A tag matching `v*.*.*` now runs the release: full `verify`, a report of exactly
+what each tarball would contain, then both packages.
+
+**Trusted publishing over a stored token**, which is the decision in this release
+rather than an implementation detail. A long-lived `NPM_TOKEN` would be the
+highest-value credential this project holds, sitting in repository secrets
+permanently for something used a few times a year — and unlike every other secret
+here, a leak is not recoverable by rotation alone, because whatever was published
+under it stays published. OIDC needs `id-token: write` on the job and stores
+nothing. A test asserts no workflow reaches for a publish token at all.
+
+**Provenance comes free with OIDC**, so a consumer can verify a tarball was built
+from this repository, at this commit, by this workflow.
+
+Three refusals, each one a mistake that cannot be corrected afterwards:
+
+- **The tag and the manifests must agree.** A tag reading `v1.4.0` against
+  manifests reading `1.3.0` publishes 1.3.0 under a release note for 1.4.0.
+  `publish.test.js` already asserts every manifest carries the *same* version;
+  the workflow checks that the shared version is the tagged one.
+- **`verify` runs before anything is published**, and it is the same `verify` a
+  pull request runs. A release gate that checks less than the pull-request gate
+  lets through exactly what the tag was for. A test asserts the ordering.
+- **`workflow_dispatch` is dry-run only.** Every publish step is gated on a tag,
+  because a publish reachable without one is a release with no version to check
+  against. A test asserts the gate on each step.
+
+`@trazum/core` publishes first: the CLI depends on it at an exact version, so the
+other order leaves a window where installing the CLI fails on a dependency that
+does not exist yet.
+
+**Still needs the maintainer, once.** The `release` environment now exists, and
+a `workflow_dispatch` dry run has gone green through `verify` and
+`npm pack --dry-run` with every publish step correctly skipped. What is left is
+npm's side: `@trazum/core` returns 404, so the first publish has to be made by
+hand — a trusted publisher is configured on a package's settings page, and that
+page does not exist until the package does. From the second release onward the
+tag workflow does it with no credential anywhere.
+[docs/releasing.md](docs/releasing.md) has the exact fields, including the one
+that is easy to get wrong: npm's *Environment* must read `release`, because the
+workflow declares it and the OIDC token carries the claim — leave it blank and
+the publish is rejected with an error about the token rather than about the
+mismatch.
+
+Nothing to paste into secrets and nothing to rotate. Until it is done a tag push
+runs every check and then fails at the publish step, which is the right failure:
+loudly, having published nothing.
+
+---
+
+### 1.3.0 — Prompts where they actually live
+
+`check` read `.txt`, `.md`, `.prompt` and `.tmpl`. Real prompts live in TypeScript
+template literals, Python strings and YAML, so adopting Trazum meant first
+refactoring them out into standalone files — a change to somebody's application as
+the price of admission, and the largest barrier to adoption the tool had.
+
+A marker comment is now enough:
+
+```ts
+// trazum:prompt support-system
+export const SUPPORT = `You are a support agent.
+
+Customer message: ${message}`;
+```
+
+**It reads a marker rather than guessing**, which is the decision in this release.
+Inferring which string in a file is a prompt is a heuristic, and a heuristic
+inside a command used as a CI gate fails builds over log lines and SQL. One line
+of comment buys never being wrong about what was picked up. `//`, `#`, `--` and
+`<!-- -->` cover the languages prompts live in.
+
+**Interpolation was not a special case to build — it was one that already worked.**
+`${x}` is exactly the shape `segment.ts` protects, so an embedded prompt gets the
+same cache-prefix analysis, the same rule protection and the same `--reorder`
+treatment as a `{{x}}` template, with no second code path to drift.
+
+Three decisions worth recording:
+
+- **Each prompt is budgeted on its own.** A file holding four prompts is four
+  things to govern, and summing them would fail a build because somebody added a
+  fifth short one — while counting imports and export keywords as tokens the
+  model never sees.
+- **The id is path-prefixed** (`src/prompts.ts#support-system`, or
+  `src/prompts.ts:12` for a bare marker), so the existing `budgets` globs cover
+  embedded prompts without the config learning a new syntax.
+- **Source files are scanned without being opted into.** Requiring config to
+  discover a marker somebody just wrote is how `eval` came to be fully implemented
+  and completely undiscoverable. An unmarked source file costs one `includes()`
+  and is dropped silently — it was never something the author asked to govern, and
+  listing it as unbudgeted would bury the files that are.
+
+**The honest limit, documented rather than papered over:** a prompt assembled by
+concatenation cannot be read this way, because its text does not exist until it
+runs. Trazum declines it, names the line, and **fails the build** — the author
+marked that prompt to have it governed, and it is not being governed. A green
+build alongside would be the same lie as "0 failures" from a run that measured
+nothing.
+
+Scanned character by character rather than with a regex, and the hostile-input
+tests earned their place immediately: the obvious line-number lookup was quadratic
+in the number of markers, 15.5 seconds on a file holding 20,000 of them. Caught
+before it shipped rather than after, which is a first this week.
+
+**Still to come in this line:** `diff` against the base branch for an embedded
+prompt, which was deferred from 0.11.0 and is the reviewer workflow this unlocks.
+`check` is the gate and came first.
+
+### 1.4.0 — The front door catches up
+
+Anyone arriving through the web judged the whole product on a page that could
+optimise and little else. That gap cost adoption even though it cost nobody money
+directly, which is why it was scheduled rather than parked — and why it came last
+of the four: it changes how the product *looks* rather than whether its numbers
+are *right*.
+
+**`--reorder` is now on the web**, which is the substance of this release. It is
+the largest saving Trazum can make and it was reaching only people who had cloned
+a repository and built a CLI. On a 1,178-token support prompt the difference is
+between a $0 caching saving and a $184 one.
+
+Opt-in over HTTP for the same reason it is opt-in on the command line, and the
+reason is stated in the route rather than left in the diff: every other
+transformation this endpoint performs deletes text whose absence is local, and
+this one *moves* text, where order carries meaning. Nothing about it is less safe
+here — the same deterministic core, nothing sent anywhere, the prompt returned
+byte-identical when it cannot act — but *"the browser did it quietly"* is not
+something this endpoint should ever be able to do.
+
+Three details that follow from that:
+
+- **The flag is honoured only on a literal `true`.** A string, a number and
+  `null` are all ignored, because the body is untrusted and a truthy check would
+  let `"false"` rearrange somebody's prompt.
+- **`original` stays what the caller sent**, so the diff the browser draws shows
+  the move instead of hiding it behind the deletions.
+- **Refusals ride back in the response** and render whether or not anything moved.
+  The panel is deliberately not styled like the green savings box: that one is a
+  saving to enjoy, this is a change to review. It sits above the money so the
+  number is read after the caveat rather than instead of it.
+
+**What is deliberately not coming to the web**, recorded here rather than left as
+an unexplained gap:
+
+- **The pricing overlay** is a JSON file in your repository, corrected by you and
+  reviewed in your pull requests. A textarea for pasting prices into somebody
+  else's server is not that feature wearing a different hat — it is a worse one,
+  with no review and no provenance. The web already says which prices it used and
+  when they were reviewed; that is the honest version.
+- **Config-aware defaults** need a `trazum.config.json`, and a browser has no
+  repository to find one in.
+- **Budgets** are a gate, and a gate belongs where it can fail a build. A
+  pass/fail badge in a browser says nothing the token count beside it does not.
+
+**Still open:** `comparePrompts` — paste two versions of a prompt and see the
+delta — is the one CLI capability with a real browser shape that is not here yet.
+
+---
+
+### 1.5.0 — Every model you pay for by the token
+
+Trazum priced one vendor. Everything that reads a prompt was already
+provider-agnostic — the rules, the protection pass, `--reorder`, the structural
+detectors all operate on text — so the gap was never the analysis. It was the
+money, and the money was written as if there were one supplier.
+
+OpenAI, Google, Moonshot, DeepSeek, xAI and Mistral join the catalogue. **The
+data was the easy half.**
+
+The cost multipliers were global constants, and global made them quietly wrong
+the moment a second provider existed. Moved onto the model, defaulting to
+Anthropic's values so nothing that worked before changes. Three of them were not
+inaccuracies but **savings that do not exist**, and all three were found by
+running the catalogue rather than reading it:
+
+- **Kimi, DeepSeek and Grok have no batch API**, and were being offered a 50%
+  discount nobody sells them. `batch: null` now means "there is none", which is
+  deliberately different from not having said.
+- **Mistral has no prompt caching.** A zero minimum satisfied `0 >= 0`, so the
+  advisory offered $100 a month of a feature that does not exist — a bug this
+  release introduced and caught before it left the branch.
+- **The batch saving was `cost × discount`**, which equals the saving only when
+  the discount is exactly 0.5. Latent on Anthropic, wrong on the first provider
+  with any other rate.
+
+The caching advisory now quotes each provider's rates and **stops naming
+`cache_control` to people who do not have it** — OpenAI, Moonshot and DeepSeek
+cache automatically above a threshold. The advice to move stable content forward
+is identical either way, because a prefix is a prefix; the instruction after it is
+not.
+
+**A cheaper model means a cheaper model, not a different supplier.** Downgrade
+recommendations are scoped to the current provider. Unscoped they told Claude
+users to switch to `gpt-5-nano` — on a keyword heuristic already caveated as no
+judgement about answer quality, which has no business recommending a change of
+vendor.
+
+`tier` is deprecated in favour of `capability`, on a vendor-neutral scale.
+Anthropic's ladder as the generic axis stops making sense the moment the model is
+not Anthropic's. Full procedure per [VERSIONING.md](VERSIONING.md); both fields
+stay populated for all of 1.x and a test asserts they never disagree.
+
+**The estimator is still a Claude estimator**, and the report now says so rather
+than printing a Claude-calibrated band nobody measured for GPT or Kimi. Which makes the
+tokenizer question under `Under consideration` heavier than it was.
+
+---
+
+### 1.6.0 — Which prompt, whose change, and whose assertions
+
+Five commands from one observation: Trazum could tell you a prompt was expensive
+and could not tell you *which* prompt, *who* made it expensive, or whether the
+shorter one still did your job.
+
+**`trazum rank <dir>`** orders a directory by what optimising each prompt would
+actually recover — measured by running the rules, not by evaluating a formula.
+The obvious design was a complexity score out of a hundred, and it was rejected
+on purpose: a number nobody can reproduce by hand cannot be argued with, and the
+weights that combine four measurements into one get tuned until the ranking looks
+right, which is fitting the metric to the answer. The measurements are printed
+beside the ordering as its explanation, each with a definition you can check
+against the file. Two tests forbid a `score`, `rating`, `grade`, `index` or
+`complexity` field appearing later.
+
+**`trazum blame <file>`** walks a prompt's git history and puts two facts on one
+line: who changed it, and what that change cost. Git knows the first; it does not
+know that three lines added to a system prompt at 50,000 calls a month is a bill
+rather than a diff. This is the first thing here that runs another program, so it
+happens in one module written as if it were the whole attack surface — no shell,
+every path after a `--` separator, object names validated as 40 hex digits before
+being glued to one, bounded time and memory. Six invariants assert that, and one
+of them asserts that module stays the only importer of `node:child_process`.
+
+**`optimize --suggest`** replaces an all-or-nothing LLM pass with phrase-level
+proposals. `--llm` hands the model the whole prompt and takes the whole answer
+back, so a result failing one safety check leaves the author with nothing.
+Suggestions degrade instead: eight surviving out of ten is useful. The model
+proposes and the prompt decides — `before` must appear byte for byte, must not
+touch protected content, must actually save tokens, and overlapping edits are
+refused because applying both produces text neither described.
+
+**`eval --export promptfoo`** hands the run to somebody else's harness. Agreement
+is the question Trazum is qualified to ask and not the one a team needs answered
+before shipping; theirs is whether the classifier still hits 94%. So the suite is
+built with both prompts, every case bound to the right variable and the same
+provider on both sides — and the assertions are left blank, because they are
+assertions about a task this tool knows nothing about.
+
+**And `--reorder` had no safety at all outside English and Spanish.** Not a
+missing feature: the phrase list was one flat English/Spanish array applied to
+every prompt, so a French, German, Portuguese, Italian, Dutch, Japanese or
+Chinese author ran it with none of the refusals the module is built out of.
+"Résumez le texte ci-dessus" was hoisted above the text it points at and reported
+as a saving — and every test passed throughout, because every test asked the
+question in the two languages that worked. Seven languages added; CJK matches
+without word boundaries, since the boundary test can never fire there. A fourth
+refusal covers the scripts still missing — Cyrillic, Arabic, Hebrew, Hangul,
+Devanagari, Thai, Greek — where nothing moves and the report names the script.
+
+Alongside: the web app rebuilt on shadcn/ui keeping Trazum's own palette, the
+SSRF closed at its real source (the request body now *selects* an endpoint the
+operator listed rather than naming one), and the alert gate fixed after it was
+caught racing the analysis it reads.
+
+### 1.7.0 — An account, and what an account makes possible
+
+Everything before this ran on one machine and remembered nothing. That is the
+right default and it is still the default — but "what did last month's edit do
+to this prompt?" is not a question a stateless tool can answer, and neither is
+"which of our forty prompts is worth an afternoon?" when the forty belong to
+six people.
+
+**Sign-in through GitHub** (`/api/auth`), and nothing else. Sessions are opaque tokens stored
+as a SHA-256 hash, in a `__Host-` prefixed cookie; the server keeps no password
+to leak and no OAuth token beyond the exchange. Signing out deletes the session
+row rather than clearing a cookie and hoping.
+
+**Share links** (`/api/shares`) publish a comparison at `/c/<token>` — an
+unguessable URL anyone can open
+without an account — the only thing in Trazum that serves one person's prompt to
+a stranger, so the interface says exactly that *before* the button rather than
+after. Thirty-day default expiry, revocable, kept out of search engines two
+independent ways. Reading one writes nothing: an unauthenticated request that
+can cause a write is a lever, and a view counter is not worth being one.
+
+**A prompt library with full version history** (`/api/prompts`). Append-only — saving over a
+prompt writes a new version and never rewrites one, and a save that changed
+nothing writes nothing and says so. Token counts are recomputed on read rather
+than stored, so two versions saved a year apart are comparable instead of being
+priced by two different estimators. Somebody else's prompt answers **404, never
+403**, and the store has no lookup that takes an id without an owner, so that
+mistake cannot be written rather than merely not being written.
+
+**A landing at `/landing`** — the one Persuade surface. It tells the
+product's story with the product's own measured figures and no invented
+social proof, in both locales, guarded by `marketing.test.mjs`. A pricing
+page was built alongside it and removed the same day by the owner's call —
+the project stays open source for now, and a landing with no prices says
+that better than a proposal page would. Since #734 the landing is the site's
+front door at `/`, with one header and footer, and the application lives at
+`/app`; the old `/landing` and `/?tab=` addresses redirect there.
+
+**The documentation at `/docs`** (#735), the repository's own documents read
+on the site: an index grouped as `docs/README.md` groups them, and one page
+per published document at `/docs/<slug>`, built from the files when the site
+is built so nothing is written twice. Search over titles and headings runs in
+the page and sends nothing. Plans, the audit and the compliance records stay
+in the repository, and the index links them there.
+
+**A deployment overview at `/admin`** (`/api/admin`) for whoever runs the instance, off unless
+`TRAZUM_ADMINS` is set — and off means the page does not exist rather than
+refuses. It is careful about what it claims: Trazum has never seen a bill or an
+API call, so the headline is input tokens and the second figure is what the
+rules would remove. Prompt names, never prompt text: an admin is an operator,
+not an auditor of what their colleagues wrote.
+
+**A badge at `/badge/<token>.svg`**, riding the share token rather than
+inventing a second capability for a smaller disclosure. Recomputed on every
+load, because a stored number is the most likely thing to have quietly stopped
+being true — which is the failure mode of every hand-written "saves 30%" line
+in every README.
+
+**Rule 1 is intact and is the reason this is a separate application.** The CLI
+still sends nothing anywhere, still needs no account, and still optimises a
+prompt with the network unplugged. The web app is opt-in, self-hosted, and
+holds only what somebody deliberately saved to it.
+
+### The publish itself — what shipped under 1.8.0's own banner
+
+The version the collapse ships under, and the only one a consumer will ever
+install. Beyond carrying 1.1.0–1.7.0, it added its own layer, in two waves.
+
+**The provider wave.** Pricing seven providers (1.5.0) made the next gap obvious:
+Trazum could *price* every model and *call* almost none of them. Now `openai` in
+`TRAZUM_LLM_PROVIDER` is documented as what it always was — a wire format, not a
+company — and one base URL covers OpenRouter, LiteLLM, Groq, Together, Fireworks,
+DeepInfra, DeepSeek, Mistral, Ollama, vLLM and LM Studio. Native providers exist
+where the wire format genuinely differs: Anthropic, Gemini (whose blocked prompts,
+truncated answers and empty candidates all arrive as HTTP 200, and are all
+refused), and Bedrock and Vertex, whose credentials are not bearer tokens — SigV4
+and the service-account JWT are signed by hand on WebCrypto, keeping the
+zero-dependency invariant. Live prices arrive through an OpenRouter overlay that
+marks everything the feed does not carry `unknown` rather than guessing. None of
+these paths has been run against the real service from this environment, and each
+says so where it is documented.
+
+**The measurement wave.** `trazum prune` measures which few-shot examples earn
+their tokens — leave-one-out against the prompt's own noise floor, the only
+command that asks before spending. `doctor` reports preambles that could share a
+cache entry and do not, the first finding no single prompt can produce. An
+advisory catches output schemas the request could carry as a parameter instead —
+the rare change that is cheaper *and* stricter. `@trazum/mcp` exposes
+`check_prompt`, `optimize_prompt` and `list_models` over stdio so an agent can
+budget its own prompts before sending them. A `.pre-commit-hooks.yaml` covers
+teams who manage hooks with the pre-commit framework. And the web app's
+Content-Security-Policy stopped being `frame-ancestors` plus an admission: a
+nonce per request, `strict-dynamic`, and no `unsafe-inline` for script.
+
+Two entries here exist because their absence was found to be a live defect while
+writing them: the README's privacy section claimed prompts are never stored on
+any server for several releases after the prompt library made that conditional,
+and the CSP shipped blocking the analytics the operator could switch on. Both
+carry tests now that derive the claim from the code rather than trusting prose.
+
+## 2.5.2 — Recoverable tool-log filtering — released
+
+Opt-in repetitive-log compaction with private original recovery, hash-checked
+restore and concise-output guidance. Native usage import and local savings
+planning/verification connect measured costs to a selective efficiency workflow.
+Subscription quotas and task quality remain outside the filter's claims.
+
+## 2.6.0 — Task efficiency with explicit outcomes — released
+
+The [task workflow](docs/task-efficiency.md) connects explicit Claude Code/Codex
+sources, repetition evidence, reviewed instructions and declared acceptance.
+CLI/core provide analysis, reversible local policy application and conservative
+comparison; MCP provides analysis/comparison, and the dashboard adds local
+reports with recoverable export. Native HTTP usage import and filter statistics
+complete the release. Bounded and concurrent stress probes cover the installable
+packages. No causal savings, inferred task success or automatic harness control
+is claimed.
+
+## 2.7.0 — One bill across your coding agents — released
+
+`bill` with no path reads Codex and Gemini CLI beside Claude Code, each
+location taken from the agent's own source, and adds a table by agent that
+splits the total rather than estimating it again. Gemini CLI gets its own
+adapter, `from-gemini-cli`, the 55th command, shared by the web app, MCP and
+HTTP. `bill --by day|week|month` splits the statement by period. Gemini's
+reasoning and tool-prompt tokens, priced at zero since its importer landed,
+are counted everywhere. Releases are prepared by one counted script, and CI
+checks every Monday for what goes stale with no commit. OpenCode is not read:
+its storage moved to SQLite and is still changing.
+
+## 2.7.1 — Three bills that were too low — released
+
+A patch of corrections, three of them in the flattering direction. Anthropic
+fast mode (`usage.speed`) and OpenAI's 12-hour cache writes are priced at their
+own rates instead of half; the gateway prices OpenAI cache writes as writes. A
+usage file past the runtime's string ceiling is read line by line rather than
+failing the whole bill, in the CLI and in the browser. Twenty-one models that
+read as unpriced are priced from their own pages, and six providers were
+re-read in the November review; Google could not be reached and is named.
+
+## 2.7.2 — Codex, Flex and Fast billed, and prices checked weekly — released
+
+A patch of corrections and the check that would have found most of them.
+OpenAI's Flex, Fast and Ultrafast calls are priced from their own tables by the
+response's `service_tier`, where every one had been billed at the standard
+rate. Codex sessions on the Codex models, four retired Claude models still in
+old logs, GPT-5.6 Cyber and Chat Latest are priced; GPT-5, mini and nano, which
+OpenAI deprecated, are no longer recommended. `scripts/price-drift.mjs` reads
+Anthropic's and OpenAI's pricing pages every week and fails the scheduled run on
+a changed price, a missing model or a page it can no longer read.
+
+## 2.7.3 — Every tier the provider names, billed at its own rate — released
+
+A patch of corrections of one kind: the provider named the tier, speed or
+geography a call ran at, and Trazum read it as standard. US-only inference on
+Claude 4.6 and later is priced at the published 1.1x from every door: Claude
+Code transcripts, logged responses, the gateway and the usage report. OpenAI's
+usage report prices Flex, Fast and Ultrafast rows from their own tables, and
+Anthropic's prices fast-mode rows from the model's fast rate. `trazum connect`
+asks both reports for the groupings that change a price and prices by them,
+with a store that converges across the change rather than doubling a day. The
+weekly price check reads the data residency sentence too.
+
+## 2.7.4 — Batch billed at half, and a batch's results file read — released
+
+Two corrections about the Batch API, which both providers sell at half the
+standard price. A batch call is priced at the model's batch ratio wherever the
+provider says it ran on one: Anthropic's `usage.service_tier: "batch"`, a usage
+report's batch row from `from-anthropic`, `from-openai` or `trazum connect`,
+where every batch row had been left out. And `bill` reads a batch's results
+file, Anthropic's and OpenAI's, which had read as nothing: each billed line a
+call at the batch rate, the results the provider does not bill left out, and
+nothing but model, usage and end reason crossing.
+
+## 2.7.5 — Web searches billed, and reconcile set like against like — released
+
+Anthropic's web search is billed at its published $10 per 1,000 searches, flat,
+on top of the tokens, from every door that reads a Claude call: transcripts,
+logged responses, batch results, the usage report, `trazum connect` and the
+gateway. It is its own part of every bill, receipt line and CSV row, and the
+weekly price check reads the fee. `trazum reconcile` sets the provider's batch
+and non-token charges against the receipt's own batch calls and searches,
+which 2.7.4 had started pricing without telling it, so its remainder had come
+out short by them.
+
+## 2.7.6 — Subagents billed under their project — released
+
+A session's subagents and workflow agents are billed under the project they
+ran for, found from the way Claude Code lays a session out rather than from a
+folder name; the status line counts them; a transcript that mentions
+telemetry is no longer taken for an OTel export; and the files a session keeps
+beside its transcripts are one line, not a hundred and fifty. All of it found
+by running `bill` on this repository's own sessions.
+
+## 2.7.7 — Each call counted once, each subagent read on its own — released
+
+Two corrections found by profiling this repository's own sessions again. A
+Claude Code call written without a `requestId` is matched by its response's
+message id, where each of its lines had been billed as a call: Claude Fable 5.1
+went from $47.82 to the $18.46 its 124 calls cost. And a session's subagents
+are conversations of their own for the findings that follow a conversation
+turn by turn, through an optional `thread` field, while what a session costs
+still counts them; the growth ceiling on this repository fell from $412.48 to
+$366.74. The growth and session-cost sentences say which one they mean.
+
+## 2.7.8 — Claude Fable 5.2 priced, and a wrong file named — released
+
+Claude Fable 5.2 and Mythos 5.2 are priced from Anthropic's pages, a week
+after the weekly price check first flagged them: on this repository's own
+session 2.7.7 left 71 Fable 5.2 calls, more than half the money, out of the
+total. The check now reads OpenAI's reshaped "Specialized models" table as
+bands of one model rather than nine new ones, and compares long-context cache
+writes. A coding agent's session handed to a command that reads a usage log
+is named, with the command that reads or converts it, in the CLI, the MCP
+server and the HTTP API alike. A promotion near its end records the day it was
+last confirmed. The hosted web app carries the OWASP ASVS level 2 work done
+since 2.7.7, and the README opens on what the tool does for its reader. The
+repeated-task evaluation this number had been reserved for did not ship in it.
+
+## 2.7.9 — Gemini 4 priced — released
+
+Google's Gemini 4 family is in the price table, read from Google's pages:
+Carbon and Argon at $2/$10 through 2026-11-30 and $4/$20 after, Hydrogen at
+$1.50/$7.50, each with a cache read at 5% of input, and Gemini 3.5 Flash-Lite
+at $0.30/$2.50. A test holds the four rows to every figure the page prints on
+both sides of the date. The card shown when the repository's link is shared
+is redrawn so no name wraps, and the hosted web app's PostgreSQL driver moves
+to 4.1.1. Google's review date and the rerouting of `gemini-2.5-pro` on
+2026-12-01 are in review and not in this release. The repeated-task evaluation
+this number had been reserved for did not ship in it.
+
+## 2.7.10 — A plan that stops offering a batch nobody can take — released
+
+`plan` offered the Batch API to every slice whose provider sells one, and two
+kinds of call cannot take it: a call already billed at the batch rate, and a
+call something waited on, which every turn of a coding agent is. A record can
+now say `"interactive": true`, the three agent-session converters say it on
+every line, and the batch lever leaves those calls out and says how much it
+left out. On the example projects the projection went from $9.13 to $7.34,
+and on this repository's own sessions from $42.69 to $38.83. A log that marks
+nothing is read as before. The repeated-task evaluation this number had been
+reserved for did not ship in it. Nor did the release itself: it was merged and
+its upload to npm was refused, so 2.7.10 exists in this repository and not on
+the registry, and its changes first shipped in 2.7.11.
+
+## 2.7.11 — Google's prices re-read, and the release 2.7.10 could not be — released
+
+The first version on npm since 2.7.9, carrying 2.7.10's `plan` fix with it.
+Google's prices were re-read on 2026-11-16 after its docs moved, every figure
+matched and the review date moved; `gemini-2.5-pro` carries the price Google
+bills it at from 2026-12-01, when its requests route to Gemini 3.8 Flash. The
+release job now asks npm whether the token it uploads with is still accepted
+before it runs its checks, which is what 2.7.10 found out at its last step,
+and the token's expiry has a recorded date that the weekly check watches.
+Issues gained forms and labels, and every pull request is checked for its
+issue and for where its changelog line landed. The repeated-task evaluation
+this number had been reserved for did not ship in it.
+
+## 2.7.12 — A safe level that leaves a thanks, a quotation and three ordinary words alone — released
+
+Found by drawing a picture. The README's `optimize` transcript had been typed
+by hand and no longer matched the tool, so it was regenerated from a real run,
+and the shortened prompt came out containing "So much for your help with
+this." The `politeness` rule had been deleting each courtesy phrase wherever it
+stood: a thanks out of the sentence it belonged to, "kindly" out of "speak
+kindly", and all of it inside quotation marks, at the level that promises not
+to change what a prompt asks for. A thanks is now removed only as a whole
+sentence, three words that are also ordinary words are removed only where they
+are the courtesy, and quoted text is protected like code. The same protection
+showed that the 12 tokens this project said its rules recover from its own
+prompts were the rules damaging an example in them; the figure is 0. Google's
+Batch tabs for three models charge the standard cache price and those reads
+are billed at it. Every picture and icon comes from one palette and one mark,
+the command reference covers every command, and triage, the roadmap's open
+work and review are written down and applied by a workflow. The repeated-task
+evaluation this number had been reserved for did not ship in it.

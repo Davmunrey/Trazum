@@ -32,7 +32,8 @@ const ROOT = join(here, '..', '..', '..');
  *
  * ## What it does not do
  *
- * It reads the forecast sections only. `Released` is a record: *"the
+ * It reads the forecast sections only. The release history, `HISTORY.md`, is a
+ * record, and was `ROADMAP.md`'s `Released` section until #725: *"the
  * vendor-specific converters stay named and unbuilt until a real export of
  * each is seen"* is a true statement about 1.71.0, and rewriting it to match
  * the present would be falsifying a record to satisfy a test — the same
@@ -58,9 +59,8 @@ const dispatched = (() => {
  * The forecast: everything under a heading that talks about the future.
  *
  * `Next` and `Under consideration` are the two, and they are matched by name
- * because they are what the file calls them. Everything else — `Released`, the
- * per-version entries, `How versions are decided` — is either a record or
- * process, and neither makes a claim about what exists today.
+ * because they are what the file calls them. Everything else — the product
+ * line, `How versions are decided` — is either a record or process, and neither makes a claim about what exists today.
  */
 function forecastSections() {
   const out = [];
@@ -152,21 +152,13 @@ describe('the roadmap does not promise what it already delivered', () => {
      * in the record, saying what was true when it was written.
      */
     /*
-      The record is *everything the forecast is not*, computed from the same
-      boundary the check above uses rather than from a heading named here.
-
-      Two earlier drafts got this wrong in the two ways this repository has a
-      history of. The first ended the record at the heading that happens to
-      follow it, and `publish.test.js` caught it: naming the next heading is
-      the pattern that has had to be fixed nine times, because it is correct
-      exactly until a section is inserted between the two. That guard reads the
-      raw file, comments included, so this paragraph cannot spell the offending
-      call either. The second draft reached for `sectionOf`,
-      which ends at the next heading of any kind, and `## Released` is
-      immediately followed by a per-version heading, so it returned the
-      introduction and none of the record.
+      The record is the release history, which left `ROADMAP.md` for `HISTORY.md`
+      in #725 and moved as it was. Before that it was *everything the forecast is
+      not*, computed from the same boundary the check above uses rather than from
+      a heading named here, and a heading named here is the pattern that has had
+      to be fixed nine times.
     */
-    const record = forecastSections().reduce((rest, { text }) => rest.replace(text, ''), roadmap);
+    const record = readFileSync(join(ROOT, 'HISTORY.md'), 'utf8');
     assert.match(
       record,
       /converters stay named and unbuilt until a real export of each is seen/,
@@ -197,10 +189,11 @@ describe('a page that says what exists does not call a shipped converter unbuilt
    *
    * Which pages: every Markdown file that describes the product as it is.
    * Left out are the records, which say what was true when they were written:
-   * the changelog, the release notes, the roadmap (read above, by section) and
+   * the changelog, the release notes, the release history, the roadmap (read
+   * above, by section) and
    * the plans, whose whole value is having been written before the code.
    */
-  const RECORD = /^(CHANGELOG\.md|RELEASES\.md|ROADMAP\.md|docs\/plan-[^/]+\.md|\.agents\/.*)$/;
+  const RECORD = /^(CHANGELOG\.md|RELEASES\.md|HISTORY\.md|ROADMAP\.md|docs\/plan-[^/]+\.md|\.agents\/.*)$/;
   const PENDING =
     /stays? named|waits? to be asked|not (yet )?built|unbuilt|yet to be built|still waiting|named as (the )?next/i;
 
@@ -217,6 +210,7 @@ describe('a page that says what exists does not call a shipped converter unbuilt
     assert.ok(found.length >= 30, `only ${found.length} pages walked`);
     assert.ok(found.includes('docs/commands.md'), 'docs/commands.md is not in the walk');
     assert.ok(!found.includes('docs/plan-1.71.md'), 'a plan is a record and is not walked');
+    assert.ok(!found.includes('HISTORY.md'), 'the release history is a record and is not walked');
   });
 
   it('never has a pending phrase in a sentence about a converter the CLI dispatches', () => {
