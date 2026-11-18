@@ -13,6 +13,30 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Discussions has a form for each category a visitor writes in, and one
+  address.** GitHub Discussions was switched on on 2026-11-18, and the only
+  thing that sent anybody there was a line in `config.yml`. `.github/DISCUSSION_TEMPLATE/`
+  now holds `q-a.yml`, `ideas.yml` and `show-and-tell.yml`. Each opens by asking
+  for no usage log, no prompt that is not public and no key, then asks what an
+  answer needs: for a question, the goal, the command, what happened and what
+  was expected, the version and how Trazum was installed; for an idea, the
+  problem first, what is done today, and a pointer to the feature request form
+  for an idea that is clearly a thing to do; for show and tell, what was built
+  or measured and how to repeat it. There is no form for announcements, which
+  only the maintainer posts, nor for polls. The file names are GitHub's default
+  category slugs, which could not be read from the repository, and each form
+  says so at its top; a category that was renamed loses its form until the file
+  is. Whether GitHub accepts the forms was not tested. README.md now says a
+  question goes to Discussions and a bug to an issue, through its form.
+  `issue-intake.test.js` holds the forms (a first block that says what not to
+  paste, unique field ids, the version where a run is described, the slugs) and
+  requires every page that sends somebody to Discussions to use
+  `https://github.com/Davmunrey/Trazum/discussions` and nothing else. The
+  `Repository settings` check now also compares `has_discussions` with `true`,
+  reports it as not read when GitHub does not show it, and writes it with
+  `apply --yes`; switched off, three pages would point nowhere. Whether the
+  workflow's token is shown that field was not measured. (#732)
+
 - **Vercel Speed Insights, off unless the operator switches it on.** Vercel's
   bot opened #722 with `@vercel/speed-insights` rendered in the layout
   after `<Analytics />`, always on. That contradicted what the README,

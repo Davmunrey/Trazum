@@ -172,6 +172,22 @@ describe('the merge settings the ruleset leans on', () => {
     assert.deepEqual(compareSettings(wanted), { differences: [], notRead: [] });
   });
 
+  it('Discussions switched off is a difference, said with its reason, and switching it on is what is sent', () => {
+    const off = { ...wanted, has_discussions: false };
+    const { differences, notRead } = compareSettings(off);
+    assert.deepEqual(notRead, []);
+    assert.equal(differences.length, 1);
+    assert.equal(differences[0].where, 'setting has_discussions');
+    assert.equal(differences[0].stated, 'true');
+    assert.equal(differences[0].live, 'false');
+    assert.match(differences[0].why, /Discussions/);
+    assert.deepEqual(settingsBody(off), { has_discussions: true });
+    // Not shown is not off: nothing is sent for a setting nobody read.
+    const { has_discussions: _hidden, ...hidden } = wanted;
+    assert.deepEqual(compareSettings(hidden), { differences: [], notRead: ['has_discussions'] });
+    assert.deepEqual(settingsBody(hidden), {});
+  });
+
   it('a setting the token was not shown is not read, which is neither fine nor a failure', () => {
     const { differences, notRead } = compareSettings({ full_name: 'o/r' });
     assert.deepEqual(differences, []);
@@ -195,6 +211,10 @@ describe('the merge settings the ruleset leans on', () => {
     // Sign-off is checked on every commit, so the browser adds it.
     assert.match(read('.github/workflows/dco.yml'), /Signed-off-by/);
     assert.equal(wanted.web_commit_signoff_required, true);
+    // Three pages send questions to Discussions and the discussion forms live
+    // there: with the feature off, those links point nowhere.
+    assert.equal(wanted.has_discussions, true);
+    assert.match(SETTINGS.find((setting) => setting.key === 'has_discussions').why, /Discussions/);
     for (const setting of SETTINGS) assert.ok(setting.why.length >= 60, `${setting.key} has no reason worth reading`);
     assert.equal(new Set(SETTINGS.map((setting) => setting.key)).size, SETTINGS.length);
   });
@@ -334,7 +354,7 @@ describe('the command, against a stand-in for gh', () => {
         rule(answer, 'pull_request').parameters.allowed_merge_methods = ['merge', 'squash'];
       })));
     }
-    writeFileSync(join(dir, 'repo.json'), JSON.stringify({ ...wanted, full_name: 'o/r', allow_merge_commit: true, allow_update_branch: false }));
+    writeFileSync(join(dir, 'repo.json'), JSON.stringify({ ...wanted, full_name: 'o/r', allow_merge_commit: true, allow_update_branch: false, has_discussions: false }));
     if (refuse) writeFileSync(join(dir, 'refuse'), '');
     if (ignore) writeFileSync(join(dir, 'ignore'), '');
     const env = { ...SPAWN_ENV, PATH: `${dir}${delimiter}${SPAWN_ENV.PATH ?? process.env.PATH}`, GH_REPO: '', GITHUB_REPOSITORY: '' };
@@ -350,7 +370,8 @@ describe('the command, against a stand-in for gh', () => {
     const hub = github();
     const result = hub.run();
     assert.equal(result.status, 1, result.stderr);
-    assert.match(result.stdout, /4 difference\(s\)/);
+    assert.match(result.stdout, /5 difference\(s\)/);
+    assert.match(result.stdout, /setting has_discussions\n {4}stated: {2}true\n {4}GitHub: {2}false/);
     assert.match(result.stdout, /only in the file: {2}\{"context":"PR readiness"\}/);
     assert.match(result.stdout, /only on GitHub: {4}"merge"/);
     assert.deepEqual(writes(hub.calls()), []);
@@ -370,7 +391,7 @@ describe('the command, against a stand-in for gh', () => {
     assert.equal(result.status, 0, result.stdout + result.stderr);
     const sent = writes(hub.calls());
     assert.deepEqual(sent.map((call) => [call.method, call.path]), [['PUT', 'repos/o/r/rulesets/7'], ['PATCH', 'repos/o/r']]);
-    assert.deepEqual(sent[1].sent, { allow_merge_commit: false, allow_update_branch: true });
+    assert.deepEqual(sent[1].sent, { allow_merge_commit: false, allow_update_branch: true, has_discussions: true });
     assert.equal(sent[0].sent.id, undefined);
     const { ruleset, repo } = hub.state();
     assert.deepEqual(compare(stated, ruleset).differences, []);

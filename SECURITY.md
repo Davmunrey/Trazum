@@ -248,13 +248,17 @@ Some of this cannot be committed to a file — it lives in repository settings.
    (the ruleset refuses both, so the buttons only offer an error),
    `allow_update_branch` on (a branch must be current with `main` to merge),
    and `web_commit_signoff_required` on (the sign-off check reads every
-   commit, the ones made in the browser too).
+   commit, the ones made in the browser too). `has_discussions` is checked
+   and written with them, though it is not a merge setting: it is on because
+   README.md, SUPPORT.md and the issue forms send questions to Discussions,
+   and switched off they point nowhere.
 
    **What the weekly run cannot see.** GitHub leaves some of this out of its
    answer to a token that does not administer the repository. Measured on
    2026-11-18 on a runner, the workflow's token is shown every rule, the
    required checks and `web_commit_signoff_required`, and is not shown who may
-   bypass the ruleset (`bypass_actors`) nor the four `allow_*` settings. The
+   bypass the ruleset (`bypass_actors`) nor the four `allow_*` settings. Whether
+   it is shown `has_discussions` was not measured. The
    run prints those five as "not read" and does not fail on them: not read is
    not fine, and it is not drift either. An admin's `npm run ruleset` reads
    all of it, so run it after anybody has been on the settings page.

@@ -811,7 +811,10 @@ rule.
 [VERSIONING.md](VERSIONING.md) covers what counts as public API.
 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) covers what is expected of everyone
 taking part, and is honest about what a single-maintainer project can promise.
-[SUPPORT.md](SUPPORT.md) covers what gets answered and how fast;
+[SUPPORT.md](SUPPORT.md) covers what gets answered and how fast. A question
+goes to [Discussions](https://github.com/Davmunrey/Trazum/discussions) and a
+bug goes to an [issue](https://github.com/Davmunrey/Trazum/issues/new/choose),
+through its form.
 [SECURITY.md](SECURITY.md) covers reporting a vulnerability privately.
 
 </details>

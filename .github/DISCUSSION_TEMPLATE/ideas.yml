@@ -1,0 +1,46 @@
+# Discussion form for the category whose slug is "ideas".
+# The file name has to be the category's slug. GitHub's default categories are
+# Announcements, General, Ideas, Polls, Q&A and Show and tell, with the slugs
+# announcements, general, ideas, polls, q-a and show-and-tell. The owner has not
+# renamed any as far as is known, and the slugs could not be read from the
+# repository when this was written, so they are the defaults and not a reading.
+# There is no form for announcements (only the maintainer posts there) nor for
+# polls.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste a usage log, a prompt you would not publish, or a key.** A
+        discussion is a public web page, and a usage log names your workloads and
+        your spend. A shape is almost always enough: "a slice with 40k input tokens
+        and no cache reads".
+
+        Start with the problem, not the feature. An idea that is clearly a thing to
+        do belongs in a
+        [feature request](https://github.com/Davmunrey/Trazum/issues/new?template=feature_request.yml),
+        which the issue list can track. This is the place for the half-formed one.
+        Please write in English.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you were trying to do, and where Trazum stopped you.
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today instead
+      description: The workaround, if there is one. It says how much the idea is worth.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: Optional. What you think would help, even if it is only a direction.
+    validations:
+      required: false
