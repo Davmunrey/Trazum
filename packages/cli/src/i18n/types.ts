@@ -39,6 +39,57 @@ export interface SlotCopy {
   unlocks: string;
 }
 
+/**
+ * Why an item of `trazum proactive` is in the state it is in. Data, not a sentence:
+ * the command renders each in the reader's language, and a test holds the list
+ * to both catalogues.
+ */
+export type ProactiveCode =
+  | 'statusline.on'
+  | 'statusline.off'
+  | 'statusline.partial'
+  | 'statusline.stale'
+  | 'statusline.windows'
+  | 'statusline.noClaude'
+  | 'statusline.foreign'
+  | 'watch.on'
+  | 'watch.off'
+  | 'watch.stale'
+  | 'watch.windows'
+  | 'watch.noCrontab'
+  | 'watch.crontabError'
+  | 'watch.configError'
+  | 'watch.noStore'
+  | 'watch.noBudget'
+  | 'watch.noStoreNoBudget'
+  | 'watch.scheduledNotReady'
+  | 'watch.otherProjects'
+  | 'mcp.on'
+  | 'mcp.off'
+  | 'mcp.noClient'
+  | 'mcp.noClientClaude'
+  | 'mcp.other'
+  | 'mcp.changed'
+  | 'mcp.notAdded'
+  | 'cli.unstable'
+  | 'cli.unsafe'
+  | 'cli.notExecutable'
+  | 'statusline.scriptChanged'
+  | 'file.unparseable'
+  | 'file.symlink'
+  | 'file.shape'
+  | 'file.notExact'
+  | 'file.reformat'
+  | 'file.unreadable'
+  | 'file.outside'
+  | 'write.not-allowed'
+  | 'write.symlink'
+  | 'write.outside'
+  | 'write.changed'
+  | 'write.unreadable'
+  | 'write.partial'
+  | 'write.failed';
+
 export interface CliMessages {
   locale: Locale;
   /** BCP 47 tag used to format numbers. */
@@ -2295,4 +2346,27 @@ export interface CliMessages {
     moneyIncomparableScenario(): string;
     moneyIncomparablePricing(was: string, now: string): string;
   };
+  /** `trazum proactive`: what speaks first, turned on and off from one command. */
+  proactive: {
+    heading(): string;
+    item: Record<'statusline' | 'watch' | 'mcp', string>;
+    verdict: Record<'on' | 'off' | 'not-ready' | 'not-available' | 'could-not-tell', string>;
+    reason: Record<ProactiveCode, (params: Record<string, string>) => string>;
+    unknownAction(given: string): string;
+    unknownItem(given: string, allowed: string): string;
+    wouldTurnOn(item: string): string;
+    wouldTurnOff(item: string): string;
+    nothingToChange(item: string): string;
+    dryRunAsked(): string;
+    dryRunNoTerminal(): string;
+    askOn(item: string, files: string): string;
+    askOff(item: string, files: string): string;
+    didTurnOn(item: string): string;
+    didTurnOff(item: string): string;
+    declined(item: string): string;
+    failed(item: string, reason: string): string;
+    backupNote(suffix: string): string;
+    crontab(): string;
+  };
+
 }

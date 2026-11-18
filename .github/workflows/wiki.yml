@@ -78,6 +78,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             scripts/build-wiki.mjs
+            scripts/wiki-tags.mjs
             scripts/publish-wiki.mjs
             README.md
             ROADMAP.md
@@ -145,6 +146,7 @@ jobs:
           persist-credentials: false
           sparse-checkout: |
             scripts/build-wiki.mjs
+            scripts/wiki-tags.mjs
             scripts/publish-wiki.mjs
             README.md
             ROADMAP.md

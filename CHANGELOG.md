@@ -15,6 +15,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **One command turns on everything that speaks without being asked, and one turns it off: `trazum proactive`.** Trazum can
+  speak first in three places, each off until somebody wired it by hand: what the session has cost, in Claude Code's status
+  line, with a `Stop` hook that refreshes it; `trazum watch`, which says when measured spend crossed a budget, from a
+  cron entry; and `spend_guard` over MCP, from the server entry in each client. `trazum proactive` reports which are on
+  (one line each: `on`, `off`, `not ready` with the reason, `not available`, `could not tell`), `trazum proactive on`
+  offers each one that is off and says every file and every line first, and `trazum proactive off` removes exactly the
+  lines it added. Nothing is written without a yes for that item: `--dry-run` writes nothing, and input that is not a
+  terminal without `--yes` is a dry run and says so. It edits `~/.claude/settings.json`, the user's crontab, and
+  `.mcp.json` or `.cursor/mcp.json` in the directory it runs in (the two clients whose files the documents state), and
+  its own `~/.trazum/`. Every write goes through one function that refuses a path off that list, a symbolic link and a
+  file that changed since it was read, writes a temporary file and renames it, keeps the mode, and keeps one backup
+  beside the file the first time it changes. A file is opened once, without following a link, and its kind and its
+  text both come from that open. An item is written whole or not at all: if one of its writes fails, what it had
+  already written is put back and nothing is recorded. A crontab that cannot be read again just before the write is
+  not taken for an empty one. The status line script is this command's only while it is the copy it wrote (the record
+  keeps its sha256): one you changed, or a file already there, is not written over and not removed. JSON is edited as data, keeping key order and indentation; a file that
+  does not parse, or whose `hooks` is not an object, is left alone and named; a status line somebody else configured is
+  never replaced; the hook is appended to `Stop` and never replaces what is there, and is never wired to
+  `SessionStart`, whose output is handed to the model. Its own lines are recognised by the exact command written (the
+  hook and status line), a trailing `# trazum watch (managed)` (the cron line) and a manifest of what it added (the MCP
+  entry, so one pasted from the README is not removed). The status line script is copied from the CLI package into
+  `~/.trazum/statusline/`, because `plugin/` is not in an `npx` install, and a CLI run from the `npx` cache is refused
+  for the status line and the schedule: it would not be there tomorrow. A CLI file that is not executable is refused
+  for the status line as well, because the hook starts it by its path and fails without a word, and so is a home
+  directory with a quote in its name, which would end the quoting of the script's path. `watch` is scheduled only when the store has
+  something in it and `trazum.config.json` has a spend limit; otherwise it is `not ready`, naming the command or the
+  key, and the store is never filled nor a budget written. Sends nothing anywhere. A command of its own rather than a
+  mode of `init`, because `init` proposes a config for one repository and its `--dry-run` and `--yes` mean that; this
+  edits a home directory. The CLI now has 56 commands, and `--json` is documented in `docs/json-output.md`. (#755)
 - **The documentation is on the site, at `/docs`.** The header's Docs entry,
   the footer's and the application rail's lead there instead of to
   `docs/README.md` on GitHub, and the landing's links to the CI and agent
@@ -582,6 +611,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The wiki's Home page closed a `<div>` it never opened.** The page is a
+  section of the README, and the cut fell after the closing tag of a block
+  whose opening tag is above it. `scripts/build-wiki.mjs` now pairs the tags
+  of every page it writes: a closing `</div>` with nothing open is dropped,
+  one left open is closed, and a code fence is left alone. `wiki.test.js`
+  holds every page to closing what it opens, and checks that the README
+  section still hands Home the orphan, so it cannot pass because the input
+  stopped exercising it. (#765)
 - **`PR readiness` told a pull request with twenty-two lines under
   `Unreleased` to add one.** `scripts/pr-readiness.mjs` read this file with
   `git show` through `execFileSync` and Node's default limit on a child's

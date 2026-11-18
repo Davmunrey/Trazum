@@ -103,6 +103,9 @@ if [ -d "$folder/subagents" ]; then
   fi
 fi
 
+# The program below is JavaScript, handed to node in single quotes on purpose:
+# its ${...} are template literals, and the shell must leave them alone.
+# shellcheck disable=SC2016
 line="$(
   "$trazum_bin" profile "$whole" --json 2>/dev/null | node -e '
     let raw = "";

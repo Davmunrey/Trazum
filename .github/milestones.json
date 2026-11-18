@@ -15,14 +15,19 @@
     "issues": [755, 756, 757, 758]
   },
   {
+    "title": "3.0.0: the release allowed to break",
+    "description": "A major is the only release that may remove something. This one removes `tier` from a model in the pricing catalogue, deprecated since 1.8.0 in favour of `capability`, and nothing its changelog entry does not list.",
+    "issues": [764]
+  },
+  {
     "title": "A repository a stranger can contribute to",
     "description": "What a visitor and a contributor need that is not the product: a roadmap that opens with what comes next, a wiki that publishes itself, documents that agree with each other, and Discussions with a form for each kind of question.",
-    "issues": [725, 726, 727, 732, 747]
+    "issues": [725, 726, 727, 732, 747, 765]
   },
   {
     "title": "Tests that would notice a wrong price",
     "description": "Line coverage says the code that prices a call runs under test. Mutation testing says whether a test would notice it pricing a call wrongly, and today it reaches six files of the core and, in two more, the functions that choose a rate and multiply by it. Next: the catalogue's own numbers, where a sample found published prices that no test would notice changing.",
-    "issues": [731, 745]
+    "issues": [731, 745, 763]
   },
   {
     "title": "Every agent's sessions",

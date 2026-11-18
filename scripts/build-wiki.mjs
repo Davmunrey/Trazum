@@ -49,6 +49,7 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { paired } from './wiki-tags.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -104,6 +105,7 @@ function absolute(text) {
     .replaceAll(/\]\((?!https?:|mailto:)([^)\s]+)\)/g, (_, target) =>
       target.startsWith('#') ? `](${BLOB}README.md${target})` : `](${BLOB}${target})`);
 }
+
 
 /** The one sentence a reader arriving from a search needs. */
 const provenance = (source) =>
@@ -171,10 +173,10 @@ const PAGES = [
 ];
 
 const pageFor = (page) =>
-  `${provenance(page.source)}\n${absolute(sectionOf(read(page.source), page.heading))}\n`;
+  `${provenance(page.source)}\n${paired(absolute(sectionOf(read(page.source), page.heading)))}\n`;
 
 const home = () => {
-  const opening = absolute(sectionOf(read('README.md'), '### Know what your AI agents cost, per project, without your prompts leaving the machine.'));
+  const opening = paired(absolute(sectionOf(read('README.md'), '### Know what your AI agents cost, per project, without your prompts leaving the machine.')));
   const contents = PAGES.map((page) => `- [${page.title}](${WIKI}${page.name})`).join('\n');
   return `${provenance('README.md')}\n# Trazum\n\n${opening}\n\n## Pages\n\n${contents}\n\n`
     + `Everything else lives in the repository: the [README](${BLOB}README.md) and the\n`

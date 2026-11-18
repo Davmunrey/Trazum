@@ -227,7 +227,8 @@ function wikiCheckout(pages = {}) {
  * a file it never checked out.
  */
 const SOURCES = [...new Set([...readFileSync(join(repoRoot, 'scripts', 'build-wiki.mjs'), 'utf8').matchAll(/^\s+source: '([^']+)',$/gm)].map((match) => match[1]))];
-const SCRIPTS = ['scripts/build-wiki.mjs', 'scripts/publish-wiki.mjs'];
+// build-wiki.mjs imports wiki-tags.mjs: a checkout without it cannot build a page.
+const SCRIPTS = ['scripts/build-wiki.mjs', 'scripts/wiki-tags.mjs', 'scripts/publish-wiki.mjs'];
 
 function repository(files = [...SCRIPTS, ...SOURCES]) {
   const dir = fresh('repository');

@@ -79,8 +79,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 55 commands — [the table
-above](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-55-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 56 commands — [the table
+above](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-56-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -97,3 +97,4 @@ from the exit codes it is supposed to relay.
 <a id="the-51-commands"></a>
 <a id="the-52-commands"></a>
 <a id="the-53-commands"></a>
+<a id="the-55-commands"></a>

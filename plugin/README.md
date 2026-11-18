@@ -52,7 +52,11 @@ context, so neither is billed. The one hook whose stdout *is* handed to the
 model is `SessionStart`, which is why the refresh is not wired to it and why a
 test refuses it by name.
 
-Two lines in `~/.claude/settings.json`:
+`trazum proactive on` does the next step for you: it copies the script into `~/.trazum/statusline/`, adds both
+entries to `~/.claude/settings.json` after showing you every line and asking, and `trazum proactive off` takes
+exactly those lines out again. It leaves a status line you already have alone. See
+[speaking first](../docs/commands.md#speaking-first-trazum-proactive). By hand, it is two blocks in
+`~/.claude/settings.json`:
 
 ```json
 {
@@ -90,6 +94,6 @@ move the cache off `$TMPDIR`.
 
 ## The rest of the product
 
-The CLI (55 commands), the HTTP gateway, the GitHub Action and the web app
+The CLI (56 commands), the HTTP gateway, the GitHub Action and the web app
 are documented in the [repository](https://github.com/Davmunrey/Trazum).
 Everything installable is on npm under `@trazum/*`.

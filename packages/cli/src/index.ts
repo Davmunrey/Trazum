@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import { cpus, homedir, tmpdir } from 'node:os';
@@ -303,6 +303,17 @@ import type { CliMessages } from './i18n/index.js';
 // proportion bar and the heading rule — the 1.75 style module. The guard in
 // style.test.js holds the contract: stripped colour output is byte-identical
 // to plain output, and a pipe stays plain.
+import { runCrontab } from './git.js';
+import {
+  ITEMS as PROACTIVE_ITEMS,
+  BACKUP_SUFFIX,
+  CRONTAB,
+  inspectAll as inspectProactive,
+  run as runProactive,
+  shown as shownPath,
+  systemCrontab,
+} from './proactive.js';
+import type { Ctx as ProactiveCtx, Finding as ProactiveFinding, Item as ProactiveItem, ItemResult, ItemStatus } from './proactive.js';
 import { bar, c, sectionHeading, table } from './style.js';
 import type { TableColumn } from './style.js';
 
@@ -325,6 +336,7 @@ interface Args {
 }
 
 const VALUE_FLAGS = new Set([
+  'only',
   'id', 'type', 'criterion', 'outcome', 'assessor', 'policy', 'claude-code', 'codex', 'instructions',
   'recovery-dir',
   'answers',
@@ -881,6 +893,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   rules: ['measure', 'level', 'json'],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
   doctor: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'otlp-out'],
+  proactive: ['only', 'dry-run', 'yes', 'json'],
 };
 
 function rejectUnknownFlags(args: Args, t: CliMessages): void {
@@ -8112,6 +8125,187 @@ async function commandServe(
 }
 
 /**
+ * `trazum proactive`: the three places Trazum can speak first, turned on and
+ * off from one command. The logic and the one function that writes live in
+ * `proactive.ts`; this reads the machine once, asks, and says what happened.
+ *
+ * **A separate command and not a mode of `init`**, because the two edit
+ * different things for different reasons. `init` proposes a config for one
+ * repository and has `--dry-run` and `--yes` meaning "the config"; this edits
+ * files in a home directory and the project's MCP config. Two jobs under one
+ * name would have made `init --dry-run` ambiguous about which it printed.
+ */
+async function commandProactive(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  const action = args.positional[0] ?? 'status';
+  if (action !== 'status' && action !== 'on' && action !== 'off') throw new Error(t.proactive.unknownAction(action));
+
+  let items: readonly ProactiveItem[] = PROACTIVE_ITEMS;
+  const only = stringFlag(args, 'only');
+  if (only !== undefined) {
+    const named = only.split(',').map((name) => name.trim()).filter(Boolean);
+    const unknown = named.find((name) => !(PROACTIVE_ITEMS as readonly string[]).includes(name));
+    if (unknown !== undefined || named.length === 0) {
+      throw new Error(t.proactive.unknownItem(unknown ?? '', PROACTIVE_ITEMS.join(', ')));
+    }
+    items = PROACTIVE_ITEMS.filter((item) => named.includes(item));
+  }
+
+  /*
+    The home directory is read from the environment here and nowhere else, once,
+    and everything in proactive.ts takes it as a parameter. HOME first, as the
+    shell does, then USERPROFILE for Windows, then what the operating system says.
+  */
+  const home = process.env.HOME || process.env.USERPROFILE || homedir();
+  const entry = (() => {
+    try {
+      return realpathSync(process.argv[1] ?? '');
+    } catch {
+      return resolvePath(process.argv[1] ?? '');
+    }
+  })();
+  const ctx: ProactiveCtx = {
+    home,
+    cwd: process.cwd(),
+    platform: process.platform,
+    execPath: process.execPath,
+    entry,
+    trazumBin: process.env.TRAZUM_BIN,
+    crontab: systemCrontab(runCrontab),
+    script: () => readFile(fileURLToPath(new URL('../assets/trazum-statusline.sh', import.meta.url)), 'utf8'),
+    catalogue: pricing,
+  };
+
+  const asJson = boolFlag(args, 'json');
+  const terminal = process.stdin.isTTY === true;
+  const yes = boolFlag(args, 'yes');
+  const dryRun = action === 'status' || boolFlag(args, 'dry-run') || (!yes && !terminal);
+  const forcedDryRun = action !== 'status' && !boolFlag(args, 'dry-run') && !yes && !terminal;
+
+  const name = (item: ProactiveItem): string => t.proactive.item[item];
+  const reason = (finding: ProactiveFinding): string => t.proactive.reason[finding.code](finding.params);
+  const place = (target: string): string => (target === CRONTAB ? t.proactive.crontab() : shownPath(ctx, target));
+
+  /** One file and the lines that go and that come, as they would be read in it. */
+  const printChange = (change: { target: string; added: string[]; removed: string[] }, say: (line: string) => void = console.log): void => {
+    say(`    ${place(change.target)}`);
+    for (const line of change.removed) say(`      ${c.red(`- ${line}`)}`);
+    for (const line of change.added) say(`      ${c.green(`+ ${line}`)}`);
+  };
+
+  const prompt: { reader: ReturnType<typeof createInterface> | null } = { reader: null };
+  /** The items whose lines were printed before their question, so they are not printed twice. */
+  const shownBeforeAsking = new Set<ProactiveItem>();
+  const decide = async (item: ProactiveItem, changes: { target: string; added: string[]; removed: string[] }[]): Promise<boolean> => {
+    if (yes) return true;
+    /*
+      Every file and every line, and then the question. A yes to "write the
+      status line?" with the lines printed afterwards is a yes to something
+      nobody had read: the first version asked first, and its changelog entry
+      said the opposite.
+    */
+    // With --json the standard output is the document, so the lines go beside the question.
+    const say = asJson ? console.error : console.log;
+    say('');
+    say(`  ${c.bold((action === 'off' ? t.proactive.wouldTurnOff : t.proactive.wouldTurnOn)(name(item)))}`);
+    for (const change of changes) printChange(change, say);
+    shownBeforeAsking.add(item);
+    prompt.reader ??= createInterface({ input: process.stdin, output: process.stderr });
+    const files = [...new Set(changes.map((change) => place(change.target)))].join(', ');
+    const answer = await prompt.reader.question(action === 'off' ? t.proactive.askOff(name(item), files) : t.proactive.askOn(name(item), files));
+    return /^(y|yes|s|si|sí)$/i.test(answer.trim());
+  };
+
+  let outcome: { before: ItemStatus[]; results: ItemResult[]; after: ItemStatus[] };
+  try {
+    if (action === 'status') {
+      const inspected = await inspectProactive(ctx);
+      const statuses = PROACTIVE_ITEMS.map((item) => inspected.items[item].status);
+      outcome = { before: statuses, results: [], after: statuses };
+    } else {
+      outcome = await runProactive(ctx, { action, items, dryRun, decide });
+    }
+  } finally {
+    prompt.reader?.close();
+  }
+
+  const shownStatuses = (list: ItemStatus[]): ItemStatus[] => list.filter((status) => items.includes(status.item));
+  if (asJson) {
+    const document = {
+      schemaVersion: 1,
+      action,
+      dryRun,
+      home: ctx.home,
+      project: ctx.cwd,
+      items: shownStatuses(outcome.after).map((status) => ({
+        item: status.item,
+        state: status.verdict,
+        reason: status.code,
+        detail: reason(status),
+        files: status.files,
+        notes: status.notes.map((note) => ({ reason: note.code, detail: reason(note) })),
+      })),
+      changes: outcome.results.map((result) => ({
+        item: result.item,
+        outcome: result.outcome,
+        error: result.error === null ? null : { reason: result.error.code, detail: reason(result.error) },
+        files: result.changes.map((change) => ({ file: change.target, added: change.added, removed: change.removed })),
+      })),
+    };
+    console.log(JSON.stringify(document, null, 2));
+    if (outcome.results.some((result) => result.outcome === 'failed')) process.exitCode = 1;
+    return;
+  }
+
+  const verdictPaint = (status: ItemStatus, text: string): string =>
+    status.verdict === 'on' ? c.green(text) : status.verdict === 'off' ? text : status.verdict === 'could-not-tell' ? c.red(text) : c.yellow(text);
+  const block = (list: ItemStatus[]): void => {
+    const width = Math.max(...items.map((item) => name(item).length));
+    const verdictWidth = Math.max(...Object.values(t.proactive.verdict).map((word) => word.length));
+    for (const status of shownStatuses(list)) {
+      console.log(`  ${name(status.item).padEnd(width)}  ${verdictPaint(status, t.proactive.verdict[status.verdict].padEnd(verdictWidth))}  ${c.dim(wrap(reason(status), 76 - width - verdictWidth, ' '.repeat(width + verdictWidth + 6)).trimStart())}`);
+      for (const note of status.notes) console.log(`  ${' '.repeat(width + verdictWidth + 4)}${c.dim(wrap(reason(note), 76 - width - verdictWidth, ' '.repeat(width + verdictWidth + 6)).trimStart())}`);
+    }
+  };
+
+  console.log();
+  console.log(sectionHeading(t.proactive.heading()));
+  block(outcome.before);
+  if (action === 'status') return;
+
+  let anyChange = false;
+  for (const result of outcome.results) {
+    if (result.outcome === 'nothing') {
+      console.log();
+      console.log(`  ${c.dim(t.proactive.nothingToChange(name(result.item)))}`);
+      continue;
+    }
+    anyChange = true;
+    console.log();
+    const done = result.outcome === 'written';
+    const header = action === 'off'
+      ? (done ? t.proactive.didTurnOff : t.proactive.wouldTurnOff)(name(result.item))
+      : (done ? t.proactive.didTurnOn : t.proactive.wouldTurnOn)(name(result.item));
+    console.log(`  ${c.bold(header)}`);
+    // Asked about in a terminal, an item's lines are already above its question.
+    if (!shownBeforeAsking.has(result.item)) for (const change of result.changes) printChange(change);
+    if (result.outcome === 'declined') console.log(`  ${t.proactive.declined(name(result.item))}`);
+    if (result.outcome === 'failed' && result.error !== null) {
+      console.log(`  ${c.red(t.proactive.failed(name(result.item), reason(result.error)))}`);
+    }
+  }
+  if (action === 'on' && anyChange) console.log(`\n  ${c.dim(wrap(t.proactive.backupNote(BACKUP_SUFFIX), 74, '    ').trimStart())}`);
+  if (dryRun && anyChange) {
+    console.log();
+    console.log(`  ${wrap(forcedDryRun ? t.proactive.dryRunNoTerminal() : t.proactive.dryRunAsked(), 74, '    ').trimStart()}`);
+  }
+  if (outcome.results.some((result) => result.outcome === 'written')) {
+    console.log();
+    block(outcome.after);
+  }
+  if (outcome.results.some((result) => result.outcome === 'failed')) process.exitCode = 1;
+}
+
+/**
  * `trazum watch` — the afternoon it happened, said that afternoon.
  *
  * One cycle is the primitive: measure, keep, evaluate, emit, remember. The
@@ -14210,6 +14404,9 @@ async function main(): Promise<void> {
       break;
     case 'init':
       await commandInit(args, config, pricing, t);
+      break;
+    case 'proactive':
+      await commandProactive(args, pricing, t);
       break;
     case 'where':
       await commandWhere(args, config, pricing, t);

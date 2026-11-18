@@ -220,7 +220,7 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
     ┌────────────┬─────────────┼─────────────┬─────────────┐
  @trazum/cli  @trazum/mcp  trazum-vscode  @trazum/web    action/
- 55 commands   MCP server    the editor      Next.js    comments on
+ 56 commands   MCP server    the editor      Next.js    comments on
               for your agents  status bar               pull requests
 
               @trazum/tokenizer-openai   optional: exact counts for OpenAI
@@ -317,8 +317,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 55 commands — [the table
-above](#the-55-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 56 commands — [the table
+above](#the-56-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -335,8 +335,9 @@ from the exit codes it is supposed to relay.
 <a id="the-51-commands"></a>
 <a id="the-52-commands"></a>
 <a id="the-53-commands"></a>
+<a id="the-55-commands"></a>
 
-## The 55 commands
+## The 56 commands
 
 | Command | What it answers |
 |---|---|
@@ -374,6 +375,7 @@ from the exit codes it is supposed to relay.
 | [`trazum schema`](docs/commands.md#building-on-the-format-trazum-conform) | Which fields must a document of this format carry? *A JSON Schema, for validators that are not Trazum.* |
 | [`trazum conform`](docs/commands.md#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rollup`](docs/commands.md#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
+| [`trazum proactive`](docs/commands.md#speaking-first-trazum-proactive) | What speaks without being asked, and is it on? *Turns on the status line, a scheduled watch and the MCP server, one asked-for item at a time, and turns them off again.* |
 | [`trazum pulse`](docs/commands.md#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum position`](docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
 | [`trazum receipt`](docs/commands.md#a-figure-that-still-answers-elsewhere-trazum-receipt) | What did this cost, in a form that still answers when read somewhere else? *Counts, and the money split so it can be added up rather than believed. No prompt text, no answers, no paths: there is no field for them.* |

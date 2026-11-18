@@ -82,6 +82,7 @@ ${bold('USAGE')}
   trazum switch <usage.jsonl> --to <model> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
+  trazum proactive [status|on|off] [--only <item,...>] [--dry-run | --yes] [--json]
   trazum bench [--workload <id>] [--record <file>] [--against <file> --max-ratio <n>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
   trazum models
@@ -412,6 +413,33 @@ ${bold('OPTIONS FOR pulse')}
   Never gates on a first run that never happened: that has no cadence to be
   late against, and never on how far the measurements reach, which is a
   provider reporting on its own schedule rather than a job that failed.
+
+${bold('OPTIONS FOR proactive')}
+  status                      What speaks first, on or off: the status line and
+                              its Stop hook, a scheduled watch, the MCP server.
+                              One line each. It is the default and writes nothing.
+  on                          Offer each one that is off, say which files it
+                              would touch and every line it would add, and write
+                              only after a yes for that item.
+  off                         Remove exactly the lines it added. Nothing else in
+                              those files changes.
+  --only <item,...>           Limit it to statusline, watch or mcp.
+  --dry-run                   Print every file and every line, write nothing.
+                              This is what it does until somebody says yes: not
+                              a terminal and no --yes means a dry run.
+  --yes                       Say yes to every item, without asking.
+  --json                      The report as data. See docs/json-output.md.
+
+  The three things Trazum can say without being asked, each off until somebody
+  wires it by hand. It edits ~/.claude/settings.json, your crontab, and the MCP
+  config of the project it runs in (.mcp.json, .cursor/mcp.json), and nothing
+  else. A file it cannot parse, or a symbolic link, is left alone and named. A
+  status line that is already configured is never replaced. It sends nothing
+  anywhere: all three read files already on this machine.
+
+  It never invents a budget and never fills the store. A watch with no store or
+  no spend limit is "not ready", with the command or the key that would make it
+  ready.
 
 ${bold('OPTIONS FOR bench')}
   --workload <id>             Run one standard workload instead of all of them.
@@ -2345,6 +2373,86 @@ ${bold('EXAMPLES')}
       'Measured from this log alone, priced record by record. The store\'s provider-billed monthly standing is a different measurement, "trazum store" prints it, and the two are never merged into one figure.',
     noLog: () => 'position needs a usage log: trazum position usage.jsonl',
   },
+  proactive: {
+    heading: () => 'Trazum, speaking first',
+    item: { statusline: 'status line', watch: 'watch', mcp: 'MCP server' },
+    verdict: { on: 'on', off: 'off', 'not-ready': 'not ready', 'not-available': 'not available', 'could-not-tell': 'could not tell' },
+    reason: {
+      'statusline.on': (p) => `The status line and its Stop hook are in ${p.file}.`,
+      'statusline.off': (p) => `Not in ${p.file}. Turning it on adds a status line, and a Stop hook that refreshes it after each turn.`,
+      'statusline.partial': (p) =>
+        `${p.file} has part of it: the ${p.missing === 'hook' ? 'Stop hook' : 'status line'} is missing. Turning it on adds that part.`,
+      'statusline.stale': (p) => `The entries in ${p.file} point at a script or a CLI that is no longer there. Turning it on repairs them.`,
+      'statusline.windows': () => 'The status line is a bash script, and there is no Windows form of it yet.',
+      'statusline.noClaude': (p) => `${p.dir} does not exist: Claude Code has not run on this machine, so there is no settings file to add to.`,
+      'statusline.foreign': (p) =>
+        `${p.file} already has a status line (${p.command}). It is left alone. To switch by hand, follow plugin/README.md.`,
+      'watch.on': (p) => `Scheduled in your crontab for ${p.project} (${p.schedule}), reading the store and the budget there.`,
+      'watch.off': (p) => `Not scheduled for ${p.project}. Turning it on adds one crontab line that runs "trazum watch --once" there every hour.`,
+      'watch.stale': (p) => `The crontab line for ${p.project} points at a CLI that is no longer there. Turning it on repairs it.`,
+      'watch.windows': () => 'Scheduling here is cron, and Windows has none. docs/running.md has the Task Scheduler line to run by hand.',
+      'watch.noCrontab': () => 'There is no crontab program on this machine, so nothing can be scheduled here.',
+      'watch.crontabError': (p) => `"crontab -l" failed: ${p.why}`,
+      'watch.configError': (p) => `trazum.config.json could not be read: ${p.why}`,
+      'watch.noStore': () => 'The store has nothing in it. Fill it first with "trazum connect <provider> --store".',
+      'watch.noBudget': (p) =>
+        `A budget is a policy, so none is written for you.${p.measured === '' ? '' : ` The store holds ${p.measured} measured.`} Set spend.maxUsd, spend.maxDayUsd or spend.maxCacheLossUsd in trazum.config.json to a limit you choose.`,
+      'watch.noStoreNoBudget': () =>
+        'Needs a store with something in it ("trazum connect <provider> --store") and a limit you choose (spend.maxUsd, spend.maxDayUsd or spend.maxCacheLossUsd in trazum.config.json).',
+      'watch.scheduledNotReady': (p) =>
+        `Scheduled for ${p.project}, but every run refuses until the store has something in it and trazum.config.json has a spend limit. It is not watching yet.`,
+      'watch.otherProjects': (p) => `${p.count} more managed crontab line(s) for other projects stay as they are. Run this in each of those projects to remove them.`,
+      'mcp.on': (p) => `The trazum server is in ${p.files}.`,
+      'mcp.off': (p) => `Turning it on adds the trazum server to ${p.files}.`,
+      'mcp.noClient': (p) => `No .mcp.json and no .cursor folder in ${p.dir}, so there is no client config here to add to.`,
+      'mcp.noClientClaude': (p) =>
+        `No .mcp.json in ${p.dir}. Claude Code takes the server through its plugin; run these yourself: claude plugin marketplace add Davmunrey/Trazum, then claude plugin install trazum@trazum.`,
+      'mcp.other': (p) => `${p.file} already has a trazum entry that is not the one this writes. Left alone.`,
+      'mcp.changed': (p) => `${p.file} has a trazum entry this command added and somebody has changed since. Left alone.`,
+      'mcp.notAdded': (p) => `${p.file} already has exactly this entry, put there by hand. It stays when this is turned off.`,
+      'cli.unstable': (p) =>
+        `The CLI at ${p.path} will not be there tomorrow: a one-off npx run, or the file is gone. Install it where it stays (npm install -g @trazum/cli) and run this again.`,
+      'cli.unsafe': (p) => `The path ${p.path} has a quote, a percent sign or a newline in it, and cannot be written safely into a shell line or a crontab.`,
+      'cli.notExecutable': (p) =>
+        `The CLI at ${p.path} is not executable, and the Stop hook starts it by its path: the status line would never have a figure. Make it executable (chmod +x) or install the CLI (npm install -g @trazum/cli), and run this again.`,
+      'file.unparseable': (p) => `${p.file} could not be parsed as JSON (${p.why}). Left alone.`,
+      'file.symlink': (p) => `${p.file} is a symbolic link. Left alone: edit the file it points to by hand.`,
+      'file.shape': (p) => `${p.file} has a ${p.key} that is not the kind of value expected. Left alone.`,
+      'file.notExact': (p) =>
+        `${p.file} is JSON, but writing it back would change a value, a key or an escape in it (a duplicate key, for one). Left alone, so that nothing else in it changes.`,
+      'file.reformat': (p) => `${p.file} lays out some lines differently from what this writes (inline arrays, say). Its spacing and line breaks are normalised when it is written; every key and value stays.`,
+      'file.unreadable': (p) => `${p.file} could not be read: ${p.why}.`,
+      'file.outside': (p) => `${p.file} resolves outside the directory it belongs to. Left alone.`,
+      'write.not-allowed': (p) => `Refused to write ${p.file}: it is not one of the files this command may touch (${p.allowed}).`,
+      'write.symlink': (p) => `Refused to write ${p.file}: it is a symbolic link.`,
+      'write.outside': (p) => `Refused to write ${p.file}: it resolves outside the directory it belongs to.`,
+      'write.changed': (p) => `${p.file} changed while this ran. Nothing was written to it. Run it again.`,
+      'write.unreadable': (p) => `${p.file} could not be read again just before writing, so nothing was written to it. Run it again.`,
+      'write.partial': (p) =>
+        `A write failed part way, and what had already been written could not be put back: ${p.files}. Nothing records these as written by this command, so look at them by hand.`,
+      'write.failed': (p) => `Could not write: ${p.why}.`,
+      'statusline.scriptChanged': (p) =>
+        `The file at ${p.script} is not the script this command wrote: it was changed, or it is somebody's own. It is left as it is, and nothing is written over it. Move it away and run this again to install the status line.`,
+    },
+    unknownAction: (given) => `Unknown action "${given}". Use: trazum proactive [status|on|off].`,
+    unknownItem: (given, allowed) => `Unknown item "${given}" in --only. The items are: ${allowed}.`,
+    wouldTurnOn: (item) => `${item}: would write`,
+    wouldTurnOff: (item) => `${item}: would remove`,
+    nothingToChange: (item) => `${item}: nothing to change.`,
+    dryRunAsked: () => 'Dry run: nothing was written.',
+    dryRunNoTerminal: () =>
+      'This is not a terminal and --yes was not given, so it is a dry run: nothing was written. Run it in a terminal to be asked about each item, or pass --yes to say yes to all of them.',
+    askOn: (item, files) => `Write the ${item} (${files})? [y/N] `,
+    askOff: (item, files) => `Remove the ${item} (${files})? [y/N] `,
+    didTurnOn: (item) => `${item}: wrote`,
+    didTurnOff: (item) => `${item}: removed`,
+    declined: (item) => `${item}: not written, you said no.`,
+    failed: (item, reason) => `${item}: not written. ${reason}`,
+    backupNote: (suffix) =>
+      `The first time a file you own changes, a copy of it is kept beside it as <name>${suffix}. It is never replaced.`,
+    crontab: () => 'your crontab',
+  },
+
   pulse: {
     heading: () => 'Did the things that are supposed to run, run?',
     kind: (kind) => {
