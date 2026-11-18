@@ -472,6 +472,29 @@ changes it. Add or reword a label in the file, not in GitHub's settings: a label
 made there is invisible to `issue-intake.test.js`, which holds the file to every
 form, to `dependabot.yml` and to this section.
 
+### The wiki is generated, and a merge publishes it
+
+`wiki/` is built from the README by `node scripts/build-wiki.mjs`, and
+`wiki.test.js` fails when a page is not what that script writes. Change the
+document a page comes from, run the script and commit both. Do not edit a page
+in `wiki/`, and do not edit one in GitHub's wiki editor: the next publish
+overwrites it.
+
+A merge to `main` that changes `wiki/`, `scripts/publish-wiki.mjs` or
+`.github/workflows/wiki.yml` runs the `Wiki` workflow, which copies the pages
+that differ into the wiki's repository and pushes. `scripts/publish-wiki.mjs`
+decides what to copy and refuses to publish a `wiki/` the build script would
+not accept; it makes no network call and holds no credential. Every Monday the
+same workflow compares the two and fails when they differ, which means a page
+was edited in the editor or a merge was never published. A page that exists
+only on the wiki is reported and left alone, like a label that exists only on
+GitHub: remove it by hand once nobody wants it.
+
+The wiki needs one page saved in GitHub's web UI before the first publish,
+because a wiki with no page cannot be cloned. The two commands
+`build-wiki.mjs` prints stay as the fallback for a day the workflow cannot run.
+`wiki-publish.test.js` holds all of this.
+
 ## Pull requests
 
 Release candidates must pass the synthetic stress probes in `npm run test:agents`

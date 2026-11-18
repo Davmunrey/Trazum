@@ -58,6 +58,7 @@ the CLI; what changed is who is allowed to choose.
 | A dependency hook running on someone else's runner | The packaged Action installs with `--ignore-scripts` too | `action.yml`, asserted in `security.test.js` |
 | A moved action tag changing what runs | Every third-party action is pinned to a commit SHA, with a `# vN` comment Dependabot bumps | `.github/workflows/`, asserted in `security.test.js` |
 | A finding that goes green because it is not *new* | CodeQL's pull-request check only reports alerts in changed code, so a job fails the build while `main` carries an open critical or high alert | `.github/workflows/security.yml`, asserted in `security.test.js` |
+| The wiki workflow's write permission reaching a pull request's code, or another job | `contents: write` is on the `publish` job only, which runs on a push to `main` and nothing else; the token never appears in a URL, a command line or a `run:` expression; the script it runs makes no network call | `.github/workflows/wiki.yml`, `scripts/publish-wiki.mjs`, `wiki-publish.test.js` |
 | Actions template injection | **Nothing** is interpolated into a `run:` body — no input, no `github.*` value, no step output. Values reach the shell through `env:` | `action.yml`, asserted in `security.test.js` |
 
 **Known limit: marker squatting.** The Action finds its own pull-request comment
@@ -124,6 +125,34 @@ the same with it on and off.
 writable token and repository secrets *against the contributor's code*, which
 is how public repositories get their secrets stolen. Nothing here uses it, and
 nothing should.
+
+**The `Wiki` workflow can push, and what limits it.** GitHub's wiki is a second
+git repository, pushed with the repository's own token, and that needs
+`contents: write`: there is no narrower permission for it. So
+`.github/workflows/wiki.yml` gives that one permission to one job, `publish`,
+and to nothing else. The workflow's default is `contents: read` and its weekly
+`compare` job only reads. What limits the job:
+
+- It runs on a push to `main` only, which is after review, and never from a
+  pull request: the workflow has no pull request trigger of either kind, and a
+  manual run from any branch only compares.
+- It runs the scripts as they are on `main`. `scripts/publish-wiki.mjs`
+  refuses to publish unless `wiki/` is what `scripts/build-wiki.mjs --check`
+  accepts, so a page edited by hand in the repository is not published.
+- The script makes no network call, reads no environment variable and holds no
+  credential. Only the workflow's git steps touch the network, and only the
+  wiki's repository.
+- The checkout keeps no credential in the working tree. The token reaches git
+  as an Authorization header in the environment of the one step that clones and
+  the one that pushes, so it is in no URL, in no `.git/config` and in no
+  command's arguments, and its encoded form is masked in the log.
+- It deletes nothing. A page that exists only on the wiki is reported and left
+  alone.
+
+`wiki-publish.test.js` holds each of these. **Not shown:** the session that
+wrote the workflow could not reach the wiki's repository, so the push itself
+has never run, and the first run of the `publish` job on `main` is the first
+real one.
 
 ### Known limits, stated rather than implied
 
@@ -204,6 +233,10 @@ Some of this cannot be committed to a file — it lives in repository settings.
   security-critical files called out.
 - `.github/workflows/` — least-privilege permissions, `--ignore-scripts`
   installs, CodeQL, dependency review, scheduled audit.
+- `.github/workflows/wiki.yml` and `scripts/publish-wiki.mjs`: the wiki is
+  published from `wiki/` on every merge to `main`, and compared with it every
+  Monday. It is the one workflow here whose job writes to something other than
+  a release, and the paragraph on it above says why that is limited.
 - `.github/dependabot.yml` — weekly updates, routine patches grouped so real
   security bumps stay visible.
 - `.github/rulesets/main-branch.json` — the branch ruleset, and

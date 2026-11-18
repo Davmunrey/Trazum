@@ -35,8 +35,12 @@
  *
  * **It never pushes.** A wiki lives in a second git repository
  * (`<repo>.wiki.git`) with its own credentials, and a build script that
- * carried a credential is a build script that can leak one. It prints the two
- * commands instead, and whoever owns the repository runs them.
+ * carried a credential is a build script that can leak one. A merge to `main`
+ * that changes `wiki/` publishes it through the `Wiki` workflow, which clones
+ * with the job's own token and runs `scripts/publish-wiki.mjs`, a script that
+ * holds no credential and makes no network call either. For the day that
+ * workflow cannot run, this script still prints the two commands, and whoever
+ * owns the repository runs them.
  *
  * Usage:
  *   node scripts/build-wiki.mjs           # write wiki/
@@ -235,7 +239,8 @@ mkdirSync(out, { recursive: true });
 for (const [name, body] of wanted) writeFileSync(join(out, name), body);
 console.error(`Wrote ${wanted.size} pages to wiki/`);
 console.error('');
-console.error('To publish (the wiki is a second repository, and this script holds no credential):');
+console.error('A merge to main that changes wiki/ publishes it (the Wiki workflow). To publish by hand,');
+console.error('which stays the fallback (the wiki is a second repository, and this script holds no credential):');
 console.error('  git clone https://github.com/Davmunrey/Trazum.wiki.git /tmp/trazum-wiki');
 console.error('  cp wiki/*.md /tmp/trazum-wiki/ && cd /tmp/trazum-wiki && git add -A && git commit -m "Rebuild from the repository" && git push');
 console.error('');
