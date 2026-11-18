@@ -683,9 +683,10 @@ describe('the published band has one source', () => {
    * Exactly the drift the derived guards in `publish.test.js` exist to prevent,
    * on the number every dollar figure in the product descends from.
    *
-   * Three files are excluded, and they are the three that record what the band
-   * *was* rather than what it is: the changelog, the release notes and the
-   * roadmap's `Released` section. Rewriting those to match the present is the
+   * Four files are excluded, and they are the four that record what the band
+   * *was* rather than what it is: the changelog, the release notes, the release
+   * history (`HISTORY.md`, which was the roadmap's `Released` section until
+   * #725) and the roadmap, whose `Next` keeps the record of each plan. Rewriting those to match the present is the
    * opposite of what they are for — "the band is still ±10%" in the 1.9.0 notes is
    * a true statement about 1.9.0, and making it say 10 would be falsifying a
    * record to satisfy a test.
@@ -693,7 +694,7 @@ describe('the published band has one source', () => {
    * Everything else is a live claim and has to agree: READMEs, three locale
    * catalogues, the MCP tool descriptions, the web app, the demo SVG.
    */
-  const skip = new Set(['CHANGELOG.md', 'RELEASES.md', 'ROADMAP.md']);
+  const skip = new Set(['CHANGELOG.md', 'RELEASES.md', 'HISTORY.md', 'ROADMAP.md']);
 
   /**
    * A delivered plan is a record too, and it says so itself.

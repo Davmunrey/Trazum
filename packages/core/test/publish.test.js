@@ -521,13 +521,19 @@ describe('the record agrees with itself', () => {
    * in it.
    */
   const roadmap = readFileSync(join(repoRoot, 'ROADMAP.md'), 'utf8');
+  /**
+   * The release history left ROADMAP.md for HISTORY.md (#725), moved as it was.
+   * The two sections that name versions, `Released` and `Collapsed into 1.8.0`,
+   * are read there; `Next` is the roadmap's own and is read from the roadmap.
+   */
+  const history = readFileSync(join(repoRoot, 'HISTORY.md'), 'utf8');
   const changelog = readFileSync(join(repoRoot, 'CHANGELOG.md'), 'utf8');
 
-  /** Version headings under one `##` section of the roadmap. */
+  /** Version headings under one `##` section of the release history. */
   const versionsUnder = (heading) => {
-    const start = roadmap.indexOf(`\n## ${heading}`);
+    const start = history.indexOf(`\n## ${heading}`);
     if (start === -1) return null;
-    const rest = roadmap.slice(start + 1);
+    const rest = history.slice(start + 1);
     const end = rest.indexOf('\n## ');
     const body = end === -1 ? rest : rest.slice(0, end);
     return [...body.matchAll(/^### (\d+\.\d+\.\d+)/gm)].map((m) => m[1]);
@@ -554,16 +560,16 @@ describe('the record agrees with itself', () => {
     ...changelog.matchAll(/^## (\d+\.\d+\.\d+)/gm),
   ].map((m) => m[1]);
 
-  it('every version the roadmap calls released has a changelog entry', () => {
+  it('every version the release history calls released has a changelog entry', () => {
     const claimed = versionsUnder('Released');
-    assert.ok(claimed, 'the roadmap has no "Released" section any more');
+    assert.ok(claimed, 'HISTORY.md has no "Released" section any more');
     assert.ok(claimed.length > 0, 'the "Released" section lists no versions');
 
     const unbacked = claimed.filter((version) => !releasedInChangelog.includes(version));
     assert.deepEqual(
       unbacked,
       [],
-      `ROADMAP.md calls these released and CHANGELOG.md has not: ${unbacked.join(', ')}`,
+      `HISTORY.md calls these released and CHANGELOG.md has not: ${unbacked.join(', ')}`,
     );
   });
 
@@ -993,11 +999,18 @@ describe('a count written in prose is a claim like any other', () => {
      * The second is the one somebody reads before opening a pull request, and
      * it is the one nothing was checking.
      *
+     * Read from the roadmap and the release history together: the surfaces were
+     * told in the entries that now live in `HISTORY.md` (#725), and a surface
+     * named in either is a surface the project knows it has.
+     *
      * Derived from the filesystem rather than a list kept here, for the reason
      * every other derived guard in this file exists: a hardcoded list stops
      * covering the thing that was added after it was written.
      */
-    const roadmap = readFileSync(join(repoRoot, 'ROADMAP.md'), 'utf8');
+    const roadmap =
+      readFileSync(join(repoRoot, 'ROADMAP.md'), 'utf8') +
+      '\n' +
+      readFileSync(join(repoRoot, 'HISTORY.md'), 'utf8');
     const appDir = join(repoRoot, 'apps/web/app');
 
     /** Every directory holding a `route.ts` or `page.tsx`, as a URL path. */
@@ -1152,8 +1165,8 @@ describe('a release cannot ship without notes', () => {
      * depend on it.
      *
      * `CHANGELOG.md` needs the version as a heading — the fold from
-     * `Unreleased` is a release-prep step, not an afterthought. `ROADMAP.md`
-     * needs the version named anywhere, so a range entry ("1.10.0 through
+     * `Unreleased` is a release-prep step, not an afterthought. `HISTORY.md`
+     * (the `Released` section that was `ROADMAP.md`'s until #725) needs the version named anywhere, so a range entry ("1.10.0 through
      * 1.25.0") satisfies it without forcing a full section per release —
      * the point is that the file was *touched with intent*, not that it has
      * a particular shape.
@@ -1171,10 +1184,10 @@ describe('a release cannot ship without notes', () => {
       `CHANGELOG.md has no "## ${version}" heading — fold Unreleased into the version before tagging`,
     );
 
-    const roadmap = readFileSync(join(repoRoot, 'ROADMAP.md'), 'utf8');
+    const history = readFileSync(join(repoRoot, 'HISTORY.md'), 'utf8');
     assert.ok(
-      roadmap.includes(version),
-      `ROADMAP.md never mentions ${version} — carry the release into the Released section (a range entry counts)`,
+      history.includes(version),
+      `HISTORY.md never mentions ${version} — carry the release into the Released section (a range entry counts)`,
     );
   });
 

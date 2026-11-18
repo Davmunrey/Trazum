@@ -323,8 +323,8 @@ including what it costs a reader pinning with a tilde, is in
 1. **Move `Unreleased` in `CHANGELOG.md`** under the new version heading. Per
    [CONTRIBUTING.md](../CONTRIBUTING.md), a change that alters nothing installable
    still has an entry, so this is usually just a rename.
-2. **Move the `ROADMAP.md` entry** from `Next` to `Released`, and say what
-   actually shipped rather than what was planned — they differ more often than
+2. **Move the `ROADMAP.md` entry** from `Next` to `Released` in `HISTORY.md`,
+   and say what actually shipped rather than what was planned — they differ more often than
    they should.
 3. **Bump the root and all six workspace manifests** — `packages/core`,
    `packages/cli`, `packages/mcp`, `packages/tokenizer-openai`, `apps/web` and
@@ -354,7 +354,7 @@ including what it costs a reader pinning with a tilde, is in
 6. **Sweep every `.md` in the repository** — the standing rule: a release is
    not cut until all the documentation says so. Three of them are enforced by
    `publish.test.js` (`RELEASES.md` must have the version's section,
-   `CHANGELOG.md` its heading, `ROADMAP.md` a mention), so `verify` fails a
+   `CHANGELOG.md` its heading, `HISTORY.md` a mention), so `verify` fails a
    release prep that skipped them. The rest is a two-minute grep for what the
    tests cannot know is stale:
    Update the handshake version in `packages/mcp/src/index.ts` too.

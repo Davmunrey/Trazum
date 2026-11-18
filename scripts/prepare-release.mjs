@@ -32,7 +32,7 @@
  *
  * What stays a person's job, printed at the end: the RELEASES.md section (its
  * "on npm at" line is moved here, being a version and nothing else) and
- * the ROADMAP entry (prose about what shipped), and the per-provider price
+ * the ROADMAP entry, moved into HISTORY.md (prose about what shipped), and the per-provider price
  * review (numbers only the providers' own pages can settle).
  */
 import { execFileSync } from 'node:child_process';
@@ -207,7 +207,7 @@ if (!pinOnly) {
   console.error(`
 ${dryRun ? 'Dry run: nothing written.' : `Prepared ${current} -> ${next}.`} Still yours, because they are prose or prices:
   - RELEASES.md: a "## ${next}" section (the "on npm at" line has moved)
-  - ROADMAP.md: what shipped, moved from Next to Released
+  - ROADMAP.md and HISTORY.md: what shipped, moved from Next (ROADMAP.md) to Released (HISTORY.md)
   - Prices: re-read any provider whose review is older than 45 days (node scripts/freshness.mjs)
   - node scripts/build-wiki.mjs && node scripts/build-plugin-skill.mjs, then npm run verify${token.status === 'ok' ? '' : `
   - ${token.text}`}`);

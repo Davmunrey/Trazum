@@ -801,8 +801,8 @@ The four you are most likely to want directly:
 
 ## Roadmap and contributing
 
-[ROADMAP.md](ROADMAP.md) covers what is planned and why, and the history that
-got here, oldest first. Its
+[ROADMAP.md](ROADMAP.md) covers what is planned and why;
+[HISTORY.md](HISTORY.md) is the history that got here. The roadmap's
 [open work](ROADMAP.md#open-work-as-issues) is the list of accepted issues,
 and five of them need nothing but somebody who reads French, German,
 Portuguese, Italian or Dutch:

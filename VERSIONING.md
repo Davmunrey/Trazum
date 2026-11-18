@@ -257,7 +257,7 @@ To release:
    `node:fs` import anywhere in its import graph breaks it while `tsc` and the
    tests stay happy.
 4. Tag `v<version>`.
-5. Move the matching `ROADMAP.md` entry from `Next` to `Released`.
+5. Move the matching `ROADMAP.md` entry from `Next` to `Released` in `HISTORY.md`.
 
 The manifests are kept in lockstep deliberately: the packages are developed
 together, and a version skew between the core and the CLI has no useful meaning.

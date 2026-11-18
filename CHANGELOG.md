@@ -417,6 +417,22 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **`ROADMAP.md` opens with what comes next, and the release history is its
+  own file.** The roadmap was 3,394 lines and `## Next` began on line 2,927,
+  after the story of every release from 0.1.0. That story is in `HISTORY.md`
+  now, the 2,903 lines moved without a word changed, and `ROADMAP.md` is 493
+  lines with `## Next` on line 26 and one line linking the history. The tests
+  that read the history read it there: every version it calls released is in
+  `CHANGELOG.md`, every version `CHANGELOG.md` released is in it or inside a
+  range (1.9.1, which it never carried, is named as the one exception), its
+  first run still goes oldest first, and the pages that record what was true
+  then (derived counts, the band, the protected kinds, the
+  forecast) treat it as a record. A new test holds that `## Next` is within
+  the first 40 lines, that no release entry is back in the roadmap, and that
+  a link into a heading of either file arrives at one. The open-work table is
+  redrawn from the open issues, and #744, #745 and #747 are in the
+  milestones. The release steps in `VERSIONING.md` and `docs/releasing.md`
+  say `HISTORY.md` where they said the roadmap's `Released` (#725).
 - **A pull request has more to pass before it can merge.** On 2026-11-18
   somebody outside the project asked to take an issue for the first time,
   and the rules had been written for pull requests that all came from the
