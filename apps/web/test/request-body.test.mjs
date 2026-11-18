@@ -63,7 +63,9 @@ describe('every route that reads a body checks its type first', () => {
       const reads = [...source.matchAll(/request\.json\(\)/g)].map((m) => m.index);
       const checks = [...source.matchAll(/saysJson\(request\)/g)].map((m) => m.index);
       assert.equal(checks.length, reads.length, `${relative(APP, path)}: ${reads.length} reads, ${checks.length} checks`);
-      reads.forEach((at, i) => assert.ok(checks[i] < at, `${relative(APP, path)}: a body is read before its type is checked`));
+      reads.forEach((at, i) => {
+        assert.ok(checks[i] < at, `${relative(APP, path)}: a body is read before its type is checked`);
+      });
     }
   });
 

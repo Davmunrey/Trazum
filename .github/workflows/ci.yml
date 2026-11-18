@@ -50,6 +50,13 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      # Before the build, because it needs none: it reads the source. Unused
+      # names, a callback that returns where nothing reads it, an element that
+      # takes a click and no key. `biome.jsonc` says which rules are off and
+      # why; a finding in a place that means it carries its reason next to it.
+      - name: Lint
+        run: npm run lint
+
       - name: Build core, CLI, MCP server, the OpenAI tokenizer and the editor extension
         run: npm run build
 

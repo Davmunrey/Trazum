@@ -60,7 +60,7 @@ const gatewayOver = async (stub, standing) => {
     standing,
     record: (m) => recorded.push(m),
     note: () => {},
-    fetchImpl: (url, init) => {
+    fetchImpl: (_url, init) => {
       reached += 1;
       return fetch(`${stubUrl}/v1/messages`, init);
     },

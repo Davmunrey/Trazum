@@ -94,7 +94,6 @@ import {
   getMessages,
   getModel,
   hasMarker,
-  listModels,
   LOCALES,
   MAX_BASELINE_BYTES,
   matchGlob,
@@ -169,7 +168,6 @@ import {
   RULES,
   sharedPrefixes,
   sharesOf,
-  spendByMonth,
   spendByPeriod,
   isOffered,
   SOURCE_EXTENSIONS,
@@ -183,7 +181,6 @@ import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cac
 import { OPTIONAL_COUNTERS } from './optional-counters.js';
 import { dayOf, formatGap, median, spanDays } from './time.js';
 import type {
-  BucketedReport,
   EvalReport,
   FleetSource,
   HistoryRun,
@@ -1314,7 +1311,7 @@ function printReport(
   }
 
   printSuggestions(suggestions, t, n);
-  printRest(result, showDiff, t, examplesReview, n);
+  printRest(result, showDiff, t, examplesReview);
 
   /**
    * Where the money actually is, said at the front door.
@@ -1562,7 +1559,6 @@ function printRest(
   showDiff: boolean,
   t: CliMessages,
   examplesReview: ExampleReview | null,
-  n: (v: number) => string,
 ): void {
   if (examplesReview && examplesReview.groups.length > 0) {
     console.log();
@@ -6540,7 +6536,6 @@ async function commandOwners(
  */
 async function commandCommitment(
   args: Args,
-  config: TrazumConfig,
   pricing: PricingCatalogue,
   t: CliMessages,
 ): Promise<void> {
@@ -9259,7 +9254,7 @@ async function profileBySource(
             unmatchedFiles: unmatched,
           },
         },
-        (key, value) => (value instanceof Map ? undefined : value),
+        (_key, value) => (value instanceof Map ? undefined : value),
         2,
       ),
     );
@@ -9403,7 +9398,7 @@ async function runProfileGates(context: {
   pricing: PricingCatalogue;
   t: CliMessages;
 }): Promise<{ failed: boolean; verdicts: string[] }> {
-  const { args, config, configDir, report, previous, againstDelta, windowed, now, pricing, t } =
+  const { args, config, configDir, report, previous, againstDelta, windowed, pricing, t } =
     context;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
@@ -9875,7 +9870,7 @@ async function writeProfileSideFiles(context: {
   t: CliMessages;
 }): Promise<void> {
   const {
-    args, path, report, previous, pressures, labelDrivers, modelDrivers, againstOverlap,
+    args, report, previous, pressures, labelDrivers, modelDrivers, againstOverlap,
     whatIf, pricingStale, windowed, gates, pricing, t,
   } = context;
   /**
@@ -10244,9 +10239,8 @@ function reportAgainstPrevious(context: {
   now: number;
   t: CliMessages;
 }): void {
-  const { report, previous, againstOverlap, labelDrivers, modelDrivers, gates, now, t } =
+  const { report, previous, againstOverlap, labelDrivers, modelDrivers, t } =
     context;
-  const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   /**
    * This bill against the previous one — how spend actually gets out of hand.
@@ -10524,26 +10518,24 @@ function reportContextPressure(
    * prediction of *when*: a straight line through two points is a guess
    * wearing arithmetic's clothes.
    */
-  {
-    if (pressures.length > 0) {
+  if (pressures.length > 0) {
+    console.log();
+    console.log(sectionHeading(t.profile.pressureHeading()));
+    for (const row of pressures.slice(0, 3)) {
+      const label = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+      const line = t.profile.pressureLine(
+        label,
+        row.modelName,
+        n(row.maxCallInputTokens),
+        n(row.contextWindow),
+        pct(row.share),
+      );
       console.log();
-      console.log(sectionHeading(t.profile.pressureHeading()));
-      for (const row of pressures.slice(0, 3)) {
-        const label = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
-        const line = t.profile.pressureLine(
-          label,
-          row.modelName,
-          n(row.maxCallInputTokens),
-          n(row.contextWindow),
-          pct(row.share),
-        );
-        console.log();
-        if (row.share >= 0.85) {
-          console.log(`  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
-          console.log(`  ${c.dim(wrap(t.profile.pressureAdvice(), 74, '  '))}`);
-        } else {
-          console.log(`  ${c.dim(wrap(line, 74, '  '))}`);
-        }
+      if (row.share >= 0.85) {
+        console.log(`  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
+        console.log(`  ${c.dim(wrap(t.profile.pressureAdvice(), 74, '  '))}`);
+      } else {
+        console.log(`  ${c.dim(wrap(line, 74, '  '))}`);
       }
     }
   }
@@ -10737,11 +10729,9 @@ function reportConversationHistory(report: UsageProfileReport, t: CliMessages): 
  */
 function reportWhatIf(
   whatIf: ReturnType<typeof repriceProfile>,
-  report: UsageProfileReport,
   t: CliMessages,
 ): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
-  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   /**
    * `--what-if <model>`: these exact calls, at another model's rates.
    *
@@ -10850,7 +10840,6 @@ function reportLevers(
   pricing: PricingCatalogue,
   t: CliMessages,
 ): void {
-  const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   /**
    * The section this command is for, and the answer to the fairest complaint the
@@ -11903,7 +11892,7 @@ async function commandProfile(
   if (report.total.calls === 0) {
     console.log();
     console.log(c.dim(report.unpriced.calls === 0 ? t.profile.empty() : t.profile.nothingPriced()));
-    reportProfileGaps(report, t, n, pricingStale);
+    reportProfileGaps(report, t, pricingStale);
     return;
   }
 
@@ -12074,7 +12063,7 @@ async function commandProfile(
 
   reportLevers(report, pricing, t);
 
-  reportWhatIf(whatIf, report, t);
+  reportWhatIf(whatIf, t);
 
   reportConversationHistory(report, t);
 
@@ -12107,7 +12096,7 @@ async function commandProfile(
 
   reportOutcomesAndCoverage(report, config, t);
 
-  reportProfileGaps(report, t, n, pricingStale);
+  reportProfileGaps(report, t, pricingStale);
 
   gates = await runProfileGates({
     args, config, configDir, report, previous, againstDelta, windowed, now, pricing, t,
@@ -12129,7 +12118,6 @@ async function commandProfile(
 function reportProfileGaps(
   report: ReturnType<typeof profileUsage>,
   t: CliMessages,
-  n: (value: number) => string,
   stalePricing: { date: string; days: number } | null = null,
 ): void {
   /**
@@ -12728,7 +12716,7 @@ async function checkDirectory(
     only = checkable;
   }
 
-  const { verdicts, declined, truncated, extensions, band } = await scanPrompts(
+  const { verdicts, declined, truncated, band } = await scanPrompts(
     root,
     args,
     flagBudget,
@@ -14131,7 +14119,7 @@ async function main(): Promise<void> {
       await commandReport(args, config, pricing, t);
       break;
     case 'commitment':
-      await commandCommitment(args, config, pricing, t);
+      await commandCommitment(args, pricing, t);
       break;
     case 'owners':
       await commandOwners(args, config, pricing, t);

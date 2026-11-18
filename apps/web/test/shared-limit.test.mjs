@@ -170,7 +170,13 @@ describe('when it cannot share, it counts alone', () => {
     const store = memoryStore();
     let hits = 0;
     const { hit } = store.limits;
-    store.limits = { ...store.limits, hit: async (...args) => ((hits += 1), hit(...args)) };
+    store.limits = {
+      ...store.limits,
+      hit: async (...args) => {
+        hits += 1;
+        return hit(...args);
+      },
+    };
     assert.equal(await refusals(limiter(store), '203.0.113.7', 31), 1);
     assert.equal(hits, 0);
   });

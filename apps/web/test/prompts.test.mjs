@@ -26,7 +26,7 @@ const ENV = {
   TRAZUM_PUBLIC_URL: ORIGIN,
 };
 
-let list, create, one, promptsInMemory, limits;
+let list, create, one, limits;
 let getStore, resetStore, issueSession;
 
 const saved = {};
@@ -53,7 +53,6 @@ before(async () => {
 
   ({ GET: list, POST: create } = await import('../app/api/prompts/route.ts'));
   one = await import('../app/api/prompts/[id]/route.ts');
-  ({ promptsInMemory } = await import('../lib/store/prompts-memory.ts'));
   limits = await import('../lib/store/prompts.ts');
   ({ getStore, resetStore } = await import('../lib/store/index.ts'));
   ({ issueSession } = await import('../lib/auth/session.ts'));

@@ -163,7 +163,7 @@ export async function reviewExamples(
 
     const fresh = group.redundant.filter((index) => !claimed.has(index) && index !== group.keep);
     if (fresh.length === 0) continue;
-    fresh.forEach((index) => claimed.add(index));
+    for (const index of fresh) claimed.add(index);
 
     groups.push({
       ...group,

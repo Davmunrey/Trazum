@@ -403,7 +403,7 @@ describe('the npm page does not present a partial command table as the whole set
      * The number would go stale the next release, and the enumeration the next
      * command. Both were written here before this check existed.
      */
-    const disclaimer = /\*\*That table is a selection[^]*?most people meet first\./.exec(section);
+    const disclaimer = /\*\*That table is a selection[\s\S]*?most people meet first\./.exec(section);
     assert.ok(disclaimer, 'the disclaimer has moved or been reworded past recognition');
     const text = disclaimer[0].replace(/\s+/g, ' ');
 

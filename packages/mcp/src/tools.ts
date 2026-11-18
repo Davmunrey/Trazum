@@ -1530,7 +1530,7 @@ const WRITER: ToolDefinition = {
 
     const answers: Record<string, string | null> = Object.create(null) as Record<string, string | null>;
     for (const entry of SLOTS) {
-      if (!Object.prototype.hasOwnProperty.call(given, entry.id)) continue;
+      if (!Object.hasOwn(given, entry.id)) continue;
       const value = given[entry.id];
       if (value === null) {
         answers[entry.id] = null;

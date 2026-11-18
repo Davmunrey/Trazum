@@ -7,7 +7,7 @@ import { BUNDLED_CATALOGUE, profileUsage, codexRecords } from '@trazum/core';
 const source = readFileSync(new URL('../components/Bill.tsx', import.meta.url), 'utf8');
 
 it('a replacement dataset is priced without the previous workload, even before React commits state', () => {
-  const implementation = source.match(/  function replaceDataset\([^]*?\n  }/);
+  const implementation = source.match(/  function replaceDataset\([\s\S]*?\n  }/);
   assert.ok(implementation, 'the UI replacement handler must exist');
   const code = stripTypeScriptTypes(implementation[0]);
   let selected = 'old-project';
@@ -39,7 +39,7 @@ it('upload, paste and demo replace the dataset; repricing and comparison preserv
 
 
 it('Codex uploads retain only counts, report excluded snapshots and disclose API-equivalent pricing', () => {
-  const branch = source.match(/else if \(looksLikeCodexTranscript\(text\)\) \{([^]*?)\n      \} else if/);
+  const branch = source.match(/else if \(looksLikeCodexTranscript\(text\)\) \{([\s\S]*?)\n      \} else if/);
   assert.ok(branch);
   const counts = { input_tokens: 100, cached_input_tokens: 40, output_tokens: 20, reasoning_output_tokens: 5, total_tokens: 120 };
   const text = [

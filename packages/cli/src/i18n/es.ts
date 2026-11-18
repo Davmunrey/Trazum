@@ -2877,7 +2877,7 @@ ${bold('EJEMPLOS')}
     leverSlice: (label, model, usd, pct) =>
       `${label} en ${model}: hasta ${usd} de esta factura (${pct})`,
     leverRoute: (candidate, usd) => `llévalo a ${candidate}, ${usd}`,
-    leverRouteVerify: (candidate) =>
+    leverRouteVerify: () =>
       `Si eso aguanta es una pregunta de evaluación, no de aritmética, y aquí no se ha visto ni una sola respuesta. Mídelo: trazum route <log> --prompt-file <prompt> --cases <casos> --yes`,
     leverBatch: (usd) => `mándalo por la Batch API, ${usd}`,
     leverCalls: (calls, spent) => `${calls}, ${spent} gastados`,

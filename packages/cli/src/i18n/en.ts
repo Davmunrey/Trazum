@@ -2848,7 +2848,7 @@ ${bold('EXAMPLES')}
     leverSlice: (label, model, usd, pct) =>
       `${label} on ${model}, up to ${usd} of this bill (${pct})`,
     leverRoute: (candidate, usd) => `route it to ${candidate}, ${usd}`,
-    leverRouteVerify: (candidate) =>
+    leverRouteVerify: () =>
       `Whether that holds is an evaluation question, not an arithmetic one, and nothing here has seen a single answer. Measure it: trazum route <log> --prompt-file <prompt> --cases <cases> --yes`,
     leverBatch: (usd) => `send it through the Batch API, ${usd}`,
     leverCalls: (calls, spent) => `${calls}, ${spent} spent`,

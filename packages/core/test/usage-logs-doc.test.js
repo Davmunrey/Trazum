@@ -2,8 +2,6 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-const repoRoot = new URL('../../../', import.meta.url).pathname;
-
 /**
  * The page that says what Trazum can read, against what it reads.
  *

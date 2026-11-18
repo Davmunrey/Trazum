@@ -13,6 +13,32 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **A linter, and the dead code it found.** Nothing linted this repository:
+  strict TypeScript and CodeQL catch type errors and known security patterns,
+  and neither says a word about a name nobody reads. `npm run lint` runs
+  Biome 2.6.4 over every tracked file, 886 of them in under a second, and
+  fails on a warning as it does on an error. It is the first thing
+  `npm run verify` does and a step of CI before the build. With its
+  recommended rules and the style group off it reported 90 errors and 103
+  warnings on 2026-11-18. What was a mistake is fixed: 14 names nobody read
+  (a `PUBLISHED_BAND` constant the token-band test defined and never compared
+  anything with, among them), 7 imports of nothing used, 16 parameters nothing
+  read (six functions lose one, with every call site; the rest are dropped,
+  or marked unused where a caller still passes them), three
+  `Object.prototype.hasOwnProperty.call` that are `Object.hasOwn`, and seven
+  test patterns written `[^]` that say `[\s\S]` now. What the code does on
+  purpose everywhere is a rule switched off in `biome.jsonc`, 16 of them,
+  each with its reason on the lines above. What it does on purpose in one
+  place carries a `biome-ignore` and its reason next to the line: seven, in
+  the web app and the editor extension's declarations.
+  Three React rules are off without an answer: 28 findings about effect
+  dependencies, index keys and components defined inside components, which
+  wait for the end-to-end tests of #692 and are tracked in #696. It lints
+  and does not format. `lint.test.js` holds the configuration: the pinned
+  version, a warning failing, the count of rules that are off, a reason above
+  each, and a reason of some length on every excused line. A development
+  dependency of the repository only; no published package gains one. (#691)
+
 - **Mutation testing for the core, and the 79 tests it showed to be missing.**
   `scripts/mutate.mjs` changes the built code of five files one small thing at
   a time (a `<` into a `<=`, a `*` into a `/`, a call taken out) and reports

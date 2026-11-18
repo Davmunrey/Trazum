@@ -56,7 +56,7 @@ const gateway = async (over = {}) => {
     note: (line) => notes.push(line),
     // Rewrites only the origin, so every other behaviour under test is the
     // real one: the same headers, the same body, the same response handling.
-    fetchImpl: (url, init) => fetch(`${stubUrl}/v1/messages`, init),
+    fetchImpl: (_url, init) => fetch(`${stubUrl}/v1/messages`, init),
     ...over,
   });
   started.push(server);

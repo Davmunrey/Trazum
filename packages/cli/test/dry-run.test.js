@@ -78,7 +78,6 @@ describe('--dry-run', () => {
   });
 
   it('fails when nothing parses, because an unreadable log is not a ready one', async () => {
-    const log = await write([]);
     const dir = await mkdtemp(join(tmpdir(), 'trazum-dryrun-bad-'));
     const path = join(dir, 'usage.jsonl');
     await writeFile(path, 'not json\nnot json either\n');
