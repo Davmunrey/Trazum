@@ -1439,7 +1439,7 @@ ${bold('EJEMPLOS')}
         : `Sin escalar a un mes: ${days} días queda por debajo de la semana que un escalado necesita: menos de un ciclo semanal multiplica la parte del ciclo que pilló. Estas cifras cubren exactamente el periodo medido.`,
     perMonthSaving: (saving, pct) => `ahorro ${saving}/mes (${pct}%)`,
     beyondShortening: () => 'Además de acortar el prompt',
-    biggestLever: () => 'Empieza por aquí:',
+    biggestLever: () => 'Empieza por aquí',
     biggestLeverDetail: (title, amount, times) =>
       // El título conserva sus mayúsculas: pasarlo a minúsculas convertía
       // "Claude Opus 5" en "claude opus 5", un nombre de producto destrozado.

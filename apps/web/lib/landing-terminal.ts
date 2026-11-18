@@ -5,7 +5,8 @@
  *
  * Each line is a list of runs, `[text, style]`, where the style letters are
  * the CLI's own: b bold, d dim, g green, y yellow, r red, a cyan (drawn in the
- * acid fill, as the README's pictures draw it).
+ * acid fill, as the README's pictures draw it), m the mark (ink on the acid
+ * ground: the one figure the report answers with).
  */
 
 export type TerminalRun = readonly [text: string, style: string];
@@ -24,26 +25,27 @@ export const TERMINAL: readonly TerminalBlock[] = [
     command: "npx @trazum/cli bill examples/claude-projects",
     lines: [
       [["Your bill","b"],[" ",""],["────────────────────────────────────────────────────────────────","d"]],
-      [["  ",""],["$12.70 across 126 priced call(s)","b"]],
-      [["  This log covers 2026-09-01 → 2026-09-14 (13.3 days): stated, never","d"]],
-      [["  extrapolated. Scale it to a month yourself, now that you know what it","d"]],
-      [["  covers.","d"]],
-      [["  ",""],["Agent sessions (Claude Code, Codex, Gemini CLI) are priced at catalogue","y"]],
-      [["  API rates. On a subscription you paid the plan, not this API-equivalent","y"]],
-      [["  estimate; missing telemetry and custom rates can change the result.","y"]],
+      [["  ",""],["$12.70","bm"],[" across 126 priced call(s)","b"]],
       [],
       [["  ",""],["project","d"],["               ",""],["calls","d"],["    ",""],["USD","d"],["  ",""],["share","d"]],
-      [["  home-me-etl-pipeline     42  $9.05  ",""],["███████","a"],["░░░","d"],[" 71.2%",""]],
-      [["  home-me-webapp           84  $3.66  ",""],["███","a"],["░░░░░░░","d"],[" 28.8%",""]],
+      [["  home-me-etl-pipeline     42  $9.05  ",""],["███████","a"],["░░░","d"],["  71.2%",""]],
+      [["  home-me-webapp           84  $3.66  ",""],["███","a"],["░░░░░░░","d"],["  28.8%",""]],
       [],
       [["  ",""],["model","d"],["              ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
-      [["  claude-fable-5-1      28    $9.00  ",""],["███████","a"],["░░░","d"],[" 70.9%",""]],
-      [["  claude-opus-5-5       56    $2.95  ",""],["██","a"],["░░░░░░░░","d"],[" 23.2%",""]],
-      [["  claude-sonnet-5-5     28  $0.7077  ",""],["█","a"],["░░░░░░░░░","d"],[" 5.6%",""]],
-      [["  claude-haiku-5-5      14  $0.0456  ",""],["░░░░░░░░░░","d"],[" 0.4%",""]],
+      [["  claude-fable-5-1      28    $9.00  ",""],["███████","a"],["░░░","d"],["  70.9%",""]],
+      [["  claude-opus-5-5       56    $2.95  ",""],["██","a"],["░░░░░░░░","d"],["  23.2%",""]],
+      [["  claude-sonnet-5-5     28  $0.7077  ",""],["█","a"],["░░░░░░░░░","d"],["   5.6%",""]],
+      [["  claude-haiku-5-5      14  $0.0456  ",""],["░░░░░░░░░░","d"],["   0.4%",""]],
       [],
-      [["  The receipt as data: --receipt, or -o receipt.json. The document for","d"]],
-      [["  whoever pays: --pdf-out bill.pdf.","d"]],
+      [["  ",""],["This log covers 2026-09-01 → 2026-09-14 (13.3 days): stated, never","d"]],
+      [["  ",""],["extrapolated. Scale it to a month yourself, now that you know what it","d"]],
+      [["  ",""],["covers.","d"]],
+      [["  ",""],["!","y"],[" Agent sessions (Claude Code, Codex, Gemini CLI) are priced at catalogue",""]],
+      [["    API rates. On a subscription you paid the plan, not this API-equivalent",""]],
+      [["    estimate; missing telemetry and custom rates can change the result.",""]],
+      [],
+      [["  ",""],["The receipt as data: --receipt, or -o receipt.json. The document for","d"]],
+      [["  ",""],["whoever pays: --pdf-out bill.pdf.","d"]],
     ],
   },
   {
@@ -51,12 +53,11 @@ export const TERMINAL: readonly TerminalBlock[] = [
     command: "npx @trazum/cli check examples/",
     lines: [
       [["examples/, 3 prompts","b"],[" ",""],["─────────────────────────────────────────────────────","d"]],
+      [["  ",""],["All 3 within budget.","g"]],
       [],
       [["  ",""],["OK","g"],["      235 / 600   examples/sample-prompt.en.txt",""]],
       [["  ",""],["OK","g"],["      316 / 600   examples/sample-prompt.es.txt",""]],
       [["  ",""],["OK","g"],["      326 / 600   examples/support-prompt.txt",""]],
-      [],
-      [["  ",""],["All 3 within budget.","g"]],
       [],
       [["  ",""],["Against the baseline","b"]],
       [["  ",""],["unchanged at 877 tokens","d"]],
@@ -74,9 +75,9 @@ export const TERMINAL: readonly TerminalBlock[] = [
     id: "optimize",
     command: "npx @trazum/cli optimize examples/support-prompt.txt",
     lines: [
-      [["Start here:","b"]],
-      [["  ",""],["\"This task may not need Claude Opus 5\", $8.34/month, 13× what the rules","d"]],
-      [["  saved.","d"]],
+      [["Start here","b"],[" ",""],["───────────────────────────────────────────────────────────────","d"]],
+      [["  ",""],["\"This task may not need Claude Opus 5\", ","b"],["$8.34","bm"],["/month, 13× what the rules","b"]],
+      [["  ",""],["saved.","b"]],
       [],
       [["Input tokens","b"]],
       [["  326 → ",""],["202","g"],["   ",""],["-38.0%","b"],[" (estimated, ±6%)","d"]],

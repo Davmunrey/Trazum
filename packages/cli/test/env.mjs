@@ -31,7 +31,9 @@ export const NEUTRALISED = declaredList(
 );
 
 /**
- * The variables the colour decision reads, taken from the painter itself.
+ * The variables the colour and width decisions read, taken from the painter
+ * itself. `COLUMNS` among them: a shell that exports it would otherwise narrow
+ * every report these tests read.
  *
  * **Removed, not blanked, and that is the opposite of the rule above.** The
  * locale detector treats an empty string as no answer and moves down its
@@ -42,9 +44,9 @@ export const NEUTRALISED = declaredList(
  * the output these tests parse. Two variables, two rules, because two programs
  * read them differently.
  */
-export const REMOVED = declaredList(readFileSync(PAINTER, 'utf8'), 'COLOUR_ENV_VARS', PAINTER.pathname);
+export const REMOVED = declaredList(readFileSync(PAINTER, 'utf8'), 'TERMINAL_ENV_VARS', PAINTER.pathname);
 
-/** The machine's environment with every colour variable gone. */
+/** The machine's environment with every colour and width variable gone. */
 const withoutColour = Object.fromEntries(
   Object.entries(process.env).filter(([name]) => !REMOVED.includes(name)),
 );

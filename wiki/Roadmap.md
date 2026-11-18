@@ -45,7 +45,7 @@ closed, not when somebody remembers this page. Live:
 [open to a first contribution](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
-**Ready to be picked up (15).**
+**Ready to be picked up (14).**
 
 | Issue | What | Area |
 | --- | --- | --- |
@@ -63,7 +63,6 @@ closed, not when somebody remembers this page. Live:
 | [#759](https://github.com/Davmunrey/Trazum/issues/759) | The landing tells a longer story: a developer sits down, works, opens Trazum, checks, reads, and closes the lid | web |
 | [#763](https://github.com/Davmunrey/Trazum/issues/763) | Nineteen of sixty-nine sampled prices could change and no test would fail | core |
 | [#764](https://github.com/Davmunrey/Trazum/issues/764) | 3.0.0 removes `tier` from a model in the pricing catalogue | core |
-| [#767](https://github.com/Davmunrey/Trazum/issues/767) | Codacy and DeepSource read the repository: configure them from it, and send Codacy the coverage | - |
 
 **Waiting on something outside the repository (10).** Each issue says what.
 

@@ -59,6 +59,7 @@
   --term-warn: #d6ad63;
   --term-bad: #f39f87;
   --term-acid: #dce94d;
+  --term-ink: #20231e;
   /* The device's: the light theme's paper and ink, on either theme. */
   --dev-ink: #20231e;
   --dev-shell: #fbf9f1;
@@ -185,6 +186,8 @@
 .t-y { color: var(--term-warn); }
 .t-r { color: var(--term-bad); }
 .t-a { color: var(--term-acid); }
+/* The mark: the one figure a report answers with, ink on the acid ground. */
+.t-m { background: var(--term-acid); color: var(--term-ink); }
 .t-bar { display: inline-block; }
 
 /* The last scene's words, still. */

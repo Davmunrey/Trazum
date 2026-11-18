@@ -8,7 +8,7 @@ import { describe, it } from 'node:test';
 import { CONFIG_KEYS, CONFIG_USAGE_KEYS, CONTRACT_NAMES, LOCALES } from '@trazum/core';
 
 import { LOCALE_ENV_VARS, detectLocale, en, es, getCliMessages } from '../dist/i18n/index.js';
-import { COLOUR_ENV_VARS } from '../dist/style.js';
+import { TERMINAL_ENV_VARS } from '../dist/style.js';
 import { NEUTRALISED, REMOVED, SPAWN_ENV } from './env.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -559,25 +559,25 @@ describe('the suite does not depend on the machine it runs on', () => {
      * Node's own colour on and still makes it warn that `NO_COLOR` is being
      * ignored, into the output these tests parse. The key has to be gone.
      */
-    for (const name of COLOUR_ENV_VARS) {
+    for (const name of TERMINAL_ENV_VARS) {
       if (name === 'NO_COLOR') continue;
       assert.equal(name in SPAWN_ENV, false, `${name} reaches a spawned run from the machine`);
     }
     assert.equal(SPAWN_ENV.NO_COLOR, '1', 'the one colour variable this suite does set is unset');
-    assert.ok(COLOUR_ENV_VARS.includes('FORCE_COLOR'), 'the variable that was missed is missing again');
+    assert.ok(TERMINAL_ENV_VARS.includes('FORCE_COLOR'), 'the variable that was missed is missing again');
   });
 
   it('and the painter reads no environment variable its own list does not name', () => {
     /**
      * The list is a claim, so it is derived from the module it describes rather
      * than trusted. A colour variable read in `style.ts` and missing from
-     * `COLOUR_ENV_VARS` would leave `env.mjs` neutralising three of four, which
+     * `TERMINAL_ENV_VARS` would leave `env.mjs` neutralising three of four, which
      * is how `LC_MESSAGES` was missed on the locale side.
      */
     const painter = readFileSync(join(here, '..', 'src', 'style.ts'), 'utf8');
-    const read = [...painter.matchAll(/process\.env\.([A-Z_]+)/g)].map(([, name]) => name);
+    const read = [...painter.matchAll(/\benv\.([A-Z_]+)/g)].map(([, name]) => name);
     assert.ok(read.length > 0, 'no environment read found in style.ts — has the module moved?');
-    assert.deepEqual([...new Set(read)].sort(), [...COLOUR_ENV_VARS].sort());
+    assert.deepEqual([...new Set(read)].sort(), [...TERMINAL_ENV_VARS].sort());
   });
 
   it('and what the shared environment read out of each source is what that source exports', () => {
@@ -589,6 +589,6 @@ describe('the suite does not depend on the machine it runs on', () => {
      * added to the detector fails here instead of quietly neutralising nothing.
      */
     assert.deepEqual(NEUTRALISED, [...LOCALE_ENV_VARS]);
-    assert.deepEqual(REMOVED, [...COLOUR_ENV_VARS]);
+    assert.deepEqual(REMOVED, [...TERMINAL_ENV_VARS]);
   });
 });

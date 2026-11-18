@@ -52,10 +52,15 @@ const CLI = join(ROOT, 'packages/cli/dist/index.js');
 /** How the screen names the CLI: the hero's own command, `npx @trazum/cli`. */
 const NPX = 'npx @trazum/cli';
 
-/** A run's style as the page's class letters: bold, dim, and the four colours. */
-function styleOf({ bold, dim, colour }) {
+/**
+ * A run's style as the page's class letters: bold, dim, the four colours, and
+ * the mark (the acid ground in ink, whose ink is the mark's and not a colour).
+ */
+function styleOf({ bold, dim, colour, mark }) {
   const colours = { 32: 'g', 33: 'y', 31: 'r', 36: 'a' };
-  return `${bold ? 'b' : ''}${dim ? 'd' : ''}${colour === null ? '' : colours[colour]}`;
+  const hue = colour === null || (mark && colour === 30) ? '' : colours[colour];
+  if (hue === undefined) throw new Error(`The CLI printed colour code ${colour}, which the landing gives no class`);
+  return `${bold ? 'b' : ''}${dim ? 'd' : ''}${hue}${mark ? 'm' : ''}`;
 }
 
 const toLines = (ansi) => styledLines(ansi).map((runs) => runs.map((run) => [run.text, styleOf(run)]));
@@ -110,7 +115,8 @@ export function render(blocks = transcript()) {
  *
  * Each line is a list of runs, \`[text, style]\`, where the style letters are
  * the CLI's own: b bold, d dim, g green, y yellow, r red, a cyan (drawn in the
- * acid fill, as the README's pictures draw it).
+ * acid fill, as the README's pictures draw it), m the mark (ink on the acid
+ * ground: the one figure the report answers with).
  */
 
 export type TerminalRun = readonly [text: string, style: string];
