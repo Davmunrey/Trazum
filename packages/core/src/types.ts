@@ -337,7 +337,9 @@ export interface ModelPricing {
   /**
    * @deprecated Use `capability`. Anthropic's ladder used as a generic axis
    * stopped making sense once other providers were priced. Kept in step with
-   * `capability` for the whole of 1.x and removed in 2.0 — see VERSIONING.md.
+   * `capability`. It was to be removed in 2.0 and was not: 2.0.0 removed
+   * nothing. It goes only in a major, and none has been named. See
+   * VERSIONING.md.
    */
   tier: 'haiku' | 'sonnet' | 'opus' | 'frontier' | 'unknown';
   /** Promotional pricing, when one is running. */
