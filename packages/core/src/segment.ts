@@ -210,6 +210,54 @@ function quotedSpans(text: string, reserved: readonly Match[]): Match[] {
   return found;
 }
 
+/**
+ * The first of `ranges` that overlaps `[start, end)`, if one does.
+ *
+ * `ranges` is in order of where each begins and no two of them overlap, which
+ * makes it in order of where each ends as well. So the first range that ends
+ * after `start` is the only one that can be the first to overlap, and it is
+ * found by halving, not by looking at each.
+ *
+ * It was looked for one by one, with `find`, once for every match. A text of
+ * nothing but protected spans has as many reservations as matches, and the
+ * work grew with the square of them: 70 kB of placeholders, tags and code
+ * spans took half a second, and the 400 kB the HTTP API accepts took 26 to 30
+ * seconds, measured on 2026-11-18 (#716). A test with a five-second budget
+ * was the only thing that had noticed, and only on a slow machine.
+ */
+export function firstOverlap(ranges: readonly Match[], start: number, end: number): Match | undefined {
+  let low = 0;
+  let high = ranges.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    const range = ranges[middle];
+    if (range !== undefined && range.end > start) high = middle;
+    else low = middle + 1;
+  }
+  const candidate = ranges[low];
+  return candidate !== undefined && candidate.start < end ? candidate : undefined;
+}
+
+/**
+ * Whether one of `quotes` holds the whole of `[start, end)`.
+ *
+ * `quotes` is in order and no two overlap, so the only one that can hold the
+ * span is the last to begin at or before `start`. Asked of every reservation,
+ * and answered by looking at every quotation, it was the same square again.
+ */
+export function heldBy(quotes: readonly Match[], start: number, end: number): boolean {
+  let low = 0;
+  let high = quotes.length;
+  while (low < high) {
+    const middle = (low + high) >>> 1;
+    const quote = quotes[middle];
+    if (quote !== undefined && quote.start <= start) low = middle + 1;
+    else high = middle;
+  }
+  const candidate = quotes[low - 1];
+  return candidate !== undefined && end <= candidate.end;
+}
+
 /** Splits the text into segments, marking what must not be modified. */
 export function segment(text: string): Segment[] {
   /*
@@ -231,8 +279,6 @@ export function segment(text: string): Segment[] {
 
   for (const { kind, regex, trimTrailing } of PATTERNS) {
     const reserved = [...kept].sort((a, b) => a.start - b.start);
-    const overlapping = (start: number, end: number): Match | undefined =>
-      reserved.find((range) => start < range.end && end > range.start);
 
     // Copy the regex so lastIndex is not shared between calls.
     const re = new RegExp(regex.source, regex.flags);
@@ -247,7 +293,7 @@ export function segment(text: string): Segment[] {
       if (matched.length === 0) continue;
       const start = m.index;
       const end = start + matched.length;
-      const hit = overlapping(start, end);
+      const hit = firstOverlap(reserved, start, end);
       if (hit !== undefined) {
         // Not simply skipped: the scan resumes where the reservation ends, so
         // a legitimate match sitting just past it is still found.
@@ -262,9 +308,7 @@ export function segment(text: string): Segment[] {
   // reservation a quotation swallows is dropped in favour of the quotation.
   const quoted = quotedSpans(text, kept);
   if (quoted.length > 0) {
-    const inside = (range: Match): boolean =>
-      quoted.some((quote) => range.start >= quote.start && range.end <= quote.end);
-    const outside = kept.filter((range) => !inside(range));
+    const outside = kept.filter((range) => !heldBy(quoted, range.start, range.end));
     kept.length = 0;
     kept.push(...outside, ...quoted);
   }

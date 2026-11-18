@@ -1268,16 +1268,22 @@ describe('the masker alone, on a much tighter budget', () => {
    * only over inputs where the masker **should find almost nothing**, and that
    * restriction is the guard rather than a detail of it.
    *
-   * The list below is deliberately not the one under `ReDoS resistance`. That
-   * one includes `mixed adversarial`, fifteen thousand genuine placeholder,
-   * tag and code-span matches, and the masker takes **341ms** on it here doing
-   * exactly the work it is supposed to do. Folding that into one budget would
-   * force the ceiling past two seconds and blunt the thing to uselessness.
-   * Every input below is a long run that matches **nothing**, so any time spent
-   * is time wasted: the worst is **9ms**, the budget is 300, and the fault it
-   * was written for took 897ms — thirty-three times the worst observed, and
-   * three times under what it catches. It fails on this machine, and on one
-   * three times faster.
+   * Every input below but the last is a long run that matches **nothing**, so
+   * any time spent is time wasted: the worst is **9ms**, the budget is 300,
+   * and the fault it was written for took 897ms — thirty-three times the
+   * worst observed, and three times under what it catches. It fails on this
+   * machine, and on one three times faster.
+   *
+   * **The last one was left out for a reason that turned out to be the
+   * fault.** `mixed adversarial` is fifteen thousand genuine placeholder, tag
+   * and code-span matches, and this comment used to say the masker "takes
+   * 341ms on it here doing exactly the work it is supposed to do", so that
+   * folding it in would force the ceiling past two seconds. It was not doing
+   * the work it was supposed to do. Each match was compared with every range
+   * already reserved, and most of the 341ms was that. Measured on 2026-11-18:
+   * 100ms and more with the comparison one by one, **6 to 15ms** with it done
+   * by halving (#716). So it is in the list now, under the same 300, and the
+   * exclusion that hid a square for as long as it stood is gone.
    *
    * The last two inputs are the shape the earlier fixtures were missing for a
    * mask that keys on a delimiter: a long run of the characters *before* the
@@ -1293,8 +1299,8 @@ describe('the masker alone, on a much tighter budget', () => {
     ['unclosed placeholders', '{{'.repeat(30_000)],
     ['unclosed xml', '<'.repeat(30_000)],
     ['unclosed fence', '```\n' + 'x'.repeat(100_000)],
-    // Not `mixed adversarial`: see above. It is fifteen thousand real matches,
-    // and a budget that accommodates real work cannot detect a cliff.
+    // Fifteen thousand real matches, and still nothing like the budget: see above.
+    ['mixed adversarial', `${'{{a}} '.repeat(5_000)}${'<b> '.repeat(5_000)}${'`c` '.repeat(5_000)}`],
     ['label prefix, whitespace run', `example${' '.repeat(200_000)}`],
     ['at-sign storm', '@'.repeat(40_000)],
     ['dotted run that never reaches a delimiter', 'a.'.repeat(20_000)],
