@@ -288,6 +288,21 @@ not on record in `mutation.baseline.json`. The answer is nearly always a test.
 Planting a fault by hand and naming the test that caught it is still asked of
 every new guard: the tool covers five files, and a guard can be anywhere.
 
+### Coverage, before any of them
+
+Which lines the tests run at all. `npm run coverage` measures it with Node's
+own runner, mapped back to the TypeScript, and the `Coverage` workflow sends
+it to Codecov on every pull request. It is not a required check and has no
+target: it shows the code no test reaches, and on a pull request whether the
+lines being added are run by anything. [docs/coverage.md](docs/coverage.md)
+has the figures as measured, what a covered line does not mean, and why two
+trees are left out.
+
+```bash
+npm run build
+npm run coverage
+```
+
 ### End to end, in a browser
 
 The web app's own tests read modules and rendered components. `scripts/e2e.mjs`

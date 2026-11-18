@@ -33,6 +33,9 @@ Then, if you want to know whether to trust the numbers:
 - **[When a change is done](done.md)**: the loop a change goes through, the
   sixteen criteria `npm run done` checks before a push and where each comes
   from, what each verdict means, and what only CI can say.
+- **[Coverage](coverage.md)**: which lines the tests run, as measured and by
+  package, what a covered line does not mean, and how the report reaches
+  Codecov without being able to block a merge.
 - **[End-to-end tests](end-to-end-tests.md)**: the web app in a real browser,
   doing what a visitor does: the thirteen flows, the figures they expect and
   where those come from, and what a green run does not say.

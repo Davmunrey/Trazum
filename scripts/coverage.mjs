@@ -1,0 +1,233 @@
+#!/usr/bin/env node
+/**
+ * Which lines do the tests run? One report for each published package.
+ *
+ *   npm run build
+ *   npm run coverage                 every package
+ *   npm run coverage -- --only core  one of them
+ *
+ * It writes `coverage/<package>.lcov` and prints, for each package, how many
+ * source files its tests loaded and how many of their lines ran.
+ *
+ * How it measures. Node's test runner has coverage built in, so there is
+ * nothing to install. The tests run against built JavaScript; the report is
+ * mapped back through the source maps the build already writes, so every path
+ * in it is a TypeScript file somebody edits. It runs from the repository's
+ * root, which is what makes those paths `packages/core/src/…` and not a
+ * `src/…` that three packages have.
+ *
+ * What the figure is and is not. A line that ran is a line a test reached,
+ * not a line a test checked: mutation testing is the question after this one
+ * (docs/mutation-testing.md). A file no test loads is not in the report at
+ * all, so the percentage is over the files the tests touched, and it flatters
+ * a package with files nothing imports. A process a test starts is measured
+ * too, when it inherits the environment and exits by itself: that is how the
+ * CLI's entry point is in the report. One that is killed writes nothing,
+ * which is why the MCP server's entry point is not.
+ *
+ * It measures and does not judge. When a test fails under coverage it says
+ * so and still writes the report, with exit code 0: whether the tests pass
+ * is the required job's to say, and a second verdict from a slower run would
+ * be noise on every pull request. It exits 1 only when it measured nothing,
+ * which is its own way of being broken.
+ */
+import { spawn } from 'node:child_process';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** Where the reports go. Ignored by git; the workflow uploads from here. */
+export const OUT = 'coverage';
+
+/**
+ * The packages measured: the ones that are published, each with the tests
+ * that are its own. `coverage.test.js` holds this list to `packages/`, so a
+ * new package is measured or the test says it is not.
+ */
+export const SUITES = [
+  { name: 'core', tests: 'packages/core/test/*.test.js' },
+  { name: 'cli', tests: 'packages/cli/test/*.test.js' },
+  { name: 'mcp', tests: 'packages/mcp/test/*.test.js' },
+  { name: 'tokenizer-openai', tests: 'packages/tokenizer-openai/test/*.test.js' },
+];
+
+/**
+ * What is not measured, each with why. The web app and the editor extension
+ * have tests of their own; the first version of this does not report them.
+ */
+export const NOT_MEASURED = {
+  'apps/web': 'Its tests load TypeScript through a loader of their own, and whether the runner\'s coverage maps that back to the sources has not been checked. Until it has, a figure for the web app would be a guess.',
+  'apps/vscode': 'Its tests run against a stand-in for the editor\'s API, and the extension is not published yet (#640). Left for when it is.',
+};
+
+/** The arguments Node is given for one suite, with the report at `out`. */
+export function nodeArgs(suite, out) {
+  return [
+    '--test',
+    '--experimental-test-coverage',
+    // The build writes source maps; with them the report names the .ts files.
+    '--enable-source-maps',
+    // Tests, their helpers and the scripts they call are not what is measured.
+    "--test-coverage-exclude=**/test/**",
+    "--test-coverage-exclude=**/test-utils/**",
+    "--test-coverage-exclude=**/scripts/**",
+    '--test-reporter=lcov',
+    `--test-reporter-destination=${out}`,
+    suite.tests,
+  ];
+}
+
+/**
+ * What an lcov report says in total: the files it names and, over them, the
+ * lines it found and the lines that ran. Functions and branches are in the
+ * file and are left to Codecov; a line is the unit a reader can point at.
+ */
+export function summarise(lcov) {
+  const files = [];
+  let found = 0;
+  let hit = 0;
+  for (const line of lcov.split('\n')) {
+    if (line.startsWith('SF:')) files.push(line.slice(3).trim());
+    else if (line.startsWith('LF:')) found += Number(line.slice(3));
+    else if (line.startsWith('LH:')) hit += Number(line.slice(3));
+  }
+  // Rounded down: a figure that rounds up claims a line nobody ran.
+  return { files, lines: { found, hit }, percent: found === 0 ? null : Math.floor((hit / found) * 1000) / 10 };
+}
+
+/** A source of one of the packages, as a report run from the root names it. */
+const SOURCE = /^packages\/([a-z-]+)\/src\/.+\.ts$/;
+
+/**
+ * The paths in a report that are not this repository's sources. In a report
+ * that has been through `clean` there are none; in one that has not, they are
+ * what a skipped build or a run from the wrong directory looks like.
+ */
+export function strangers(files) {
+  return files.filter((file) => !SOURCE.test(file));
+}
+
+/**
+ * A report with only the records that are about a source. A test can load a
+ * file it wrote to a temporary directory, and the runner reports that too,
+ * under a path that climbs out of the repository; a file like that is nobody's
+ * to cover. What was dropped is returned, so a report that was all strangers
+ * says so and is not mistaken for an empty one.
+ */
+export function clean(lcov) {
+  const kept = [];
+  const dropped = [];
+  for (const record of lcov.split('end_of_record\n')) {
+    const file = /^SF:(.+)$/m.exec(record)?.[1].trim();
+    if (file === undefined) continue;
+    if (SOURCE.test(file)) kept.push(`${record}end_of_record\n`);
+    else dropped.push(file);
+  }
+  return { lcov: kept.join(''), dropped };
+}
+
+/**
+ * Every report together, by the package a source belongs to: a line ran if
+ * any package's tests ran it. This is the figure Codecov shows, worked out
+ * here so that it can be read without an account.
+ */
+export function together(reports) {
+  const lines = new Map();
+  for (const lcov of reports) {
+    let file = null;
+    for (const line of lcov.split('\n')) {
+      if (line.startsWith('SF:')) file = line.slice(3).trim();
+      else if (line.startsWith('DA:') && file !== null) {
+        const [number, hits] = line.slice(3).split(',').map(Number);
+        const seen = lines.get(file) ?? new Map();
+        seen.set(number, (seen.get(number) ?? 0) + hits);
+        lines.set(file, seen);
+      }
+    }
+  }
+  const packages = new Map();
+  for (const [file, seen] of lines) {
+    const name = SOURCE.exec(file)?.[1];
+    if (name === undefined) continue;
+    const total = packages.get(name) ?? { name, files: 0, found: 0, hit: 0 };
+    total.files += 1;
+    total.found += seen.size;
+    total.hit += [...seen.values()].filter((hits) => hits > 0).length;
+    packages.set(name, total);
+  }
+  const percent = ({ found, hit }) => (found === 0 ? null : Math.floor((hit / found) * 1000) / 10);
+  const rows = [...packages.values()].sort((a, b) => a.name.localeCompare(b.name)).map((row) => ({ ...row, percent: percent(row) }));
+  const all = rows.reduce((sum, row) => ({ files: sum.files + row.files, found: sum.found + row.found, hit: sum.hit + row.hit }), { files: 0, found: 0, hit: 0 });
+  return { rows, all: { ...all, percent: percent(all) } };
+}
+
+/** Whether a report is worth uploading: it names sources, and nothing but sources. */
+export function usable(report) {
+  return report.files.length > 0 && report.percent !== null && strangers(report.files).length === 0;
+}
+
+function run(suite, out) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, nodeArgs(suite, out), { cwd: ROOT, stdio: ['ignore', 'ignore', 'inherit'] });
+    child.on('close', (code) => resolve(code));
+  });
+}
+
+async function main(argv) {
+  const only = argv.includes('--only') ? argv[argv.indexOf('--only') + 1] : null;
+  const suites = SUITES.filter((suite) => only === null || suite.name === only);
+  if (suites.length === 0) throw new Error(`no package named ${only}; there are ${SUITES.map((suite) => suite.name).join(', ')}`);
+
+  rmSync(join(ROOT, OUT), { recursive: true, force: true });
+  mkdirSync(join(ROOT, OUT), { recursive: true });
+
+  let empty = 0;
+  const kept = [];
+  console.log('What each package\'s own tests ran, over the sources they loaded:\n');
+  for (const suite of suites) {
+    const out = join(OUT, `${suite.name}.lcov`);
+    const started = Date.now();
+    const code = await run(suite, out);
+    let cleaned = { lcov: '', dropped: [] };
+    try {
+      cleaned = clean(readFileSync(join(ROOT, out), 'utf8'));
+      writeFileSync(join(ROOT, out), cleaned.lcov);
+    } catch {
+      // No report at all: counted below as having measured nothing.
+    }
+    const report = summarise(cleaned.lcov);
+    if (!usable(report)) empty += 1;
+    else kept.push(cleaned.lcov);
+    const seconds = Math.round((Date.now() - started) / 1000);
+    console.log(
+      `${suite.name.padEnd(18)}${report.percent === null ? 'nothing measured' : `${report.percent.toFixed(1)}% of lines`}`
+        + `  (${report.lines.hit.toLocaleString('en-US')} of ${report.lines.found.toLocaleString('en-US')}, in ${report.files.length} files, ${seconds} s)  ${out}`,
+    );
+    if (cleaned.dropped.length > 0) console.log(`  left out, not a source of this repository: ${cleaned.dropped.length} file(s), the first ${cleaned.dropped[0]}`);
+    if (code !== 0) console.log(`  a test failed in this run (exit ${code}). The report is still written; whether the tests pass is the required job's to say.`);
+  }
+  if (empty > 0) {
+    console.error(`\n${empty} package(s) measured no source. Run \`npm run build\` first: the report is mapped through the build's source maps, and without them it names built files, which are left out.`);
+    return 1;
+  }
+  if (only === null) {
+    const { rows, all } = together(kept);
+    console.log('\nEvery package\'s tests together, by the package a source belongs to:\n');
+    for (const row of [...rows, { name: 'all', ...all }]) {
+      console.log(`${row.name.padEnd(18)}${row.percent.toFixed(1)}% of lines  (${row.hit.toLocaleString('en-US')} of ${row.found.toLocaleString('en-US')}, in ${row.files} files)`);
+    }
+  }
+  return 0;
+}
+
+if (process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main(process.argv.slice(2)).then(
+    (code) => process.exit(code),
+    (error) => {
+      console.error(`coverage: ${error.message}`);
+      process.exit(1);
+    },
+  );
+}

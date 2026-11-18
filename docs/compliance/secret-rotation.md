@@ -96,6 +96,27 @@ was published under a leaked token stays published: rotation stops the next
 upload, not the last one, so read the versions npm lists against the releases
 this repository made.
 
+### `CODECOV_TOKEN`
+
+A repository secret, read only by the upload step of
+`.github/workflows/coverage.yml`, which hands it to Codecov's uploader through
+the environment. It has to be a repository secret and not an environment's:
+the job names no environment, and a job reads an environment's secrets only
+when it does. It is Codecov's upload token: what it authorises is sending a
+coverage report. Nothing in this repository gates on what Codecov says, both
+of its statuses being informational, so the worst a leaked one does here is
+put a false figure on the coverage page.
+
+1. In Codecov, open the repository's or the account's settings and regenerate
+   the upload token.
+2. Replace the `CODECOV_TOKEN` repository secret with the new value.
+3. Push to `main`, or re-run the `Coverage` workflow there.
+
+Check it: the upload step's log says whether a token was set, never the
+token, and on `main` the step fails when Codecov refuses an upload. On a pull
+request from a branch of this repository a refusal is a warning, with
+Codecov's reason above it.
+
 ### `N0_GITEA_HOST`, `N0_GITEA_USER`, `N0_GITEA_TOKEN`
 
 Read only by `.github/workflows/mirror-to-n0.yml`, which mirrors the repository

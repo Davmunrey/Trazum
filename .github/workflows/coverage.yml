@@ -1,0 +1,105 @@
+name: Coverage
+
+# Which lines the tests run, measured by scripts/coverage.mjs and sent to
+# Codecov. docs/coverage.md says what the figure is and what it is not.
+#
+# It is its own workflow, and not a required check, on purpose. The required
+# job is the judge of whether the tests pass. This one measures: the same
+# tests again, more slowly, with a counter on every line. A second verdict
+# from it would be noise, and an outage at somebody else's service must never
+# be what stands between a pull request and `main`. So a test that fails here
+# does not fail this job, and an upload that fails on a pull request leaves a
+# warning and does not fail it either. On `main` a failed upload does: that is
+# where the record is kept, and nobody's merge is waiting on it.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request makes the older measurement useless.
+concurrency:
+  group: coverage-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  coverage:
+    name: Line coverage, reported
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      # The uploader, pinned, with the checksum its publisher lists for this
+      # version. It is fetched below and refused if the two do not agree: the
+      # same arrangement as the guide script in pr-guide.yml. Nothing in any
+      # package depends on it.
+      CODECOV_CLI_VERSION: v11.3.2
+      CODECOV_CLI_SHA256: 8e1bfb71661378530f6ea21e82b414095899e565cbb4cf555c613064be17b973
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          # The whole history: two of the core's tests read it, and Codecov
+          # compares a pull request with the commit it branched from.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # The report is mapped back to the TypeScript through the build's source
+      # maps, so there is nothing to measure before this.
+      - name: Build
+        run: npm run build
+
+      - name: Run the tests with coverage
+        run: npm run coverage
+
+      - name: Fetch the uploader and check it is the one that was pinned
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/codecov" "https://cli.codecov.io/${CODECOV_CLI_VERSION}/linux/codecov"
+          echo "${CODECOV_CLI_SHA256}  $RUNNER_TEMP/codecov" | sha256sum --check --strict -
+          chmod +x "$RUNNER_TEMP/codecov"
+
+      # One upload for each package, flagged with its name, so Codecov can say
+      # what the core's own tests cover apart from what the CLI's reach in it.
+      #
+      # The token is a repository secret and reaches the uploader through the
+      # environment, where it reads it by name; it is never on a command line.
+      # It has to be a repository secret: this job names no environment, so an
+      # environment's secrets are not given to it. A pull request from a fork
+      # has no secret at all, and Codecov takes an upload without a token from
+      # a fork and from nowhere else: the first run of this, from a branch of
+      # this repository with no token, was refused (#706).
+      #
+      # The uploader is always asked to fail on an error, so that its exit
+      # code means something. What a failure does is decided here: on `main`
+      # it fails the job, and on a pull request it leaves a warning.
+      - name: Upload the reports to Codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # Said out loud, because the two cases look the same from outside
+          # until an upload to `main` is refused. Its value is never printed.
+          if [ -n "$CODECOV_TOKEN" ]; then echo "An upload token is set."; else echo "No upload token here. Codecov takes an upload without one only from a fork's pull request."; fi
+          refused=0
+          for report in coverage/*.lcov; do
+            flag="$(basename "$report" .lcov)"
+            "$RUNNER_TEMP/codecov" upload-process --disable-search --fail-on-error -F "$flag" -f "$report" || refused=1
+          done
+          if [ "$refused" = "1" ] && [ "$EVENT" = "push" ]; then
+            echo "::error::Codecov did not take an upload from main. The log above says why."
+            exit 1
+          fi
+          if [ "$refused" = "1" ]; then
+            echo "::warning::Codecov did not take the upload, so nothing is recorded there for this pull request. The figures measured above stand."
+          fi
