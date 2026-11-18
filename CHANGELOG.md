@@ -13,6 +13,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Merging to `main` publishes the wiki.** `wiki/` was generated and checked,
+  and the last step was two commands the owner had to remember, so the
+  published wiki was only as current as the last time somebody did.
+  `scripts/publish-wiki.mjs` takes a checkout of the wiki's repository
+  (`--into <dir>`), copies the pages that differ and says which it wrote,
+  which were unchanged and which exist only on the wiki. A page only on the
+  wiki is reported and never deleted, the way a label only on GitHub is left
+  alone. `--check` prints the differences, exits 1 when a page of `wiki/`
+  differs or is missing there, and writes nothing. It refuses, with exit 2,
+  a `wiki/` that `scripts/build-wiki.mjs --check` does not accept, a missing
+  `--into`, a directory that is not a git checkout and any other argument. It
+  commits nothing, pushes nothing, reads no environment variable and makes no
+  network call. The new `Wiki` workflow does the git: on a push to `main` that
+  changes `wiki/`, the script or the workflow, the `publish` job clones the
+  wiki with the job's own token, runs the script, commits as
+  `github-actions[bot]` with a message naming the commit of `main` it was built
+  from, and pushes, or says nothing changed and commits nothing. It is the only
+  job with `contents: write`, which GitHub's wiki needs because it has no
+  narrower permission; the token reaches git as an Authorization header in the
+  environment of a step, never in a URL or an argument, and its encoded form is
+  masked. Every Monday at 10:13 UTC, and on a manual run from any branch, a
+  read-only `compare` job runs `--check`, so a page edited in GitHub's editor,
+  or a merge that was never published, is noticed. There is no pull request
+  trigger. The wiki needs one page saved in the web UI before the first
+  publish, because a wiki with no page cannot be cloned; the two commands
+  `build-wiki.mjs` prints stay as the fallback. `wiki/` has 9 pages, as
+  `build-wiki.mjs --check` counted. The push itself was not run from the
+  session that wrote it, which could not reach the wiki's repository, so the
+  workflow's first run on `main` is the first real one. What was measured here:
+  git sends a header given through `GIT_CONFIG_*` for one URL to a local server.
+  `wiki-publish.test.js` holds the script, the workflow's permissions and its
+  token handling, and the documents; `SECURITY.md` says what the workflow may
+  write and what limits it (#726)
 - **The site opens on the landing, and the application moved to `/app`.**
   `/` is the landing; the application is unchanged at `/app` and still opens
   on the bill. `/?tab=<name>` redirects permanently (308) to `/app` with every

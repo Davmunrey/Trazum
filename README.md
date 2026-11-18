@@ -723,6 +723,7 @@ scripts/           release notes, the token-band harness, rollback recovery
   draw-bill.mjs, draw-demo.mjs  redraw the two terminal pictures from what the CLI prints
   draw-icon.mjs      writes every icon: the extension's, and the web app's favicon set
   build-wiki.mjs     rebuilds wiki/ from this file, verbatim, section by section
+  publish-wiki.mjs   copies wiki/ into a checkout of the wiki's repository; the Wiki workflow runs it
 wiki/              the GitHub wiki, generated — every page is a section of a
                    document above, so there is nothing here to keep in sync
 ```
