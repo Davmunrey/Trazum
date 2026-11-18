@@ -1,0 +1,65 @@
+name: Repository settings
+
+# Whether GitHub enforces the branch ruleset this repository states.
+#
+# `.github/rulesets/main-branch.json` is the policy, and GitHub enforces a copy
+# an admin puts there. On 2026-11-18 the copy had drifted: it lacked `PR
+# readiness`, which the file had required for weeks, and allowed merge commits,
+# which the file did not. Every pull request that changed the file was green,
+# because no check read what GitHub enforces. scripts/ruleset.mjs reads it;
+# this file only says when, and with which permission.
+#
+# It reads and never writes. Putting the file on GitHub is
+# `npm run ruleset -- apply --yes`, run by an admin with their own token. A
+# workflow whose token could rewrite branch protection would be a worse
+# problem than the drift, so no such token is stored and none is asked for.
+
+on:
+  # A pull request that changes the policy or this check sees the comparison in
+  # its log. It reports and does not fail: a pull request that changes the
+  # file differs from GitHub by design, until it merges and an admin applies it.
+  pull_request:
+    paths:
+      - .github/rulesets/**
+      - .github/workflows/settings.yml
+      - scripts/ruleset.mjs
+  schedule:
+    # Mondays, after the weekly runs at 06:41, 07:23 and 07:53, so a stale
+    # repository's failures do not arrive in one email.
+    - cron: '47 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: settings-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ruleset:
+    name: GitHub enforces the ruleset the repository states
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/ruleset.mjs
+            .github/rulesets/main-branch.json
+            package.json
+          sparse-checkout-cone-mode: false
+
+      # A scheduled failure lands on main, where GitHub tells the owner. That
+      # is the one this exists for: the settings page changed, or the file did
+      # and nobody applied it.
+      - name: Compare the ruleset GitHub enforces with the file
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then node scripts/ruleset.mjs --report; else node scripts/ruleset.mjs; fi
