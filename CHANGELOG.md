@@ -13,6 +13,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Mutation testing reaches the code that prices a call.** `billing.ts` is
+  the sixth target: it says, for every call the bill and its findings price,
+  the moment it was billed at, the size of prompt that picks its band, how it
+  ran, and what its web searches cost. Its first run made 35 mutants and
+  caught 28, 80.0%. Two new tests in `billed-at.test.js` and one in
+  `web-search.test.js` killed 3 of the 7 survivors: a call with no clock could be
+  billed at 1970-01-01 instead of the report's date, a call's one-hour cache
+  writes could be left out of the prompt length that picks its band, and a
+  single web search could be billed at nothing. The other 4 change nothing a
+  caller can see and are recorded, so the file stands at 31 of 35, 88.6%,
+  and the whole record at 471 of 510, 92.4%, with 39 survivors on record
+  (#731).
 - **Merging to `main` publishes the wiki.** `wiki/` was generated and checked,
   and the last step was two commands the owner had to remember, so the
   published wiki was only as current as the last time somebody did.

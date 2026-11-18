@@ -289,7 +289,7 @@ If your pull request changes one of those files, the `Mutation testing` check
 asks about the lines you changed, and fails on a mutant that lives there and is
 not on record in `mutation.baseline.json`. The answer is nearly always a test.
 Planting a fault by hand and naming the test that caught it is still asked of
-every new guard: the tool covers five files, and a guard can be anywhere.
+every new guard: the tool covers six files, and a guard can be anywhere.
 
 ### Coverage, before any of them
 

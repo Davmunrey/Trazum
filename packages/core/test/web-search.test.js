@@ -80,6 +80,14 @@ describe('a call that searched', () => {
     assert.equal(total.webSearchUnpricedRequests, 0);
   });
 
+  it('bills one search a hundredth of a dollar: each search counts as one use, the first one too', () => {
+    // The tool page: "Each web search counts as one use". One search at $10 per 1,000 is $0.01, not free.
+    const { total } = profile(line({}, { input_tokens: 0, output_tokens: 0, server_tool_use: { web_search_requests: 1 } }));
+    assert.equal(total.webSearchRequests, 1);
+    close(total.webSearchUsd, 0.01, 'one search');
+    close(total.totalUsd, 0.01, 'the whole call');
+  });
+
   it('keeps the fee whole on the Batch API, which halves only the tokens', () => {
     const { total } = profile(line({}, { service_tier: 'batch' }));
     close(total.inputUsd + total.outputUsd, 15, 'batch tokens');

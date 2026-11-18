@@ -103,6 +103,7 @@ export const TARGETS = [
   'packages/core/src/rules.ts',
   'packages/core/src/savings.ts',
   'packages/core/src/session-cost.ts',
+  'packages/core/src/billing.ts',
 ];
 
 const builtPath = (target) => join(ROOT, target.replace('/src/', '/dist/').replace(/\.ts$/, '.js'));
