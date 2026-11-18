@@ -1,0 +1,436 @@
+{
+  "about": "What mutation testing found the last time it was recorded: the score of each file, and every mutant no test killed. Written by `node scripts/mutate.mjs --write`; `--check` fails on a survivor that is not listed here. A survivor is a line a test should hold and does not yet, or a change that makes no difference; docs/mutation-testing.md says how to tell.",
+  "recorded": "2026-11-18",
+  "total": {
+    "mutants": 446,
+    "killed": 408,
+    "timeout": 0,
+    "survived": 37,
+    "uncovered": 1,
+    "score": 91.5
+  },
+  "files": {
+    "packages/core/src/optimize.ts": {
+      "mutants": 105,
+      "killed": 98,
+      "timeout": 0,
+      "survived": 7,
+      "uncovered": 0,
+      "score": 93.3
+    },
+    "packages/core/src/segment.ts": {
+      "mutants": 74,
+      "killed": 58,
+      "timeout": 0,
+      "survived": 15,
+      "uncovered": 1,
+      "score": 78.4
+    },
+    "packages/core/src/rules.ts": {
+      "mutants": 131,
+      "killed": 121,
+      "timeout": 0,
+      "survived": 10,
+      "uncovered": 0,
+      "score": 92.4
+    },
+    "packages/core/src/savings.ts": {
+      "mutants": 62,
+      "killed": 60,
+      "timeout": 0,
+      "survived": 2,
+      "uncovered": 0,
+      "score": 96.8
+    },
+    "packages/core/src/session-cost.ts": {
+      "mutants": 74,
+      "killed": 71,
+      "timeout": 0,
+      "survived": 3,
+      "uncovered": 0,
+      "score": 95.9
+    }
+  },
+  "survivors": [
+    {
+      "id": "016a041c03af",
+      "file": "packages/core/src/optimize.ts",
+      "line": 27,
+      "function": "<module>",
+      "operator": "arithmetic",
+      "status": "survived",
+      "before": "const MASK_CAPACITY = 0xf8ff - MASK_BASE;",
+      "after": "const MASK_CAPACITY = 0xf8ff + MASK_BASE;"
+    },
+    {
+      "id": "ba3298708fe8",
+      "file": "packages/core/src/optimize.ts",
+      "line": 57,
+      "function": "mask",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (vault.length >= MASK_CAPACITY) {",
+      "after": "if (false) {"
+    },
+    {
+      "id": "de44e21aa974",
+      "file": "packages/core/src/optimize.ts",
+      "line": 57,
+      "function": "mask",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "if (vault.length >= MASK_CAPACITY) {",
+      "after": "if (vault.length > MASK_CAPACITY) {"
+    },
+    {
+      "id": "d2d33087591c",
+      "file": "packages/core/src/optimize.ts",
+      "line": 141,
+      "function": "optimize",
+      "operator": "number",
+      "status": "survived",
+      "before": "const FIXED_POINT_PASSES = 5;",
+      "after": "const FIXED_POINT_PASSES = 6;"
+    },
+    {
+      "id": "d008fdd0b6a7",
+      "file": "packages/core/src/optimize.ts",
+      "line": 142,
+      "function": "optimize",
+      "operator": "number",
+      "status": "survived",
+      "before": "for (let pass = 0; pass < FIXED_POINT_PASSES; pass += 1) {",
+      "after": "for (let pass = 1; pass < FIXED_POINT_PASSES; pass += 1) {"
+    },
+    {
+      "id": "3cc36c2cbba1",
+      "file": "packages/core/src/optimize.ts",
+      "line": 142,
+      "function": "optimize",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "for (let pass = 0; pass < FIXED_POINT_PASSES; pass += 1) {",
+      "after": "for (let pass = 0; pass <= FIXED_POINT_PASSES; pass += 1) {"
+    },
+    {
+      "id": "bd0d123ccdc2",
+      "file": "packages/core/src/optimize.ts",
+      "line": 187,
+      "function": "optimize",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (current === atPassStart)",
+      "after": "if (false)"
+    },
+    {
+      "id": "30f12370f30c",
+      "file": "packages/core/src/rules.ts",
+      "line": 115,
+      "function": "dropRule",
+      "operator": "arithmetic",
+      "status": "survived",
+      "before": "const sorted = [...phrases].sort((a, b) => b.length - a.length);",
+      "after": "const sorted = [...phrases].sort((a, b) => b.length + a.length);"
+    },
+    {
+      "id": "421324b6adc3",
+      "file": "packages/core/src/rules.ts",
+      "line": 137,
+      "function": "matchCase",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (!replacement)",
+      "after": "if (false)"
+    },
+    {
+      "id": "ba45331a76fb",
+      "file": "packages/core/src/rules.ts",
+      "line": 139,
+      "function": "matchCase",
+      "operator": "logical",
+      "status": "survived",
+      "before": "if (firstChar && firstChar === firstChar.toUpperCase() && firstChar !== firstChar.toLowerCase()) {",
+      "after": "if (firstChar && firstChar === firstChar.toUpperCase() || firstChar !== firstChar.toLowerCase()) {"
+    },
+    {
+      "id": "653d65fdb038",
+      "file": "packages/core/src/rules.ts",
+      "line": 210,
+      "function": "apply",
+      "operator": "number",
+      "status": "survived",
+      "before": "const entries = [...VERBOSE_PHRASES].sort((a, b) => b[0].length - a[0].length);",
+      "after": "const entries = [...VERBOSE_PHRASES].sort((a, b) => b[1].length - a[0].length);"
+    },
+    {
+      "id": "cccc68848eea",
+      "file": "packages/core/src/rules.ts",
+      "line": 210,
+      "function": "apply",
+      "operator": "arithmetic",
+      "status": "survived",
+      "before": "const entries = [...VERBOSE_PHRASES].sort((a, b) => b[0].length - a[0].length);",
+      "after": "const entries = [...VERBOSE_PHRASES].sort((a, b) => b[0].length + a[0].length);"
+    },
+    {
+      "id": "0765e62fc296",
+      "file": "packages/core/src/rules.ts",
+      "line": 210,
+      "function": "apply",
+      "operator": "number",
+      "status": "survived",
+      "before": "const entries = [...VERBOSE_PHRASES].sort((a, b) => b[0].length - a[0].length);",
+      "after": "const entries = [...VERBOSE_PHRASES].sort((a, b) => b[0].length - a[1].length);"
+    },
+    {
+      "id": "c4f725248570",
+      "file": "packages/core/src/rules.ts",
+      "line": 226,
+      "function": "anyOf",
+      "operator": "arithmetic",
+      "status": "survived",
+      "before": ".sort((a, b) => b.length - a.length)",
+      "after": ".sort((a, b) => b.length + a.length)"
+    },
+    {
+      "id": "3652da67f48b",
+      "file": "packages/core/src/rules.ts",
+      "line": 271,
+      "function": "removeThanks",
+      "operator": "arithmetic",
+      "status": "survived",
+      "before": "const lineStart = text.lastIndexOf('\\n', offset - 1) + 1;",
+      "after": "const lineStart = text.lastIndexOf('\\n', offset + 1) + 1;"
+    },
+    {
+      "id": "abdc7302e3da",
+      "file": "packages/core/src/rules.ts",
+      "line": 278,
+      "function": "removeThanks",
+      "operator": "number",
+      "status": "survived",
+      "before": "const above = text.slice(0, lineStart).trimEnd();",
+      "after": "const above = text.slice(1, lineStart).trimEnd();"
+    },
+    {
+      "id": "761fb115e199",
+      "file": "packages/core/src/rules.ts",
+      "line": 422,
+      "function": "apply",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "const isDuplicate = keptNormalized.some((prev) => jaccard(prev, normalized) >= 0.92);",
+      "after": "const isDuplicate = keptNormalized.some((prev) => jaccard(prev, normalized) > 0.92);"
+    },
+    {
+      "id": "52b4a36b40e8",
+      "file": "packages/core/src/savings.ts",
+      "line": 63,
+      "function": "computeSavings",
+      "operator": "logical",
+      "status": "survived",
+      "before": "const promoApplied = ratesBefore.promoApplied || ratesAfter.promoApplied;",
+      "after": "const promoApplied = ratesBefore.promoApplied && ratesAfter.promoApplied;"
+    },
+    {
+      "id": "fcfddee84bcc",
+      "file": "packages/core/src/savings.ts",
+      "line": 140,
+      "function": "formatSignedUsd",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "return value > 0 ? `+${rendered}` : `-${rendered}`;",
+      "after": "return value >= 0 ? `+${rendered}` : `-${rendered}`;"
+    },
+    {
+      "id": "67d810bc73d1",
+      "file": "packages/core/src/segment.ts",
+      "line": 194,
+      "function": "quotedSpans",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (!/[\"“„«'‘]/.test(text))",
+      "after": "if (false)"
+    },
+    {
+      "id": "22048edaeb78",
+      "file": "packages/core/src/segment.ts",
+      "line": 196,
+      "function": "quotedSpans",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (reserved.length > 0) {",
+      "after": "if (true) {"
+    },
+    {
+      "id": "5fe9a0018c97",
+      "file": "packages/core/src/segment.ts",
+      "line": 196,
+      "function": "quotedSpans",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "if (reserved.length > 0) {",
+      "after": "if (reserved.length >= 0) {"
+    },
+    {
+      "id": "202b0669ee34",
+      "file": "packages/core/src/segment.ts",
+      "line": 233,
+      "function": "segment",
+      "operator": "arithmetic",
+      "status": "survived",
+      "before": "const reserved = [...kept].sort((a, b) => a.start - b.start);",
+      "after": "const reserved = [...kept].sort((a, b) => a.start + b.start);"
+    },
+    {
+      "id": "427093796a68",
+      "file": "packages/core/src/segment.ts",
+      "line": 242,
+      "function": "segment",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (matched.length === 0) {",
+      "after": "if (false) {"
+    },
+    {
+      "id": "f0d78a009640",
+      "file": "packages/core/src/segment.ts",
+      "line": 242,
+      "function": "segment",
+      "operator": "number",
+      "status": "survived",
+      "before": "if (matched.length === 0) {",
+      "after": "if (matched.length === 1) {"
+    },
+    {
+      "id": "a4138ae65069",
+      "file": "packages/core/src/segment.ts",
+      "line": 243,
+      "function": "segment",
+      "operator": "update",
+      "status": "uncovered",
+      "before": "re.lastIndex++;",
+      "after": "re.lastIndex--;"
+    },
+    {
+      "id": "9de6736e0ef1",
+      "file": "packages/core/src/segment.ts",
+      "line": 247,
+      "function": "segment",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (matched.length === 0)",
+      "after": "if (false)"
+    },
+    {
+      "id": "dad53e605bb1",
+      "file": "packages/core/src/segment.ts",
+      "line": 247,
+      "function": "segment",
+      "operator": "number",
+      "status": "survived",
+      "before": "if (matched.length === 0)",
+      "after": "if (matched.length === 1)"
+    },
+    {
+      "id": "5fdf6a331d8e",
+      "file": "packages/core/src/segment.ts",
+      "line": 254,
+      "function": "segment",
+      "operator": "method",
+      "status": "survived",
+      "before": "re.lastIndex = Math.max(hit.end, start + 1);",
+      "after": "re.lastIndex = Math.min(hit.end, start + 1);"
+    },
+    {
+      "id": "e2455794d02e",
+      "file": "packages/core/src/segment.ts",
+      "line": 254,
+      "function": "segment",
+      "operator": "arithmetic",
+      "status": "survived",
+      "before": "re.lastIndex = Math.max(hit.end, start + 1);",
+      "after": "re.lastIndex = Math.max(hit.end, start - 1);"
+    },
+    {
+      "id": "7ac13eb8ca10",
+      "file": "packages/core/src/segment.ts",
+      "line": 254,
+      "function": "segment",
+      "operator": "number",
+      "status": "survived",
+      "before": "re.lastIndex = Math.max(hit.end, start + 1);",
+      "after": "re.lastIndex = Math.max(hit.end, start + 2);"
+    },
+    {
+      "id": "2e8726afe530",
+      "file": "packages/core/src/segment.ts",
+      "line": 264,
+      "function": "segment",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (quoted.length > 0) {",
+      "after": "if (true) {"
+    },
+    {
+      "id": "131b60cd9407",
+      "file": "packages/core/src/segment.ts",
+      "line": 264,
+      "function": "segment",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "if (quoted.length > 0) {",
+      "after": "if (quoted.length >= 0) {"
+    },
+    {
+      "id": "ba6fa770ca5c",
+      "file": "packages/core/src/segment.ts",
+      "line": 266,
+      "function": "inside",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "const inside = (range) => quoted.some((quote) => range.start >= quote.start && range.end <= quote.end);",
+      "after": "const inside = (range) => quoted.some((quote) => range.start > quote.start && range.end <= quote.end);"
+    },
+    {
+      "id": "197529f253ff",
+      "file": "packages/core/src/segment.ts",
+      "line": 266,
+      "function": "inside",
+      "operator": "comparison",
+      "status": "survived",
+      "before": "const inside = (range) => quoted.some((quote) => range.start >= quote.start && range.end <= quote.end);",
+      "after": "const inside = (range) => quoted.some((quote) => range.start >= quote.start && range.end < quote.end);"
+    },
+    {
+      "id": "06c24faced3c",
+      "file": "packages/core/src/session-cost.ts",
+      "line": 109,
+      "function": "p95",
+      "operator": "arithmetic",
+      "status": "survived",
+      "before": "const p95 = (sorted) => sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)];",
+      "after": "const p95 = (sorted) => sorted[Math.min(sorted.length + 1, Math.ceil(sorted.length * 0.95) - 1)];"
+    },
+    {
+      "id": "5384ed68e289",
+      "file": "packages/core/src/session-cost.ts",
+      "line": 119,
+      "function": "add",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (cost === null)",
+      "after": "if (false)"
+    },
+    {
+      "id": "b55da0f9c0ed",
+      "file": "packages/core/src/session-cost.ts",
+      "line": 144,
+      "function": "finish",
+      "operator": "condition",
+      "status": "survived",
+      "before": "if (!model)",
+      "after": "if (false)"
+    }
+  ]
+}

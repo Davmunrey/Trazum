@@ -30,6 +30,9 @@ Then, if you want to know whether to trust the numbers:
 - **[Any input](hardening.md)** — what is promised about input this tool was
   never meant to see, and the seeded fuzz suite in CI that holds each promise:
   never throws, never grows, idempotent, masks intact, money never negative.
+- **[Mutation testing](mutation-testing.md)**: whether the tests would notice
+  if the code stopped doing what they check: the files it runs on, the score as
+  measured, and what it does not mutate.
 - **[Compliance readiness](compliance/README.md)**: what SOC 2, ISO 27001,
   OWASP ASVS and CASA would each look at, the system an auditor would scope,
   the [control matrix](compliance/controls.md) with the evidence for every
