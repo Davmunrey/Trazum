@@ -47,10 +47,21 @@
  * the choice of tests is wrong, and no score from this tool should be read
  * until it is fixed. It costs a whole suite per mutant, so it is run when the
  * way tests are chosen changes, and its last result is in the docs.
+ *
+ * **A test that reads a clock can fail for load, and that is not a kill.**
+ * Six of the core's test files assert that something finishes within a
+ * budget. With four of them running at once on a shared runner, one such
+ * assertion fails with no mutant in sight: the first whole run on a runner
+ * stopped there (#698). So a failure from a test file that reads a clock is
+ * believed only when it fails again with nothing else running, both before
+ * any mutant and against one. A test that measures nothing is believed the
+ * first time.
  */
 
 import { execFileSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, rmSync, writeFileSync,
+} from 'node:fs';
 import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -60,6 +71,7 @@ import {
   applyMutant,
   changedLines,
   decodeMappings,
+  failureSummary,
   isCovered,
   lineAt,
   mutantsOf,
@@ -129,12 +141,18 @@ function parseArgs(argv) {
   return options;
 }
 
-/** Runs one test file to the end, or to its time limit, and says how it went. */
-function runTest(file, { env, timeout }) {
+/**
+ * Runs one test file to the end, or to its time limit, and says how it went.
+ * `output`, when given, is a file its output is written to, for the one case
+ * where somebody has to read it: a test that fails before anything is mutated.
+ */
+function runTest(file, { env, timeout, output = null }) {
   return new Promise((done) => {
     const started = process.hrtime.bigint();
+    const sink = output === null ? null : openSync(output, 'w');
+    const stdio = sink === null ? 'ignore' : ['ignore', sink, sink];
     // Its own process group, so a test that started children is stopped with them.
-    const child = spawn(process.execPath, [file], { cwd: CORE, env, stdio: 'ignore', detached: true });
+    const child = spawn(process.execPath, [file], { cwd: CORE, env, stdio, detached: true });
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
@@ -146,10 +164,65 @@ function runTest(file, { env, timeout }) {
     }, timeout);
     child.on('close', (code) => {
       clearTimeout(timer);
+      if (sink !== null) closeSync(sink);
       done({ passed: code === 0 && !timedOut, timedOut, ms: Number(process.hrtime.bigint() - started) / 1e6 });
     });
   });
 }
+
+/**
+ * Lets many things run together, or one thing run alone.
+ *
+ * `shared` is how a test normally runs: beside whatever else is running.
+ * `exclusive` waits for all of those to finish, lets nothing new start, and
+ * then runs its one thing with the machine to itself.
+ */
+export function createGate() {
+  let active = 0;
+  let closed = false;
+  let waiting = [];
+  const wake = () => {
+    const woken = waiting;
+    waiting = [];
+    for (const resume of woken) resume();
+  };
+  const wait = () => new Promise((resume) => waiting.push(resume));
+  // Nothing is awaited between finding the gate open and taking a place at
+  // it. With a wait in between, a thing that arrived after an exclusive one
+  // had asked could still slip in front of it, and the first version did.
+  return {
+    async shared(work) {
+      while (closed) await wait();
+      active += 1;
+      try {
+        return await work();
+      } finally {
+        active -= 1;
+        wake();
+      }
+    },
+    async exclusive(work) {
+      while (closed) await wait();
+      closed = true;
+      try {
+        while (active > 0) await wait();
+        return await work();
+      } finally {
+        closed = false;
+        wake();
+      }
+    },
+  };
+}
+
+/**
+ * A test file that reads a clock: what it asserts may depend on what else is
+ * running. Found by what it mentions, which matches nine files where six
+ * assert on elapsed time: the other three only ask what day it is. A second
+ * look that was not needed costs seconds; a kill that was really load costs
+ * the score its meaning.
+ */
+export const readsAClock = (source) => /performance\.now\(|process\.hrtime|Date\.now\(/.test(source);
 
 /** Does `work` for every item, `jobs` at a time, in order of arrival. */
 async function pool(items, jobs, work) {
@@ -269,14 +342,36 @@ async function main() {
     const tests = present
       .filter((name) => !without.has(name))
       .sort()
-      .map((name) => ({ name, file: join(CORE, 'test', name), ms: 0, kills: 0, ranges: new Map() }));
+      .map((name) => {
+        const file = join(CORE, 'test', name);
+        return { name, file, ms: 0, kills: 0, unsteady: 0, ranges: new Map(), timed: readsAClock(readFileSync(file, 'utf8')) };
+      });
+    const gate = createGate();
+    /**
+     * Whether this test fails in this environment, believed as the header
+     * says: at once from a test that measures nothing, and only on a second
+     * failure, alone, from one that reads a clock.
+     */
+    const fails = async (test, env) => {
+      const limits = { env, timeout: 10_000 + 4 * test.ms };
+      const first = await gate.shared(() => runTest(test.file, limits));
+      if (first.passed) return null;
+      if (!test.timed) return first;
+      const alone = await gate.exclusive(() => runTest(test.file, limits));
+      if (!alone.passed) return alone;
+      test.unsteady += 1;
+      return null;
+    };
     const urls = new Map(targets.map((target) => [target.url, target]));
     const broken = [];
     await pool(tests, jobs, async (test, index) => {
       const coverage = join(work, `coverage-${index}`);
       mkdirSync(coverage);
-      const run = await runTest(test.file, { env: { ...cleanEnv(), NODE_V8_COVERAGE: coverage }, timeout: 300_000 });
-      if (!run.passed) broken.push(test.name);
+      const output = join(work, `output-${index}.txt`);
+      const run = await runTest(test.file, {
+        env: { ...cleanEnv(), NODE_V8_COVERAGE: coverage }, timeout: 300_000, output,
+      });
+      if (!run.passed) broken.push({ test, output });
       test.ms = run.ms;
       for (const name of readdirSync(coverage)) {
         const report = JSON.parse(readFileSync(join(coverage, name), 'utf8'));
@@ -287,8 +382,27 @@ async function main() {
       }
       rmSync(coverage, { recursive: true, force: true });
     });
-    if (broken.length > 0) {
-      throw new Error(`these test files fail before anything is mutated: ${broken.sort().join(', ')}`);
+    // One that reads a clock gets a second try alone, without coverage slowing
+    // it: what it covered is already recorded, and its failure was about time.
+    const stillBroken = [];
+    for (const { test, output } of broken) {
+      if (test.timed) {
+        const alone = await runTest(test.file, { env: cleanEnv(), timeout: 300_000, output });
+        if (alone.passed) {
+          test.unsteady += 1;
+          continue;
+        }
+      }
+      stillBroken.push({ test, output });
+    }
+    if (stillBroken.length > 0) {
+      stillBroken.sort((a, b) => a.test.name.localeCompare(b.test.name));
+      throw new Error(
+        `these test files fail before anything is mutated: ${stillBroken.map(({ test }) => test.name).join(', ')}\n\n`
+          + stillBroken
+            .map(({ test, output }) => `${test.name}\n${failureSummary(readFileSync(output, 'utf8'))}`)
+            .join('\n\n'),
+      );
     }
     // A test file may have run the target in more than one process: a mutant
     // is reached if any of them ran the place it changes.
@@ -329,8 +443,7 @@ async function main() {
         writeFileSync(source, applyMutant(target.text, mutant));
         const env = mutantEnv(target.url, source);
         for (const test of tests.filter((candidate) => !reaches(candidate, target, mutant.probe))) {
-          const run = await runTest(test.file, { env, timeout: 10_000 + 4 * test.ms });
-          if (run.passed) continue;
+          if ((await fails(test, env)) === null) continue;
           wrong.push({ mutant, by: test.name });
           break;
         }
@@ -364,10 +477,12 @@ async function main() {
         const source = join(work, `mutant-${index}.js`);
         writeFileSync(source, applyMutant(target.text, mutant));
         const env = mutantEnv(target.url, source);
-        // Read the order afresh: a test that has just killed a neighbour is the best first guess.
-        for (const test of covering.sort((a, b) => b.kills - a.kills || a.ms - b.ms)) {
-          const run = await runTest(test.file, { env, timeout: 10_000 + 4 * test.ms });
-          if (run.passed) continue;
+        // Read the order afresh: a test that has just killed a neighbour is the
+        // best first guess. Tests that read a clock go last, so that a kill is
+        // one a second look is not needed for whenever another test can make it.
+        for (const test of covering.sort((a, b) => a.timed - b.timed || b.kills - a.kills || a.ms - b.ms)) {
+          const run = await fails(test, env);
+          if (run === null) continue;
           status = run.timedOut ? 'timeout' : 'killed';
           by = test.name;
           test.kills += 1;
@@ -382,6 +497,13 @@ async function main() {
     results.sort((a, b) => a.file.localeCompare(b.file) || a.start - b.start || a.after.localeCompare(b.after));
 
     // 5. What the tests left behind, then what the run found (which writes files of its own).
+    const unsteady = tests.filter((test) => test.unsteady > 0);
+    if (unsteady.length > 0) {
+      console.log(
+        '\nFailed once and passed when run alone, so not counted as a failure: '
+          + unsteady.map((test) => `${test.name} (${test.unsteady})`).join(', '),
+      );
+    }
     reportLeftBehind(treeBefore);
     report(targets, results, options);
   } finally {

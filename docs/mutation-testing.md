@@ -92,6 +92,16 @@ A mutant no test file reaches is not run at all and is reported as
 **uncovered**, which counts against the score exactly as a survivor does. A
 mutant that makes a test hang past its time limit counts as caught.
 
+Six of the core's test files assert that something finishes within a budget. With several of them running at once on a shared
+machine, such an assertion can fail with no mutant in sight, and a failure
+that is about load is not a caught bug. So a failure from a test file that
+reads a clock is believed only when it fails again with nothing else running.
+(The rule goes by what a file mentions and matches nine, three of which only
+ask what day it is: a second look that was not needed costs seconds.)
+Those files are also tried last, so that most kills are made by a test that
+measures nothing and needs no second look. A run says at its end which files
+failed once and passed alone.
+
 Some tests edit a tracked file and put it back. One that is stopped at its
 time limit does not get to, so the run compares `git status` before and after
 and names any file the tests left changed.
@@ -149,7 +159,9 @@ TRAZUM_ACORN="$ACORN" npm run test:mutation           # the tool itself, against
 
 A killed mutant costs one test file. A survivor costs every test file that
 reaches it, so a whole run gets shorter as survivors are killed: on four cores
-it took 1,595 seconds at 62.1% and 662 seconds at 91.5%.
+it took 1,595 seconds at 62.1% and 662 seconds at 91.5%. On a GitHub-hosted
+runner the same run took 1,259 seconds on 2026-11-18 and caught the same 408
+of 446, file by file, with no test failing once and passing alone.
 
 ## In CI
 
@@ -158,6 +170,14 @@ source, the tool or the record, and asks only about the lines that pull request
 changes: **a mutant that lives on a line you changed, and is not on record,
 fails the check.** Every Monday it runs every target, which is also when a test
 deleted by a pull request that changed no target would be noticed.
+
+A pull request that changes the tool, its record or the workflow also runs one
+small target whole. Without that, such a pull request has no changed line to
+ask about and returns before it has run a single test, which is how the
+workflow first merged green and could not run: it built only the core and
+checked out one commit, and four test files need more than that (#698). Every
+test file has to pass before a mutant is run, and when one does not the run
+now prints what it said, not only its name.
 
 ## Reading a survivor
 

@@ -45,6 +45,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          # The whole history and its tags, as CI's test job has them. Every
+          # test file must pass before a mutant is run, and two of them read
+          # the history: with one commit they fail, and the first whole run
+          # on a runner stopped there (#698).
+          fetch-depth: 0
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
@@ -54,8 +59,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Build the core
-        run: npm run build -w @trazum/core
+      # Everything, not only the core that is mutated: the core's tests run the
+      # built CLI and read its files. That was the other half of #698.
+      - name: Build
+        run: npm run build
 
       # The parser, pinned, installed with `--ignore-scripts` outside the
       # workspace: the same arrangement as the privacy probe's browser driver.
@@ -68,15 +75,27 @@ jobs:
           TRAZUM_ACORN: ${{ runner.temp }}/parser/node_modules/acorn
         run: npm run test:mutation
 
-      # The base commit is not in a shallow checkout. One commit is enough: a
-      # diff between two trees needs no history.
       - name: Mutants on the lines this pull request changes
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/mutate.mjs --acorn "$RUNNER_TEMP/parser/node_modules/acorn" --since "$BASE_SHA" --check
+
+      # A pull request that changes no target has no mutant to run, and the
+      # step above returns before it has run a single test. #695 merged green
+      # that way with a workflow that could not run at all. So when the tool,
+      # its record or this file changes, one small target is run whole: every
+      # test file once, the loader checked, and every mutant of that target.
+      - name: One whole target, when the tool itself changed
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          git fetch --no-tags --depth=1 origin "$BASE_SHA"
-          node scripts/mutate.mjs --acorn "$RUNNER_TEMP/parser/node_modules/acorn" --since "$BASE_SHA" --check
+          if git diff --name-only "$BASE_SHA" -- scripts/mutate.mjs scripts/mutation.mjs scripts/mutant-loader.mjs mutation.baseline.json .github/workflows/mutation.yml | grep -q .; then
+            node scripts/mutate.mjs --acorn "$RUNNER_TEMP/parser/node_modules/acorn" --only savings --check
+          else
+            echo "The tool, its record and its workflow are unchanged: nothing more to run."
+          fi
 
       - name: Every mutant of every target
         if: github.event_name != 'pull_request'

@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-import { TARGETS } from '../../../scripts/mutate.mjs';
+import { TARGETS, createGate, readsAClock } from '../../../scripts/mutate.mjs';
 import {
   OPERATORS,
   againstBaseline,
   applyMutant,
   changedLines,
   decodeMappings,
+  failureSummary,
   isCovered,
   lineAt,
   mutantsOf,
@@ -488,6 +489,32 @@ describe('the workflow asks a pull request about its own lines and the week abou
     assert.doesNotMatch(read('package-lock.json'), /"node_modules\/acorn"/);
   });
 
+  it('has the history and the builds the tests need, which the first run on a runner did not', () => {
+    // #698: with one commit and only the core built, four test files failed
+    // before a single mutant, and the run could not start.
+    assert.match(workflow, /persist-credentials: false\n(?:\s+#.*\n)*\s+fetch-depth: 0\n/);
+    assert.match(step('Build'), /^ {8}run: npm run build$/m);
+    assert.doesNotMatch(workflow, /npm run build -w/);
+    // A shallow fetch into a full clone would cut the history back off.
+    assert.doesNotMatch(workflow, /--depth/);
+  });
+
+  it('runs one whole target on a pull request that changes the tool, its record or the workflow', () => {
+    // A pull request that changes no target returns before running a test,
+    // which is how a workflow that could not run merged green in #695.
+    const whole = step('One whole target, when the tool itself changed');
+    assert.match(whole, /if: github\.event_name == 'pull_request'/);
+    for (const path of [
+      'scripts/mutate.mjs', 'scripts/mutation.mjs', 'scripts/mutant-loader.mjs', 'mutation.baseline.json',
+      '.github/workflows/mutation.yml',
+    ]) {
+      assert.ok(whole.includes(` ${path}`), `a change to ${path} does not start a whole run`);
+    }
+    assert.match(whole, /mutate\.mjs --acorn \S+ --only \w+ --check\n/);
+    assert.match(whole, /git diff --name-only "\$BASE_SHA" -- /);
+    assert.doesNotMatch(whole.slice(whole.indexOf('run:')), /\$\{\{/);
+  });
+
   it('reads the repository and nothing else', () => {
     assert.match(workflow, /^permissions:\n {2}contents: read$/m);
     assert.doesNotMatch(workflow, /: write/);
@@ -567,5 +594,124 @@ describe('the record is what the last whole run found', () => {
 
   it('refuses to write a table into a page that has lost its markers', () => {
     assert.throws(() => withScoreTable('# no markers here', 'table'), /lost the markers/);
+  });
+});
+
+describe('a failed test file says why, in a few lines', () => {
+  const output = [
+    'TAP version 13',
+    '# Subtest: every merge is in the changelog',
+    '    # Subtest: Unreleased is not empty while commits sit on top of the newest tag',
+    '    not ok 2 - Unreleased is not empty while commits sit on top of the newest tag',
+    '      ---',
+    '      duration_ms: 3.1',
+    "      error: 'no tag is reachable from HEAD'",
+    '      code: ERR_ASSERTION',
+    '      ...',
+    'not ok 1 - every merge is in the changelog',
+    '  ---',
+    "  error: '1 subtest failed'",
+    '  ...',
+  ].join('\n');
+
+  it('keeps the test that failed with its error, and drops the suite that only repeats it', () => {
+    assert.equal(
+      failureSummary(output),
+      "  not ok 2 - Unreleased is not empty while commits sit on top of the newest tag\n      error: 'no tag is reachable from HEAD'",
+    );
+  });
+
+  it('stops at a number of failures and says how many more there were', () => {
+    const many = Array.from({ length: 5 }, (_, i) => `not ok ${i + 1} - test ${i + 1}\n  error: 'boom ${i + 1}'`).join('\n');
+    const summary = failureSummary(many, 2);
+    assert.ok(summary.includes('not ok 1 - test 1'));
+    assert.ok(summary.includes('not ok 2 - test 2'));
+    assert.equal(summary.includes('not ok 3'), false);
+    assert.ok(summary.endsWith('  and 3 more'));
+  });
+
+  it('shows the end of the output for a file that died before running a test', () => {
+    const crash = "node:internal/modules/esm/resolve:1\n\nError: Cannot find module 'x'\n    at y";
+    assert.equal(failureSummary(crash), "  node:internal/modules/esm/resolve:1\n  Error: Cannot find module 'x'\n      at y");
+    assert.equal(failureSummary(''), '  (it printed nothing)');
+  });
+
+  it('is what the run prints when a test fails before anything is mutated', () => {
+    const runner = read('scripts/mutate.mjs');
+    assert.match(runner, /failureSummary\(readFileSync\(output, 'utf8'\)\)/);
+    assert.match(runner, /NODE_V8_COVERAGE: coverage \}, timeout: 300_000, output,/);
+  });
+});
+
+describe('a test that reads a clock is believed only when it fails twice', () => {
+  it('knows a test file that measures time from one that does not', () => {
+    assert.equal(readsAClock('const started = performance.now();'), true);
+    assert.equal(readsAClock('const started = process.hrtime.bigint();'), true);
+    assert.equal(readsAClock('assert.ok(Date.now() - started < 2000);'), true);
+    assert.equal(readsAClock("assert.equal(optimize('x').optimized, 'x');"), false);
+    // A file that only asks what day it is matches too. That costs a second look, never a wrong kill.
+    assert.equal(readsAClock('promotionProblem(model, Date.now())'), true);
+    assert.equal(readsAClock(read('packages/core/test/courtesy.test.js')), true);
+    assert.equal(readsAClock(read('packages/core/test/savings-edges.test.js')), false);
+  });
+
+  it('runs an exclusive thing only when everything shared has finished, and holds back what comes after', async () => {
+    const gate = createGate();
+    const events = [];
+    let release;
+    const slow = gate.shared(() => new Promise((resolve) => {
+      events.push('shared starts');
+      release = () => {
+        events.push('shared ends');
+        resolve();
+      };
+    }));
+    const alone = gate.exclusive(async () => {
+      events.push('exclusive runs');
+    });
+    const later = gate.shared(async () => {
+      events.push('later shared runs');
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(events, ['shared starts'], 'the exclusive thing ran beside a shared one, or a new one slipped in');
+    release();
+    await Promise.all([slow, alone, later]);
+    assert.deepEqual(events, ['shared starts', 'shared ends', 'exclusive runs', 'later shared runs']);
+  });
+
+  it('opens again after an exclusive thing throws', async () => {
+    const gate = createGate();
+    await assert.rejects(gate.exclusive(async () => {
+      throw new Error('boom');
+    }), /boom/);
+    assert.equal(await gate.shared(async () => 'ran'), 'ran');
+  });
+
+  it('lets shared things overlap', async () => {
+    const gate = createGate();
+    let together = 0;
+    let most = 0;
+    const one = () => gate.shared(async () => {
+      together += 1;
+      most = Math.max(most, together);
+      await new Promise((resolve) => setImmediate(resolve));
+      together -= 1;
+    });
+    await Promise.all([one(), one(), one()]);
+    assert.equal(most, 3);
+  });
+
+  it('is how every test is run against a mutant, and in the audit', () => {
+    const runner = read('scripts/mutate.mjs');
+    assert.equal([...runner.matchAll(/await fails\(test, env\)/g)].length, 2);
+    assert.match(runner, /if \(!test\.timed\) return first;/);
+    assert.match(runner, /const alone = await gate\.exclusive\(\(\) => runTest\(test\.file, limits\)\);/);
+    // Tests that read a clock go last, so a kill rarely needs the second look.
+    assert.match(runner, /covering\.sort\(\(a, b\) => a\.timed - b\.timed \|\| /);
+  });
+
+  it('gives a clock-reading test one more try, alone and without coverage, before refusing to start', () => {
+    const runner = read('scripts/mutate.mjs');
+    assert.match(runner, /if \(test\.timed\) \{\n\s+const alone = await runTest\(test\.file, \{ env: cleanEnv\(\), timeout: 300_000, output \}\);/);
   });
 });
