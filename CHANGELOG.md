@@ -13,6 +13,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **A review skill that carries this repository's own rules.** What a review
+  here looks for was written for a person in `CONTRIBUTING.md` and for a bot in
+  `.coderabbit.yaml`, and a coding agent in a checkout had neither as something
+  it could run. `.claude/skills/trazum-review/SKILL.md` is that: sixteen rules,
+  each with the paths that bring it into play, where it is stated, what holds
+  it and how to check it, and the form a finding is reported in. It restates
+  no rule. `review-skill.test.js` holds every pointer: a path that exists, a
+  heading that is in `CONTRIBUTING.md`, a test file that is in the tree, an
+  `npm` script that is a script. It fails when the Review section gains a
+  question the skill does not point at, when the bot is given a path no rule
+  applies to, and when the skill names a command that would change the
+  repository: it reviews and does nothing else. One rule the skill could only
+  point at a comment for now has a test: no test file bounds a section of a
+  document by looking for the heading after it (#693).
 - **End-to-end tests of the web app.** The web app had 51 test files and none
   of them opened the page. The one thing that drove a browser, the privacy
   probe, checks a single promise, and a page can keep it and print the wrong

@@ -15,6 +15,7 @@ out/
 /.agents/
 /.claude/skills/*
 !/.claude/skills/trazum/
+!/.claude/skills/trazum-review/
 
 # Lockfile for third-party agent skills; see .gitignore
 skills-lock.json
