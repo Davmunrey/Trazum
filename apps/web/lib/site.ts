@@ -9,9 +9,10 @@
  * the same ids, and its type makes a missing translation a build error.
  *
  * Only what exists today is linked. The documentation (`/docs`), the models
- * and their prices (`/models`), the roadmap and the changelog are pages of
- * this site. The brand page is coming as one too; until it exists, nothing
- * links it.
+ * and their prices (`/models`), the roadmap, the changelog and the brand page
+ * (`/brand`) are pages of this site. The brand page is in the footer and not
+ * the header: it is for somebody who needs an asset or a rule, and they have
+ * looked for it where a project keeps its papers.
  */
 
 /** The repository. Every public page carries a button to it. */
@@ -24,6 +25,8 @@ export const DOCS_ON_GITHUB = `${GITHUB_URL}/tree/main/docs`;
 export const MODELS_PATH = '/models';
 export const ROADMAP_PATH = '/roadmap';
 export const CHANGELOG_PATH = '/changelog';
+/** The wordmark, the colours, the type and how to use them. */
+export const BRAND_PATH = '/brand';
 /** The changelog's own file, which each release page links as its source. */
 export const CHANGELOG_URL = `${GITHUB_URL}/blob/main/CHANGELOG.md`;
 export const SECURITY_URL = `${GITHUB_URL}/blob/main/SECURITY.md`;
@@ -46,6 +49,7 @@ export type SiteLinkId =
   | 'github'
   | 'npm'
   | 'changelog'
+  | 'brand'
   | 'security'
   | 'licence';
 
@@ -65,6 +69,7 @@ export const SITE_LINKS: Readonly<Record<SiteLinkId, SiteLink>> = {
   github: { id: 'github', href: GITHUB_URL, external: true },
   npm: { id: 'npm', href: NPM_URL, external: true },
   changelog: { id: 'changelog', href: CHANGELOG_PATH, external: false },
+  brand: { id: 'brand', href: BRAND_PATH, external: false },
   security: { id: 'security', href: SECURITY_URL, external: true },
   licence: { id: 'licence', href: LICENCE_URL, external: true },
 };
@@ -81,7 +86,7 @@ export type FooterGroupId = 'product' | 'project';
 /** The footer: the header's destinations, then the project's own papers. */
 export const FOOTER_GROUPS: readonly { id: FooterGroupId; links: readonly SiteLinkId[] }[] = [
   { id: 'product', links: ['dashboard', ...HEADER_ENTRIES, 'npm'] },
-  { id: 'project', links: ['github', 'roadmap', 'changelog', 'security', 'licence'] },
+  { id: 'project', links: ['github', 'roadmap', 'changelog', 'brand', 'security', 'licence'] },
 ];
 
 /** The public pages, each with its canonical path. */

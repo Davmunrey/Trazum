@@ -452,6 +452,46 @@ export const FLOWS = [
     },
   },
   {
+    name: 'brand: from the footer, follow Brand, see the wordmark on both grounds, copy a colour, and fetch every file offered',
+    covers: [],
+    async run({ page, open, see, is }) {
+      await open('/');
+      await page.locator('[data-site-footer]').getByRole('link', { name: 'Brand', exact: true }).click();
+      await page.waitForURL((url) => url.pathname === '/brand');
+      await page.locator('html[data-started="true"]').waitFor({ state: 'attached' });
+      await see(page.getByRole('heading', { level: 1, name: 'Brand' }), 'the brand page');
+      await see(page.locator('[data-mark="wordmark"][data-ground="light"] img'), 'the wordmark for a light ground');
+      await see(page.locator('[data-mark="wordmark"][data-ground="dark"] img'), 'the wordmark for a dark ground');
+
+      /*
+        The files: the wordmark and the T, each light and dark, each as SVG and
+        PNG, is 2 x 2 x 2 = 8. Each link is fetched and has to answer with the
+        kind of file its name says.
+      */
+      await see(page.locator('[data-download="trazum-wordmark-dark.png"]'), 'a download button');
+      is(await page.locator('[data-download]').count(), 8, 'how many files the page offers');
+      const links = await page.locator('[data-download]').evaluateAll((anchors) => anchors.map((anchor) => [anchor.getAttribute('href'), anchor.getAttribute('data-download')]));
+      for (const [href, name] of links) {
+        const response = await page.request.get(new URL(href, page.url()).href);
+        is(response.status(), 200, `the answer for ${name}`);
+        is(response.headers()['content-type'].split(';')[0], name.endsWith('.svg') ? 'image/svg+xml' : 'image/png', `the kind of file ${name} is`);
+      }
+
+      /*
+        A colour: the canvas on paper is #f6f4ec, the first row of the design
+        document's table. Copying it changes the button and sends nothing.
+      */
+      const sent = [];
+      page.on('request', (request) => sent.push(request.url()));
+      await see(page.locator('[data-token="--paper"] [data-swatch="light"] code'), 'the canvas row');
+      is(await page.locator('[data-token="--paper"] [data-swatch="light"] code').textContent(), '#f6f4ec', 'the canvas on paper');
+      is(await page.locator('[data-token="--paper"] [data-swatch="dark"] code').textContent(), '#1c211b', 'the canvas on the dark ground');
+      await page.locator('[data-copy="#f6f4ec"]').first().click();
+      await see(page.getByRole('status').filter({ hasText: 'Copied: #f6f4ec' }), 'the copy confirmed');
+      is(sent.join(' '), '', 'the requests the page made when a colour was copied');
+    },
+  },
+  {
     name: 'tour: each page it visits runs its own demo, once',
     covers: [],
     async run({ page, open, see, is }) {

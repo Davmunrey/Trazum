@@ -5,8 +5,8 @@ import { docHref } from './docs/manifest';
 import type { WebMessages } from './i18n/types';
 import { COPY } from './landing-copy';
 import type { MarketingLocale } from './marketing-locales';
-import { CHANGELOG_COPY, MODELS_COPY, ROADMAP_COPY } from './pages-copy';
-import { CANONICAL, CHANGELOG_PATH, DOCS_PATH, MODELS_PATH, ROADMAP_PATH } from './site';
+import { BRAND_COPY, CHANGELOG_COPY, MODELS_COPY, ROADMAP_COPY } from './pages-copy';
+import { BRAND_PATH, CANONICAL, CHANGELOG_PATH, DOCS_PATH, MODELS_PATH, ROADMAP_PATH } from './site';
 import { SITE_COPY } from './site-copy';
 
 /**
@@ -84,6 +84,12 @@ export function changelogMetadata(locale: MarketingLocale): Metadata {
   const t = CHANGELOG_COPY[locale];
   const title = `${t.metaTitle} · Trazum`;
   return { title: { absolute: title }, ...card(title, t.metaDescription, CHANGELOG_PATH, OG_LOCALE[locale]) };
+}
+
+export function brandMetadata(locale: MarketingLocale): Metadata {
+  const t = BRAND_COPY[locale];
+  const title = `${t.metaTitle} · Trazum`;
+  return { title: { absolute: title }, ...card(title, t.metaDescription, BRAND_PATH, OG_LOCALE[locale]) };
 }
 
 /** One release's page. English, as the changelog is: its title and description say what it is. */

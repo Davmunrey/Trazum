@@ -41,6 +41,10 @@ export const DARK = {
   secondary: '#c0c6af',
   rule: '#67715c',
   wash: '#343c20',
+  /** The muted text on the dark canvas. */
+  muted: '#bac2a8',
+  /** The strong rule: the border that separates a region, not a part. */
+  strong: '#aab39a',
   good: '#6fc99a',
   warn: '#d6ad63',
   bad: '#f39f87',
@@ -118,12 +122,16 @@ const rgb = (hex) => [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2)
  * its grid, and rounding 9 and 31 separately lands one pixel off centre at the
  * sizes where both fall on a half.
  *
+ * `edge` is the colour of the border. It is the ink on a light ground, and the
+ * dark theme's text colour on a dark one, as every border of the app is the
+ * page's own ink; the fill and the T do not change with the ground.
+ *
  * `bordered: false` is the full-bleed version, for the places that cut their
  * own shape out of an icon: a phone rounds the corners of an Apple touch icon
  * and an Android launcher masks a maskable one, and either would slice through
  * a border drawn at the edge.
  */
-export function markPixels(size, { bordered = true } = {}) {
+export function markPixels(size, { bordered = true, edge = INK } = {}) {
   const scale = size / MARK.grid;
   const at = (unit) => Math.round(unit * scale);
   const border = bordered ? Math.max(1, at(MARK.border)) : 0;
@@ -133,17 +141,18 @@ export function markPixels(size, { bordered = true } = {}) {
   const stemL = at(MARK.stem[0]);
   const stemB = at(MARK.stem[3]);
   const ink = [...rgb(INK), 0xff];
+  const rim = [...rgb(edge), 0xff];
   const acid = [...rgb(ACID), 0xff];
 
+  const onEdge = (x, y) => x < border || y < border || x >= size - border || y >= size - border;
   const inked = (x, y) =>
-    x < border || y < border || x >= size - border || y >= size - border
-    || (y >= barT && y < barB && x >= barL && x < size - barL)
+    (y >= barT && y < barB && x >= barL && x < size - barL)
     || (y >= barB && y < stemB && x >= stemL && x < size - stemL);
 
   const stride = size * 4 + 1;
   const raw = new Uint8Array(size * stride);
   for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) raw.set(inked(x, y) ? ink : acid, y * stride + 1 + x * 4);
+    for (let x = 0; x < size; x++) raw.set(onEdge(x, y) ? rim : inked(x, y) ? ink : acid, y * stride + 1 + x * 4);
   }
   return raw;
 }
@@ -176,16 +185,17 @@ const chunk = (type, payload) => {
 };
 
 /**
- * A PNG of the mark: signature, IHDR, IDAT, IEND.
+ * A PNG of any RGBA picture: signature, IHDR, IDAT, IEND.
  *
+ * `raw` is one filter byte of 0 and then `width` RGBA pixels, for each row.
  * Written by hand, a zlib stream and three chunks, because this repository
  * takes no dependency it can avoid and the format is small enough to write
  * correctly. The tests decode what comes out.
  */
-export function markPng(size, options) {
+export function rgbaPng(width, height, raw) {
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0);
-  ihdr.writeUInt32BE(size, 4);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8; // bit depth
   ihdr[9] = 6; // colour type: RGBA
   ihdr[10] = 0; // deflate
@@ -196,9 +206,14 @@ export function markPng(size, options) {
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk('IHDR', ihdr),
     // Level 9 so two runs of this produce the same bytes.
-    chunk('IDAT', deflateSync(Buffer.from(markPixels(size, options)), { level: 9 })),
+    chunk('IDAT', deflateSync(Buffer.from(raw), { level: 9 })),
     chunk('IEND', Buffer.alloc(0)),
   ]);
+}
+
+/** A PNG of the mark. */
+export function markPng(size, options) {
+  return rgbaPng(size, size, markPixels(size, options));
 }
 
 /**

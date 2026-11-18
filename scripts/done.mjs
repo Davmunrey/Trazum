@@ -384,6 +384,9 @@ async function main(argv) {
     if (!existsSync(join(standalone, 'server.js'))) return failed('the web build left no standalone server at apps/web/.next/standalone');
     rmSync(join(standalone, '.next/static'), { recursive: true, force: true });
     cpSync(join(ROOT, 'apps/web/.next/static'), join(standalone, '.next/static'), { recursive: true });
+    // The standalone server serves no file from public/ unless it is beside it, as the image's runtime stage has it: the brand page's downloads are there.
+    rmSync(join(standalone, 'public'), { recursive: true, force: true });
+    cpSync(join(ROOT, 'apps/web/public'), join(standalone, 'public'), { recursive: true });
     const port = await freePort();
     const server = spawn(process.execPath, [join(standalone, 'server.js')], { cwd: ROOT, env: { ...process.env, PORT: String(port), HOSTNAME: '127.0.0.1' }, stdio: 'ignore' });
     try {

@@ -19,6 +19,7 @@ action
 !VERSIONING.md
 !CHANGELOG.md
 !ROADMAP.md
+!DESIGN.md
 !docs
 .env*
 .trazum

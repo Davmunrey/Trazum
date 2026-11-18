@@ -70,3 +70,43 @@ export interface ModelsExtra {
   /** Models a provider's page lists and the catalogue leaves unpriced on purpose, with the reason. */
   unpriced: { provider: string; id: string; reason: string }[];
 }
+
+/** One row of the token table: a role, the custom property that holds it, and its two values. */
+export interface BrandToken {
+  /** The role, as `DESIGN.md` names it. */
+  role: string;
+  /** The custom property `globals.css` declares. */
+  variable: string;
+  light: string;
+  dark: string;
+}
+
+/** One file the brand page offers. */
+export interface BrandFile {
+  mark: 'wordmark' | 't';
+  ground: 'light' | 'dark';
+  format: 'svg' | 'png';
+  name: string;
+  /** Where the web app serves it. */
+  href: string;
+  bytes: number;
+  /** A PNG's size in pixels; an SVG has none. */
+  width: number | null;
+  height: number | null;
+}
+
+/** What `/brand` is made of: the colours, the typeface, the voice, the rules and the files. */
+export interface BrandData {
+  tokens: BrandToken[];
+  typeface: {
+    family: string;
+    name: string;
+    mono: string;
+    weights: { min: number; max: number } | null;
+    license: string | null;
+    packageName: string | null;
+  };
+  voice: string[];
+  dont: string[];
+  files: BrandFile[];
+}

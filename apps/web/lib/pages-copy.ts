@@ -1,8 +1,9 @@
 import type { MarketingLocale } from './marketing-locales';
 
 /**
- * The words around the catalogue, the roadmap and the changelog: headings,
- * column names, the states a model can be in, the filters.
+ * The words around the catalogue, the roadmap, the changelog and the brand
+ * page: headings, column names, the states a model can be in, the filters, the
+ * labels of a download and of a swatch.
  *
  * In the five languages the public site speaks, and nothing else. What is
  * drawn inside them is not translated: a model's name and id, the provider's
@@ -133,6 +134,49 @@ export interface ChangelogCopy {
   breadcrumb: string;
   onThisPage: string;
   releasePageTitle: (version: string) => string;
+}
+
+export interface BrandCopy {
+  metaTitle: string;
+  metaDescription: string;
+  title: string;
+  lede: string;
+  /** Said when the site is not in English: the rules, the voice and the names of the colours are the repository's English. */
+  englishNote: string;
+  /** What the licence page says, pointed at and not restated. */
+  licence: string;
+  licenceLink: string;
+  wordmarkTitle: string;
+  wordmarkLede: string;
+  wordmarkName: string;
+  tName: string;
+  ground: { light: string; dark: string };
+  groundNote: { light: string; dark: string };
+  previewLabel: (what: string, ground: string) => string;
+  downloadsTitle: string;
+  downloadLabel: (what: string, format: string, ground: string) => string;
+  tTitle: string;
+  tLede: string;
+  coloursTitle: string;
+  coloursLede: string;
+  columns: { role: string; property: string; light: string; dark: string };
+  copyValue: (value: string) => string;
+  copyText: string;
+  copied: string;
+  typeTitle: string;
+  typeLede: string;
+  typeFacts: { family: string; weights: string; mono: string; package: string; licence: string };
+  weightsValue: (min: string, max: string) => string;
+  specimen: string;
+  tabular: string;
+  voiceTitle: string;
+  voiceLede: string;
+  dontTitle: string;
+  dontLede: string;
+  wrongTag: string;
+  wrongCaption: string;
+  sourceLine: string;
+  sourceLink: string;
 }
 
 export const MODELS_COPY: Record<MarketingLocale, ModelsCopy> = {
@@ -750,5 +794,208 @@ export const PAGE_BLURBS: Record<MarketingLocale, { models: string; roadmap: str
     changelog: 'O que mudou em cada versão, da mais recente à mais antiga.',
     alsoTitle: 'Também no site',
     alsoLede: 'Três perguntas que se fazem antes de confiar numa ferramenta que imprime uma fatura, respondidas com os ficheiros do próprio repositório.',
+  },
+};
+
+export const BRAND_COPY: Record<MarketingLocale, BrandCopy> = {
+  en: {
+    metaTitle: 'Brand',
+    metaDescription: 'The Trazum wordmark and plain T to download, the colour tokens with their values, the typeface, the voice and what not to do.',
+    title: 'Brand',
+    lede: 'The wordmark, the colours, the typeface and the rules for using them, for somebody writing about Trazum, listing it or building something beside it. Every value on this page is read from the file that holds it.',
+    englishNote: 'The names of the colours, the voice and the rules are the repository’s English words.',
+    licence: 'What the licence covers and what it does not is written on the licensing page. It says there is no trademark policy yet, and this page is not one.',
+    licenceLink: 'Read the licensing page',
+    wordmarkTitle: 'The wordmark',
+    wordmarkLede: 'The full name leads. It is drawn as outlines of the typeface below, with no ground of its own, so it sits on whatever page it is put on.',
+    wordmarkName: 'wordmark',
+    tName: 'plain T',
+    ground: { light: 'Light', dark: 'Dark' },
+    groundNote: { light: 'For paper and other light grounds', dark: 'For the dark canvas and other dark grounds' },
+    previewLabel: (what, ground) => `${what}, ${ground} ground`,
+    downloadsTitle: 'Download',
+    downloadLabel: (what, format, ground) => `Download ${what} as ${format}, ${ground} ground`,
+    tTitle: 'The plain T',
+    tLede: 'Used only where the full name cannot fit, such as the collapsed rail and the favicon. Its fill and its T are the same on both grounds. Its border is the theme’s ink.',
+    coloursTitle: 'Colours',
+    coloursLede: 'One row for each token of the design system, as the stylesheet declares it, in the light theme and in the dark one. A copy button writes the value to your clipboard and sends nothing.',
+    columns: { role: 'Role', property: 'Custom property', light: 'Light', dark: 'Dark' },
+    copyValue: (value) => `Copy ${value}`,
+    copyText: 'Copy',
+    copied: 'Copied',
+    typeTitle: 'Typeface',
+    typeLede: 'The wordmark, the headings and the interface are set in one family, served from this site. Code and measurements use the monospace stack.',
+    typeFacts: { family: 'Family', weights: 'Weights', mono: 'Monospace', package: 'Package', licence: 'Font licence' },
+    weightsValue: (min, max) => `Variable, ${min} to ${max}`,
+    specimen: 'Specimen',
+    tabular: 'Tabular figures',
+    voiceTitle: 'Voice',
+    voiceLede: 'Three sentences, from the design document.',
+    dontTitle: 'What not to do',
+    dontLede: 'The short list the design document already states.',
+    wrongTag: 'Wrong',
+    wrongCaption: 'The wrong use of the yellow: set as text on paper. It is drawn once because it can be shown from two tokens. The other rules are statements.',
+    sourceLine: 'These rules are the repository’s design document.',
+    sourceLink: 'Read DESIGN.md on GitHub',
+  },
+  es: {
+    metaTitle: 'Marca',
+    metaDescription: 'El logotipo de Trazum y la T sola para descargar, los tokens de color con sus valores, la tipografía, la voz y lo que no se debe hacer.',
+    title: 'Marca',
+    lede: 'El logotipo, los colores, la tipografía y las reglas para usarlos, para quien escribe sobre Trazum, lo lista o construye algo a su lado. Cada valor de esta página se lee del archivo que lo contiene.',
+    englishNote: 'Los nombres de los colores, la voz y las reglas son las palabras en inglés del repositorio.',
+    licence: 'Lo que cubre la licencia y lo que no está escrito en la página de licencia. Dice que todavía no hay una política de marcas, y esta página no lo es.',
+    licenceLink: 'Leer la página de licencia',
+    wordmarkTitle: 'El logotipo',
+    wordmarkLede: 'El nombre completo va primero. Está dibujado con los contornos de la tipografía de abajo, sin fondo propio, así que se coloca sobre cualquier página.',
+    wordmarkName: 'logotipo',
+    tName: 'T sola',
+    ground: { light: 'Claro', dark: 'Oscuro' },
+    groundNote: { light: 'Para papel y otros fondos claros', dark: 'Para el lienzo oscuro y otros fondos oscuros' },
+    previewLabel: (what, ground) => `${what}, fondo ${ground}`,
+    downloadsTitle: 'Descargar',
+    downloadLabel: (what, format, ground) => `Descargar ${what} en ${format}, fondo ${ground}`,
+    tTitle: 'La T sola',
+    tLede: 'Solo se usa donde no cabe el nombre completo, como el riel colapsado y el favicon. Su relleno y su T son los mismos en ambos fondos. Su borde es la tinta del tema.',
+    coloursTitle: 'Colores',
+    coloursLede: 'Una fila por cada token del sistema de diseño, tal como lo declara la hoja de estilos, en el tema claro y en el oscuro. Un botón copia el valor a tu portapapeles y no envía nada.',
+    columns: { role: 'Función', property: 'Propiedad personalizada', light: 'Claro', dark: 'Oscuro' },
+    copyValue: (value) => `Copiar ${value}`,
+    copyText: 'Copiar',
+    copied: 'Copiado',
+    typeTitle: 'Tipografía',
+    typeLede: 'El logotipo, los títulos y la interfaz usan una sola familia, servida desde este sitio. El código y las medidas usan la pila monoespaciada.',
+    typeFacts: { family: 'Familia', weights: 'Pesos', mono: 'Monoespaciada', package: 'Paquete', licence: 'Licencia de la fuente' },
+    weightsValue: (min, max) => `Variable, de ${min} a ${max}`,
+    specimen: 'Muestra',
+    tabular: 'Cifras tabulares',
+    voiceTitle: 'Voz',
+    voiceLede: 'Tres frases, del documento de diseño.',
+    dontTitle: 'Lo que no se debe hacer',
+    dontLede: 'La lista corta que el documento de diseño ya establece.',
+    wrongTag: 'Incorrecto',
+    wrongCaption: 'El uso incorrecto del amarillo: como texto sobre papel. Se dibuja una sola vez porque se puede mostrar con dos tokens. Las demás reglas son afirmaciones.',
+    sourceLine: 'Estas reglas son el documento de diseño del repositorio.',
+    sourceLink: 'Leer DESIGN.md en GitHub',
+  },
+  fr: {
+    metaTitle: 'Marque',
+    metaDescription: 'Le logotype Trazum et le T seul à télécharger, les jetons de couleur avec leurs valeurs, la police, la voix et ce qu’il ne faut pas faire.',
+    title: 'Marque',
+    lede: 'Le logotype, les couleurs, la police et les règles pour les utiliser, pour qui écrit sur Trazum, le référence ou construit quelque chose à côté. Chaque valeur de cette page est lue dans le fichier qui la contient.',
+    englishNote: 'Les noms des couleurs, la voix et les règles sont les mots anglais du dépôt.',
+    licence: 'Ce que couvre la licence et ce qu’elle ne couvre pas est écrit sur la page de licence. Elle dit qu’il n’existe pas encore de politique de marque, et cette page n’en est pas une.',
+    licenceLink: 'Lire la page de licence',
+    wordmarkTitle: 'Le logotype',
+    wordmarkLede: 'Le nom complet passe en premier. Il est dessiné en contours de la police ci-dessous, sans fond propre, et se pose donc sur n’importe quelle page.',
+    wordmarkName: 'logotype',
+    tName: 'T seul',
+    ground: { light: 'Clair', dark: 'Sombre' },
+    groundNote: { light: 'Pour le papier et les autres fonds clairs', dark: 'Pour le canevas sombre et les autres fonds sombres' },
+    previewLabel: (what, ground) => `${what}, fond ${ground}`,
+    downloadsTitle: 'Télécharger',
+    downloadLabel: (what, format, ground) => `Télécharger ${what} en ${format}, fond ${ground}`,
+    tTitle: 'Le T seul',
+    tLede: 'Utilisé seulement là où le nom complet ne tient pas, comme le rail replié et le favicon. Son fond et son T sont les mêmes sur les deux fonds. Sa bordure est l’encre du thème.',
+    coloursTitle: 'Couleurs',
+    coloursLede: 'Une ligne par jeton du système de design, tel que la feuille de style le déclare, dans le thème clair et dans le sombre. Un bouton copie la valeur dans votre presse-papiers et n’envoie rien.',
+    columns: { role: 'Rôle', property: 'Propriété personnalisée', light: 'Clair', dark: 'Sombre' },
+    copyValue: (value) => `Copier ${value}`,
+    copyText: 'Copier',
+    copied: 'Copié',
+    typeTitle: 'Police',
+    typeLede: 'Le logotype, les titres et l’interface sont composés dans une seule famille, servie depuis ce site. Le code et les mesures utilisent la pile à chasse fixe.',
+    typeFacts: { family: 'Famille', weights: 'Graisses', mono: 'Chasse fixe', package: 'Paquet', licence: 'Licence de la police' },
+    weightsValue: (min, max) => `Variable, de ${min} à ${max}`,
+    specimen: 'Spécimen',
+    tabular: 'Chiffres tabulaires',
+    voiceTitle: 'Voix',
+    voiceLede: 'Trois phrases, tirées du document de design.',
+    dontTitle: 'Ce qu’il ne faut pas faire',
+    dontLede: 'La courte liste que le document de design énonce déjà.',
+    wrongTag: 'Faux',
+    wrongCaption: 'Le mauvais usage du jaune : en texte sur le papier. Il n’est dessiné qu’une fois car on peut le montrer avec deux jetons. Les autres règles sont des énoncés.',
+    sourceLine: 'Ces règles sont le document de design du dépôt.',
+    sourceLink: 'Lire DESIGN.md sur GitHub',
+  },
+  de: {
+    metaTitle: 'Marke',
+    metaDescription: 'Die Wortmarke und das schlichte T von Trazum zum Herunterladen, die Farb-Tokens mit ihren Werten, die Schrift, die Stimme und was man nicht tun sollte.',
+    title: 'Marke',
+    lede: 'Die Wortmarke, die Farben, die Schrift und die Regeln für ihre Verwendung, für alle, die über Trazum schreiben, es auflisten oder etwas daneben bauen. Jeder Wert auf dieser Seite wird aus der Datei gelesen, die ihn enthält.',
+    englishNote: 'Die Namen der Farben, die Stimme und die Regeln sind die englischen Wörter des Repositorys.',
+    licence: 'Was die Lizenz abdeckt und was nicht, steht auf der Lizenzseite. Dort steht, dass es noch keine Markenrichtlinie gibt, und diese Seite ist keine.',
+    licenceLink: 'Die Lizenzseite lesen',
+    wordmarkTitle: 'Die Wortmarke',
+    wordmarkLede: 'Der volle Name steht vorn. Er ist als Umrisse der unten genannten Schrift gezeichnet, ohne eigenen Hintergrund, und passt daher auf jede Seite.',
+    wordmarkName: 'Wortmarke',
+    tName: 'Schlichtes T',
+    ground: { light: 'Hell', dark: 'Dunkel' },
+    groundNote: { light: 'Für Papier und andere helle Hintergründe', dark: 'Für die dunkle Fläche und andere dunkle Hintergründe' },
+    previewLabel: (what, ground) => `${what}, Hintergrund: ${ground}`,
+    downloadsTitle: 'Herunterladen',
+    downloadLabel: (what, format, ground) => `${what} als ${format} herunterladen, Hintergrund: ${ground}`,
+    tTitle: 'Das schlichte T',
+    tLede: 'Es wird nur verwendet, wo der volle Name nicht passt, etwa in der eingeklappten Leiste und im Favicon. Füllung und T sind auf beiden Hintergründen gleich. Der Rand ist die Tinte des Themes.',
+    coloursTitle: 'Farben',
+    coloursLede: 'Eine Zeile für jedes Token des Designsystems, wie das Stylesheet es deklariert, im hellen und im dunklen Theme. Ein Knopf schreibt den Wert in Ihre Zwischenablage und sendet nichts.',
+    columns: { role: 'Rolle', property: 'Eigene Eigenschaft', light: 'Hell', dark: 'Dunkel' },
+    copyValue: (value) => `${value} kopieren`,
+    copyText: 'Kopieren',
+    copied: 'Kopiert',
+    typeTitle: 'Schrift',
+    typeLede: 'Wortmarke, Überschriften und Oberfläche sind in einer Familie gesetzt, die von dieser Website ausgeliefert wird. Code und Messwerte nutzen den Monospace-Stack.',
+    typeFacts: { family: 'Familie', weights: 'Strichstärken', mono: 'Monospace', package: 'Paket', licence: 'Schriftlizenz' },
+    weightsValue: (min, max) => `Variabel, ${min} bis ${max}`,
+    specimen: 'Schriftprobe',
+    tabular: 'Tabellenziffern',
+    voiceTitle: 'Stimme',
+    voiceLede: 'Drei Sätze, aus dem Designdokument.',
+    dontTitle: 'Was man nicht tun sollte',
+    dontLede: 'Die kurze Liste, die das Designdokument bereits nennt.',
+    wrongTag: 'Falsch',
+    wrongCaption: 'Die falsche Verwendung des Gelbs: als Text auf Papier. Sie wird nur einmal gezeichnet, weil sie sich mit zwei Tokens zeigen lässt. Die anderen Regeln sind Aussagen.',
+    sourceLine: 'Diese Regeln sind das Designdokument des Repositorys.',
+    sourceLink: 'DESIGN.md auf GitHub lesen',
+  },
+  pt: {
+    metaTitle: 'Marca',
+    metaDescription: 'O logótipo da Trazum e o T simples para descarregar, os tokens de cor com os seus valores, o tipo de letra, a voz e o que não fazer.',
+    title: 'Marca',
+    lede: 'O logótipo, as cores, o tipo de letra e as regras para os usar, para quem escreve sobre a Trazum, a lista ou constrói algo a seu lado. Cada valor desta página é lido do ficheiro que o contém.',
+    englishNote: 'Os nomes das cores, a voz e as regras são as palavras em inglês do repositório.',
+    licence: 'O que a licença cobre e o que não cobre está escrito na página de licença. Diz que ainda não existe uma política de marcas, e esta página não o é.',
+    licenceLink: 'Ler a página de licença',
+    wordmarkTitle: 'O logótipo',
+    wordmarkLede: 'O nome completo vem primeiro. É desenhado com os contornos do tipo de letra abaixo, sem fundo próprio, por isso assenta em qualquer página.',
+    wordmarkName: 'logótipo',
+    tName: 'T simples',
+    ground: { light: 'Claro', dark: 'Escuro' },
+    groundNote: { light: 'Para papel e outros fundos claros', dark: 'Para a tela escura e outros fundos escuros' },
+    previewLabel: (what, ground) => `${what}, fundo ${ground}`,
+    downloadsTitle: 'Descarregar',
+    downloadLabel: (what, format, ground) => `Descarregar ${what} em ${format}, fundo ${ground}`,
+    tTitle: 'O T simples',
+    tLede: 'Usa-se apenas onde o nome completo não cabe, como a barra lateral recolhida e o favicon. O preenchimento e o T são iguais nos dois fundos. A borda é a tinta do tema.',
+    coloursTitle: 'Cores',
+    coloursLede: 'Uma linha por cada token do sistema de design, tal como a folha de estilos o declara, no tema claro e no escuro. Um botão copia o valor para a sua área de transferência e não envia nada.',
+    columns: { role: 'Função', property: 'Propriedade personalizada', light: 'Claro', dark: 'Escuro' },
+    copyValue: (value) => `Copiar ${value}`,
+    copyText: 'Copiar',
+    copied: 'Copiado',
+    typeTitle: 'Tipo de letra',
+    typeLede: 'O logótipo, os títulos e a interface usam uma só família, servida a partir deste site. O código e as medições usam a pilha monoespaçada.',
+    typeFacts: { family: 'Família', weights: 'Pesos', mono: 'Monoespaçada', package: 'Pacote', licence: 'Licença da fonte' },
+    weightsValue: (min, max) => `Variável, de ${min} a ${max}`,
+    specimen: 'Amostra',
+    tabular: 'Algarismos tabulares',
+    voiceTitle: 'Voz',
+    voiceLede: 'Três frases, do documento de design.',
+    dontTitle: 'O que não fazer',
+    dontLede: 'A lista curta que o documento de design já indica.',
+    wrongTag: 'Errado',
+    wrongCaption: 'O uso errado do amarelo: como texto sobre papel. É desenhado uma só vez porque se pode mostrar com dois tokens. As outras regras são afirmações.',
+    sourceLine: 'Estas regras são o documento de design do repositório.',
+    sourceLink: 'Ler DESIGN.md no GitHub',
   },
 };

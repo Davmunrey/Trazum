@@ -24,16 +24,17 @@ RUN npm ci
 
 COPY packages/core packages/core
 COPY apps/web apps/web
-# The documentation, changelog and roadmap pages are built from the
+# The documentation, changelog, roadmap and brand pages are built from the
 # repository's own files, so the build stage carries them and the scripts that
 # turn them into pages: the documents, the changelog, the roadmap and the
-# milestones file, and the scripts that read the catalogue's source and the
-# list of models left unpriced on purpose. They go no further: the runtime
-# stage below holds only what was built.
-COPY README.md CONTRIBUTING.md VERSIONING.md CHANGELOG.md ROADMAP.md ./
+# milestones file, the design document the brand page reads its voice and its
+# rules from, and the scripts that read the catalogue's source, the list of
+# models left unpriced on purpose and the brand files' list and typeface. They
+# go no further: the runtime stage below holds only what was built.
+COPY README.md CONTRIBUTING.md VERSIONING.md CHANGELOG.md ROADMAP.md DESIGN.md ./
 COPY docs docs
 COPY .github/milestones.json .github/
-COPY scripts/build-docs-site.mjs scripts/docs-markdown.mjs scripts/build-site-pages.mjs scripts/milestones.mjs scripts/ruleset.mjs scripts/price-drift.mjs scripts/
+COPY scripts/build-docs-site.mjs scripts/docs-markdown.mjs scripts/build-site-pages.mjs scripts/milestones.mjs scripts/ruleset.mjs scripts/price-drift.mjs scripts/brand.mjs scripts/brand-files.mjs scripts/wordmark.mjs scripts/
 
 # Analytics keys are NEXT_PUBLIC_* and bake into the bundle at build time.
 # Empty defaults keep the build working with no analytics configured.

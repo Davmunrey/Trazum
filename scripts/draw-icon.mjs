@@ -1,6 +1,9 @@
 /**
  * Writes every icon this repository ships: the extension's marketplace icon
- * and the web app's favicon, Apple touch icon and manifest icons.
+ * and the web app's favicon, Apple touch icon and manifest icons, and the files
+ * the brand page offers to download: the wordmark and the plain T, light and
+ * dark, as SVG and PNG (`brand-files.mjs`), with the wordmark's outline as the
+ * module the site's social images draw it from.
  *
  * Generated rather than drawn, for the reason `draw-architecture.mjs` gives
  * about the boundary picture: an asset nobody can regenerate is one nobody can
@@ -30,6 +33,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { markIco, markPng } from './brand.mjs';
+import { BRAND_FILES, SOCIAL_PREVIEW_HTML, WORDMARK_MODULE, socialPreviewHtml, wordmarkModule } from './brand-files.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -60,6 +64,9 @@ export const ICONS = [
   { path: 'apps/web/public/icon-192.png', bytes: () => markPng(192) },
   { path: 'apps/web/public/icon-512.png', bytes: () => markPng(512) },
   { path: 'apps/web/public/icon-maskable-512.png', bytes: () => markPng(512, { bordered: false }) },
+  ...BRAND_FILES.map(({ path, bytes }) => ({ path, bytes })),
+  { path: WORDMARK_MODULE, bytes: () => Buffer.from(wordmarkModule()) },
+  { path: SOCIAL_PREVIEW_HTML, bytes: () => Buffer.from(socialPreviewHtml(readFileSync(join(ROOT, SOCIAL_PREVIEW_HTML), 'utf8'))) },
 ];
 
 const isMain = process.argv[1] !== undefined && fileURLToPath(import.meta.url) === process.argv[1];

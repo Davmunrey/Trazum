@@ -3,6 +3,7 @@ import { ImageResponse } from 'next/og';
 import { ACID, DARK, INK, LIGHT } from '../../../scripts/brand.mjs';
 import { ILLUSTRATIVE_BILL } from './landing-copy';
 import { COMMAND } from './site';
+import { WORDMARK } from './wordmark';
 
 /**
  * The card a link preview shows for a public page: 1200 by 630, in the brand.
@@ -14,10 +15,15 @@ import { COMMAND } from './site';
  * tokens, its total in the acid fill, the same figures the landing shows and
  * `marketing.test.mjs` holds to the CLI; the one command along the foot.
  *
- * The face is the one `next/og` ships, because the card is drawn on the
- * server and the app's Space Grotesk is a variable WOFF2 the renderer cannot
- * read. Nothing is fetched to draw it.
+ * The name is the wordmark the brand page offers: the same outlines, drawn from
+ * `./wordmark.ts`, which `scripts/draw-icon.mjs` writes from the typeface the
+ * app ships. The renderer cannot read the app's variable WOFF2, so text set in
+ * it would have been drawn in the face `next/og` ships instead, and a card
+ * that says Trazum in another typeface is not the wordmark. The rest of the
+ * card's text is that face, which is what is left of the problem. Nothing is
+ * fetched to draw it.
  */
+const WORDMARK_HEIGHT = 34;
 export const SOCIAL_CARD_SIZE = { width: 1200, height: 630 };
 
 export function socialCard({
@@ -56,7 +62,17 @@ export function socialCard({
           paddingBottom: 20,
         }}
       >
-        <div style={{ display: 'flex', fontSize: 44, fontWeight: 700, letterSpacing: '-0.04em' }}>Trazum</div>
+        <div style={{ display: 'flex' }}>
+          <svg
+            role="img"
+            aria-label="Trazum"
+            width={Math.round((WORDMARK_HEIGHT * WORDMARK.width) / WORDMARK.height)}
+            height={WORDMARK_HEIGHT}
+            viewBox={`0 0 ${WORDMARK.width} ${WORDMARK.height}`}
+          >
+            <path d={WORDMARK.d} fill={INK} />
+          </svg>
+        </div>
         <div style={{ display: 'flex', fontSize: 19, color: LIGHT.secondary }}>Claude Code · Codex · Gemini CLI</div>
       </div>
 
@@ -104,6 +120,8 @@ export function socialCard({
         <div
           style={{
             display: 'flex',
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
             border: `2px solid ${INK}`,
             background: ACID,
             padding: '13px 20px',
