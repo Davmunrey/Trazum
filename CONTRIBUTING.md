@@ -508,6 +508,15 @@ before it is acted on; a real one is fixed, a wrong one is answered on its
 thread with what was traced, and either way the thread is resolved by a
 person. A security finding stays open until the maintainer decides.
 
+**An agent.** A coding agent working in a checkout has the same questions as a
+skill, [`.claude/skills/trazum-review/SKILL.md`](.claude/skills/trazum-review/SKILL.md).
+It reads a diff and reports findings with file and line, each naming the rule
+and where it is stated. It restates no rule: every entry points at a section
+of this file and at the test that holds it, and `review-skill.test.js` fails
+when one of those pointers stops landing, or when a question is added above
+and the skill does not have it. Like the bot it reviews and does nothing else,
+and what it says is checked the same way before anybody acts on it.
+
 **If you are reviewing somebody else's pull request**, say what you checked
 and what you did not. "Read the diff, did not run it" is a useful review.
 An approval with nothing in it is not one.

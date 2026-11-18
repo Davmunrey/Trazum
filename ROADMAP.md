@@ -2937,7 +2937,7 @@ closed, not when somebody remembers this page. Live:
 [open to a first contribution](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
-**Ready to be picked up (11).**
+**Ready to be picked up (10).**
 
 | Issue | What | Area |
 | --- | --- | --- |
@@ -2949,7 +2949,6 @@ closed, not when somebody remembers this page. Live:
 | [#682](https://github.com/Davmunrey/Trazum/issues/682) | Review the Portuguese dictionary: 36 entries nobody who reads Portuguese has agreed to | core |
 | [#683](https://github.com/Davmunrey/Trazum/issues/683) | Review the Italian dictionary: 36 entries nobody who reads Italian has agreed to | core |
 | [#684](https://github.com/Davmunrey/Trazum/issues/684) | Review the Dutch dictionary: 30 entries nobody who reads Dutch has agreed to | core |
-| [#693](https://github.com/Davmunrey/Trazum/issues/693) | No review skill carries this repository's own rules | - |
 | [#694](https://github.com/Davmunrey/Trazum/issues/694) | The loop an agent runs until a change is done is not written down | - |
 | [#696](https://github.com/Davmunrey/Trazum/issues/696) | Read the web app's 28 hook and key findings one by one | web |
 
