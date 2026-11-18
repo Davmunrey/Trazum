@@ -143,6 +143,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **A quick edit to a description no longer leaves a cancelled required
+  check.** `PR readiness` runs when a pull request is opened and again when
+  its description is edited, and the second run cancelled the first. Edited
+  seconds after opening, #699 was left with a cancelled `PR readiness` check
+  and a guide comment that said to fix a failing check while nothing was
+  failing. It was intermittent: the same edit on #700, #701 and #702 did not
+  show it. A run in progress now finishes, as the triage workflow's has since
+  #689; the runs for one pull request stay in order, so the newest
+  description still has the last word (#703).
 - **The whole mutation run can start on a runner, and says why when it
   cannot.** Dispatched on `main` after #695, the `Mutation testing` workflow
   stopped in 46 seconds: four of the core's test files failed before a single

@@ -152,6 +152,15 @@ describe('the workflow and the rules agree', () => {
     assert.deepEqual(runs, ['node scripts/pr-readiness.mjs'], 'one single-line run step, with no expression in it');
   });
 
+  it('lets a run in progress finish, so a quick edit does not leave a cancelled required check', () => {
+    // #699: the description was edited seconds after the pull request opened,
+    // the second run cancelled the first, and the guide comment reported
+    // `PR readiness` as failing. One group for each pull request keeps the
+    // runs in order, so the last word is still the newest description's.
+    assert.match(workflow, /^concurrency:\n {2}group: pr-readiness-\$\{\{ github\.event\.pull_request\.number \}\}\n {2}cancel-in-progress: false$/m);
+    assert.doesNotMatch(workflow, /cancel-in-progress: true/);
+  });
+
   it('every exemption label exists', () => {
     for (const label of ['no-issue', 'changelog-history']) assert.ok(labels.includes(label), label);
   });
