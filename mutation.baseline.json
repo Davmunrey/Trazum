@@ -2,12 +2,12 @@
   "about": "What mutation testing found the last time it was recorded: the score of each file, and every mutant no test killed. Written by `node scripts/mutate.mjs --write`; `--check` fails on a survivor that is not listed here. A survivor is a line a test should hold and does not yet, or a change that makes no difference; docs/mutation-testing.md says how to tell.",
   "recorded": "2026-11-18",
   "total": {
-    "mutants": 446,
-    "killed": 408,
-    "timeout": 0,
-    "survived": 37,
+    "mutants": 475,
+    "killed": 432,
+    "timeout": 8,
+    "survived": 34,
     "uncovered": 1,
-    "score": 91.5
+    "score": 92.6
   },
   "files": {
     "packages/core/src/optimize.ts": {
@@ -19,12 +19,12 @@
       "score": 93.3
     },
     "packages/core/src/segment.ts": {
-      "mutants": 74,
-      "killed": 58,
-      "timeout": 0,
-      "survived": 15,
+      "mutants": 103,
+      "killed": 82,
+      "timeout": 8,
+      "survived": 12,
       "uncovered": 1,
-      "score": 78.4
+      "score": 87.4
     },
     "packages/core/src/rules.ts": {
       "mutants": 131,
@@ -273,19 +273,9 @@
       "after": "if (reserved.length >= 0) {"
     },
     {
-      "id": "202b0669ee34",
-      "file": "packages/core/src/segment.ts",
-      "line": 233,
-      "function": "segment",
-      "operator": "arithmetic",
-      "status": "survived",
-      "before": "const reserved = [...kept].sort((a, b) => a.start - b.start);",
-      "after": "const reserved = [...kept].sort((a, b) => a.start + b.start);"
-    },
-    {
       "id": "427093796a68",
       "file": "packages/core/src/segment.ts",
-      "line": 242,
+      "line": 288,
       "function": "segment",
       "operator": "condition",
       "status": "survived",
@@ -295,7 +285,7 @@
     {
       "id": "f0d78a009640",
       "file": "packages/core/src/segment.ts",
-      "line": 242,
+      "line": 288,
       "function": "segment",
       "operator": "number",
       "status": "survived",
@@ -305,7 +295,7 @@
     {
       "id": "a4138ae65069",
       "file": "packages/core/src/segment.ts",
-      "line": 243,
+      "line": 289,
       "function": "segment",
       "operator": "update",
       "status": "uncovered",
@@ -315,7 +305,7 @@
     {
       "id": "9de6736e0ef1",
       "file": "packages/core/src/segment.ts",
-      "line": 247,
+      "line": 293,
       "function": "segment",
       "operator": "condition",
       "status": "survived",
@@ -325,7 +315,7 @@
     {
       "id": "dad53e605bb1",
       "file": "packages/core/src/segment.ts",
-      "line": 247,
+      "line": 293,
       "function": "segment",
       "operator": "number",
       "status": "survived",
@@ -335,7 +325,7 @@
     {
       "id": "5fdf6a331d8e",
       "file": "packages/core/src/segment.ts",
-      "line": 254,
+      "line": 300,
       "function": "segment",
       "operator": "method",
       "status": "survived",
@@ -345,7 +335,7 @@
     {
       "id": "e2455794d02e",
       "file": "packages/core/src/segment.ts",
-      "line": 254,
+      "line": 300,
       "function": "segment",
       "operator": "arithmetic",
       "status": "survived",
@@ -355,7 +345,7 @@
     {
       "id": "7ac13eb8ca10",
       "file": "packages/core/src/segment.ts",
-      "line": 254,
+      "line": 300,
       "function": "segment",
       "operator": "number",
       "status": "survived",
@@ -365,7 +355,7 @@
     {
       "id": "2e8726afe530",
       "file": "packages/core/src/segment.ts",
-      "line": 264,
+      "line": 310,
       "function": "segment",
       "operator": "condition",
       "status": "survived",
@@ -375,32 +365,12 @@
     {
       "id": "131b60cd9407",
       "file": "packages/core/src/segment.ts",
-      "line": 264,
+      "line": 310,
       "function": "segment",
       "operator": "comparison",
       "status": "survived",
       "before": "if (quoted.length > 0) {",
       "after": "if (quoted.length >= 0) {"
-    },
-    {
-      "id": "ba6fa770ca5c",
-      "file": "packages/core/src/segment.ts",
-      "line": 266,
-      "function": "inside",
-      "operator": "comparison",
-      "status": "survived",
-      "before": "const inside = (range) => quoted.some((quote) => range.start >= quote.start && range.end <= quote.end);",
-      "after": "const inside = (range) => quoted.some((quote) => range.start > quote.start && range.end <= quote.end);"
-    },
-    {
-      "id": "197529f253ff",
-      "file": "packages/core/src/segment.ts",
-      "line": 266,
-      "function": "inside",
-      "operator": "comparison",
-      "status": "survived",
-      "before": "const inside = (range) => quoted.some((quote) => range.start >= quote.start && range.end <= quote.end);",
-      "after": "const inside = (range) => quoted.some((quote) => range.start >= quote.start && range.end < quote.end);"
     },
     {
       "id": "06c24faced3c",

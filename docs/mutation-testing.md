@@ -14,16 +14,16 @@ where a wrong line costs most.
 ## Where it stands
 
 <!-- mutation-score:start -->
-Recorded on 2026-11-18: **91.5%** of 446 mutants caught.
+Recorded on 2026-11-18: **92.6%** of 475 mutants caught.
 
 | File | Mutants | Caught | Alive | Score |
 | --- | --- | --- | --- | --- |
 | `optimize.ts` | 105 | 98 | 7 | 93.3% |
-| `segment.ts` | 74 | 58 | 16 | 78.4% |
+| `segment.ts` | 103 | 90 | 13 | 87.4% |
 | `rules.ts` | 131 | 121 | 10 | 92.4% |
 | `savings.ts` | 62 | 60 | 2 | 96.8% |
 | `session-cost.ts` | 74 | 71 | 3 | 95.9% |
-| **All** | 446 | 408 | 38 | 91.5% |
+| **All** | 475 | 440 | 35 | 92.6% |
 <!-- mutation-score:end -->
 
 A survivor is not a bug. It is a place where a bug would not be noticed.
@@ -193,6 +193,12 @@ differently. For this one: a protected span that starts on the character where
 another ends. No test had two spans that touch, and now
 `segment-edges.test.js` does.
 
+That line is no longer in the file. It looked at every reserved range for
+every match, which made the segmenter's work grow with the square of the
+spans in a text, and it was replaced by a search that halves (#716). The
+example is kept as it was read. The search that replaced it added 29 mutants
+and none of them lives.
+
 There are three honest outcomes:
 
 1. **A test was missing.** Write it. This is most of them.
@@ -205,29 +211,27 @@ There are three honest outcomes:
 
 ### What is on record
 
-Of the 38 on record, as read on 2026-11-18. This is a reading, not a proof:
+Of the 35 on record, as read on 2026-11-18. This is a reading, not a proof:
 
 - **6 are shortcuts.** A test for "is there anything to do" in front of code
-  that does nothing when there is not (`segment.ts` 194, 196, 264), and the
+  that does nothing when there is not (`segment.ts` 194, 196, 310), and the
   early exit from the fixed-point loop (`optimize.ts` 187). Forcing them
   changes the time and not the answer.
-- **15 guard an input that does not arrive.** A match of no length, where no
-  pattern can produce one (`segment.ts` 242, 243, 247). A protected span that
-  starts or ends exactly on a quotation mark, which the scan has already
-  blanked out (`segment.ts` 266). More protected spans than there are masks,
-  where the cap moving by one only matters on a collision (`optimize.ts` 27,
-  57). An unpriced model, turned away twice (`session-cost.ts` 119, 144). A
+- **13 guard an input that does not arrive.** A match of no length, where no
+  pattern can produce one (`segment.ts` 288, 289, 293). More protected spans
+  than there are masks, where the cap moving by one only matters on a
+  collision (`optimize.ts` 27, 57). An unpriced model, turned away twice (`session-cost.ts` 119, 144). A
   percentile's index clamped to a bound it never passes (`session-cost.ts`
   109). A zero already handled a line earlier (`savings.ts` 140). An empty
   replacement, which no entry has (`rules.ts` 137).
 - **3 are a cap nothing reaches.** Five passes to a fixed point
   (`optimize.ts` 141, 142). No prompt in the suite needs the fifth.
-- **14 are not settled.** The longest-phrase-first sorts (`rules.ts` 115,
+- **13 are not settled.** The longest-phrase-first sorts (`rules.ts` 115,
   210, 226), two lines of the rule about a thanks under a colon (`rules.ts`
   271, 278), one branch of keeping a capital (`rules.ts` 139), the 0.92
   similarity at which a block is a near-copy (`rules.ts` 422), a promotion
   that applies to one side of a comparison (`savings.ts` 63), and how the scan
-  resumes after a reservation (`segment.ts` 233, 254). Each of these is either
+  resumes after a reservation (`segment.ts` 300). Each of these is either
   a missing test or a line that can be simpler. They are the work this record
   leaves.
 

@@ -250,6 +250,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **Segmenting a text of many protected spans no longer takes the square of
+  them.** For every match, the segmenter asked whether it overlapped a range
+  already reserved by looking at every reserved range, and asked whether a
+  quotation held a reservation by looking at every quotation. A text of
+  little but placeholders, tags and code spans has as many reservations as
+  matches. Measured on 2026-11-18: `optimize` took 0.5 s on 70,000
+  characters, 3.3 s on 140,000, 16 s on 280,000 and 26 to 30 s on 399,000,
+  which is under the 400,000 the HTTP API accepts. Both questions are now
+  answered by halving over ranges that are in order and do not overlap, and
+  the same 399,000 characters take 1.1 to 1.5 s; the segmenter's share went
+  from 10 s to under 50 ms. What found it was a test with a five-second
+  budget failing one coverage run in three on a runner, which was read as a
+  flaky test until the run could name it (#712). The suite's own comment had
+  excused this very fixture as "doing exactly the work it is supposed to
+  do". The new tests hold it without a budget in seconds: the two searches
+  are compared answer for answer with the loops they replace, the number of
+  ranges a search reads is counted, and the segmenter is timed against
+  itself at a quarter of the cap and at the cap. The file is under mutation
+  testing, and the record was made again: 92.6% of 475 mutants caught, where
+  it was 91.5% of 446, with none of the 29 the searches added left alive
+  (#716).
 - **A test that fails under coverage is named.** `npm run coverage` said "a
   test failed in this run" and nothing else: the report was the run's only
   output, so which test, where and why were in no log and no file. On
