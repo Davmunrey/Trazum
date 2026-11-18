@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 import { THEME_BOOTSTRAP } from '../lib/theme';
 import { Analytics } from '../components/Analytics';
@@ -56,6 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         {children}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
