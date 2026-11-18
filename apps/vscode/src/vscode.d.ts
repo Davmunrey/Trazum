@@ -65,6 +65,7 @@ declare module 'vscode' {
     get<T>(section: string, fallback: T): T;
   }
 
+  // biome-ignore lint/suspicious/noConstEnum: making it a plain enum changes what the build emits where it is used, from the number to a lookup at run time. That is a change to the extension, not a lint fix.
   export const enum StatusBarAlignment {
     Left = 1,
     Right = 2,

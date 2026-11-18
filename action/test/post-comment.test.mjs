@@ -325,7 +325,7 @@ describe('what it sends', () => {
   it('stops paging rather than walking a pull request forever', async () => {
     // A full page every time would otherwise loop until the API ran out.
     let calls = 0;
-    const fetchImpl = async (url, init = {}) => {
+    const fetchImpl = async (_url, init = {}) => {
       const method = init.method ?? 'GET';
       if (method !== 'GET') return { ok: true, status: 201, json: async () => ({ id: 1 }) };
       calls++;

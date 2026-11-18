@@ -119,6 +119,7 @@ export function PositionCard({ logText, t }: { logText: string; t: WebMessages }
         <CardContent className="flex flex-col gap-3.5 px-[18px]">
           <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">{t.position.lede}</p>
 
+          {/* biome-ignore lint/a11y/noLabelWithoutControl: the control is the Textarea inside it, which renders a textarea; the rule cannot see through the component */}
           <label className="flex flex-col gap-1.5 text-[13px] text-muted-foreground">
             {t.position.configLabel}
             <Textarea

@@ -1035,7 +1035,6 @@ export function App({
             <TabsContent value="library">
               <Library
                 t={t}
-                locale={locale}
                 currentPrompt={promptText.value}
                 onRestore={(text) => promptText.set(text)}
               />

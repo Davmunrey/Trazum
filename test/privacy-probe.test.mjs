@@ -112,6 +112,6 @@ describe('the probe starts reading only once the page has started', () => {
   });
 
   it('and CI runs it on a slowed page, where a probe without the wait fails every time', () => {
-    assert.match(ci, /node scripts\/privacy-probe\.mjs[^]*?--cpu-throttle [2-9]\d*/);
+    assert.match(ci, /node scripts\/privacy-probe\.mjs[\s\S]*?--cpu-throttle [2-9]\d*/);
   });
 });

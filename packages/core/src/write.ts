@@ -83,7 +83,7 @@ export const OUTPUT_FORMATS = ['prose', 'json', 'list', 'table'] as const;
 export type OutputFormat = (typeof OUTPUT_FORMATS)[number];
 
 const answered = (answers: Answers, id: string): boolean =>
-  Object.prototype.hasOwnProperty.call(answers, id) && answers[id] !== null;
+  Object.hasOwn(answers, id) && answers[id] !== null;
 
 const shapeIs = (...formats: readonly OutputFormat[]) => (answers: Answers): boolean => {
   const shape = answers['output-shape'];
@@ -155,7 +155,7 @@ export interface Interview {
 
 export function interview(answers: Answers): Interview {
   const open = SLOTS.filter((entry) => isOpen(entry, answers));
-  const has = (entry: Slot) => Object.prototype.hasOwnProperty.call(answers, entry.id);
+  const has = (entry: Slot) => Object.hasOwn(answers, entry.id);
   const unasked = open.filter((entry) => !has(entry));
   return {
     next: unasked[0]?.id ?? null,

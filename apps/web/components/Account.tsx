@@ -281,7 +281,7 @@ export function Account({
         aria-label={t.account.menuLabel(state.user.login)}
       >
         {state.user.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- one 22px avatar
+          // biome-ignore lint/performance/noImgElement: one 22px avatar from another origin, which the image optimiser would have to be allowed to fetch
           <img
             src={state.user.avatarUrl}
             alt=""

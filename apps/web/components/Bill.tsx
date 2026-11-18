@@ -70,7 +70,7 @@ import { readUsageFile, UsageFileTooLarge } from '../lib/usage-file';
 import { AnimatedContent } from './motion/AnimatedContent';
 import { Button } from '@/components/ui/button';
 import { Note } from '@/components/ui/note';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import type { WebMessages } from '../lib/i18n';
 
@@ -643,11 +643,6 @@ export function Bill({ t }: { t: WebMessages }) {
     if (logText !== null) analyze(logText, null);
   }
 
-  const Eyebrow = ({ children }: { children: React.ReactNode }) => (
-    <CardTitle className="text-[13px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-      {children}
-    </CardTitle>
-  );
 
   const labelName = (label: string): string => (label === UNLABELLED ? t.bill.unlabelled : label);
 
@@ -713,6 +708,7 @@ export function Bill({ t }: { t: WebMessages }) {
           */}
           <Note tone="good">{t.bill.privacy}</Note>
 
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: a drop target, and dropping is a pointer gesture; the same files go in by keyboard through the button inside it */}
           <div
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
@@ -1045,7 +1041,7 @@ function Report({
         <Card className="gap-0 py-[18px]">
           <CardContent className="flex flex-col gap-2 px-[18px] text-sm text-muted-foreground">
             <span>{report.unpriced.calls > 0 ? t.bill.nothingPriced : t.bill.empty}</span>
-            <Gaps report={report} t={t} n={n} />
+            <Gaps report={report} t={t} />
           </CardContent>
         </Card>
       </AnimatedContent>
@@ -1420,7 +1416,7 @@ function Report({
               n={n}
               pct={pct}
             />
-            <Gaps report={report} t={t} n={n} />
+            <Gaps report={report} t={t} />
           </CardContent>
         </Card>
 
@@ -2320,11 +2316,9 @@ function BreakdownTable({
 function Gaps({
   report,
   t,
-  n,
 }: {
   report: UsageProfileReport;
   t: WebMessages;
-  n: (value: number) => string;
 }) {
   const { skippedLines, unpricedModels, unpriced, fieldCoverage } = report;
   /**

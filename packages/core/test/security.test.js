@@ -1676,7 +1676,7 @@ describe('the packaged Action', () => {
     );
   });
 
-  it('the docs recommend a SHA pin too, not a tag', (t) => {
+  it('the docs recommend a SHA pin too, not a tag', () => {
     // The rule above governs what this repository runs. This one governs what it
     // *tells other people to run*, which had drifted: the README recommended
     // `Davmunrey/Trazum@v1.0.0` for a whole release — a tag that did not exist,

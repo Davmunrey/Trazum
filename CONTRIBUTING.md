@@ -75,8 +75,8 @@ npm run verify     # everything CI runs, in the order CI runs it
 
 Node 22. No global installs needed.
 
-`verify` is the one command worth remembering — it is build, tests, typecheck
-across all six workspaces, and the web build. **Run it before pushing, and
+`verify` is the one command worth remembering — it is the linter, build, tests,
+typecheck across all six workspaces, and the web build. **Run it before pushing, and
 read its exit code rather than its output.** The web build in particular fails on
 things nothing else notices: `@trazum/core` is bundled for the browser, so one
 `node:fs` import anywhere in its import graph breaks it, and neither the tests
@@ -85,6 +85,7 @@ nor `tsc` will tell you.
 The pieces individually, if you want a faster loop:
 
 ```bash
+npm run lint       # the whole repository, in under a second; needs no build
 npm run build      # core, the CLI, the MCP server, the OpenAI tokenizer and the editor extension
 npm test           # core, the CLI, MCP, the tokenizer, the editor extension, the web app, the Action, agent workflows and the release's bill of materials
 npm run typecheck  # all six workspaces
@@ -93,6 +94,24 @@ npm run test:action  # the packaged Action on its own, without the rest
 npm run test:agents  # real CLI/MCP workflows on synthetic logs; run build first
 npm run test:release # the bill of materials each release attaches, checked against npm's own view of the tree
 ```
+
+### The linter
+
+`npm run lint` runs Biome over every tracked file and passes only when it has
+nothing to say: no warnings left standing, so a new one is seen. It lints and
+does not format. `biome.jsonc` is the whole configuration, and every rule it
+switches off has its reason on the lines above it.
+
+When it reports something in a place that means it, say so next to the line
+and nowhere else:
+
+```ts
+// biome-ignore lint/a11y/noStaticElementInteractions: a drop target, and dropping is a pointer gesture
+```
+
+The reason is for the next reader and `lint.test.js` requires one. Do not
+switch a rule off in `biome.jsonc` for one place: that file is for what this
+code does on purpose everywhere.
 
 The ones that write files rather than check them:
 

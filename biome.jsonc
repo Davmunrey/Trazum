@@ -1,0 +1,77 @@
+// The linter: which rules run, and every one that does not, with its reason.
+//
+// It lints. It does not format: formatting the repository would be a diff of
+// every file and no finding. The style group is off for the same reason, and
+// because its largest rule argues with `noUncheckedIndexedAccess`, which is
+// what makes `x!` necessary here.
+//
+// A rule is switched off below only when what it reports is something this
+// code does on purpose, everywhere. A single place that does it on purpose
+// carries a `biome-ignore` with its reason, next to the line.
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  // Skills synced from elsewhere are not this repository's to edit.
+  "files": { "includes": ["**", "!.claude/skills/synced"] },
+  "formatter": { "enabled": false },
+  "assist": { "enabled": false },
+  "css": { "parser": { "tailwindDirectives": true } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": { "preset": "none" },
+      "suspicious": {
+        // Stripping and matching ANSI escapes and control characters is what
+        // tool-output.ts, style.ts and the terminal pictures are for.
+        "noControlCharactersInRegex": "off",
+        // `while ((match = pattern.exec(text)) !== null)` is how a global
+        // pattern is walked when the loop moves `lastIndex` itself, and the
+        // seeded generators in the tests assign as they return.
+        "noAssignInExpressions": "off",
+        // Strings that hold `${{ … }}` and `${name}` are the subject here:
+        // workflow expressions under test, and templates a caller fills in.
+        "noTemplateCurlyInString": "off",
+        // TypeScript gives a `let` declared before a `try` the type of what is
+        // assigned to it, and `strict` already refuses a real implicit any.
+        "noImplicitAnyLet": "off",
+        // Each of these in the web app is a decision about a list that never
+        // reorders. They are read one by one in #696, with the hooks.
+        "noArrayIndexKey": "off"
+      },
+      "correctness": {
+        // Every one of the fifteen is an effect that runs on some of what it
+        // reads, on purpose or not. Changing a dependency list changes when
+        // an effect runs, and nothing yet drives the pages to say whether it
+        // still behaves: #696, after the end-to-end tests of #692.
+        "useExhaustiveDependencies": "off",
+        "noComponentHookFactories": "off"
+      },
+      "complexity": {
+        // The tests match indentation with a regular expression literal.
+        "noAdjacentSpacesInRegex": "off",
+        // It reads the earlier of two dates written as text as a job for
+        // Math.min, which would turn both into NaN.
+        "useMathMinMax": "off",
+        // Style, each of them: no finding, a diff.
+        "useLiteralKeys": "off",
+        "useOptionalChain": "off",
+        "useRegexLiterals": "off",
+        "noUselessStringRaw": "off",
+        // The reduced-motion block overrides every animation on the page,
+        // which is the one thing `!important` is for.
+        "noImportantStyles": "off"
+      },
+      "a11y": {
+        // A labelled `role="group"` is valid, and a fieldset brings a border,
+        // a minimum width and a legend the design does not have.
+        "useSemanticElements": "off"
+      },
+      "performance": {
+        // Nothing is bundled by export name where this fires: a test reads
+        // the core's exports by a name it computed.
+        "noDynamicNamespaceImportAccess": "off"
+      }
+    }
+  }
+}

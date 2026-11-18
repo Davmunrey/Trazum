@@ -61,7 +61,7 @@ const gatewayOver = async (stub, over = {}) => {
     standing: () => ({ limitUsd: 100, consumedUsd: 1, provenance: 'measured', asOfMs: 0 }),
     record: (m) => recorded.push(m),
     note: (line) => notes.push(line),
-    fetchImpl: (url, init) => fetch(`${stubUrl}/v1/messages`, init),
+    fetchImpl: (_url, init) => fetch(`${stubUrl}/v1/messages`, init),
     ...over,
   });
   started.push(server);
@@ -191,7 +191,7 @@ describe('a forwarded call that could not be measured is named', () => {
       record: (m) => recorded.push(m),
       unmeasured: (cause) => causes.push(cause),
       note: () => {},
-      fetchImpl: (url, init) => fetch(`${stubUrl}${path}`, init),
+      fetchImpl: (_url, init) => fetch(`${stubUrl}${path}`, init),
     });
     started.push(gw);
     const where = await listenGateway(gw, { port: 0 });
@@ -270,7 +270,7 @@ describe('a forwarded call that could not be measured is named', () => {
       record: () => {},
       unmeasured: (cause) => causes.push(cause),
       note: () => {},
-      fetchImpl: (url, init) => fetch(`${stubUrl}/v1/messages`, init),
+      fetchImpl: (_url, init) => fetch(`${stubUrl}/v1/messages`, init),
     });
     started.push(gw);
     const where = await listenGateway(gw, { port: 0 });

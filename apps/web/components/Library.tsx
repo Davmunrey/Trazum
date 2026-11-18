@@ -49,14 +49,12 @@ interface Detail {
 
 export function Library({
   t,
-  locale,
   /** The Optimise tab's current prompt, so Save puts the right thing away. */
   currentPrompt,
   /** Load a version back into the Optimise tab. */
   onRestore,
 }: {
   t: WebMessages;
-  locale: string;
   currentPrompt: string;
   onRestore: (text: string) => void;
 }) {

@@ -175,6 +175,8 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
         A click anywhere inside focuses the prompt, because that is what a
         terminal does; the output region is still selectable text.
       */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: the click only moves focus to the prompt, which a keyboard reaches by itself with Tab */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: the same: there is nothing here for a key to do that the prompt does not already do */}
       <div
         className="overflow-hidden rounded-none border-2 border-[#67715c] bg-[#1c211b] font-mono text-[13px] leading-relaxed text-[#f0f1e5] shadow-[var(--shadow-focal)]"
         onClick={() => inputRef.current?.focus()}

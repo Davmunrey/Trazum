@@ -175,7 +175,7 @@ describe('the money in this table is formatted as one currency', () => {
      * `999.9999999999999`, which is under a thousand to a comparison and a
      * thousand to a reader.
      */
-    const { formatUsd, formatSignedUsd } = await import('../dist/index.js');
+    const { formatUsd } = await import('../dist/index.js');
     assert.equal(formatUsd(5000 - 5000 * 0.8), '$1,000');
     assert.equal(formatUsd(999.998), '$1,000');
     // And the boundary below it is untouched.

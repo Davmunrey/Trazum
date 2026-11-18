@@ -51,12 +51,6 @@ const truthPath = join(fixturesDir, 'token-ground-truth.json');
  * published because a changelog heading exists.
  */
 
-/**
- * Imported, not repeated. This was `0.15` here while twenty-three other files
- * said the old band in prose, and the number the code publishes is now the only copy.
- */
-const PUBLISHED_BAND = ESTIMATE_ERROR_BAND_PCT / 100;
-
 const corpusFiles = readdirSync(corpusDir).filter((n) => n.endsWith('.txt')).sort();
 
 
@@ -354,7 +348,7 @@ describe('the published error band', () => {
   it('does not lose accuracy it has already achieved', () => {
     /**
      * A regression gate, **not a claim** — and the difference is the whole point
-     * of it existing separately from `PUBLISHED_BAND`.
+     * of it existing separately from the published band.
      *
      * The published band is what a user may rely on, and it is deliberately looser
      * than the measurements: 10 against a worst case of 6.4, because six text types

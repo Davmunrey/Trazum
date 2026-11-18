@@ -50,6 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: the script is a constant written in this repository and carries the request's nonce; nothing a visitor sends reaches it */}
         <script nonce={requestHeaders.get('x-nonce') ?? undefined} dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body>

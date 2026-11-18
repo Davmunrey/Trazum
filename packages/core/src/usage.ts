@@ -793,7 +793,7 @@ function readCount(...candidates: unknown[]): Count {
 }
 
 /** Zero for an absent count. Callers reject corrupt ones before reaching this. */
-const valueOf = (count: Count): number => (count.kind === 'ok' ? count.value : 0);
+const countOf = (count: Count): number => (count.kind === 'ok' ? count.value : 0);
 
 /**
  * One line of a usage log, or `null` when it is not one.
@@ -1008,23 +1008,23 @@ export function parseUsageLine(line: string): UsageRecord | null {
 
   // Both providers that fold cached tokens into the prompt count, one
   // subtraction. They cannot coexist on a record: the shapes share no field.
-  const cached = valueOf(counts.openAiCached!) + valueOf(counts.geminiCached!);
+  const cached = countOf(counts.openAiCached!) + countOf(counts.geminiCached!);
   // Inside the OpenAI total like the cached tokens, and taken out of it the same way.
-  const openAiWritten = valueOf(counts.openAiWrite!);
-  const flatWrite = valueOf(counts.cacheWrite!);
-  const split5m = valueOf(counts.write5m!);
-  const split1h = valueOf(counts.write1h!);
+  const openAiWritten = countOf(counts.openAiWrite!);
+  const flatWrite = countOf(counts.cacheWrite!);
+  const split5m = countOf(counts.write5m!);
+  const split1h = countOf(counts.write1h!);
   const hasSplit = counts.write5m!.kind === 'ok' || counts.write1h!.kind === 'ok';
   // OpenAI's lifetimes, taken only when they add up to the writes they split.
   const openAiSplitGiven = counts.openAiWrite30m!.kind === 'ok' || counts.openAiWrite12h!.kind === 'ok';
   const openAiSplitAgrees =
     counts.openAiWrite30m!.kind === 'ok' && counts.openAiWrite12h!.kind === 'ok'
-      && valueOf(counts.openAiWrite30m!) + valueOf(counts.openAiWrite12h!) === openAiWritten;
-  const openAiLong = openAiSplitAgrees ? valueOf(counts.openAiWrite12h!) : 0;
+      && countOf(counts.openAiWrite30m!) + countOf(counts.openAiWrite12h!) === openAiWritten;
+  const openAiLong = openAiSplitAgrees ? countOf(counts.openAiWrite12h!) : 0;
 
   return {
     model,
-    inputTokens: Math.max(0, valueOf(counts.input!) - cached - openAiWritten) + valueOf(counts.geminiToolPrompt!),
+    inputTokens: Math.max(0, countOf(counts.input!) - cached - openAiWritten) + countOf(counts.geminiToolPrompt!),
     cacheReadTokens: counts.cacheRead!.kind === 'ok' ? counts.cacheRead!.value : cached,
     /**
      * The split when the log carries it, the flat number otherwise — and
@@ -1045,7 +1045,7 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * by the model, since the line alone cannot say whose API wrote it.
      */
     writeTtlKnown: hasSplit || (flatWrite === 0 && (openAiSplitGiven ? openAiSplitAgrees : openAiWritten === 0)),
-    outputTokens: valueOf(counts.output!) + valueOf(counts.geminiThoughts!),
+    outputTokens: countOf(counts.output!) + countOf(counts.geminiThoughts!),
     /**
      * Trimmed and internally normalised: any whitespace run becomes one space.
      * A label is a workload name, and it is also used as half of structured keys
@@ -1118,7 +1118,7 @@ export function parseUsageLine(line: string): UsageRecord | null {
     ...(record.batch === true || usage.service_tier === 'batch' ? { batch: true as const } : {}),
     /* Said by the record alone: nothing a provider returns names who was waiting. */
     ...(record.interactive === true ? { interactive: true as const } : {}),
-    ...(valueOf(webSearch) > 0 ? { webSearchRequests: valueOf(webSearch) } : {}),
+    ...(countOf(webSearch) > 0 ? { webSearchRequests: countOf(webSearch) } : {}),
     ...(openAiSplitGiven && !openAiSplitAgrees ? { writeSplitContradicted: true as const } : {}),
   };
 }

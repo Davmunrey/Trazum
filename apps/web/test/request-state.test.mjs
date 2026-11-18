@@ -7,7 +7,7 @@ const read = (name) => readFileSync(new URL(`../components/${name}.tsx`, import.
 
 it('automatic Optimise payloads disable paid passes while manual requests retain them', () => {
   const source = read('Optimizer');
-  const payload = source.match(/body: JSON\.stringify\((\{[^]*?\n        \})\)/)?.[1];
+  const payload = source.match(/body: JSON\.stringify\((\{[\s\S]*?\n        \})\)/)?.[1];
   assert.ok(payload, 'request payload must be located in the real handler');
   const context = {
     promptUsed: 'synthetic prompt', level: 'safe', locale: 'en', reorder: false,
@@ -29,9 +29,9 @@ it('automatic Optimise payloads disable paid passes while manual requests retain
 
 function writerHarness(fetchImpl) {
   const source = read('Writer');
-  const send = source.match(/    async \(next: Answers\)[^]*?\n    },\n    \[locale, t\]/)?.[0]
+  const send = source.match(/    async \(next: Answers\)[\s\S]*?\n    },\n    \[locale, t\]/)?.[0]
     .replace(/,\n    \[locale, t\]$/, '');
-  const answer = source.match(/  const answer = async[^]*?\n  };/)?.[0];
+  const answer = source.match(/  const answer = async[\s\S]*?\n  };/)?.[0];
   assert.ok(send && answer, 'exercise actual Writer request and answer handlers');
   const observed = { answers: {}, typed: 'keep this answer', error: null, loading: false, tracks: 0 };
   const context = {
