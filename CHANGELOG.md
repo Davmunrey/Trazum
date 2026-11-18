@@ -690,6 +690,16 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The pull-request guide no longer asks Dependabot to link an issue.** A
+  bot cannot, so on a green dependency update (#655) the guide named
+  `@dependabot[bot]` and never reached the step that moves it: the
+  owner's approval, which GitHub accepts on a bot's pull request and
+  records as a review. `pr-guide.yml` now pins the version from
+  Davmunrey/Zolts#116: a bot's pull request is not asked for an issue,
+  a green one tells the owner to approve and merge, and the owner's review
+  is requested once, which notifies them. The pinned file was fetched
+  from the new commit and matches the new SHA-256. (#773)
+
 - **The wiki's Home page closed a `<div>` it never opened.** The page is a
   section of the README, and the cut fell after the closing tag of a block
   whose opening tag is above it. `scripts/build-wiki.mjs` now pairs the tags
