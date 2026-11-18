@@ -11,9 +11,16 @@ on:
 permissions:
   contents: read
 
+# One at a time for each pull request, in order, and a run in progress
+# finishes. Cancelling it left a cancelled `PR readiness` check on #699 when
+# the description was edited seconds after the pull request was opened, and
+# the guide comment reported a required check as failing while nothing was
+# (#703). The job reads and takes seconds, so the run that was going to be
+# replaced costs nothing to finish, and the one that judges the description as
+# it now stands still comes last.
 concurrency:
   group: pr-readiness-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   readiness:
