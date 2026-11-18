@@ -529,6 +529,26 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The terminal carries the brand: one module draws the reports, the answer comes first, and it fits the window.**
+  `packages/cli/src/style.ts` is now the one module that draws a terminal report: the commands hand it sentences and
+  rows, and it decides the colour, the width and the order. `bill`, `profile`, `plan`, `optimize`, `check` and
+  `proactive` draw through it. Each opens with its question as a ruled heading and the figure that answers it on the
+  line under it, then the breakdown, then the notes and what to do next: `bill` moves the period and the
+  subscription caveat below its tables, and on a terminal writes the files it read to stderr after the statement
+  rather than five lines above it, dimmed on a terminal; `profile` moves the period below the four parts of the bill; `check` says
+  `All 3 within budget.` under its heading instead of after the files; `optimize` draws `Start here` as that heading.
+  Colour comes from the terminal: true colour where `COLORTERM` says so, the nearest of the 256 where `TERM` does, the
+  16 otherwise, and none for `NO_COLOR`, a pipe or a file; `FORCE_COLOR` names a depth (1, 2, 3, or 0 for none). The
+  answering figure is marked in ink on the acid ground, once per report; the bars and the lever arrows take the accent,
+  #70831b, the brand's olive at a lightness that keeps 3.5:1 on light and dark terminals alike;
+  success, caution and error keep the terminal's own green, yellow and red, and every one of them is also a word or a
+  mark (`!`, `?`, `→`, `OK`, `OVER`), so the caveats that were whole yellow paragraphs now carry a `!`. With a window
+  (or `COLUMNS`), reports are drawn between 60 and 76 columns: paragraphs reflow, a table narrows its bars and then
+  cuts its name, and a figure never leaves its row. A pipe keeps the layout it had. No figure, exit code or `--json`
+  document changed: `terminal-report.test.js` compares every number the five reporting commands print on the examples with what they printed
+  before, at no width and at 60, 80 and 120 columns. The README's two pictures and the landing's screen are redrawn
+  from the new output; the picture draws the mark in the acid. (#758)
+
 - **The landing tells the product as you scroll: a laptop, the CLI at work,
   and a lid that closes.** Below the headline a laptop drawn in the brand
   arrives; scrolling pushes the camera into its screen until the terminal

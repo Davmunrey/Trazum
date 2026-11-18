@@ -28,7 +28,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { ACID, DARK, DISPLAY, MONO, markSvg } from './brand.mjs';
+import { ACID, DARK, DISPLAY, INK, MONO, markSvg } from './brand.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CLI = join(ROOT, 'packages/cli/dist/index.js');
@@ -38,10 +38,23 @@ export const THEME = {
   32: DARK.good,
   33: DARK.warn,
   31: DARK.bad,
-  // Cyan is what the CLI uses to point: the share bars and the arrow beside an
-  // opportunity. In this product the colour that points is the acid fill.
+  // Cyan is what the CLI uses to point, in 16 colours: the share bars and the
+  // arrow beside an opportunity. In this product the colour that points is the
+  // acid fill.
   36: ACID,
+  // Ink: the type inside the mark, and nowhere else.
+  30: INK,
 };
+
+/**
+ * The mark: the one figure a report answers its question with, which the CLI
+ * draws on an acid ground in ink (`43` and `30` in 16 colours, `49` closing
+ * the ground). On these pictures' dark ground it is drawn the way the dark
+ * theme draws accent text, in the acid itself and bold, because a ground
+ * behind a run would have to guess the width of a face the picture cannot
+ * choose for the reader.
+ */
+export const MARK_GROUND = 43;
 
 /** What the CLI reads to guess where it is running; blanked, as the test suite blanks them. */
 const HOST_ENV = ['CLAUDECODE', 'CODEX_SANDBOX', 'CODEX_HOME', 'CURSOR_TRACE_ID', 'GITHUB_ACTIONS', 'CI', 'TERM_PROGRAM'];
@@ -74,7 +87,7 @@ export const plain = (ansi) => ansi.replace(/\x1b\[[0-9;]*m/g, '');
  */
 export function styledLines(ansi) {
   const lines = [[]];
-  let style = { bold: false, dim: false, colour: null };
+  let style = { bold: false, dim: false, colour: null, mark: false };
   const pattern = /\x1b\[([0-9;]*)m|\n|[^\x1b\n]+/g;
   for (const match of ansi.matchAll(pattern)) {
     const [token, codes] = match;
@@ -86,7 +99,9 @@ export function styledLines(ansi) {
         else if (code === 2) style = { ...style, dim: true };
         else if (code === 22) style = { ...style, bold: false, dim: false };
         else if (code === 39) style = { ...style, colour: null };
-        else if (code === 0) style = { bold: false, dim: false, colour: null };
+        else if (code === 0) style = { bold: false, dim: false, colour: null, mark: false };
+        else if (code === MARK_GROUND) style = { ...style, mark: true };
+        else if (code === 49) style = { ...style, mark: false };
         else if (THEME[code] !== undefined) style = { ...style, colour: code };
         else throw new Error(`The CLI printed colour code ${code}, which this theme gives no value`);
       }
@@ -114,7 +129,8 @@ const esc = (text) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').repl
 const run = (text) => esc(text).replaceAll(' ', '&#160;');
 
 /** One run as a `<tspan>`: the theme's colour, and two glyphs treated as what they are. */
-function span({ text, bold, dim, colour }) {
+function span({ text, bold, dim, colour, mark }) {
+  if (mark) return `<tspan fill="${ACID}" font-weight="bold">${run(text)}</tspan>`;
   const fill = colour !== null ? THEME[colour] : dim ? DARK.secondary : DARK.text;
   const weight = bold ? ' font-weight="bold"' : '';
   // Rules and the empty cells of a bar are structure, not prose: drawn in the

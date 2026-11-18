@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { ACID, DARK } from '../../../scripts/brand.mjs';
-import { THEME, drawTerminal, plain, styledLines } from '../../../scripts/terminal-picture.mjs';
+import { ACID, DARK, INK } from '../../../scripts/brand.mjs';
+import { MARK_GROUND, THEME, drawTerminal, plain, styledLines } from '../../../scripts/terminal-picture.mjs';
 
 /**
  * The part of the README's two transcripts that is not the CLI's: how escape
@@ -45,13 +45,22 @@ describe('escape codes become styled runs', () => {
   it('gives every colour the CLI can print a value from the palette', () => {
     assert.deepEqual(
       Object.keys(THEME).map(Number).sort(),
-      [31, 32, 33, 36],
-      'style.ts paints in red, green, yellow and cyan; the theme should name exactly those',
+      [30, 31, 32, 33, 36],
+      'style.ts paints in red, green, yellow, cyan and the mark\u2019s ink; the theme should name exactly those',
     );
     assert.equal(THEME[32], DARK.good);
     assert.equal(THEME[33], DARK.warn);
     assert.equal(THEME[31], DARK.bad);
     assert.equal(THEME[36], ACID);
+    assert.equal(THEME[30], INK);
+  });
+
+  it('reads the mark: the acid ground opens it and its own code closes it', () => {
+    const [line] = styledLines(`  ${ESC}1;30;${MARK_GROUND}m$12.70${ESC}22;39;49m across`);
+    assert.equal(line[1].mark, true);
+    assert.equal(line[1].text, '$12.70');
+    assert.equal(line[2].mark, false, 'the ground ran past the figure');
+    assert.equal(line[2].colour, null);
   });
 
   it('drops trailing spaces and the blank lines at either end, and nothing else', () => {
@@ -73,6 +82,11 @@ describe('runs become a picture', () => {
       comment: 'a comment',
       ...overrides,
     });
+
+  it('draws the mark in the acid, bold, as the dark theme draws accent text', () => {
+    const svg = picture({ lines: styledLines(`  ${ESC}1;30;43m$12.70${ESC}22;39;49m`) });
+    assert.match(svg, new RegExp(`<tspan fill="${ACID}" font-weight="bold">\\$12\\.70</tspan>`));
+  });
 
   it('writes every space as one that <img> will not collapse', () => {
     const runs = [...picture().matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/g)].map(([, text]) => text);

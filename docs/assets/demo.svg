@@ -14,9 +14,9 @@
   <text x="46" y="28" font-family="'Space Grotesk',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="17" font-weight="700" letter-spacing="-0.4" fill="#f0f1e5">Trazum</text>
   <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13">
     <text x="22" y="72"><tspan fill="#dce94d" font-weight="bold">$</tspan><tspan fill="#f0f1e5">&#160;trazum&#160;optimize&#160;examples/support-prompt.txt&#160;--calls&#160;50000&#160;--cost</tspan></text>
-    <text x="22" y="104"><tspan fill="#f0f1e5" font-weight="bold">Start&#160;here:</tspan></text>
-    <text x="22" y="125"><tspan fill="#f0f1e5">&#160;&#160;</tspan><tspan fill="#c0c6af">"This&#160;task&#160;may&#160;not&#160;need&#160;Claude&#160;Opus&#160;5",&#160;$416.99/month,&#160;13×&#160;what&#160;the&#160;rules</tspan></text>
-    <text x="22" y="146"><tspan fill="#c0c6af">&#160;&#160;saved.</tspan></text>
+    <text x="22" y="104"><tspan fill="#f0f1e5" font-weight="bold">Start&#160;here</tspan><tspan fill="#f0f1e5">&#160;</tspan><tspan fill="#67715c">───────────────────────────────────────────────────────────────</tspan></text>
+    <text x="22" y="125"><tspan fill="#f0f1e5">&#160;&#160;</tspan><tspan fill="#f0f1e5" font-weight="bold">"This&#160;task&#160;may&#160;not&#160;need&#160;Claude&#160;Opus&#160;5",&#160;</tspan><tspan fill="#dce94d" font-weight="bold">$416.99</tspan><tspan fill="#f0f1e5" font-weight="bold">/month,&#160;13×&#160;what&#160;the&#160;rules</tspan></text>
+    <text x="22" y="146"><tspan fill="#f0f1e5">&#160;&#160;</tspan><tspan fill="#f0f1e5" font-weight="bold">saved.</tspan></text>
     <text x="22" y="188"><tspan fill="#f0f1e5" font-weight="bold">Input&#160;tokens</tspan></text>
     <text x="22" y="209"><tspan fill="#f0f1e5">&#160;&#160;326&#160;→&#160;</tspan><tspan fill="#6fc99a">202</tspan><tspan fill="#f0f1e5">&#160;&#160;&#160;</tspan><tspan fill="#f0f1e5" font-weight="bold">-38.0%</tspan><tspan fill="#c0c6af">&#160;(estimated,&#160;±6%)</tspan></text>
     <text x="22" y="251"><tspan fill="#f0f1e5" font-weight="bold">Rules&#160;applied</tspan></text>

@@ -1394,7 +1394,7 @@ ${bold('EXAMPLES')}
         : `Not scaled to a month: ${days} days is under the week a scaling needs, and being shorter than one weekly cycle multiplies whichever part of the cycle it caught. These figures cover exactly the period measured.`,
     perMonthSaving: (saving, pct) => `saving ${saving}/month (${pct}%)`,
     beyondShortening: () => 'Beyond shortening the prompt',
-    biggestLever: () => 'Start here:',
+    biggestLever: () => 'Start here',
     biggestLeverDetail: (title, amount, times) =>
       // The title keeps its case: lowercasing it turned "Claude Opus 5" into
       // "claude opus 5", which is a product name mangled to fit a sentence.

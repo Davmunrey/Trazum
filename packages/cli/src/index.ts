@@ -314,8 +314,8 @@ import {
   systemCrontab,
 } from './proactive.js';
 import type { Ctx as ProactiveCtx, Finding as ProactiveFinding, Item as ProactiveItem, ItemResult, ItemStatus } from './proactive.js';
-import { bar, c, sectionHeading, table } from './style.js';
-import type { TableColumn } from './style.js';
+import { MAX_COLUMNS, Report, WINDOW, c, cErr, fitPath, sectionHeading, table, wrap } from './style.js';
+import type { Cell, TableColumn } from './style.js';
 
 // --------------------------------------------------------------------------
 // Argument parsing
@@ -1050,7 +1050,7 @@ function biggestLever(
   result: OptimizationResult,
   tokensOnly: boolean,
   t: CliMessages,
-): { line: string } | null {
+): { line: string; amount: string } | null {
   /**
    * One guard, and it is the only thing deciding.
    *
@@ -1065,6 +1065,7 @@ function biggestLever(
 
   const ruleSaving = result.savings.monthlySavingsUsd;
   return {
+    amount: formatUsd(best.estimatedMonthlyUsd),
     line: t.report.biggestLeverDetail(
       best.title,
       formatUsd(best.estimatedMonthlyUsd),
@@ -1120,21 +1121,24 @@ function printReport(
    *
    * So the answer to "what should I do about this prompt" goes at the top, and
    * the token count follows as the detail it is.
+   *
+   * Drawn as every report's headline is (#758): the question as a heading, the
+   * answer under it with its figure marked. With no lever worth money, the
+   * question is the token count, and the reduction is the marked figure.
    */
   const best = biggestLever(result, tokensOnly, t);
+  const draw = new Report();
+  const reduction = `-${result.reductionPct.toFixed(1)}%`;
   if (best) {
-    console.log();
-    console.log(c.bold(t.report.biggestLever()));
-    console.log(`  ${c.dim(wrap(best.line, 74, '  '))}`);
+    draw.blank().headline(t.report.biggestLever(), best.line, best.amount);
+    draw.blank().title(t.report.inputTokens());
+  } else {
+    draw.blank().heading(t.report.inputTokens());
   }
-
-  console.log();
-  console.log(c.bold(t.report.inputTokens()));
-  console.log(
-    `  ${n(result.tokensBefore)} → ${c.green(n(result.tokensAfter))}   ${c.bold(
-      `-${result.reductionPct.toFixed(1)}%`,
-    )}${sourceNote}`,
+  draw.line(
+    `  ${n(result.tokensBefore)} → ${c.green(n(result.tokensAfter))}   ${best ? c.bold(reduction) : c.mark(reduction)}${sourceNote}`,
   );
+  draw.print();
 
   // Before the rules, because the rearrangement is the bigger change and the
   // one the reader has to make a judgement about.
@@ -1179,7 +1183,7 @@ function printReport(
         console.log(`    ${c.dim(t.report.reorderDeclinedMore(reorder.declined.length - SHOWN))}`);
       }
     }
-    if (reorder.moved.length > 0) console.log(`  ${c.yellow(t.report.reorderReview())}`);
+    if (reorder.moved.length > 0) new Report().note('caution', t.report.reorderReview()).print();
   }
 
   if (result.rules.length > 0) {
@@ -1202,9 +1206,7 @@ function printReport(
      */
     const promptLanguage = detectTextLanguage(result.original);
     if (promptLanguage !== null && dictionaryStanding(promptLanguage)?.standing === 'unreviewed') {
-      console.log(
-        c.yellow(t.report.dictionaryAppliedUnreviewed(t.languages[promptLanguage] ?? promptLanguage)),
-      );
+      new Report().note('caution', t.report.dictionaryAppliedUnreviewed(t.languages[promptLanguage] ?? promptLanguage)).print();
     }
     for (const rule of result.rules) {
       const tag =
@@ -1230,18 +1232,18 @@ function printReport(
     }
   } else {
     console.log();
-    console.log(c.dim(t.report.nothingToTrim()));
+    const draw = new Report();
+    draw.text(t.report.nothingToTrim(), { tone: 'dim' });
     // Which languages the dictionaries actually cover. Only here, because this
     // is the one branch where silence reads as "your prompt is already clean".
-    console.log(c.dim(t.report.dictionaryCoverage(languageNames(PHRASE_LANGUAGES, t))));
+    draw.text(t.report.dictionaryCoverage(languageNames(PHRASE_LANGUAGES, t)), { tone: 'dim' });
     // And which of them nobody here reads. Naming the seven and stopping there
     // reads as seven equal dictionaries; five of them have never been agreed by
     // a speaker of the language, and a reader deciding whether to trust an
     // empty result deserves the difference.
     const unreviewed = languagesWithStanding(PHRASE_LANGUAGES, 'unreviewed');
-    if (unreviewed.length > 0) {
-      console.log(c.dim(t.report.dictionaryUnreviewed(languageNames(unreviewed, t))));
-    }
+    if (unreviewed.length > 0) draw.text(t.report.dictionaryUnreviewed(languageNames(unreviewed, t)), { tone: 'dim' });
+    draw.print();
   }
 
   if (result.llm) {
@@ -1259,7 +1261,7 @@ function printReport(
         )}`,
       );
     } else {
-      console.log(`  ${c.yellow(t.report.llmRejected(result.llm.rejectedReason ?? ''))}`);
+      new Report().note('caution', t.report.llmRejected(result.llm.rejectedReason ?? '')).print();
     }
   }
 
@@ -1315,7 +1317,7 @@ function printReport(
             : c.dim('·');
       const amount = amountOf(advisory);
       const column = width > 0 ? `${c.green(amount.padStart(width))}  ` : '';
-      console.log(`  ${marker} ${column}${c.bold(advisory.title)}`);
+      console.log(`  ${marker} ${column}${c.bold(wrap(advisory.title, 78 - gutter.length, gutter))}`);
       console.log(`${gutter}${c.dim(wrap(advisory.detail, 78 - gutter.length, gutter))}`);
     }
 
@@ -1410,9 +1412,7 @@ function printMoney(
     ...result.pricingSource.addedModels,
   ];
   if (touched.length > 0) {
-    console.log(
-      `  ${c.yellow(t.report.pricingOverlaid(touched.join(', '), result.pricingSource.lastReviewed))}`,
-    );
+    new Report().note('caution', t.report.pricingOverlaid(touched.join(', '), result.pricingSource.lastReviewed)).print();
   }
   const periodOnly = measured !== null && measured.scaled === null;
   console.log(
@@ -1461,15 +1461,10 @@ function printTokensOnly(
   const model = getModel(result.usage.model);
   const saved = result.tokensBefore - result.tokensAfter;
 
-  console.log();
-  console.log(sectionHeading(t.report.tokensOnlyHeading(host.displayName)));
-  console.log(
-    `  ${prefersTokenReport(host)
-      ? t.report.tokensOnlyWhy(host.displayName)
-      : t.report.tokensOnlyAsked()}`,
-  );
-  console.log();
-  console.log(`  ${c.green(t.report.tokensSaved(n(saved)))}`);
+  const draw = new Report();
+  draw.blank().heading(t.report.tokensOnlyHeading(host.displayName));
+  draw.text(prefersTokenReport(host) ? t.report.tokensOnlyWhy(host.displayName) : t.report.tokensOnlyAsked());
+  draw.blank().text(t.report.tokensSaved(n(saved)), { tone: 'good' });
 
   /**
    * Share of the window, which is what a saved token is actually worth here.
@@ -1494,16 +1489,16 @@ function printTokensOnly(
    */
   const unchanged = before === after;
   const negligible = after === '0.0%';
-  console.log(
-    `  ${c.dim(
-      !unchanged
-        ? t.report.windowUse(before, after, model.displayName, n(model.contextWindow))
-        : negligible
-          ? t.report.windowNegligible(n(result.tokensAfter), model.displayName, n(model.contextWindow))
-          : t.report.windowUnmoved(after, model.displayName, n(model.contextWindow)),
-    )}`,
+  draw.text(
+    !unchanged
+      ? t.report.windowUse(before, after, model.displayName, n(model.contextWindow))
+      : negligible
+        ? t.report.windowNegligible(n(result.tokensAfter), model.displayName, n(model.contextWindow))
+        : t.report.windowUnmoved(after, model.displayName, n(model.contextWindow)),
+    { tone: 'dim' },
   );
-  console.log(`  ${c.dim(namedScenario ? t.report.tokensOnlyAskedFor() : t.report.tokensOnlyCost())}`);
+  draw.text(namedScenario ? t.report.tokensOnlyAskedFor() : t.report.tokensOnlyCost(), { tone: 'dim' });
+  draw.print();
 }
 
 /**
@@ -1607,23 +1602,6 @@ function printRest(
 function truncate(text: string, max: number): string {
   const clean = text.replace(/\s+/g, ' ').trim();
   return clean.length <= max ? clean : `${clean.slice(0, max - 1)}\u2026`;
-}
-
-/** Wraps a paragraph to a given width. */
-function wrap(text: string, width: number, indent: string): string {
-  const words = text.split(/\s+/);
-  const lines: string[] = [];
-  let line = '';
-  for (const word of words) {
-    if (line.length + word.length + 1 > width) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = line ? `${line} ${word}` : word;
-    }
-  }
-  if (line) lines.push(line);
-  return lines.join(`\n${indent}`);
 }
 
 // --------------------------------------------------------------------------
@@ -3640,6 +3618,39 @@ async function readUsageLogOnly(file: string, t: CliMessages, billPath: string =
  * a bill rather than usage, and pointed at `reconcile`.
  */
 async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  /*
+    The statement answers first (#758). What was read, file by file, is a
+    note on the answer, and on a terminal it printed above it: five lines of
+    file names before the total. So when the statement is what stdout gets,
+    those lines are held and written to stderr after it, in the order they
+    came, and on the way out of an error too. A pipe that reads the receipt
+    gets them as it always did, as they happen.
+  */
+  const statement = !boolFlag(args, 'receipt') && boolFlag(args, 'table', process.stdout.isTTY === true);
+  if (!statement) return billBody(args, pricing, t);
+  const held: unknown[][] = [];
+  const write = console.error;
+  console.error = (...line: unknown[]) => {
+    held.push(line);
+  };
+  try {
+    await billBody(args, pricing, t);
+  } finally {
+    console.error = write;
+    // Notes on the answer, not the answer: dimmed on a terminal, below the
+    // statement's own notes, and wrapped to the window when there is one. A
+    // line of its own lines, or a pipe, gets the bytes as they came.
+    for (const line of held) {
+      const [only] = line;
+      if (line.length === 1 && typeof only === 'string') {
+        const text = WINDOW && !only.includes('\n') ? wrap(only, MAX_COLUMNS, '') : only;
+        console.error(text.split('\n').map((part) => cErr.dim(part)).join('\n'));
+      } else console.error(...line);
+    }
+  }
+}
+
+async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
   /* Refused before any file is read: a bad shape found after the receipt
      printed would end a run that looked finished with an error. */
   const csvShape = csvShapeOf(args, t);
@@ -4128,12 +4139,13 @@ function printBillStatement(
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const total = report.total.totalUsd;
   const LIMIT = 12;
-  const rowsOf = (entries: { name: string; calls: number; usd: number }[]): string[][] => {
-    const shown = entries.slice(0, LIMIT).map(({ name, calls, usd }) => {
-      const share = total > 0 ? usd / total : 0;
-      return [name, n(calls), formatUsd(usd), `${bar(share)} ${pct(share)}`];
-    });
-    if (entries.length > LIMIT) shown.push([c.dim(t.bill.moreRows(entries.length - LIMIT)), '', '', '']);
+  const shareCells = (usd: number): Cell[] => {
+    const share = total > 0 ? usd / total : 0;
+    return [{ bar: share }, pct(share)];
+  };
+  const rowsOf = (entries: { name: string; calls: number; usd: number }[]): Cell[][] => {
+    const shown: Cell[][] = entries.slice(0, LIMIT).map(({ name, calls, usd }) => [name, n(calls), formatUsd(usd), ...shareCells(usd)]);
+    if (entries.length > LIMIT) shown.push([c.dim(t.bill.moreRows(entries.length - LIMIT)), '', '', '', '']);
     return shown;
   };
   const columns = (first: string): TableColumn[] => [
@@ -4141,48 +4153,35 @@ function printBillStatement(
     { header: t.bill.colCalls(), align: 'right' },
     { header: 'USD', align: 'right' },
     { header: t.bill.colShare(), align: 'left' },
+    { header: '', align: 'right' },
   ];
 
-  console.log();
-  console.log(sectionHeading(t.bill.statementHeading()));
-  console.log(`  ${c.bold(t.bill.statementTotal(formatUsd(total), report.total.calls))}`);
-  if (report.span !== null) {
-    const span = t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs));
-    console.log(c.dim(`  ${wrap(span, 74, '  ')}`));
-  }
-  // The period asked for, as typed: the span above is when the calls in it fell.
-  if (window !== undefined) console.log(c.dim(`  ${wrap(t.profile.windowLine(window.since, window.until), 74, '  ')}`));
   /*
-    "Your bill" over Claude Code transcripts is the API's list price for the
-    work. On a Pro or Max plan the plan is what was paid, and a statement that
-    did not say so would hand somebody a figure they never owed.
+    The question and its answer first: the total, marked. Then the
+    breakdown, by agent, project, model and period. Then what qualifies the
+    total, and what to do next. A reader who stops after the total has it.
   */
-  if (apiEquivalent) console.log(`  ${c.yellow(wrap(t.bill.apiEquivalent(), 74, '  '))}`);
+  const draw = new Report();
+  const totalUsd = formatUsd(total);
+  draw.blank().headline(t.bill.statementHeading(), t.bill.statementTotal(totalUsd, report.total.calls), totalUsd);
 
   // Which agent spent what, first: it is the split a person running more than one asks for.
-  if (byAgent.length > 1) {
-    console.log();
-    for (const line of table(columns(t.bill.colAgent()), rowsOf(byAgent))) console.log(line);
-  }
+  if (byAgent.length > 1) draw.blank().table(columns(t.bill.colAgent()), rowsOf(byAgent));
 
   const labelled = report.byLabel.filter((row) => row.label !== UNLABELLED);
   if (labelled.length > 0) {
-    console.log();
     const entries = report.byLabel.map((row) => ({
       name: row.label === UNLABELLED ? t.profile.unlabelled() : row.label,
       calls: row.breakdown.calls,
       usd: row.breakdown.totalUsd,
     }));
-    for (const line of table(columns(byProject ? t.bill.colProject() : t.bill.colWorkload()), rowsOf(entries))) {
-      console.log(line);
-    }
+    draw.blank().table(columns(byProject ? t.bill.colProject() : t.bill.colWorkload()), rowsOf(entries));
   }
 
   const priced = report.byModel.filter((row) => !report.unpricedModels.includes(row.model));
   if (priced.length > 0) {
-    console.log();
     const entries = priced.map((row) => ({ name: row.model, calls: row.breakdown.calls, usd: row.breakdown.totalUsd }));
-    for (const line of table(columns(t.bill.colModel()), rowsOf(entries))) console.log(line);
+    draw.blank().table(columns(t.bill.colModel()), rowsOf(entries));
   }
 
   /*
@@ -4200,38 +4199,46 @@ function printBillStatement(
   const { periods, undated } = spendByPeriod(report, unit);
   if (periods.length >= (by === undefined ? 2 : 1)) {
     const keep = unit === 'day' ? 31 : LIMIT;
-    const shown = periods.slice(-keep).map(({ period, calls, usd }) => {
-      const share = total > 0 ? usd / total : 0;
-      return [period, n(calls), formatUsd(usd), `${bar(share)} ${pct(share)}`];
-    });
+    const shown: Cell[][] = periods.slice(-keep).map(({ period, calls, usd }) => [period, n(calls), formatUsd(usd), ...shareCells(usd)]);
     if (periods.length > keep) {
       const earlier = periods.length - keep;
-      shown.unshift([c.dim(unit === 'month' ? t.bill.earlierMonths(earlier) : t.bill.earlierPeriods(earlier, unit)), '', '', '']);
+      shown.unshift([c.dim(unit === 'month' ? t.bill.earlierMonths(earlier) : t.bill.earlierPeriods(earlier, unit)), '', '', '', '']);
     }
-    console.log();
-    for (const line of table(columns(unit === 'month' ? t.bill.colMonth() : t.bill.colPeriod(unit)), shown)) console.log(line);
+    draw.blank().table(columns(unit === 'month' ? t.bill.colMonth() : t.bill.colPeriod(unit)), shown);
     if (undated.calls > 0) {
       const sentence = unit === 'month'
         ? t.bill.monthsUndated(undated.calls, formatUsd(undated.usd))
         : t.bill.periodsUndated(undated.calls, formatUsd(undated.usd), unit);
-      console.log(c.dim(`  ${wrap(sentence, 74, '  ')}`));
+      draw.text(sentence, { tone: 'dim' });
     }
     const newest = periods[periods.length - 1]!;
-    console.log(c.dim(`  ${unit === 'month' ? t.bill.monthHint(newest.firstDay, newest.lastDay) : t.bill.periodHint(newest.firstDay, newest.lastDay, unit)}`));
+    draw.text(unit === 'month' ? t.bill.monthHint(newest.firstDay, newest.lastDay) : t.bill.periodHint(newest.firstDay, newest.lastDay, unit), { tone: 'dim' });
   }
 
-  console.log();
+  // What qualifies the total: when the calls fell, and what it is not.
+  draw.blank();
+  if (report.span !== null) {
+    draw.text(t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs)), { tone: 'dim' });
+  }
+  // The period asked for, as typed: the span above is when the calls in it fell.
+  if (window !== undefined) draw.text(t.profile.windowLine(window.since, window.until), { tone: 'dim' });
+  /*
+    "Your bill" over Claude Code transcripts is the API's list price for the
+    work. On a Pro or Max plan the plan is what was paid, and a statement that
+    did not say so would hand somebody a figure they never owed.
+  */
+  if (apiEquivalent) draw.note('caution', t.bill.apiEquivalent());
   if (report.unpricedModels.length > 0) {
-    console.log(`  ${wrap(t.bill.statementUnpriced(report.unpricedModels.join(', '), report.unpriced.calls), 74, '  ')}`);
+    draw.note('caution', t.bill.statementUnpriced(report.unpricedModels.join(', '), report.unpriced.calls));
   }
   const ceiling = tierCeilingLine(report, t);
-  if (ceiling !== null) console.log(`  ${wrap(ceiling, 74, '  ')}`);
-  if (report.skippedLines.length > 0) console.log(`  ${t.bill.statementUnread(report.skippedLines.length)}`);
+  if (ceiling !== null) draw.note('caution', ceiling);
+  if (report.skippedLines.length > 0) draw.note('caution', t.bill.statementUnread(report.skippedLines.length));
   if (report.timeWindow !== null && report.timeWindow.undatedExcluded > 0) {
-    console.log(`  ${c.yellow(wrap(t.receipt.undatedExcluded(report.timeWindow.undatedExcluded), 74, '  '))}`);
+    draw.note('caution', t.receipt.undatedExcluded(report.timeWindow.undatedExcluded));
   }
-  console.log(c.dim(`  ${wrap(t.bill.statementNext(), 74, '  ')}`));
-  console.log();
+  draw.blank().text(t.bill.statementNext(), { tone: 'dim' }).blank();
+  draw.print();
 }
 
 /**
@@ -7223,7 +7230,7 @@ async function commandOptimize(
         ? t.report.allLabelsRowPeriod(formatUsd(row.savingUsd))
         : t.report.allLabelsRow(formatUsd(row.savingUsd));
       console.log(
-        `  ${row.savingUsd > 0 ? c.green('→') : c.dim('·')} ${c.bold(row.label)}  ${saving}  ${c.dim(`${row.path} · ${n(row.tokensBefore)} → ${n(row.tokensAfter)} tokens · ${formatUsd(row.spentUsd)} measured`)}`,
+        `  ${row.savingUsd > 0 ? c.accent('→') : c.dim('·')} ${c.bold(row.label)}  ${saving}  ${c.dim(`${row.path} · ${n(row.tokensBefore)} → ${n(row.tokensAfter)} tokens · ${formatUsd(row.spentUsd)} measured`)}`,
       );
     }
     if (rows.length > 0) {
@@ -7778,16 +7785,18 @@ async function commandCheck(
   } else if (ok) {
     console.log(`${c.green(t.check.okLabel())} ${t.check.ok(n(verdict.tokens), n(maxTokens))}`);
   } else {
-    console.error(
-      `${c.red(t.check.failedLabel())} ${t.check.failed(n(verdict.tokens), n(maxTokens))}`,
-    );
+    // The verdict first, in a word and its colour; then what would make it fit.
+    const draw = new Report();
+    draw.text(t.check.failed(n(verdict.tokens), n(maxTokens)), { first: `${c.red(t.check.failedLabel())} `, indent: '' });
     if (verdict.optimizedTokens !== null) {
-      console.error(
+      draw.text(
         verdict.optimizedTokens <= maxTokens
           ? t.check.wouldFit(level, n(verdict.optimizedTokens))
           : t.check.stillTooBig(n(verdict.optimizedTokens)),
+        { indent: '' },
       );
     }
+    draw.print((line) => console.error(line));
   }
 
   if (!ok) process.exitCode = 1;
@@ -8258,50 +8267,61 @@ async function commandProactive(args: Args, pricing: PricingCatalogue, t: CliMes
 
   const verdictPaint = (status: ItemStatus, text: string): string =>
     status.verdict === 'on' ? c.green(text) : status.verdict === 'off' ? text : status.verdict === 'could-not-tell' ? c.red(text) : c.yellow(text);
+  /*
+    The question is the heading and the rows are its answer, one item a line:
+    the name, its state in a word, and why (#758). The state's colour repeats
+    the word; the reason hangs under itself, inside the window.
+  */
+  const draw = new Report();
   const block = (list: ItemStatus[]): void => {
     const width = Math.max(...items.map((item) => name(item).length));
     const verdictWidth = Math.max(...Object.values(t.proactive.verdict).map((word) => word.length));
+    const hang = ' '.repeat(width + verdictWidth + 6);
+    // The module's `wrap`: the layout a pipe always had, and inside the window when there is one.
+    const said = (finding: ProactiveFinding): string => c.dim(wrap(reason(finding), 76 - width - verdictWidth, hang).trimStart());
     for (const status of shownStatuses(list)) {
-      console.log(`  ${name(status.item).padEnd(width)}  ${verdictPaint(status, t.proactive.verdict[status.verdict].padEnd(verdictWidth))}  ${c.dim(wrap(reason(status), 76 - width - verdictWidth, ' '.repeat(width + verdictWidth + 6)).trimStart())}`);
-      for (const note of status.notes) console.log(`  ${' '.repeat(width + verdictWidth + 4)}${c.dim(wrap(reason(note), 76 - width - verdictWidth, ' '.repeat(width + verdictWidth + 6)).trimStart())}`);
+      draw.line(`  ${name(status.item).padEnd(width)}  ${verdictPaint(status, t.proactive.verdict[status.verdict].padEnd(verdictWidth))}  ${said(status)}`);
+      for (const note of status.notes) draw.line(`  ${' '.repeat(width + verdictWidth + 4)}${said(note)}`);
     }
   };
 
-  console.log();
-  console.log(sectionHeading(t.proactive.heading()));
+  draw.blank().heading(t.proactive.heading());
   block(outcome.before);
-  if (action === 'status') return;
+  if (action === 'status') {
+    draw.print();
+    return;
+  }
 
   let anyChange = false;
   for (const result of outcome.results) {
     if (result.outcome === 'nothing') {
-      console.log();
-      console.log(`  ${c.dim(t.proactive.nothingToChange(name(result.item)))}`);
+      draw.blank().text(t.proactive.nothingToChange(name(result.item)), { tone: 'dim' });
       continue;
     }
     anyChange = true;
-    console.log();
     const done = result.outcome === 'written';
     const header = action === 'off'
       ? (done ? t.proactive.didTurnOff : t.proactive.wouldTurnOff)(name(result.item))
       : (done ? t.proactive.didTurnOn : t.proactive.wouldTurnOn)(name(result.item));
-    console.log(`  ${c.bold(header)}`);
+    draw.blank().text(header, { tone: 'bold' });
     // Asked about in a terminal, an item's lines are already above its question.
-    if (!shownBeforeAsking.has(result.item)) for (const change of result.changes) printChange(change);
-    if (result.outcome === 'declined') console.log(`  ${t.proactive.declined(name(result.item))}`);
+    // The lines a file gains or loses are its content: drawn as they are.
+    if (!shownBeforeAsking.has(result.item)) for (const change of result.changes) printChange(change, (line) => draw.line(line));
+    if (result.outcome === 'declined') draw.text(t.proactive.declined(name(result.item)));
     if (result.outcome === 'failed' && result.error !== null) {
-      console.log(`  ${c.red(t.proactive.failed(name(result.item), reason(result.error)))}`);
+      draw.note('error', t.proactive.failed(name(result.item), reason(result.error)), { tone: 'error' });
     }
   }
-  if (action === 'on' && anyChange) console.log(`\n  ${c.dim(wrap(t.proactive.backupNote(BACKUP_SUFFIX), 74, '    ').trimStart())}`);
+  // The module's `wrap` at the widths these always had, so a pipe gets the same lines.
+  if (action === 'on' && anyChange) draw.blank().line(`  ${c.dim(wrap(t.proactive.backupNote(BACKUP_SUFFIX), 74, '    ').trimStart())}`);
   if (dryRun && anyChange) {
-    console.log();
-    console.log(`  ${wrap(forcedDryRun ? t.proactive.dryRunNoTerminal() : t.proactive.dryRunAsked(), 74, '    ').trimStart()}`);
+    draw.blank().line(`  ${wrap(forcedDryRun ? t.proactive.dryRunNoTerminal() : t.proactive.dryRunAsked(), 74, '    ').trimStart()}`);
   }
   if (outcome.results.some((result) => result.outcome === 'written')) {
-    console.log();
+    draw.blank();
     block(outcome.after);
   }
+  draw.print();
   if (outcome.results.some((result) => result.outcome === 'failed')) process.exitCode = 1;
 }
 
@@ -10955,7 +10975,7 @@ function reportWhatIf(
         formatUsd(whatIf.targetUsd),
         formatUsd(Math.abs(whatIf.deltaUsd)),
       );
-      console.log(`  ${cheaper ? c.green('→') : c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
+      console.log(`  ${cheaper ? c.accent('→') : c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
       console.log(
         `  ${c.dim(wrap(cheaper ? t.profile.whatIfCheaper() : t.profile.whatIfDearer(), 74, '  '))}`,
       );
@@ -11084,7 +11104,7 @@ function reportLevers(
        * than the bill it came from, in the flattering direction.
        */
       console.log(
-        `  ${c.green('→')} ${c.bold(wrap(t.profile.leverSlice(label, slice.modelName, formatUsd(slice.combinedUsd), pct(slice.shareOfBill)), 74, '    '))}`,
+        `  ${c.accent('→')} ${c.bold(wrap(t.profile.leverSlice(label, slice.modelName, formatUsd(slice.combinedUsd), pct(slice.shareOfBill)), 74, '    '))}`,
       );
       console.log(`    ${c.dim(t.profile.leverCalls(t.profile.calls(slice.calls), formatUsd(slice.spentUsd)))}`);
       if (slice.route) {
@@ -11609,42 +11629,45 @@ async function commandPlan(
     return;
   }
 
-  console.log(sectionHeading(t.plan.heading(n(actions.length), formatUsd(plan.totalUsd))));
-  console.log(
-    `  ${wrap(t.plan.totals(formatUsd(stamped.projectedSavingUsd), formatUsd(stamped.measuredStakeUsd)), 74, '  ')}`,
+  /*
+    The question and its answer first: what the plan would save, marked.
+    Then the actions, then what was left out and how to read it (#758).
+  */
+  const draw = new Report();
+  const projected = formatUsd(stamped.projectedSavingUsd);
+  draw.headline(
+    t.plan.heading(n(actions.length), formatUsd(plan.totalUsd)),
+    t.plan.totals(projected, formatUsd(stamped.measuredStakeUsd)),
+    projected,
   );
-  if (plan.span === null) {
-    console.log(`  ${c.dim(wrap(t.plan.noClock(), 74, '  '))}`);
-  }
+  if (plan.span === null) draw.text(t.plan.noClock(), { tone: 'dim' });
   for (const action of actions) {
     const name = action.label === UNLABELLED ? t.profile.unlabelled() : action.label;
     const money =
       action.savingUsd !== null
         ? t.plan.projected(formatUsd(action.savingUsd))
         : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
-    console.log();
-    console.log(`  ${c.green('→')} ${c.bold(t.plan.action(action.kind, name, action.model))}  ${money}`);
+    draw.blank();
+    // The action and its money on one line when the window holds them; the
+    // money under the action when it does not, never split from its word.
+    const title = t.plan.action(action.kind, name, action.model);
+    const whole = `  ${draw.markOf('point')} ${c.bold(title)}  ${money}`;
+    if (draw.fits(whole)) draw.line(whole);
+    else draw.text(title, { first: `  ${draw.markOf('point')} `, indent: '    ', tone: 'bold' }).text(money, { indent: '    ' });
+    // The module's `wrap`, at the widths these lines always had on a pipe.
     if (action.detail.routeTo !== undefined) {
-      console.log(`    ${c.dim(t.plan.routeTo(action.detail.routeTo.displayName, action.kind === 'route+batch'))}`);
+      draw.line(`    ${c.dim(wrap(t.plan.routeTo(action.detail.routeTo.displayName, action.kind === 'route+batch'), 1000, '    '))}`);
     }
     for (const assumption of action.assumes) {
-      console.log(`    ${c.yellow('?')} ${c.dim(wrap(t.plan.assume(assumption), 72, '      '))}`);
+      draw.line(`    ${draw.markOf('question')} ${c.dim(wrap(t.plan.assume(assumption), 72, '      '))}`);
     }
-    if (action.check !== null) {
-      console.log(`    ${c.dim(wrap(t.plan.check(action.check), 72, '      '))}`);
-    }
+    if (action.check !== null) draw.line(`    ${c.dim(wrap(t.plan.check(action.check), 72, '      '))}`);
   }
-  if (filtered > 0) {
-    console.log();
-    console.log(`  ${c.dim(wrap(t.plan.filtered(n(filtered), formatUsd(minUsd), formatUsd(droppedUsd)), 74, '  '))}`);
-  }
-  if (plan.batchExcludedUsd > 0) {
-    console.log();
-    console.log(`  ${c.dim(wrap(t.plan.batchExcluded(formatUsd(plan.batchExcludedUsd)), 74, '  '))}`);
-  }
-  console.log();
-  console.log(`  ${c.dim(wrap(t.plan.footer(), 74, '  '))}`);
-  if (outPath !== undefined) console.log(c.dim(wrap(t.plan.wrote(outPath), 74, '')));
+  if (filtered > 0) draw.blank().text(t.plan.filtered(n(filtered), formatUsd(minUsd), formatUsd(droppedUsd)), { tone: 'dim' });
+  if (plan.batchExcludedUsd > 0) draw.blank().text(t.plan.batchExcluded(formatUsd(plan.batchExcludedUsd)), { tone: 'dim' });
+  draw.blank().text(t.plan.footer(), { tone: 'dim' });
+  if (outPath !== undefined) draw.text(t.plan.wrote(outPath), { indent: '', tone: 'dim' });
+  draw.print();
 }
 
 async function commandProfile(
@@ -12098,9 +12121,46 @@ async function commandProfile(
     [t.profile.partOutput(), report.total.outputUsd, shares.output, report.total.outputTokens],
   ];
 
-  console.log();
-  console.log(sectionHeading(t.profile.heading()));
-  console.log(`  ${t.profile.spent(t.profile.calls(report.total.calls), formatUsd(report.total.totalUsd))}`);
+  /*
+    The question and its answer first: what this log cost, the total marked.
+    Then where it went, part by part. Then what qualifies the total: the
+    period, the files, a doubled line, the window (#758).
+  */
+  const draw = new Report();
+  const totalUsd = formatUsd(report.total.totalUsd);
+  draw.blank().headline(t.profile.heading(), t.profile.spent(t.profile.calls(report.total.calls), totalUsd), totalUsd);
+  draw.blank();
+  // Every part, including the zero ones. A row missing because it was zero reads
+  // as a row somebody forgot, and "you are not caching at all" is a finding.
+  const partRows: { share: number; text: string }[] = parts.map(([name, usd, share, tokens]) => ({
+    share,
+    text: t.profile.part(name, formatUsd(usd), pct(share), n(tokens)),
+  }));
+  // Billed per search, so it counts searches where the rows above count tokens.
+  if (report.total.webSearchRequests > 0) {
+    partRows.push({
+      share: shares.webSearch,
+      text: t.profile.partSearches(t.profile.partWebSearch(), formatUsd(report.total.webSearchUsd), pct(shares.webSearch), report.total.webSearchRequests),
+    });
+  }
+  draw.shares(partRows);
+
+  /**
+   * The line the command exists for: which part of the bill to argue with.
+   *
+   * When output is both the biggest part and over half, the two sentences say the
+   * same thing and the second says more — so only the second prints. Reporting a
+   * fact twice in adjacent lines reads as a bug, and it was one.
+   */
+  const [biggestName, , biggestShare] = parts.reduce((a, b) => (b[1] > a[1] ? b : a));
+  const outputDominates = shares.output > 0.5;
+  draw.blank();
+  if (outputDominates) {
+    draw.text(t.profile.outputDominates(pct(shares.output)), { tone: 'bold' });
+  } else {
+    draw.text(t.profile.biggestPart(biggestName, pct(biggestShare)), { tone: 'bold' });
+  }
+
   /**
    * The period, when the log carries a clock — stated, never extrapolated. A
    * span makes the reader's own monthly arithmetic valid; a per-month figure
@@ -12115,15 +12175,11 @@ async function commandProfile(
       report.span.calls < totalParsed
         ? ` ${t.profile.spanPartial(n(report.span.calls), n(totalParsed))}`
         : '';
-    console.log(
-      `  ${c.dim(wrap(`${t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs))}${partial}`, 74, '  '))}`,
-    );
+    draw.text(`${t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs))}${partial}`, { tone: 'dim' });
   }
   // How many files this report covers, when it covers more than one: a total
   // over "the logs" that silently skipped one is wrong by an unknown amount.
-  if (logFiles.length > 1) {
-    console.log(`  ${c.dim(wrap(t.profile.readFiles(logFiles.length, path), 74, '  '))}`);
-  }
+  if (logFiles.length > 1) draw.text(t.profile.readFiles(logFiles.length, path), { tone: 'dim' });
 
   /**
    * A doubled bill, said before anything is believed.
@@ -12136,9 +12192,7 @@ async function commandProfile(
    * double export or a genuinely busy millisecond is the reader's to know.
    */
   if (report.duplicateLines.count > 0) {
-    console.log(
-      `  ${c.yellow('!')} ${c.dim(wrap(t.profile.duplicateLines(report.duplicateLines.count, formatUsd(report.duplicateLines.usd)), 74, '    '))}`,
-    );
+    draw.note('caution', t.profile.duplicateLines(report.duplicateLines.count, formatUsd(report.duplicateLines.usd)), { tone: 'dim' });
   }
 
   /**
@@ -12149,46 +12203,13 @@ async function commandProfile(
    * figures are a floor on the period, and only this line says so.
    */
   if (report.timeWindow !== null) {
-    console.log(
-      `  ${c.dim(wrap(t.profile.windowLine(stringFlag(args, 'since') ?? '—', stringFlag(args, 'until') ?? '—'), 74, '  '))}`,
-    );
-    if (relativeWindow) {
-      console.log(`  ${c.dim(wrap(t.profile.windowRelative(), 74, '  '))}`);
-    }
+    draw.text(t.profile.windowLine(stringFlag(args, 'since') ?? '—', stringFlag(args, 'until') ?? '—'), { tone: 'dim' });
+    if (relativeWindow) draw.text(t.profile.windowRelative(), { tone: 'dim' });
     if (report.timeWindow.undatedExcluded > 0) {
-      console.log(
-        `  ${c.yellow(wrap(t.profile.windowUndated(report.timeWindow.undatedExcluded), 74, '  '))}`,
-      );
+      draw.note('caution', t.profile.windowUndated(report.timeWindow.undatedExcluded));
     }
   }
-  console.log();
-  // Every part, including the zero ones. A row missing because it was zero reads
-  // as a row somebody forgot, and "you are not caching at all" is a finding.
-  for (const [name, usd, share, tokens] of parts) {
-    console.log(`  ${bar(share)}  ${t.profile.part(name, formatUsd(usd), pct(share), n(tokens))}`);
-  }
-  // Billed per search, so it counts searches where the rows above count tokens.
-  if (report.total.webSearchRequests > 0) {
-    console.log(
-      `  ${bar(shares.webSearch)}  ${t.profile.partSearches(t.profile.partWebSearch(), formatUsd(report.total.webSearchUsd), pct(shares.webSearch), report.total.webSearchRequests)}`,
-    );
-  }
-
-  /**
-   * The line the command exists for: which part of the bill to argue with.
-   *
-   * When output is both the biggest part and over half, the two sentences say the
-   * same thing and the second says more — so only the second prints. Reporting a
-   * fact twice in adjacent lines reads as a bug, and it was one.
-   */
-  const [biggestName, , biggestShare] = parts.reduce((a, b) => (b[1] > a[1] ? b : a));
-  const outputDominates = shares.output > 0.5;
-  console.log();
-  if (outputDominates) {
-    console.log(`  ${c.bold(wrap(t.profile.outputDominates(pct(shares.output)), 74, '  '))}`);
-  } else {
-    console.log(`  ${c.bold(t.profile.biggestPart(biggestName, pct(biggestShare)))}`);
-  }
+  draw.print();
 
   /**
    * The most expensive day, with a suspect attached.
@@ -12209,9 +12230,10 @@ async function commandProfile(
         peak.topLabel !== null && report.byLabel.length > 1
           ? ` ${t.profile.dayPeakLabel(peak.topLabel === UNLABELLED ? t.profile.unlabelled() : peak.topLabel, formatUsd(peak.topLabelUsd))}`
           : '';
+      // Loud past twice the median: the mark says so, a pipe included.
       const loud = peak.usd > 2 * medianUsd;
-      const text = wrap(`${line}${labelClause}`, 74, '  ');
-      console.log(`  ${loud ? c.yellow(text) : c.dim(text)}`);
+      if (loud) new Report().note('caution', `${line}${labelClause}`).print();
+      else new Report().text(`${line}${labelClause}`, { tone: 'dim' }).print();
     }
   }
 
@@ -12280,12 +12302,16 @@ async function commandProfile(
     [t.profile.byModelHeading(), report.byModel.map((r) => [r.model, r.breakdown] as const)],
   ] as const) {
     if (rows.length <= 1) continue; // One row is the total again, said twice.
-    console.log();
-    console.log(sectionHeading(heading));
-    for (const [name, breakdown] of rows) {
-      const share = report.total.totalUsd > 0 ? breakdown.totalUsd / report.total.totalUsd : 0;
-      console.log(`  ${bar(share)}  ${t.profile.row(name, formatUsd(breakdown.totalUsd), pct(share), t.profile.calls(breakdown.calls))}`);
-    }
+    new Report()
+      .blank()
+      .heading(heading)
+      .shares(
+        rows.map(([name, breakdown]) => {
+          const share = report.total.totalUsd > 0 ? breakdown.totalUsd / report.total.totalUsd : 0;
+          return { share, text: t.profile.row(name, formatUsd(breakdown.totalUsd), pct(share), t.profile.calls(breakdown.calls)) };
+        }),
+      )
+      .print();
   }
 
   reportOutcomesAndCoverage(report, config, t);
@@ -13055,52 +13081,11 @@ async function checkDirectory(
     ...verdicts.map((v) => (v.maxTokens === null ? 0 : n(v.maxTokens).length)),
   );
 
-  console.log();
-  console.log(sectionHeading(t.check.directoryHeading(root, verdicts.length)));
-  console.log();
-
-  for (const verdict of verdicts) {
-    const tokens = n(verdict.tokens).padStart(tokenWidth);
-
-    if (verdict.maxTokens === null) {
-      // Blanks where " / <budget>" would be, so the path column does not shift.
-      console.log(
-        `  ${c.dim('—'.padEnd(labelWidth))}${tokens}${' '.repeat(3 + budgetWidth)}   ` +
-          `${verdict.path} ${c.dim(t.check.noBudget())}`,
-      );
-      continue;
-    }
-
-    const over = isOverBudget(verdict);
-    const plain = over ? t.check.failedLabel() : t.check.okLabel();
-    const label = (over ? c.red(plain) : c.green(plain)) + ' '.repeat(labelWidth - plain.length);
-    const budget = n(verdict.maxTokens).padEnd(budgetWidth);
-    console.log(`  ${label}${tokens} / ${budget}   ${verdict.path}`);
-
-    if (over && verdict.optimizedTokens !== null) {
-      console.log(
-        `  ${' '.repeat(labelWidth)}${c.dim(
-          verdict.optimizedTokens <= verdict.maxTokens
-            ? t.check.wouldFit(level, n(verdict.optimizedTokens))
-            : t.check.stillTooBig(n(verdict.optimizedTokens)),
-        )}`,
-      );
-    }
-  }
-
-  // A marker Trazum could not read is a failure, not a footnote. The author
-  // marked that prompt to have it governed; it is not being governed, and a
-  // green summary alongside would be the same lie as "0 failures" from a run
-  // that measured nothing.
-  if (declined.length > 0) {
-    console.log();
-    console.log(c.red(t.check.declinedHeading(declined.length)));
-    for (const entry of declined) {
-      console.log(`  ${c.dim(`${entry.path} ${t.check.declinedAt(entry.line, entry.detail)}`)}`);
-    }
-  }
-
-  console.log();
+  /*
+    The question and its answer first (#758): how many prompts, and whether
+    they fit, in the colour of the verdict and in words that say it without
+    one. Then the prompts, one a line; then what could not be read.
+  */
   const summary = t.check.directorySummary(failures.length, verdicts.length);
   // Three independent verdicts about one run: a busted budget, an unreadable
   // marker, and drift past the baseline. Any of them failing fails the build —
@@ -13111,8 +13096,50 @@ async function checkDirectory(
   // a breach ride out on a green budget.
   const budgetBad = failures.length > 0 || declined.length > 0;
   const bad = budgetBad || (baselineOutcome?.breached.length ?? 0) > 0;
-  console.log(`  ${budgetBad ? c.red(summary) : c.green(summary)}`);
-  if (truncated) console.log(`  ${c.yellow(t.check.walkTruncated())}`);
+  const draw = new Report();
+  draw.blank().heading(t.check.directoryHeading(root, verdicts.length));
+  draw.text(summary, { tone: budgetBad ? 'error' : 'good' });
+  draw.blank();
+
+  for (const verdict of verdicts) {
+    const tokens = n(verdict.tokens).padStart(tokenWidth);
+
+    if (verdict.maxTokens === null) {
+      // Blanks where " / <budget>" would be, so the path column does not shift.
+      const lead = `  ${c.dim('—'.padEnd(labelWidth))}${tokens}${' '.repeat(3 + budgetWidth)}   `;
+      draw.line(`${lead}${fitPath(`${verdict.path} ${t.check.noBudget()}`, draw.room(lead))}`);
+      continue;
+    }
+
+    const over = isOverBudget(verdict);
+    const plain = over ? t.check.failedLabel() : t.check.okLabel();
+    const label = (over ? c.red(plain) : c.green(plain)) + ' '.repeat(labelWidth - plain.length);
+    const budget = n(verdict.maxTokens).padEnd(budgetWidth);
+    const lead = `  ${label}${tokens} / ${budget}   `;
+    draw.line(`${lead}${fitPath(verdict.path, draw.room(lead))}`);
+
+    if (over && verdict.optimizedTokens !== null) {
+      draw.text(
+        verdict.optimizedTokens <= verdict.maxTokens
+          ? t.check.wouldFit(level, n(verdict.optimizedTokens))
+          : t.check.stillTooBig(n(verdict.optimizedTokens)),
+        { indent: `  ${' '.repeat(labelWidth)}`, tone: 'dim' },
+      );
+    }
+  }
+
+  // A marker Trazum could not read is a failure, not a footnote. The author
+  // marked that prompt to have it governed; it is not being governed, and a
+  // green summary alongside would be the same lie as "0 failures" from a run
+  // that measured nothing.
+  if (declined.length > 0) {
+    draw.blank().line(c.red(t.check.declinedHeading(declined.length)));
+    for (const entry of declined) {
+      draw.text(`${entry.path} ${t.check.declinedAt(entry.line, entry.detail)}`, { tone: 'dim' });
+    }
+  }
+  if (truncated) draw.blank().note('caution', t.check.walkTruncated());
+  draw.print();
 
   // After the per-file summary, because the two answer different questions and
   // the wider one reads last: budgets are about files, the baseline is about the
@@ -13226,7 +13253,7 @@ async function commandPrune(args: Args, t: CliMessages): Promise<void> {
      */
     const needed = contribution.verdict === 'diverges';
     const unknown = contribution.verdict === 'inconclusive';
-    const mark = unknown ? c.yellow('?') : needed ? c.dim('·') : c.green('→');
+    const mark = unknown ? c.yellow('?') : needed ? c.dim('·') : c.accent('→');
     const label = unknown
       ? t.prune.verdictUnknown()
       : needed

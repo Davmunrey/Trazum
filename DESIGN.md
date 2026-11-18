@@ -45,6 +45,20 @@ The README's three pictures, the extension's icon and the web app's icon files a
 
 Icons: `favicon.ico` (16, 32, 48), a 180px Apple touch icon, 192px and 512px manifest icons and a 512px maskable one. The two that a device cuts to its own shape are full-bleed, with no border to slice through.
 
+## Terminal
+
+What the CLI prints on a terminal follows the same rules, drawn by one module, `packages/cli/src/style.ts` (#758). The commands hand it sentences and rows; it decides colour, width and order.
+
+- **One hierarchy.** The question as a heading ruled out to the width, and the figure that answers it on the line under it; then the breakdown; then the notes and what to do next. A reader who stops after three lines has the answer.
+- **Ink and paper are the reader's.** A terminal's foreground and ground are its owner's and the CLI cannot see which, so it never paints a foreground that reads on only one of them.
+- **The mark.** The answering figure is set in ink (#20231e) on the acid ground (#dce94d), bold, once per report. It reads on a light terminal and a dark one alike. Nothing else is acid.
+- **The accent** (#70831b) is what points: the filled cells of a share bar and a lever's arrow. It is not the page's accent text. The page knows its ground and changes the accent with it (#526014 on paper, the acid on the dark canvas); a terminal cannot tell its own ground, so its accent is one colour that has to hold on both. #70831b is the brand's olive, same hue and saturation as #526014, at the lightness that keeps 3.5:1 or more on paper, white and the dark grounds, where #526014 fell to about 2.4:1.
+- **States** keep the terminal's own green, yellow and red at every depth, because its theme tunes those to its ground. Meaning is never carried by colour alone: every state is also a word or a mark (`!` caution, `?` assumption, `→` lever, `OK`, `OVER`), and a caveat paints its mark, not its sentence.
+- **Depth.** True colour where `COLORTERM` says so; the nearest of the fixed 256 (cube and greys, 16 to 255, by distance in RGB: acid 185, ink 234, accent 64) where `TERM` says 256; the 16 otherwise, where the mark is black on yellow (`30;43`) and the accent cyan, the one colour of the 16 no state uses; nothing for `NO_COLOR`, `TERM=dumb`, a pipe or a file. `FORCE_COLOR` names a depth: 1, 2, 3, or 0 for none.
+- **Width.** With a window, or `COLUMNS`, between 60 and 76 columns. Paragraphs reflow and a figure is held to the word after it; a table narrows its bars (ten cells, five, none) and then cuts its name with `…`; a figure is never cut and a row never wraps. With no window the layout is the one a pipe always had.
+- **No decoration.** No banner, no logo art, no animation, nothing that would not survive being pasted into an issue. The rules and the bars are content and print in a pipe too.
+- **The pictures.** `scripts/terminal-picture.mjs` draws the mark in the acid, bold, as the dark theme draws accent text; the landing's screen draws it as the CLI does, ink on the acid ground.
+
 ## Site shell
 
 - Addresses: `/` is the landing, `/app` the application. `/?tab=` and `/landing` redirect (308) and are never linked. Entries live in `apps/web/lib/site.ts`; a page that does not exist yet links its GitHub copy.

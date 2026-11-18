@@ -295,12 +295,11 @@ trazum check src/ --max-tokens 2000
 ```
 
 ```
-src/ — 2 prompts
-
-  OK      34 / 2,000   src/prompts.ts#support-system
-  OK      19 / 2,000   src/prompts.ts#classifier
-
+src/, 2 prompts ──────────────────────────────────────────────────────────
   All 2 within budget.
+
+  OK      35 / 2,000   src/prompts.ts#support-system
+  OK      19 / 2,000   src/prompts.ts#classifier
 ```
 
 **It reads a marker, it does not guess.** A heuristic inside a CI gate fails
@@ -414,17 +413,26 @@ a gate that runs in the author's terminal and not in CI. `--no-baseline` skips i
 for one run.
 
 ```
-  All 2 within budget.
+prompts/, 3 prompts ──────────────────────────────────────────────────────
+  All 3 within budget.
+
+  OK       32 / 600   prompts/summary.md
+  OK      235 / 600   prompts/support.md
+  —        49         prompts/triage.md (no budget)
 
   Against the baseline
-  grew by 64 tokens (+67.4%) to 159
+  grew by 49 tokens (+18.4%) to 316
     New since the baseline (1)
-      prompts/triage.md  0 → 64  (+64)
-  Monthly cost $129.75 → $132.95 (+$3.20)
-  growth of 64 tokens is over the limit of 0
-  growth of +67.4% is over the limit of 5%
+      prompts/triage.md  0 → 49  (+49)
+  Monthly cost $138.35 → $140.80 (+$2.45)
+  growth of 49 tokens is over the limit of 0
+  growth of +18.4% is over the limit of 5%
   If the growth is intended, re-record with "trazum baseline" and commit trazum.baseline.json.
 ```
+
+*Real output: two prompts with a budget of 600 tokens each, recorded as the
+baseline, and a third, `prompts/triage.md`, added after it, under the usage and
+baseline above.*
 
 Read those two blocks together, because that is the whole point: **every budget
 passed, and the run exited 1.** Nobody edited an existing prompt — somebody added

@@ -67,7 +67,7 @@ describe('the optimize picture in the README', () => {
     assert.match(lines[shown.length], /^ {2}[→·!] /, 'the picture stops in the middle of a lever');
     // And everything the README reads off the picture is above the cut.
     const shownText = lines.slice(0, shown.length).join(' ').replace(/\s+/g, ' ');
-    for (const phrase of ['Start here:', 'saving $', 'Beyond shortening the prompt']) {
+    for (const phrase of ['Start here', 'saving $', 'Beyond shortening the prompt']) {
       assert.ok(shownText.includes(phrase), `"${phrase}" is below the cut`);
     }
   });
@@ -135,7 +135,8 @@ describe('the figures in it follow from the price table', () => {
   });
 
   it('opens by naming that lever, at that worth, as a multiple of the saving', () => {
-    const opening = text.match(/Start here: "(.+?)", \$([\d,]+\.\d\d)\/month, (\d+)× what the rules saved/);
+    // The question is a heading ruled out to the width (#758), its answer under it.
+    const opening = text.match(/^Start here ─+ "(.+?)", \$([\d,]+\.\d\d)\/month, (\d+)× what the rules saved/);
     assert.ok(opening !== null, 'the report no longer opens with where to start');
     assert.equal(Number(opening[2].replace(/,/g, '')), lever());
     assert.equal(Number(opening[3]), Math.round(lever() / saving()));
