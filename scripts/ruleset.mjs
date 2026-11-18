@@ -26,13 +26,15 @@
  * every time it did. A whole rule GitHub enforces and the file does not state
  * is a difference, because a rule is a decision somebody made.
  *
- * The repository's merge settings the ruleset leans on (`SETTINGS`, each with
- * why). GitHub does not show these to every token, nor who may bypass the
- * ruleset. A run that is not shown one says "not read" for it. Not read is
- * not fine, and it is not a failure either: a run cannot fail on what it is
- * not shown. Measured on 2026-11-18, the workflow's token is shown the rules
- * and `web_commit_signoff_required`, and is not shown `bypass_actors` nor the
- * four `allow_*` settings.
+ * The repository's settings the ruleset or the documents lean on (`SETTINGS`,
+ * each with why): the merge settings the ruleset needs, and `has_discussions`,
+ * which three pages send questions to. GitHub does not show these to every
+ * token, nor who may bypass the ruleset. A run that is not shown one says "not
+ * read" for it. Not read is not fine, and it is not a failure either: a run
+ * cannot fail on what it is not shown. Measured on 2026-11-18, the workflow's
+ * token is shown the rules and `web_commit_signoff_required`, and is not shown
+ * `bypass_actors` nor the four `allow_*` settings. Whether it is shown
+ * `has_discussions` was not measured.
  *
  *   node scripts/ruleset.mjs --ruleset live.json --repository repo.json
  *
@@ -71,6 +73,7 @@ export const SETTINGS = [
   { key: 'allow_rebase_merge', want: false, why: 'The ruleset allows squash merges and nothing else. A button the ruleset refuses is the same error.' },
   { key: 'allow_update_branch', want: true, why: 'The ruleset requires a branch to be current with main before it merges. This is the button that makes it current.' },
   { key: 'web_commit_signoff_required', want: true, why: 'Every commit must carry Signed-off-by, and the dco workflow checks it. A commit made in the browser carries it only with this on.' },
+  { key: 'has_discussions', want: true, why: 'README.md, SUPPORT.md and the issue forms send questions to Discussions, and the three discussion forms live there. Switched off, those links point nowhere.' },
 ];
 
 /** A value in one order, so two spellings of the same list compare equal. */
@@ -261,7 +264,7 @@ function main(argv) {
     }
     if (found.settings.differences.length > 0) {
       gh(['api', '--method', 'PATCH', `repos/${name}`, '--input', '-'], JSON.stringify(settingsBody(repository)));
-      console.log('Merge settings written.');
+      console.log('Repository settings written.');
     }
   } catch (error) {
     const said = String(error.stderr ?? error.message).trim();

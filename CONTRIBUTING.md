@@ -396,8 +396,11 @@ and each starts the issue with its labels:
 | A page that is wrong, missing or cannot be followed | Documentation is wrong or missing | `documentation`, `needs-triage` |
 
 A security problem is never an issue: report it privately, as
-[SECURITY.md](SECURITY.md) says. A question goes to Discussions. Blank issues
-stay on for the report no form anticipated.
+[SECURITY.md](SECURITY.md) says. A question goes to
+[Discussions](https://github.com/Davmunrey/Trazum/discussions), where the
+Q&A, Ideas and Show and tell categories each have a form in
+`.github/DISCUSSION_TEMPLATE/`. Blank issues stay on for the report no form
+anticipated.
 
 **An issue gets `needs-triage` whatever opened it.** The forms apply it, and
 the `Triage` workflow applies it to an issue that came in without a form: a

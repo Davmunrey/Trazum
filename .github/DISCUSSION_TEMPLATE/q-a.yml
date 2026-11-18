@@ -1,0 +1,62 @@
+# Discussion form for the category whose slug is "q-a".
+# The file name has to be the category's slug. GitHub's default categories are
+# Announcements, General, Ideas, Polls, Q&A and Show and tell, with the slugs
+# announcements, general, ideas, polls, q-a and show-and-tell. The owner has not
+# renamed any as far as is known, and the slugs could not be read from the
+# repository when this was written, so they are the defaults and not a reading.
+# There is no form for announcements (only the maintainer posts there) nor for
+# polls.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste a usage log, a prompt you would not publish, or a key.** A
+        discussion is a public web page, and a usage log names your workloads and
+        your spend. A shape is almost always enough: "a slice with 40k input tokens
+        and no cache reads".
+
+        A bug, or a wrong price, is not a question. Open an issue with
+        [its form](https://github.com/Davmunrey/Trazum/issues/new/choose) instead.
+        Please write in English.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What you are trying to do
+      description: The task, not the command. "Find which project spent the most last week."
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: The command you ran
+      description: The exact command, with any private path or name replaced by a placeholder.
+      render: text
+      placeholder: trazum bill --by week
+    validations:
+      required: true
+
+  - type: textarea
+    id: result
+    attributes:
+      label: What happened, and what you expected
+      description: What Trazum printed or did, and what you thought it would print or do.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `trazum --version`.
+    validations:
+      required: true
+
+  - type: input
+    id: install
+    attributes:
+      label: How you installed it
+      description: For example npx, a global npm install, a clone of this repository, the GitHub Action or the VS Code extension.
+    validations:
+      required: true

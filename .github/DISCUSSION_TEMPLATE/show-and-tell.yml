@@ -1,0 +1,45 @@
+# Discussion form for the category whose slug is "show-and-tell".
+# The file name has to be the category's slug. GitHub's default categories are
+# Announcements, General, Ideas, Polls, Q&A and Show and tell, with the slugs
+# announcements, general, ideas, polls, q-a and show-and-tell. The owner has not
+# renamed any as far as is known, and the slugs could not be read from the
+# repository when this was written, so they are the defaults and not a reading.
+# There is no form for announcements (only the maintainer posts there) nor for
+# polls.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not paste a usage log, a prompt you would not publish, or a key.** A
+        discussion is a public web page, and a usage log names your workloads and
+        your spend. A shape is almost always enough: "a slice with 40k input tokens
+        and no cache reads".
+
+        Something that is wrong is not show and tell. Open an issue with
+        [its form](https://github.com/Davmunrey/Trazum/issues/new/choose) instead.
+        Please write in English.
+
+  - type: textarea
+    id: built
+    attributes:
+      label: What you built or measured
+      description: What it is, and what you found. Figures are welcome when you measured them.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repeat
+    attributes:
+      label: How somebody else could repeat it
+      description: The commands, the version and the input, with anything private replaced by a placeholder.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `trazum --version`.
+    validations:
+      required: true
