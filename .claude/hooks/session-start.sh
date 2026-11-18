@@ -1,7 +1,7 @@
 #!/bin/bash
 # SessionStart hook for Claude Code on the web.
 #
-# Two jobs, in order:
+# Three jobs, in order:
 #
 #   1. If the container restored an old disk snapshot — which this repository's
 #      environment has done repeatedly, always reverting to the same stale
@@ -17,11 +17,14 @@
 #      one scope the platform's re-assertion does not touch.
 #
 #   3. Make sure dependencies are installed, so tests and typechecks work from
-#      the first command. `npm install` rather than `npm ci` on the healthy
-#      path: the container state is cached after the hook completes, and an
-#      install that can reuse it is what makes the next session start fast.
-#      (After a rollback, recover-workspace.sh already ran `npm ci` — the
-#      lockfile is authoritative when the tree was just reset.)
+#      the first command. `npm ci`, never `npm install`: the install only runs
+#      when node_modules is missing, so there is nothing for `npm install` to
+#      reuse, and `npm install` rewrites package-lock.json in the layout of
+#      whatever npm the container has. On 2026-11-18 a container with npm
+#      10.9 dropped 48 `libc` lines from a lockfile a newer npm wrote, and every
+#      session started with a change nobody made. `npm ci` installs the
+#      lockfile as it is and writes nothing back. (After a rollback,
+#      recover-workspace.sh already ran `npm ci` for the same reason.)
 #
 # Web sessions only. On a local machine the working tree is the developer's
 # own, resets are not this hook's call, and they did not ask for an install.
@@ -38,5 +41,5 @@ sh scripts/recover-workspace.sh
 sh scripts/assert-commit-identity.sh
 
 if [ ! -d node_modules ]; then
-  npm install --ignore-scripts
+  npm ci --ignore-scripts
 fi

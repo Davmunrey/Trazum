@@ -690,6 +690,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **A web session no longer starts with `package-lock.json` changed.** The session-start hook installed with
+  `npm install`, which rewrote the lockfile in the layout of the container's npm; npm 10.9 dropped 48 `libc` lines a
+  newer npm had written. It now runs `npm ci`, which installs the lockfile as it is. (#788)
+
 - **The wiki's Home page closed a `<div>` it never opened.** The page is a
   section of the README, and the cut fell after the closing tag of a block
   whose opening tag is above it. `scripts/build-wiki.mjs` now pairs the tags
