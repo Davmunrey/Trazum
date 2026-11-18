@@ -106,7 +106,7 @@ export function githubSlugger() {
 
 /**
  * @typedef {string | { t: 'code', v: string }
- *   | { t: 'em' | 'strong' | 'sub' | 'sup' | 'kbd', c: Inline[] }
+ *   | { t: 'em' | 'strong' | 'del' | 'sub' | 'sup' | 'kbd', c: Inline[] }
  *   | { t: 'a', href: string, title?: string, ext?: boolean, c: Inline[] }
  *   | { t: 'img', src: string, alt: string, w?: number, h?: number }
  *   | { t: 'br' }
@@ -924,8 +924,17 @@ function parseInline(text, ctx, line) {
       continue;
     }
 
-    if (ch === '~' && text[i + 1] === '~') {
-      if (ctx.onUnknown !== 'escape') throw unknown('~~strikethrough~~, which this reader does not draw', ctx, line);
+    if (ch === '~' && text[i + 1] === '~' && text[i + 2] !== '~') {
+      // GFM's strikethrough: two tildes, text that does not start or end in a
+      // space, two tildes. Anything else is the characters it was written as.
+      const close = text.indexOf('~~', i + 2);
+      const inner = close === -1 ? '' : text.slice(i + 2, close);
+      if (inner !== '' && inner === inner.trim() && !inner.includes('~')) {
+        flush();
+        items.push({ t: 'del', c: parseInline(inner, ctx, line) });
+        i = close + 2;
+        continue;
+      }
     }
 
     if (ch === '&') {

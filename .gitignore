@@ -39,3 +39,10 @@ skills-lock.json
 # images they use. A committed copy would be a second copy of the documents.
 /apps/web/lib/docs/generated/
 /apps/web/public/docs-assets/
+
+# Written by `scripts/build-site-pages.mjs` from CHANGELOG.md, ROADMAP.md,
+# .github/milestones.json and the catalogue's source, before the web app
+# builds, runs or is tested: the pages of /changelog, /roadmap and the part of
+# /models that is not the catalogue itself. A committed copy would be a second
+# copy of the changelog.
+/apps/web/lib/history/generated/

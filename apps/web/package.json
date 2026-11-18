@@ -5,14 +5,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node ../../scripts/build-docs-site.mjs",
+    "predev": "node ../../scripts/build-docs-site.mjs && node ../../scripts/build-site-pages.mjs",
     "dev": "next dev",
-    "prebuild": "npm --prefix ../../packages/core run build && node ../../scripts/build-docs-site.mjs",
+    "prebuild": "npm --prefix ../../packages/core run build && node ../../scripts/build-docs-site.mjs && node ../../scripts/build-site-pages.mjs",
     "build": "next build",
     "start": "next start",
-    "pretypecheck": "node ../../scripts/build-docs-site.mjs",
+    "pretypecheck": "node ../../scripts/build-docs-site.mjs && node ../../scripts/build-site-pages.mjs",
     "typecheck": "tsc --noEmit",
-    "pretest": "node ../../scripts/build-docs-site.mjs",
+    "pretest": "node ../../scripts/build-docs-site.mjs && node ../../scripts/build-site-pages.mjs",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {

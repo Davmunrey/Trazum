@@ -175,12 +175,20 @@ describe('every published document renders', () => {
     fails('# T\n\n<div align="center" onclick="x()">\n\nbody\n\n</div>\n', /onclick/);
     fails('# T\n\n<details>\n\nnever closed\n', /never closed/);
     fails('# T\n\n[ref]: https://example.com\n', /reference definition/);
-    fails('# T\n\n~~struck~~\n', /strikethrough/);
     fails('# T\n\n```js\nnever closed\n', /never closed/);
     fails('# T\n\nthree\nlines\nof text\n---\n', /followed by a line of -/);
     fails('# T\n\nan unknown &notanentity; here\n', /character reference/);
     fails('# T\n\n<a href="x">link</a> block\n', /<a> with an attribute this reader does not know: href/);
     assert.deepEqual(md.parseMarkdown('# T\n\none line\n---\n\ntext\n').blocks.map((b) => b.t), ['h', 'h', 'p'], 'a one-line setext heading is a heading');
+  });
+
+  it('draws a strikethrough, and leaves a lone pair of tildes as the characters they are', () => {
+    const inline = (source) => md.parseMarkdown(`# T\n\n${source}\n`, { file: 'x.md' }).blocks[1].c;
+    assert.deepEqual(inline('a ~~struck~~ b'), ['a ', { t: 'del', c: ['struck'] }, ' b']);
+    assert.deepEqual(inline('~~**both**~~'), [{ t: 'del', c: [{ t: 'strong', c: ['both'] }] }]);
+    assert.deepEqual(inline('about ~~ nothing ~~ here'), ['about ~~ nothing ~~ here'], 'a space inside the tildes is not a strikethrough');
+    assert.deepEqual(inline('an unclosed ~~ pair'), ['an unclosed ~~ pair']);
+    assert.match(render(h(DocBody, { blocks: md.parseMarkdown('# T\n\n~~<b>~~\n', { file: 'x.md', onUnknown: 'escape' }).blocks })), /<del>&lt;b&gt;<\/del>/);
   });
 
   it('does not rewrite the two documents that ran a paragraph into a rule, beyond the blank line', () => {
@@ -206,7 +214,7 @@ describe('links and images', () => {
     const links = allLinks();
     assert.ok(links.length > 500, `only ${links.length} links in the published documents`);
     for (const { doc, href } of links) {
-      assert.match(href, /^(?:https?:\/\/|mailto:|#|\/docs(?:\/|$))/, `${doc.path} still has the link ${href}`);
+      assert.match(href, /^(?:https?:\/\/|mailto:|#|\/docs(?:\/|$)|\/(?:changelog|roadmap)$)/, `${doc.path} still has the link ${href}`);
       assert.equal(safe.safeHref(href), href, `${doc.path}: ${href} is not a link the renderer would draw`);
     }
     assert.ok(built.inSiteLinks > 150, `only ${built.inSiteLinks} links between published documents`);
@@ -388,7 +396,7 @@ describe('the address of a heading is GitHub’s', () => {
   });
 
   it('never collides with an address the site itself uses', () => {
-    const reserved = new Set(['content', 'docs-title', 'docs-tasks', 'docs-kept']);
+    const reserved = new Set(['content', 'docs-title', 'docs-tasks', 'docs-also', 'docs-kept']);
     for (const doc of built.documents) for (const heading of doc.headings) assert.ok(!reserved.has(heading.id), `${doc.path}: ${heading.id}`);
   });
 });
@@ -440,7 +448,7 @@ describe('what a document says never runs', () => {
       attrs: [...attrs.matchAll(/([^\s=>]+)(?:="([^"]*)")?/g)].map(([, key, value]) => [key, value ?? '']),
     }));
 
-  const ALLOWED = new Set(['p', 'a', 'span', 'code', 'pre', 'em', 'strong', 'sub', 'sup', 'kbd', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'img', 'blockquote', 'hr', 'details', 'summary', 'br']);
+  const ALLOWED = new Set(['p', 'a', 'span', 'code', 'pre', 'em', 'strong', 'del', 'sub', 'sup', 'kbd', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'div', 'img', 'blockquote', 'hr', 'details', 'summary', 'br']);
 
   function assertInert(html, what) {
     for (const { name, attrs } of tags(html)) {

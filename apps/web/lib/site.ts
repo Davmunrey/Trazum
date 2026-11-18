@@ -8,10 +8,10 @@
  * of them at once. The words for each entry live in `site-copy.ts`, keyed by
  * the same ids, and its type makes a missing translation a build error.
  *
- * Only what exists today is linked. The documentation is a page of this site
- * (`/docs`). Models, roadmap, changelog and brand pages are coming as pages
- * of it too; until each one exists, its entry points at the repository's own
- * copy on GitHub.
+ * Only what exists today is linked. The documentation (`/docs`), the models
+ * and their prices (`/models`), the roadmap and the changelog are pages of
+ * this site. The brand page is coming as one too; until it exists, nothing
+ * links it.
  */
 
 /** The repository. Every public page carries a button to it. */
@@ -20,6 +20,11 @@ export const GITHUB_URL = 'https://github.com/Davmunrey/Trazum';
 export const DOCS_PATH = '/docs';
 /** The repository's own `docs/` folder, where the records the site does not publish are kept. */
 export const DOCS_ON_GITHUB = `${GITHUB_URL}/tree/main/docs`;
+/** The models and their prices, the roadmap and the changelog: pages of the site, built from the repository's own files. */
+export const MODELS_PATH = '/models';
+export const ROADMAP_PATH = '/roadmap';
+export const CHANGELOG_PATH = '/changelog';
+/** The changelog's own file, which each release page links as its source. */
 export const CHANGELOG_URL = `${GITHUB_URL}/blob/main/CHANGELOG.md`;
 export const SECURITY_URL = `${GITHUB_URL}/blob/main/SECURITY.md`;
 export const LICENCE_URL = `${GITHUB_URL}/blob/main/LICENSE`;
@@ -36,6 +41,8 @@ export type SiteLinkId =
   | 'dashboard'
   | 'playground'
   | 'docs'
+  | 'models'
+  | 'roadmap'
   | 'github'
   | 'npm'
   | 'changelog'
@@ -53,9 +60,11 @@ export const SITE_LINKS: Readonly<Record<SiteLinkId, SiteLink>> = {
   dashboard: { id: 'dashboard', href: DASHBOARD_PATH, external: false },
   playground: { id: 'playground', href: `${DASHBOARD_PATH}?tab=playground`, external: false },
   docs: { id: 'docs', href: DOCS_PATH, external: false },
+  models: { id: 'models', href: MODELS_PATH, external: false },
+  roadmap: { id: 'roadmap', href: ROADMAP_PATH, external: false },
   github: { id: 'github', href: GITHUB_URL, external: true },
   npm: { id: 'npm', href: NPM_URL, external: true },
-  changelog: { id: 'changelog', href: CHANGELOG_URL, external: true },
+  changelog: { id: 'changelog', href: CHANGELOG_PATH, external: false },
   security: { id: 'security', href: SECURITY_URL, external: true },
   licence: { id: 'licence', href: LICENCE_URL, external: true },
 };
@@ -65,14 +74,14 @@ export const SITE_LINKS: Readonly<Record<SiteLinkId, SiteLink>> = {
  * the phone menu and the footer's first group. The dashboard and GitHub are
  * not entries: the header draws them as its two buttons.
  */
-export const HEADER_ENTRIES: readonly SiteLinkId[] = ['playground', 'docs'];
+export const HEADER_ENTRIES: readonly SiteLinkId[] = ['playground', 'docs', 'models'];
 
 export type FooterGroupId = 'product' | 'project';
 
 /** The footer: the header's destinations, then the project's own papers. */
 export const FOOTER_GROUPS: readonly { id: FooterGroupId; links: readonly SiteLinkId[] }[] = [
   { id: 'product', links: ['dashboard', ...HEADER_ENTRIES, 'npm'] },
-  { id: 'project', links: ['github', 'changelog', 'security', 'licence'] },
+  { id: 'project', links: ['github', 'roadmap', 'changelog', 'security', 'licence'] },
 ];
 
 /** The public pages, each with its canonical path. */

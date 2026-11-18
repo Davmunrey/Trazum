@@ -13,8 +13,8 @@ page.
 
 ## What is checked
 
-Fifteen flows, each from an empty browser. They drive the application at
-`/app`, where it has lived since the landing took `/`; one starts on the
+Sixteen flows, each from an empty browser. They drive the application at
+`/app`, where it has lived since the landing took `/`; three start on the
 landing:
 
 | Flow | What the page must show |
@@ -30,6 +30,7 @@ landing:
 | Tabs | each one by click and by address, one panel at a time |
 | Site | the landing's headline and command, its GitHub button, its way into the dashboard, the sample month loaded there and priced at `$1.05` over eight calls, and an old `/?tab=` address landing on its panel at `/app` |
 | Docs | from the landing, the Docs entry to `/docs`, a search for `baseline gate`, the result for the heading "The CI gate: a budget is a ceiling, a baseline is a gate", and the command reference open at `#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate` with that heading scrolled into view, the document marked English, and View on GitHub going to `docs/commands.md` |
+| Models | from the landing, the Models entry to `/models`, the count of every model, one provider chosen so that only its rows are left, a text filter that keeps `deepseek-v4-pro` and drops `deepseek-flash`, the sentence for a filter nothing matches, nothing written to the address, `gemini-2.5-pro` drawn with the Retired tab and marked retired, and no request made by the page while it was filtered |
 | Tour | all ten steps: the bill, the optimiser and the comparison each run their sample, and the terminal types and runs each of its three commands once |
 | Appearance | dark applied at once and still there after a reload |
 | Language | Spanish on the page and in the `lang` attribute, after a reload too |
@@ -102,9 +103,9 @@ of a tenth.
 
 A step of the `Build and tests` job, after the web app is built and the
 privacy probe has run, on a server of its own. It is part of the required
-check, so a pull request that breaks a flow cannot merge. All fifteen took 34
+check, so a pull request that breaks a flow cannot merge. All sixteen took 38
 seconds by the times the runner printed, on a machine shared with other runs,
-on 2026-11-18; the tour is nine of them, because it waits for a hand that
+on 2026-11-18; the tour is nearly ten of them, because it waits for a hand that
 types.
 
 ## Adding a flow

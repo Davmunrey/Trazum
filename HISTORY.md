@@ -2681,6 +2681,15 @@ is built so nothing is written twice. Search over titles and headings runs in
 the page and sends nothing. Plans, the audit and the compliance records stay
 in the repository, and the index links them there.
 
+**Models and prices at `/models`, the roadmap at `/roadmap` and the changelog
+at `/changelog`** (#736), the three things a visitor asks before trusting a
+tool that prints a bill, built when the site is built from the files that
+already answer them. `/models` is the catalogue the product bills with,
+by provider, with the date each provider's prices were last read, and nothing
+on it is computed. `/roadmap` is `.github/milestones.json` in order, with no
+date, and what is under consideration. `/changelog` is every release newest
+first with an anchor each, the newest in full and the rest a page apiece.
+
 **A deployment overview at `/admin`** (`/api/admin`) for whoever runs the instance, off unless
 `TRAZUM_ADMINS` is set — and off means the page does not exist rather than
 refuses. It is careful about what it claims: Trazum has never seen a bill or an

@@ -51,6 +51,7 @@ import { fileURLToPath } from 'node:url';
 import {
   BLOB,
   DOCS,
+  SITE_PAGES,
   TREE,
   docByPath,
   docHref,
@@ -191,6 +192,15 @@ export function buildDocs(options = {}) {
           inSiteLinks += 1;
           return;
         }
+        // A file that is a page of the site of its own (the changelog, the
+        // roadmap): the page, unless the link names a heading, which the page
+        // does not carry one for each of.
+        const own = SITE_PAGES.find((candidate) => candidate.path === target.path);
+        if (own !== undefined && target.fragment === '') {
+          node.href = own.href;
+          inSiteLinks += 1;
+          return;
+        }
         const page = docByPath(target.path);
         if (page !== undefined) {
           const known = idsOf.get(target.path);
@@ -297,6 +307,17 @@ export function buildDocs(options = {}) {
   }
 
   return {
+    /**
+     * Resolve the links and images of a document that is not one of the
+     * published ones (the changelog and the roadmap are pages of their own),
+     * with the same rules, and with its problems and its repository links
+     * added to this result's. Called by `scripts/build-site-pages.mjs`.
+     * @param {string} path @param {any[]} blocks @param {string[]} ids
+     */
+    resolve(path, blocks, ids) {
+      idsOf.set(path, new Set(ids));
+      resolve(path, blocks, new Set(ids));
+    },
     documents,
     tasks,
     search,
@@ -354,10 +375,13 @@ export function literal(text) {
   return JSON.stringify(text).replace(/[<>\u2028\u2029]/g, (character) => ESCAPED[character]);
 }
 
-/** A value as the text of a TypeScript module that parses it at load. */
-function moduleOf(value, type, typesPath) {
+/**
+ * A value as the text of a TypeScript module that parses it at load.
+ * `writer` names the script and what it wrote from, for the first line.
+ */
+export function moduleOf(value, type, typesPath, writer = "scripts/build-docs-site.mjs from the repository's documents") {
   return [
-    "// Written by scripts/build-docs-site.mjs from the repository's documents. Not edited by hand; not committed.",
+    `// Written by ${writer}. Not edited by hand; not committed.`,
     `import type { ${type.replace('[]', '')} } from '${typesPath}';`,
     '',
     `export default JSON.parse(${literal(JSON.stringify(value))}) as ${type};`,

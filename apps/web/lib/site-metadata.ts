@@ -5,7 +5,8 @@ import { docHref } from './docs/manifest';
 import type { WebMessages } from './i18n/types';
 import { COPY } from './landing-copy';
 import type { MarketingLocale } from './marketing-locales';
-import { CANONICAL, DOCS_PATH } from './site';
+import { CHANGELOG_COPY, MODELS_COPY, ROADMAP_COPY } from './pages-copy';
+import { CANONICAL, CHANGELOG_PATH, DOCS_PATH, MODELS_PATH, ROADMAP_PATH } from './site';
 import { SITE_COPY } from './site-copy';
 
 /**
@@ -65,6 +66,31 @@ export function docsIndexMetadata(locale: MarketingLocale): Metadata {
 export function docMetadata(doc: { slug: string; title: string; description: string }): Metadata {
   const title = `${doc.title} · Trazum docs`;
   return { title: { absolute: title }, ...card(title, doc.description, docHref(doc.slug), OG_LOCALE.en) };
+}
+
+export function modelsMetadata(locale: MarketingLocale): Metadata {
+  const t = MODELS_COPY[locale];
+  const title = `${t.metaTitle} · Trazum`;
+  return { title: { absolute: title }, ...card(title, t.metaDescription, MODELS_PATH, OG_LOCALE[locale]) };
+}
+
+export function roadmapMetadata(locale: MarketingLocale): Metadata {
+  const t = ROADMAP_COPY[locale];
+  const title = `${t.metaTitle} · Trazum`;
+  return { title: { absolute: title }, ...card(title, t.metaDescription, ROADMAP_PATH, OG_LOCALE[locale]) };
+}
+
+export function changelogMetadata(locale: MarketingLocale): Metadata {
+  const t = CHANGELOG_COPY[locale];
+  const title = `${t.metaTitle} · Trazum`;
+  return { title: { absolute: title }, ...card(title, t.metaDescription, CHANGELOG_PATH, OG_LOCALE[locale]) };
+}
+
+/** One release's page. English, as the changelog is: its title and description say what it is. */
+export function releaseMetadata(release: { version: string; label: string | null }): Metadata {
+  const title = `Trazum ${release.version} · Changelog`;
+  const description = release.label === null ? `What changed in Trazum ${release.version}.` : `What changed in Trazum ${release.version}: ${release.label}.`;
+  return { title: { absolute: title }, ...card(title, description, `${CHANGELOG_PATH}/${release.version}`, OG_LOCALE.en) };
 }
 
 export function notFoundMetadata(locale: MarketingLocale): Metadata {

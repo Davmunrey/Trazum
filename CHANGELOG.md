@@ -53,6 +53,28 @@ merged commit with no entry is a change only `git log` remembers.
   end-to-end flow goes from `/` through Docs, a search, a result, and the
   heading. (#735)
 
+- **Models and prices, the roadmap and the changelog are pages of the site.**
+  `/models` is the catalogue the product bills with: every row of
+  `@trazum/core`'s `MODELS` (91 at this commit) by provider, its rates in
+  `formatUsd`, cache and batch as the multiple the catalogue states, and in
+  the row's details its bands, service tiers, earlier periods, promotion and
+  note. Nothing is computed. A retired model, a promotion and a model with no
+  price are each drawn in form as well as words, the seven ids providers list
+  and the catalogue leaves unpriced are listed with their reasons and no
+  figure, and each provider shows the date it was last read and the page the
+  catalogue's source names. A provider and a text filter run in the page and
+  send nothing. `/roadmap` is `.github/milestones.json` in order, with issues,
+  the live milestone's address and no date, and `ROADMAP.md`'s `## Under
+  consideration`. `/changelog` lists all 147 releases newest first, one anchor
+  each, draws the unreleased changes and the newest three, and gives every
+  release `/changelog/<version>`; a title in place of a date is shown as a
+  title. Of the file's 1,047,825 bytes the index module is 109,256, and the
+  page sent 326,008 bytes, 74,382 compressed. They are built at build time
+  by `scripts/build-site-pages.mjs`, with no request to GitHub, and
+  `site-pages.test.mjs` holds each to its source. The Markdown reader gained
+  `~~strikethrough~~`, and a sixteenth end-to-end flow follows Models.
+  (#736)
+
 - **Mutation testing reaches the code that prices a call.** `billing.ts` is
   the sixth target: it says, for every call the bill and its findings price,
   the moment it was billed at, the size of prompt that picks its band, how it
@@ -482,6 +504,19 @@ merged commit with no entry is a change only `git log` remembers.
   to 13 (#696).
 
 ### Fixed
+
+- **`PR readiness` told a pull request with twenty-two lines under
+  `Unreleased` to add one.** `scripts/pr-readiness.mjs` read this file with
+  `git show` through `execFileSync` and Node's default limit on a child's
+  output, which is 1 MiB. This file passed it, the read failed, and the
+  script's `fileAt` turned every failure into an empty file, so it compared
+  nothing with nothing and blamed the author. It is a required check, so
+  every pull request after that one would have failed it. The limit is set
+  now, and `fileAt` has two answers, the file or "this commit does not have
+  it"; anything else ends the run with the code for "could not judge" and
+  says what could not be read. The tests run the script on a real repository
+  whose changelog is over 1 MiB. Four faults were planted and it failed on
+  each, among them the script exactly as it was (#754).
 
 - **The linter was 1,071 bytes from failing every pull request.** Biome warns
   about any file over 1 MiB that it is given, a warning is an error here, and

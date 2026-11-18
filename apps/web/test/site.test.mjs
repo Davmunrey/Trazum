@@ -135,13 +135,20 @@ describe('every public page carries the header, the GitHub button and the way in
     assert.equal(site.SITE_LINKS.docs.href, '/docs');
     assert.equal(site.SITE_LINKS.docs.external, false, 'the Docs entry leaves the site again');
     assert.equal(site.SITE_LINKS.npm.href, 'https://www.npmjs.com/package/@trazum/cli');
-    for (const [id, file] of [['licence', 'LICENSE'], ['changelog', 'CHANGELOG.md'], ['security', 'SECURITY.md']]) {
+    for (const [id, file] of [['licence', 'LICENSE'], ['security', 'SECURITY.md']]) {
       assert.equal(site.SITE_LINKS[id].href, `https://github.com/Davmunrey/Trazum/blob/main/${file}`, id);
       assert.ok(existsSync(new URL(`../../../${file}`, import.meta.url)), `${file} is not in the repository`);
     }
+    // The changelog, the roadmap and the models are pages of the site, each built from a file the repository keeps.
+    for (const [id, path, file] of [['changelog', '/changelog', 'CHANGELOG.md'], ['roadmap', '/roadmap', 'ROADMAP.md'], ['models', '/models', 'packages/core/src/pricing.ts']]) {
+      assert.equal(site.SITE_LINKS[id].href, path, id);
+      assert.equal(site.SITE_LINKS[id].external, false, `${id} leaves the site`);
+      assert.ok(existsSync(new URL(`../../../${file}`, import.meta.url)), `${file} is not in the repository`);
+    }
     assert.ok(site.HEADER_ENTRIES.includes('docs'), 'the header lost its Docs entry');
+    assert.ok(site.HEADER_ENTRIES.includes('models'), 'the header lost its Models entry');
     const footer = site.FOOTER_GROUPS.flatMap((group) => group.links);
-    for (const id of ['dashboard', ...site.HEADER_ENTRIES, 'github', 'licence', 'changelog', 'security', 'npm']) {
+    for (const id of ['dashboard', ...site.HEADER_ENTRIES, 'github', 'licence', 'roadmap', 'changelog', 'security', 'npm']) {
       assert.ok(footer.includes(id), `the footer has no ${id}`);
     }
     assert.equal(site.COMMAND, 'npx @trazum/cli bill');
