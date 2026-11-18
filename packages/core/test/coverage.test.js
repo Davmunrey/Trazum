@@ -224,3 +224,58 @@ describe('Codecov reports and does not judge', () => {
     assert.match(doc, /not a required check/);
   });
 });
+
+describe('the script\'s figure is not passed off as Codecov\'s', () => {
+  // The script's comment said "This is the figure Codecov shows", written
+  // before Codecov had taken an upload. The first one came out 902 lines
+  // lower (#709). What each counts is in the document; what is held here is
+  // that nothing says they are the same again.
+  const script = read('scripts/coverage.mjs');
+  const doc = read('docs/coverage.md');
+  const start = doc.indexOf('\n## Two figures, and why they differ\n');
+  const section = start < 0 ? '' : doc.slice(start, doc.indexOf('\n## ', start + 4));
+
+  it('the script says its figure is not the one Codecov shows', () => {
+    assert.doesNotMatch(script, /This is the figure Codecov shows/);
+    assert.match(script, /It is not the figure Codecov shows for the same reports/);
+  });
+
+  it('the document gives both, from one run, and says what each counts', () => {
+    assert.ok(section.length > 0, 'the section on the two figures is gone');
+    assert.doesNotMatch(doc, /Codecov has the current ones/);
+    const rows = section.split('\n').filter((line) => line.startsWith('| `npm run coverage` |') || line.startsWith('| Codecov |'));
+    assert.equal(rows.length, 2, 'the table no longer has a row for each');
+    const [lines, other] = rows.map((row) => row.split('|')[2].trim());
+    assert.equal(lines, other, 'the two rows are not over the same lines, so they are not one run');
+    // What is known is bounded by its own heading and the next one: "branch
+    // record" is also in the list of what is not known, and a search of the
+    // whole section would be satisfied by that.
+    const known = section.slice(section.indexOf('\nWhat is known:\n'), section.indexOf('\nWhat is not known:\n'));
+    assert.match(known, /The script counts a line by its line record/);
+    assert.match(known, /Codecov judges a line that carries a branch record by the branch/);
+    // The link targets, each compared whole. Looking for the address somewhere
+    // in the text would also accept it as part of another address.
+    const targets = new Set([...section.matchAll(/\]\(([^)\s]+)\)/g)].map((match) => match[1]));
+    assert.ok(targets.has('https://docs.codecov.com/docs/about-code-coverage'), 'the formula has no source');
+  });
+
+  it('the document says what is not known, and does not explain it anyway', () => {
+    assert.match(section, /\nWhat is not known:\n/);
+    assert.match(section, /was not tested/);
+    assert.match(section, /neither figure is the true one/);
+  });
+
+  it('the percentages in the table are the ones its counts give, rounded down', () => {
+    for (const row of section.split('\n').filter((line) => line.startsWith('| `npm run coverage` |') || line.startsWith('| Codecov |'))) {
+      const cells = row.split('|').map((cell) => cell.trim());
+      const [total, hit] = [cells[2], cells[3]].map((cell) => Number(cell.replaceAll(',', '')));
+      assert.equal(cells[6], `${(Math.floor((hit / total) * 1000) / 10).toFixed(1)}%`, row);
+    }
+  });
+
+  it('the README shows Codecov\'s badge, with no token in its address', () => {
+    const readme = read('README.md');
+    assert.ok(readme.includes('[![Coverage](https://codecov.io/gh/Davmunrey/Trazum/graph/badge.svg)](https://app.codecov.io/gh/Davmunrey/Trazum)'));
+    assert.doesNotMatch(readme, /badge\.svg\?token=/);
+  });
+});
