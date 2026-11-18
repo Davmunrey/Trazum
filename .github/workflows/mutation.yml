@@ -1,0 +1,83 @@
+name: Mutation testing
+
+# Changes the core's built code one small thing at a time and fails when a
+# change survives that is not on record. What it decides is in
+# scripts/mutation.mjs, held by mutation.test.js in the ordinary test run;
+# this file says when it runs and installs the one thing it needs.
+#
+# Why it is its own workflow and not a step of CI: a whole run is long (the
+# measured time is in docs/mutation-testing.md), and nobody's pull request
+# should wait that long for a line they did not touch. So a pull request is
+# asked only about the lines it changes, and every target is run whole weekly.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/core/src/**'
+      - 'scripts/mutate.mjs'
+      - 'scripts/mutation.mjs'
+      - 'scripts/mutant-loader.mjs'
+      - 'test/mutation-parser.test.mjs'
+      - 'mutation.baseline.json'
+      - '.github/workflows/mutation.yml'
+  schedule:
+    # Mondays, after the weekly CI run at 06:41 and the roadmap check at 07:23.
+    # A test deleted in a pull request that changed no target is only seen here.
+    - cron: '53 7 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same pull request makes the older run's answer useless.
+concurrency:
+  group: mutation-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  mutate:
+    name: No mutant lives that is not on record
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build the core
+        run: npm run build -w @trazum/core
+
+      # The parser, pinned, installed with `--ignore-scripts` outside the
+      # workspace: the same arrangement as the privacy probe's browser driver.
+      # Nothing published and nothing in the lockfile depends on it.
+      - name: Install the parser
+        run: npm install --prefix "$RUNNER_TEMP/parser" --no-save --ignore-scripts --no-audit --no-fund acorn@8.19.0
+
+      - name: The tool reads the real parser's trees the way its tests assume
+        env:
+          TRAZUM_ACORN: ${{ runner.temp }}/parser/node_modules/acorn
+        run: npm run test:mutation
+
+      # The base commit is not in a shallow checkout. One commit is enough: a
+      # diff between two trees needs no history.
+      - name: Mutants on the lines this pull request changes
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          node scripts/mutate.mjs --acorn "$RUNNER_TEMP/parser/node_modules/acorn" --since "$BASE_SHA" --check
+
+      - name: Every mutant of every target
+        if: github.event_name != 'pull_request'
+        run: node scripts/mutate.mjs --acorn "$RUNNER_TEMP/parser/node_modules/acorn" --check

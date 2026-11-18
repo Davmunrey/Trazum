@@ -11,6 +11,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **Mutation testing for the core, and the 79 tests it showed to be missing.**
+  `scripts/mutate.mjs` changes the built code of five files one small thing at
+  a time (a `<` into a `<=`, a `*` into a `/`, a call taken out) and reports
+  every change no test noticed, at the line of TypeScript it came from. The
+  files are the ones where a wrong line costs most: `optimize.ts`,
+  `segment.ts` and `rules.ts`, which rewrite a prompt, and `savings.ts` and
+  `session-cost.ts`, which turn token counts into money. The first whole run,
+  on 2026-11-17, caught 277 of 446 mutants: 62.1%. A cache read could be
+  divided by its multiplier instead of multiplied in the cost of a
+  conversation; the median could take the wrong element of any list whose
+  middle values differ; the percentage a prompt was reduced by could be a
+  hundredth of itself; two protected spans that touch could lose one. All of
+  it passed 2,994 tests. Five new test files, each written from the survivors
+  of one target, bring the recorded figure to 408 of 446: 91.5%. The 38 left
+  are in `mutation.baseline.json` and read one by one in
+  `docs/mutation-testing.md`: 24 change nothing a caller can observe, and 14
+  are not settled. `dist` is never edited: a loader serves each mutant to one
+  process. Each mutant is given only the test files whose coverage reaches it.
+  Before any result is trusted the loader is checked both ways, every mutant
+  is parsed so a syntax error is never counted as a caught bug, and `--audit`
+  runs recorded survivors against the tests they were not given: the first
+  day's run chose tests wrongly for every `a ?? b` whose right side never ran,
+  and that is how it was found. The parser it needs is installed outside the
+  workspace, pinned, as the privacy probe's browser driver is: nothing
+  published and nothing in the lockfile depends on it. The `Mutation testing`
+  workflow asks a pull request about the lines it changes and runs every
+  target on Mondays. What is not mutated is said on the same page as the
+  score: regular expressions, the contents of strings, a `for` loop's counter,
+  and every file but those five, which are 446 of the core's roughly 15,700
+  possible mutants. (#690)
+
 ### Fixed
 
 - **A release waits until its packages can be downloaded, not until npm knows

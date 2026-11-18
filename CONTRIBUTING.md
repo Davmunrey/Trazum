@@ -246,6 +246,29 @@ installed, which is a deliberate trade explained at the top of that file. Write
 awkward characters as `\uXXXX` escapes rather than typing them in — two modules
 in a sibling repository once held raw NULs and git called them binary.
 
+### Mutation testing, beside both
+
+Examples and properties say what the code should do. Mutation testing says
+whether they would notice if it stopped: `scripts/mutate.mjs` changes the built
+code of the files where a wrong line costs most, one small thing at a time, and
+reports every change no test caught. [docs/mutation-testing.md](docs/mutation-testing.md)
+has what it changes, what it does not, the current score and how to read a
+survivor.
+
+```bash
+npm run mutate -- --acorn "$ACORN" --since origin/main --check   # the lines you changed
+TRAZUM_ACORN="$ACORN" npm run test:mutation                      # the tool, against the real parser
+```
+
+`$ACORN` is a parser installed outside the workspace; that page has the two
+lines that install it.
+
+If your pull request changes one of those files, the `Mutation testing` check
+asks about the lines you changed, and fails on a mutant that lives there and is
+not on record in `mutation.baseline.json`. The answer is nearly always a test.
+Planting a fault by hand and naming the test that caught it is still asked of
+every new guard: the tool covers five files, and a guard can be anywhere.
+
 **A comment that names a guard must name one that exists.** These
 cross-references carry weight — *"`security.test.js` permits `fetch` only in the
 two modules that exist to make calls"* is how a reader learns a rule is held
