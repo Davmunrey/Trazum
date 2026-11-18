@@ -543,8 +543,15 @@ configuration:
 2. **Root Directory**: `apps/web`. The rest — installing from the workspace
    root, building `@trazum/core` via `prebuild` — is automatic.
 3. Optional variables: `TRAZUM_LLM_*` to offer the LLM pass without users
-   supplying keys, `NEXT_PUBLIC_POSTHOG_KEY` for analytics, `TRAZUM_GITHUB_*`
+   supplying keys, `NEXT_PUBLIC_POSTHOG_KEY` for analytics,
+   `NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS=1` for Vercel Speed Insights, `TRAZUM_GITHUB_*`
    and `TRAZUM_PUBLIC_URL` for sign-in.
+
+   Speed Insights is off unless that variable is exactly `1` at build time. The
+   Content-Security-Policy is the same with it on and off, because the script it
+   adds is on the page's own origin, and the Speed Insights switch is separate
+   from the PostHog key. [README.md](../README.md#analytics-and-privacy) says
+   what is sent and what was not read.
 
 Vercel runs more than one instance, so if you enable sign-in there, set
 `TRAZUM_DATABASE_URL` as well. Without it each instance keeps its own sessions

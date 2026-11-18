@@ -29,6 +29,9 @@ COPY apps/web apps/web
 # Empty defaults keep the build working with no analytics configured.
 ARG NEXT_PUBLIC_POSTHOG_KEY=""
 ARG NEXT_PUBLIC_POSTHOG_HOST=""
+# Vercel Speed Insights, off unless this is exactly 1. It needs a Vercel
+# deployment to do anything, so a container build leaves it empty.
+ARG NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS=""
 
 RUN npm run build --workspace @trazum/core \
  && npm run build --workspace @trazum/web

@@ -13,6 +13,37 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Vercel Speed Insights, off unless the operator switches it on.** Vercel's
+  bot opened #722 with `@vercel/speed-insights` rendered in the layout
+  after `<Analytics />`, always on. That contradicted what the README,
+  `SECURITY.md` and the wiki promise: analytics is off by default, nothing
+  records page views on its own, and every URL that leaves has its share
+  token replaced and its query dropped. #722 was the bot's version, and this
+  one differs in four ways. The switch is the build-time variable
+  `NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS`, on only for the exact value `1`, read
+  in `lib/analytics.ts` beside the PostHog key. The package is imported
+  dynamically inside the on branch of `SpeedInsights.tsx`, the way
+  `posthog-js` is, and a test fails if any file under `apps/web` imports it
+  statically. Every measurement passes `beforeSend` through
+  `redactUrl`, the rule PostHog events use, and one whose URL does not parse
+  is dropped. And the lockfile gains the package and nothing else: npm
+  10.9.9 on this machine also removed sixteen `libc` fields, as the bot's
+  lockfile did, so the entry was restored by hand and `npm ci` accepts it.
+  Read from the package, not from Vercel: the script that sends the
+  measurements is served at `/_vercel/speed-insights/script.js` and is not in
+  the package, so what it sends was not read, and it only works on a Vercel
+  deployment. The Content-Security-Policy does not change and does not read
+  the variable: the script is on the page's own origin and is added by a
+  script the nonce vouches for. In a production build served with the
+  variable set to `1`, Chromium requested the script, got the server's 404
+  because this machine is not Vercel, and reported no policy violation. A
+  test builds the policy in two processes, one with the variable and one
+  without, and requires the same bytes. With the variable unset the package
+  is in one 3,471 byte chunk that the page never requests; the same was true
+  of `posthog-js` before this, because Next here does not fold the
+  environment variable away at build time. The README, `SECURITY.md`,
+  `.env.example`, `docs/setup.md`, the rotation page and the wiki say all of
+  this (#723).
 - **The roadmap's order is held in a file, and GitHub's milestones are made to
   match it.** `.github/milestones.json` is an ordered array, first is next:
   each entry has a title, a description and the issues that belong to it, and

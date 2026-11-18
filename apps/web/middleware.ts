@@ -180,6 +180,30 @@ export function middleware(request: NextRequest) {
    */
   const analytics = analyticsConnectSrc();
 
+  /**
+   * Vercel Speed Insights adds nothing to this policy, and this file does not
+   * read `NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS`: the policy is byte-for-byte the
+   * same with it set and unset. Read from `@vercel/speed-insights` 2.1.0:
+   *
+   * - The package adds a script element whose `src` is
+   *   `/_vercel/speed-insights/script.js`, a path on this origin, which
+   *   `script-src 'self'` covers. The element is created by a script, not by
+   *   the parser, and the script that creates it was loaded by one the nonce
+   *   vouches for, which is what `'strict-dynamic'` trusts.
+   * - Its measurements go to an endpoint the package leaves to that script.
+   *   The package sets one only when `endpoint`, `dsn` or a base path is
+   *   configured, and this app configures none, so the default applies. The
+   *   script is served by Vercel and was not read here. Any same-origin
+   *   endpoint is covered by `connect-src 'self'`; a cross-origin one would be
+   *   blocked, which fails towards nothing being sent.
+   * - Outside production (`NODE_ENV` of `development` or `test`) the package
+   *   loads `script.debug.js` from `https://va.vercel-scripts.com` instead.
+   *   That path was not exercised here and the policy is not widened for it.
+   *
+   * A test holds the byte-for-byte claim by building the policy in two
+   * processes, one with the variable set and one without.
+   */
+
   const policy = [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${value}' 'strict-dynamic' https:${dev ? " 'unsafe-eval'" : ''}`,
