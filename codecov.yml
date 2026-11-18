@@ -27,6 +27,31 @@ flag_management:
   default_rules:
     carryforward: true
 
+# One component for each package the coverage run measures (SUITES in
+# scripts/coverage.mjs), defined by path and so needing nothing at upload time.
+# The paths are the ones in the uploaded reports, which are relative to the
+# repository's root. There are no statuses here, for the project or for a
+# component: the plan this repository is on does not include them, and a status
+# nobody can read is noise. docs/coverage.md says what the components are.
+component_management:
+  individual_components:
+    - component_id: core
+      name: core
+      paths:
+        - packages/core/src/**
+    - component_id: cli
+      name: cli
+      paths:
+        - packages/cli/src/**
+    - component_id: mcp
+      name: mcp
+      paths:
+        - packages/mcp/src/**
+    - component_id: tokenizer-openai
+      name: tokenizer-openai
+      paths:
+        - packages/tokenizer-openai/src/**
+
 # Not sources: what is generated, what is vendored, and the tests themselves.
 ignore:
   - "**/dist/**"
