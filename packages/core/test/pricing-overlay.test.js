@@ -90,7 +90,6 @@ describe('applying an overlay', () => {
           outputPerMTok: 8,
           contextWindow: 2_000_000,
           cacheMinTokens: 256,
-          tier: 'opus',
           capability: 'large',
         },
       }),
@@ -106,7 +105,7 @@ describe('applying an overlay', () => {
     // somewhere and report a saving that does not exist.
     assert.throws(
       () => catalogueFromOverlay(overlay({ 'claude-future-6': { inputPerMTok: 2 } })),
-      /has to be complete. Missing: displayName, outputPerMTok, contextWindow, cacheMinTokens, tier/,
+      /has to be complete. Missing: displayName, outputPerMTok, contextWindow, cacheMinTokens, capability$/,
     );
   });
 
@@ -244,10 +243,10 @@ describe('an invalid overlay is loud', () => {
     );
   });
 
-  it('rejects a bad tier and an implausible id', () => {
+  it('rejects a bad capability and an implausible id', () => {
     rejects(
-      { lastReviewed: '2027-01-01', models: { 'claude-opus-5': { tier: 'enormous' } } },
-      /must be one of frontier, opus, sonnet, haiku/,
+      { lastReviewed: '2027-01-01', models: { 'claude-opus-5': { capability: 'enormous' } } },
+      /must be one of small, mid, large, frontier, unknown/,
     );
     rejects({ lastReviewed: '2027-01-01', models: { '../etc/passwd': { inputPerMTok: 1 } } }, /not a plausible model id/);
   });
@@ -361,7 +360,6 @@ describe('loading an overlay through the config', () => {
           outputPerMTok: 8,
           contextWindow: 2_000_000,
           cacheMinTokens: 256,
-          tier: 'opus',
           capability: 'large',
         },
       }),
@@ -439,7 +437,6 @@ describe('cache and batch rates in an overlay', () => {
           outputPerMTok: 8,
           contextWindow: 200_000,
           cacheMinTokens: 1024,
-          tier: 'sonnet',
           capability: 'mid',
           caching: 'automatic',
           ...(multipliers === undefined ? {} : { multipliers }),
@@ -453,7 +450,7 @@ describe('cache and batch rates in an overlay', () => {
       models: {
         'acme-fast-1': {
           displayName: 'Acme Fast 1', inputPerMTok: 2, outputPerMTok: 8, contextWindow: 200_000,
-          cacheMinTokens: 1024, tier: 'sonnet', capability: 'mid', inferenceGeoMultipliers: geo,
+          cacheMinTokens: 1024, capability: 'mid', inferenceGeoMultipliers: geo,
         },
       },
     });

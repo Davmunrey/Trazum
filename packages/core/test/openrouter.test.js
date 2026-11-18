@@ -128,7 +128,7 @@ describe('the facts the feed does not carry', () => {
     assert.equal(model.caching, 'unknown');
     assert.equal(model.cacheMinTokens, null);
     assert.equal(model.capability, 'unknown');
-    assert.equal(model.tier, 'unknown');
+    assert.equal('tier' in model, false, 'a model from the feed carries the key 3.0.0 removed');
   });
 
   it('and null is not zero, because zero is a claim', () => {

@@ -202,6 +202,14 @@ string exists but not that it is right.
 in the commit message. Pricing changes ship as patch releases — see
 [VERSIONING.md](VERSIONING.md).
 
+A price can change which model Trazum recommends, and a test holds the
+answers: `packages/core/test/fixtures/recommendations.json` records the
+cheapest model of each tier and the cheaper model each catalogue model is
+offered. When a catalogue change moves one, `tier-removed.test.js` fails and
+names it. Run `node scripts/record-recommendations.mjs` after `npm run build`,
+read the diff of the fixture, and say in the commit which answers moved and
+why.
+
 **Nobody has to wait for that release.** A user can correct a price from their own
 repository with a pricing overlay, which is why the bundled numbers are not part
 of the frozen API and the overlay schema is. If you are fixing a price because

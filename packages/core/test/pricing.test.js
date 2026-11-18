@@ -80,7 +80,6 @@ describe('pricing catalogue', () => {
       outputPerMTok: 15,
       contextWindow: 200_000,
       cacheMinTokens: 1024,
-      tier: 'sonnet',
       promo: { inputPerMTok: 2, outputPerMTok: 10, until: '2026-08-31' },
     };
 

@@ -61,7 +61,7 @@ function perMillion(raw: unknown): number | null {
  *
  * `knownIds` is the set the bundled catalogue already has. For those, only the
  * three things OpenRouter actually knows are overridden — price in, price out,
- * context window. `cacheMinTokens`, `caching`, `capability` and `tier` are left
+ * context window. `cacheMinTokens`, `caching` and `capability` are left
  * alone, because the bundled entry was written by somebody who looked them up
  * and this feed has nothing to say about them. Overwriting a researched fact
  * with a blank is not a refresh.
@@ -117,7 +117,6 @@ export function openrouterOverlay(
       cacheMinTokens: null,
       caching: 'unknown',
       capability: 'unknown',
-      tier: 'unknown',
     };
   }
 

@@ -1,4 +1,4 @@
-import type { InferenceGeo, ModelPricing, PricingTier, ServiceTier, TierCondition } from './types.js';
+import type { Capability, InferenceGeo, ModelPricing, PricingTier, ServiceTier, TierCondition } from './types.js';
 
 /**
  * Model and pricing catalogue (USD per million tokens).
@@ -439,7 +439,6 @@ export const MODELS: ModelPricing[] = [
      */
     tiers: [{ id: 'fast', when: { kind: 'speed', speed: 'fast' }, inputPerMTok: 16, outputPerMTok: 80 }],
     capability: 'frontier',
-    tier: 'frontier',
     notes: 'Cache hits cost 2.5% of the input price ($0.20). Fast mode (usage.speed "fast") bills $16/$80.'
       + ' Requires 30-day data retention.',
   },
@@ -466,7 +465,6 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.025, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
     tiers: [{ id: 'fast', when: { kind: 'speed', speed: 'fast' }, inputPerMTok: 16, outputPerMTok: 80 }],
     capability: 'frontier',
-    tier: 'frontier',
     notes:
       'Available only to organizations verified through Anthropic\'s verification programs.'
       + ' Fast mode (usage.speed "fast") bills $16/$80. Requires 30-day data retention.',
@@ -494,7 +492,6 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 512,
     multipliers: { cacheRead: 0.025, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
     capability: 'frontier',
-    tier: 'frontier',
     notes: 'Legacy: superseded by Claude Fable 5.2, which costs less ($8/$40). Cache hits cost 2.5% of the input'
       + ' price ($0.25). Requires 30-day data retention.',
   },
@@ -516,7 +513,6 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 512,
     multipliers: { cacheRead: 0.025, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
     capability: 'frontier',
-    tier: 'frontier',
     notes:
       'Available only to organizations verified through Anthropic\'s verification programs.'
       + ' Requires 30-day data retention.',
@@ -532,7 +528,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_000_000,
     cacheMinTokens: 512,
     capability: 'frontier',
-    tier: 'frontier',
     notes: 'Legacy: superseded by Claude Fable 5.1 at the same prices. Requires 30-day data retention.',
   },
   {
@@ -547,7 +542,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_000_000,
     cacheMinTokens: 512,
     capability: 'frontier',
-    tier: 'frontier',
     notes:
       'Available only to organizations verified through Anthropic\'s verification programs.'
       + ' Requires 30-day data retention.',
@@ -578,7 +572,6 @@ export const MODELS: ModelPricing[] = [
      */
     tiers: [{ id: 'fast', when: { kind: 'speed', speed: 'fast' }, inputPerMTok: 8, outputPerMTok: 40 }],
     capability: 'large',
-    tier: 'opus',
     notes: 'Cache hits cost 5% of the input price ($0.20), against 10% on Opus 5 and earlier.'
       + ' Fast mode (usage.speed "fast") bills $8/$40.',
   },
@@ -595,7 +588,6 @@ export const MODELS: ModelPricing[] = [
     // Fast mode in research preview, $10/$50; same sources as Opus 5.5's.
     tiers: [{ id: 'fast', when: { kind: 'speed', speed: 'fast' }, inputPerMTok: 10, outputPerMTok: 50 }],
     capability: 'large',
-    tier: 'opus',
     notes: '512-token cache minimum: caches prompts that would miss on Opus 4.6. Fast mode bills $10/$50.',
   },
   {
@@ -615,7 +607,6 @@ export const MODELS: ModelPricing[] = [
      */
     tiers: [{ id: 'fast', when: { kind: 'speed', speed: 'fast' }, inputPerMTok: 10, outputPerMTok: 50 }],
     capability: 'large',
-    tier: 'opus',
     notes: 'Fast mode bills $10/$50 until it is removed from this model on 2026-11-30.',
   },
   {
@@ -629,7 +620,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_000_000,
     cacheMinTokens: 2048,
     capability: 'large',
-    tier: 'opus',
   },
   {
     id: 'claude-opus-4-6',
@@ -642,7 +632,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_000_000,
     cacheMinTokens: 4096,
     capability: 'large',
-    tier: 'opus',
   },
   {
     /*
@@ -663,7 +652,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 200_000,
     cacheMinTokens: 4096,
     capability: 'large',
-    tier: 'opus',
     notes: '200K context window and a 64K output cap.',
   },
   {
@@ -689,7 +677,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 200_000,
     cacheMinTokens: 1024,
     capability: 'large',
-    tier: 'opus',
     notes:
       'Retired on the Claude API on 2026-08-05; still served on Google Cloud (Google managed) and Bedrock.'
       + ' Anthropic names Claude Opus 4.8 as the replacement.',
@@ -710,7 +697,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 200_000,
     cacheMinTokens: 1024,
     capability: 'large',
-    tier: 'opus',
     notes:
       'Retired on the Claude API on 2026-06-15; still served on Google Cloud (Google managed).'
       + ' Anthropic names Claude Opus 4.8 as the replacement.',
@@ -732,7 +718,6 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 512,
     multipliers: { cacheRead: 0.05, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
     capability: 'mid',
-    tier: 'sonnet',
     notes: 'Cache hits cost 5% of the input price ($0.10), against 10% ($0.20) on Sonnet 5.',
   },
   {
@@ -746,7 +731,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_000_000,
     cacheMinTokens: 1024,
     capability: 'mid',
-    tier: 'sonnet',
     notes:
       'Launched with 2/10 as introductory pricing through 2026-08-31; the scheduled'
       + ' increase to 3/15 on 2026-09-01 was cancelled and 2/10 is the standard price.',
@@ -762,7 +746,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_000_000,
     cacheMinTokens: 1024,
     capability: 'mid',
-    tier: 'sonnet',
   },
   {
     /*
@@ -785,7 +768,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 200_000,
     cacheMinTokens: 1024,
     capability: 'mid',
-    tier: 'sonnet',
     notes: 'Deprecated; retires 2026-11-30. Recommended replacement: Claude Sonnet 5.5.',
   },
   {
@@ -808,7 +790,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 200_000,
     cacheMinTokens: 1024,
     capability: 'mid',
-    tier: 'sonnet',
     notes:
       'Retired on the Claude API on 2026-06-15; still served on Google Cloud (Google managed) and Bedrock.'
       + ' Anthropic names Claude Sonnet 5.5 as the replacement.',
@@ -849,7 +830,6 @@ export const MODELS: ModelPricing[] = [
       },
     ],
     capability: 'small',
-    tier: 'haiku',
     notes:
       'Priced per request by prompt length: $0.10/$0.50 up to 100,000 input tokens, cache reads'
       + ' and writes included, and $0.50/$2.50 over it.',
@@ -868,7 +848,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 200_000,
     cacheMinTokens: 4096,
     capability: 'small',
-    tier: 'haiku',
     notes: '200K context window and a 64K output cap, smaller than the rest.',
   },
   {
@@ -890,7 +869,6 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 200_000,
     cacheMinTokens: 2048,
     capability: 'small',
-    tier: 'haiku',
     notes:
       'Retired on the Claude API on 2026-02-19; still served on Google Cloud (Google managed).'
       + ' Anthropic names Claude Haiku 4.5 as the replacement.',
@@ -961,7 +939,6 @@ export const MODELS: ModelPricing[] = [
       ultrafast: { inputPerMTok: 60, outputPerMTok: 300, tiers: openAiLongBand(120, 450) },
     },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_CURRENT_NOTE,
   },
   {
@@ -989,7 +966,6 @@ export const MODELS: ModelPricing[] = [
       ultrafast: { inputPerMTok: 12, outputPerMTok: 60, tiers: openAiLongBand(24, 90) },
     },
     capability: 'large',
-    tier: 'opus',
     notes: OPENAI_CURRENT_NOTE,
   },
   {
@@ -1022,7 +998,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 2, outputPerMTok: 10, tiers: openAiLongBand(4, 15) },
     },
     capability: 'mid',
-    tier: 'sonnet',
     notes: OPENAI_CURRENT_NOTE,
   },
   {
@@ -1049,7 +1024,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 4, outputPerMTok: 20, tiers: openAiLongBand(8, 30) },
     },
     capability: 'large',
-    tier: 'opus',
     notes: OPENAI_CURRENT_NOTE,
   },
   {
@@ -1076,7 +1050,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 0.2, outputPerMTok: 1, tiers: openAiLongBand(0.4, 1.5) },
     },
     capability: 'small',
-    tier: 'haiku',
     notes: OPENAI_CURRENT_NOTE,
   },
   {
@@ -1117,7 +1090,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 8, outputPerMTok: 40, tiers: openAiLongBand(16, 60) },
     },
     capability: 'large',
-    tier: 'opus',
     notes:
       OPENAI_CURRENT_NOTE
       + ' $4/$20 is promotional until 2026-11-30, and OpenAI has not published the price after it as a figure.',
@@ -1146,7 +1118,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 4, outputPerMTok: 24, tiers: openAiLongBand(8, 36) },
     },
     capability: 'mid',
-    tier: 'sonnet',
     notes: OPENAI_CURRENT_NOTE,
   },
   {
@@ -1173,7 +1144,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 0.4, outputPerMTok: 2.4, tiers: openAiLongBand(0.8, 3.6) },
     },
     capability: 'small',
-    tier: 'haiku',
     notes: OPENAI_CURRENT_NOTE,
   },
   {
@@ -1204,7 +1174,6 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1.25, cacheWrite1h: 2.5, batch: null },
     cacheTtl: OPENAI_CACHE_TTL,
     capability: 'large',
-    tier: 'opus',
     notes:
       'Needs approval through the Daybreak programme. At most 272,000 input tokens, Responses API only, no batch.'
       + ' Cache writes cost 1.25x input for the default 30-minute entry and 2.5x for a 12-hour one.',
@@ -1232,7 +1201,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 2.5, outputPerMTok: 20 },
     },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_GPT5_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1252,7 +1220,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 0.45, outputPerMTok: 3.6 },
     },
     capability: 'mid',
-    tier: 'sonnet',
     notes: OPENAI_GPT5_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1271,7 +1238,6 @@ export const MODELS: ModelPricing[] = [
       flex: { inputPerMTok: 0.025, outputPerMTok: 0.2 },
     },
     capability: 'small',
-    tier: 'haiku',
     notes: OPENAI_GPT5_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
 
@@ -1315,7 +1281,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 12.5, outputPerMTok: 75 },
     },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_EARLIER_LONG_NOTE,
   },
   {
@@ -1341,7 +1306,6 @@ export const MODELS: ModelPricing[] = [
       flex: { inputPerMTok: 15, outputPerMTok: 90 },
     },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_EARLIER_LONG_NOTE,
   },
   {
@@ -1368,7 +1332,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 5, outputPerMTok: 30 },
     },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_EARLIER_LONG_NOTE,
   },
   {
@@ -1394,7 +1357,6 @@ export const MODELS: ModelPricing[] = [
       flex: { inputPerMTok: 15, outputPerMTok: 90, tiers: openAiLongBand(30, 135) },
     },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_EARLIER_LONG_NOTE,
   },
   {
@@ -1413,7 +1375,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 1.5, outputPerMTok: 9 },
     },
     capability: 'mid',
-    tier: 'sonnet',
     notes: OPENAI_EARLIER_NOTE,
   },
   {
@@ -1432,7 +1393,6 @@ export const MODELS: ModelPricing[] = [
       flex: { inputPerMTok: 0.1, outputPerMTok: 0.625 },
     },
     capability: 'small',
-    tier: 'haiku',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1451,7 +1411,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 3.5, outputPerMTok: 28 },
     },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_EARLIER_NOTE,
   },
   {
@@ -1466,7 +1425,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'none',
     multipliers: { batch: 0.5 },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_EARLIER_NO_CACHE_NOTE,
   },
   {
@@ -1486,7 +1444,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 2.5, outputPerMTok: 20 },
     },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1502,7 +1459,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'none',
     multipliers: { batch: 0.5 },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_EARLIER_NO_CACHE_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1521,7 +1477,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 3.5, outputPerMTok: 14 },
     },
     capability: 'large',
-    tier: 'opus',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1540,7 +1495,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 0.7, outputPerMTok: 2.8 },
     },
     capability: 'mid',
-    tier: 'sonnet',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1559,7 +1513,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 4.25, outputPerMTok: 17 },
     },
     capability: 'large',
-    tier: 'opus',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1578,7 +1531,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 0.25, outputPerMTok: 1 },
     },
     capability: 'small',
-    tier: 'haiku',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1598,7 +1550,6 @@ export const MODELS: ModelPricing[] = [
       fast: { inputPerMTok: 3.5, outputPerMTok: 14 },
     },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_EARLIER_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1614,7 +1565,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'none',
     multipliers: { batch: 0.5 },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_EARLIER_NO_CACHE_NOTE + OPENAI_DEPRECATED_SUFFIX,
   },
   // ------------------------------------------------------------------------
@@ -1646,7 +1596,6 @@ export const MODELS: ModelPricing[] = [
     // The pricing page's specialized "Fast" table: $3.50/$28, cached $0.35.
     serviceTiers: { fast: { inputPerMTok: 3.5, outputPerMTok: 28 } },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_CODEX_NOTE + ' At most 272,000 input tokens.' + OPENAI_DEPRECATED_SUFFIX,
   },
   {
@@ -1661,7 +1610,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_CODEX_NOTE + ' At most 272,000 input tokens.' + OPENAI_SHUT_DOWN_SUFFIX,
   },
   {
@@ -1676,7 +1624,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_CODEX_NOTE + OPENAI_SHUT_DOWN_SUFFIX,
   },
   {
@@ -1691,7 +1638,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_CODEX_NOTE + OPENAI_SHUT_DOWN_SUFFIX,
   },
   {
@@ -1706,7 +1652,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'mid',
-    tier: 'sonnet',
     notes: OPENAI_CODEX_NOTE + OPENAI_SHUT_DOWN_SUFFIX,
   },
   {
@@ -1721,7 +1666,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'frontier',
-    tier: 'frontier',
     notes: OPENAI_CODEX_NOTE + ' At most 272,000 input tokens.' + OPENAI_SHUT_DOWN_SUFFIX,
   },
   {
@@ -1736,7 +1680,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'mid',
-    tier: 'sonnet',
     notes: OPENAI_CODEX_NOTE + ' A cache read costs 0.25x input.' + OPENAI_SHUT_DOWN_SUFFIX,
   },
   {
@@ -1751,7 +1694,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'large',
-    tier: 'opus',
     notes: 'Points at the model ChatGPT currently uses, so it is priced and never recommended. Caching is automatic; a write costs what input costs. At most 272,000 input tokens, and no batch.',
   },
 
@@ -1805,7 +1747,6 @@ export const MODELS: ModelPricing[] = [
         'This model models/gemini-2.5-pro is no longer available to new users. Please update your code to use models/gemini-3.1-pro-preview for the latest features and improvements. We recommend you to use the Interactions API.',
     },
     capability: 'large',
-    tier: 'opus',
     notes:
       'From 2026-12-01 Google routes this id to Gemini 3.8 Flash and bills it at 3.8 Flash rates.'
       + ' Before then it bills $1.25/$10, and $2.50/$15.00 for a prompt over 200k tokens; this row prices every prompt'
@@ -1854,7 +1795,6 @@ export const MODELS: ModelPricing[] = [
         'This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.6-flash for the latest features and improvements. We recommend you to use the Interactions API.',
     },
     capability: 'mid',
-    tier: 'sonnet',
     notes:
       'From 2026-12-01 Google routes this id to Gemini 3.5 Flash-Lite and bills it at 3.5 Flash-Lite rates,'
       + ' which for text are the $0.30/$2.50 and $0.03 cached this row carries.',
@@ -1898,7 +1838,6 @@ export const MODELS: ModelPricing[] = [
      */
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'mid',
-    tier: 'sonnet',
     notes:
       'Implicit caching is automatic above 4,096 tokens. Explicit caching is also billed for storage:'
       + ' $0.50 per 1M tokens per hour through 2026-12-31, $1.00 after.',
@@ -1927,7 +1866,6 @@ export const MODELS: ModelPricing[] = [
     /* $0.075 / $0.75 = 0.1 (and $0.15 / $1.50); batch $0.375 / $0.75 = 0.5 (and $1.875 / $3.75). */
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'mid',
-    tier: 'sonnet',
     notes:
       'Implicit caching is automatic above 4,096 tokens. Explicit caching is also billed for storage:'
       + ' $0.50 per 1M tokens per hour through 2026-12-31, $1.00 after.',
@@ -1972,7 +1910,6 @@ export const MODELS: ModelPricing[] = [
       },
     ],
     capability: 'large',
-    tier: 'opus',
     notes:
       'Priced per request by prompt length: $2/$12 up to 200,000 input tokens and $4/$18 over it.'
       + ' Implicit caching is automatic above 4,096 tokens; explicit caching is also billed for storage,'
@@ -2018,7 +1955,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.05, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'frontier',
-    tier: 'frontier',
     notes: GEMINI_4_NOTE,
   },
   {
@@ -2033,7 +1969,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.05, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'frontier',
-    tier: 'frontier',
     notes: GEMINI_4_NOTE,
   },
   {
@@ -2047,7 +1982,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.05, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'mid',
-    tier: 'sonnet',
     notes: GEMINI_4_NOTE,
   },
   {
@@ -2072,7 +2006,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'small',
-    tier: 'haiku',
     notes:
       'Implicit caching is automatic, and no minimum prefix length is published for this model. Explicit caching is'
       + ' also billed for storage, $1.00 per 1M tokens per hour.',
@@ -2114,7 +2047,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 2, batch: 0.6 },
     capability: 'frontier',
-    tier: 'frontier',
     notes:
       'Cache writes are billed as their own line: 1x input for a 5-minute entry, 2x for an hour.'
       + ` ${NO_PUBLISHED_CACHE_MINIMUM}`,
@@ -2134,7 +2066,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.05, cacheWrite5m: 1, cacheWrite1h: 2, batch: null },
     capability: 'frontier',
-    tier: 'frontier',
     notes:
       'Cache writes are billed as their own line: 1x input for a 5-minute entry, 2x for an hour.'
       + ` No batch API for this model. ${NO_PUBLISHED_CACHE_MINIMUM}`,
@@ -2150,7 +2081,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 2, batch: 0.6 },
     capability: 'frontier',
-    tier: 'frontier',
     notes:
       'Cache writes are billed as their own line: 1x input for a 5-minute entry, 2x for an hour.'
       + ` Batch at 60% since the batch page listed it (read 2026-11-05). ${NO_PUBLISHED_CACHE_MINIMUM}`,
@@ -2169,7 +2099,6 @@ export const MODELS: ModelPricing[] = [
     /* $0.19 on a hit against $0.95; batch $0.57 / $2.40, 60%. */
     multipliers: { cacheRead: 0.2, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.6 },
     capability: 'mid',
-    tier: 'sonnet',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2186,7 +2115,6 @@ export const MODELS: ModelPricing[] = [
     /* $0.38 on a hit against $1.90; no batch API for this variant. */
     multipliers: { cacheRead: 0.2, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'mid',
-    tier: 'sonnet',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2203,7 +2131,6 @@ export const MODELS: ModelPricing[] = [
     /* $0.16 on a hit against $0.95, written as the ratio so the product is the page's figure. */
     multipliers: { cacheRead: 0.16 / 0.95, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.6 },
     capability: 'mid',
-    tier: 'sonnet',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2226,7 +2153,6 @@ export const MODELS: ModelPricing[] = [
      */
     recommendable: false,
     capability: 'mid',
-    tier: 'sonnet',
     notes:
       'Discontinued by Moonshot on 2026-05-25; priced at the last rate it published. No batch API.'
       + ` ${NO_PUBLISHED_CACHE_MINIMUM}`,
@@ -2252,7 +2178,6 @@ export const MODELS: ModelPricing[] = [
         'The supported API model names are deepseek-v4-pro, deepseek-v4-flash, and deepseek-v4-flash-vision-exp, but you passed deepseek-v3.',
     },
     capability: 'mid',
-    tier: 'sonnet',
   },
   {
     /*
@@ -2309,7 +2234,6 @@ export const MODELS: ModelPricing[] = [
     /* $0.003 cache hit against $0.15 input off-peak, $0.006 against $0.30 at peak. */
     multipliers: { cacheRead: 0.02, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'mid',
-    tier: 'sonnet',
     notes:
       'Retired 2026-09-10: the id is still accepted, served by V4.1 Flash and billed at the deepseek-flash price.'
       + ' Maximum output 384K tokens. Peak excludes Chinese public holidays, which this table cannot express.',
@@ -2343,7 +2267,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'automatic',
     multipliers: { cacheRead: 0.02, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'mid',
-    tier: 'sonnet',
     notes:
       'Maximum output 384K tokens. Peak excludes Chinese public holidays, which this table cannot express:'
       + ' on a weekday holiday it charges peak where DeepSeek charges off-peak.',
@@ -2369,7 +2292,6 @@ export const MODELS: ModelPricing[] = [
     /* $0.022 cache hit against $0.66 input off-peak. */
     multipliers: { cacheRead: 0.0333, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'large',
-    tier: 'opus',
     notes: 'Maximum output 384K tokens.',
   },
 
@@ -2398,7 +2320,6 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     tiers: [GROK_LONG(4, 12)],
     capability: 'frontier',
-    tier: 'frontier',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2413,7 +2334,6 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     tiers: [GROK_LONG(4, 12)],
     capability: 'large',
-    tier: 'opus',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2429,7 +2349,6 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.15, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     tiers: [GROK_LONG(4, 12)],
     capability: 'large',
-    tier: 'opus',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2445,7 +2364,6 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.16, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.8 },
     tiers: [GROK_LONG(2.5, 5)],
     capability: 'mid',
-    tier: 'sonnet',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2461,7 +2379,6 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.16, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.8 },
     tiers: [GROK_LONG(2.5, 5)],
     capability: 'mid',
-    tier: 'sonnet',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2477,7 +2394,6 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.16, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.8 },
     tiers: [GROK_LONG(2.5, 5)],
     capability: 'mid',
-    tier: 'sonnet',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2493,7 +2409,6 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.16, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.8 },
     tiers: [GROK_LONG(2.5, 5)],
     capability: 'mid',
-    tier: 'sonnet',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2508,7 +2423,6 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.2, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     tiers: [GROK_LONG(2, 4)],
     capability: 'mid',
-    tier: 'sonnet',
     notes: NO_PUBLISHED_CACHE_MINIMUM,
   },
   {
@@ -2541,7 +2455,6 @@ export const MODELS: ModelPricing[] = [
     ],
     recommendable: false,
     capability: 'large',
-    tier: 'opus',
     notes:
       'Retired by xAI on 2026-05-15 and redirected to Grok 4.3, whose price it bills at from then;'
       + ` $3/$15 before. ${NO_PUBLISHED_CACHE_MINIMUM}`,
@@ -2567,7 +2480,6 @@ export const MODELS: ModelPricing[] = [
         'Invalid model: mistral-large-2',
     },
     capability: 'large',
-    tier: 'opus',
     notes: 'No prompt caching: reordering still helps readability but saves nothing here.',
   },
   {
@@ -2598,7 +2510,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'unknown',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'large',
-    tier: 'opus',
     notes: MISTRAL_CACHE_NOTE,
   },
   {
@@ -2626,7 +2537,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'unknown',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'mid',
-    tier: 'sonnet',
     notes: MISTRAL_CACHE_NOTE,
   },
   {
@@ -2642,7 +2552,6 @@ export const MODELS: ModelPricing[] = [
     caching: 'unknown',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'small',
-    tier: 'haiku',
     notes: MISTRAL_CACHE_NOTE,
   },
 ];
@@ -2745,14 +2654,34 @@ export function modelFrom(catalogue: PricingCatalogue, id: string): ModelPricing
 }
 
 /**
- * Cheapest model of a tier within a catalogue.
+ * The names `recommendTier` answers in and `cheapestOfTier` takes, on the
+ * `capability` scale a model carries.
+ *
+ * A model had both until 3.0.0, which removed its `tier`, and a test held the
+ * two in step: this is the same table that test held, `haiku → small`,
+ * `sonnet → mid`, `opus → large`. The functions keep the names they have
+ * always spoken; what they compare is the model's `capability`.
+ */
+export const CAPABILITY_OF_TIER = {
+  haiku: 'small',
+  sonnet: 'mid',
+  opus: 'large',
+  frontier: 'frontier',
+  unknown: 'unknown',
+} as const satisfies Record<string, Capability>;
+
+/** A name in `CAPABILITY_OF_TIER`: the vocabulary of `recommendTier` and `cheapestOfTier`. */
+export type TierName = keyof typeof CAPABILITY_OF_TIER;
+
+/**
+ * Cheapest model of a tier within a catalogue, chosen by `capability`.
  *
  * Compared on the **effective** price, so a model in a promotional window is
  * ranked at what it actually costs today rather than at its list price.
  */
 export function cheapestOfTierIn(
   catalogue: PricingCatalogue,
-  tier: ModelPricing['tier'],
+  tier: TierName,
   on: Date = new Date(),
   /**
    * Restrict to one provider. Omit to search the whole catalogue, which is what
@@ -2764,7 +2693,7 @@ export function cheapestOfTierIn(
 ): ModelPricing {
   const candidates = catalogue.models.filter(
     (m) =>
-      m.tier === tier &&
+      m.capability === CAPABILITY_OF_TIER[tier] &&
       isOffered(m) &&
       (provider === undefined || m.provider === provider),
   );
@@ -3258,9 +3187,9 @@ export function reviewedForModels(
   return oldest ?? catalogue.lastReviewed;
 }
 
-/** Cheapest model of each capability tier, for recommendations. */
-export function cheapestOfTier(tier: ModelPricing['tier']): ModelPricing {
-  const candidates = MODELS.filter((m) => m.tier === tier && isOffered(m));
+/** Cheapest model of each capability tier, for recommendations, chosen by `capability`. */
+export function cheapestOfTier(tier: TierName): ModelPricing {
+  const candidates = MODELS.filter((m) => m.capability === CAPABILITY_OF_TIER[tier] && isOffered(m));
   const first = candidates[0];
   if (!first) throw new Error(`No models for tier "${tier}"`);
   return candidates.reduce((best, m) => (m.inputPerMTok < best.inputPerMTok ? m : best), first);

@@ -111,11 +111,11 @@ any more gets deprecated instead. The full procedure, so it is not decided case 
 What is marked `@deprecated` in the packages today. Each still works exactly
 as it did.
 
-- `tier` on a model in the pricing catalogue, deprecated in 1.8.0 in favour of
-  `capability`. The changelog entry that deprecated it said it would be
-  removed in 2.0. It was not: 2.0.0 removed nothing. Whether it goes in 3.0 has
-  not been decided, and until a major's changelog says so it stays, kept in
-  step with `capability`.
+Nothing is, at the moment. The last was `tier` on a model in the pricing
+catalogue, deprecated in 1.8.0 in favour of `capability`. The entry that
+deprecated it said it would be removed in 2.0. It was not: 2.0.0 removed
+nothing. It is removed in 3.0.0, and that release's changelog entry repeats
+the migration.
 
 A deprecated export never starts warning at runtime. A library that prints to
 somebody else's stderr because *we* changed our mind is a library people vendor

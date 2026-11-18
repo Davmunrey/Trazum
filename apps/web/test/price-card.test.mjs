@@ -84,7 +84,7 @@ describe('the Bill tab reads a dropped price card', () => {
     const overlay = parsePricingOverlay(
       JSON.stringify({
         lastReviewed: '2026-08-25',
-        models: { 'my-self-hosted-model': { displayName: 'Own Qwen', inputPerMTok: 3.97, outputPerMTok: 3.97, contextWindow: 32768, cacheMinTokens: null, tier: 'unknown', capability: 'unknown' } },
+        models: { 'my-self-hosted-model': { displayName: 'Own Qwen', inputPerMTok: 3.97, outputPerMTok: 3.97, contextWindow: 32768, cacheMinTokens: null, capability: 'unknown' } },
       }),
       'dropped price card',
     );

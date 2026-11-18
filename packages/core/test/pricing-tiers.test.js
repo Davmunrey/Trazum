@@ -151,7 +151,6 @@ describe('a conditional rate is decided, or is said not to be', () => {
       contextWindow: 1_000_000,
       cacheMinTokens: 1024,
       capability: 'large',
-      tier: 'opus',
       tiers: [
         { id: 'long', when: { kind: 'input-tokens-above', tokens: 200_000 }, inputPerMTok: 4, outputPerMTok: 18 },
       ],

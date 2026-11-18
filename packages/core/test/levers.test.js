@@ -113,12 +113,12 @@ describe('routing to a cheaper model', () => {
         models: {
           'acme-big': {
             displayName: 'Acme Big', inputPerMTok: 10, outputPerMTok: 40,
-            contextWindow: 1_000_000, cacheMinTokens: 1024, tier: 'opus',
+            contextWindow: 1_000_000, cacheMinTokens: 1024,
             capability: 'large', caching: 'explicit',
           },
           'acme-small': {
             displayName: 'Acme Small', inputPerMTok: 1, outputPerMTok: 4,
-            contextWindow: 8_000, cacheMinTokens: 1024, tier: 'sonnet',
+            contextWindow: 8_000, cacheMinTokens: 1024,
             capability: 'mid', caching: 'explicit',
           },
         },
