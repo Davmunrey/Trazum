@@ -13,6 +13,19 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Codecov groups the coverage by package.** `codecov.yml` now defines one
+  component for each package the coverage run measures, `core`, `cli`, `mcp`
+  and `tokenizer-openai`, each by the path of its sources:
+  `packages/<name>/src/**`, which is the shape every path in an uploaded
+  report has. A component is defined in the file alone, so nothing changes at
+  upload time. There are no component statuses and none in `default_rules`:
+  the plan does not include them and a status nobody can read is noise.
+  Codecov's validator accepted the file. Codecov's settings page lists
+  Components as available with its Pro plan, as read on 2026-11-18, so the
+  configuration is in place and the plan decides whether it is shown.
+  `coverage.test.js` holds the components to the packages the script
+  measures, and `docs/coverage.md` says what they are and where they show
+  (#717).
 - **Test results and the web app's bundle size go to Codecov.** Two things
   Codecov offers were left unconfigured on purpose when coverage was set up,
   and the owner asked for both. Test analytics: the coverage run now also

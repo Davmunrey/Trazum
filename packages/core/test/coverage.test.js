@@ -243,6 +243,97 @@ describe('Codecov reports and does not judge', () => {
   });
 });
 
+describe('Codecov groups the files by package, and that is held to the packages measured', () => {
+  // `codecov.yml` is read as text: nothing here parses YAML, and the part that
+  // matters is regular. The block is from `component_management:` to the next
+  // line that starts at the left margin and is not a comment.
+  const config = read('codecov.yml');
+  const lines = config.split('\n');
+  const start = lines.indexOf('component_management:');
+  let end = lines.findIndex((line, index) => index > start && /^[^\s#]/.test(line));
+  if (end === -1) end = lines.length;
+  const block = start === -1 ? '' : lines.slice(start, end).join('\n');
+  const components = block.split(/^ {4}- /m).slice(1).map((entry) => ({
+    id: entry.match(/^component_id: (\S+)$/m)?.[1],
+    name: entry.match(/^ {6}name: (\S+)$/m)?.[1],
+    paths: [...entry.matchAll(/^ {8}- (\S+)$/gm)].map((match) => match[1]),
+    keys: [...entry.matchAll(/^(?:component_id|[ ]{6}\w+): ?/gm)].map((match) => match[0].trim().replace(/:$/, '')),
+  }));
+
+  it('is there, and every component is read whole', () => {
+    assert.ok(block.length > 0, 'codecov.yml has no component_management');
+    assert.match(block, /^ {2}individual_components:$/m);
+    assert.equal(components.length, (block.match(/^ {4}- component_id:/gm) ?? []).length);
+    for (const component of components) {
+      assert.ok(component.id, 'a component has no component_id');
+      assert.ok(component.name, `${component.id} has no name`);
+      assert.ok(component.paths.length > 0, `${component.id} has no paths`);
+    }
+  });
+
+  it('has one component for each package measured, and none for a package that is not', () => {
+    assert.deepEqual(components.map((component) => component.name).sort(), SUITES.map((suite) => suite.name).sort());
+    for (const suite of SUITES) {
+      assert.equal(components.filter((component) => component.name === suite.name).length, 1, `${suite.name} is not one component`);
+    }
+  });
+
+  it('gives each an id that is its package, unique, and made of letters, digits, hyphens and underscores', () => {
+    const ids = components.map((component) => component.id);
+    assert.equal(new Set(ids).size, ids.length, 'two components share an id');
+    for (const component of components) {
+      // Codecov's validator accepted any string as an id when this was written
+      // (2026-11-18), so this is the repository's own rule, not Codecov's: an
+      // id is a thing a link and a stored history are keyed by.
+      assert.match(component.id, /^[a-z0-9][a-z0-9_-]*$/, component.id);
+      assert.equal(component.id, component.name, 'the id and the name are one word, so renaming one is not a new history');
+    }
+  });
+
+  it('points each at the sources of its own package, in a directory that exists', () => {
+    for (const component of components) {
+      assert.deepEqual(component.paths, [`packages/${component.id}/src/**`], component.id);
+      const directory = component.paths[0].replace(/\/\*\*$/, '');
+      assert.ok(existsSync(join(ROOT, directory)), `${directory} is not a directory here`);
+      assert.ok(tracked.some((path) => path.startsWith(`${directory}/`) && path.endsWith('.ts')), `${directory} holds no TypeScript`);
+    }
+  });
+
+  it('matches the paths the reports carry: relative to the root, under packages/<name>/src', () => {
+    // A report's source files are all of this shape (`strangers` refuses the
+    // rest), so a pattern that is not is one no file would ever match.
+    for (const component of components) {
+      for (const path of component.paths) assert.deepEqual(strangers([path.replace(/\*\*$/, 'a.ts')]), [], path);
+    }
+  });
+
+  it('has no status of its own and none by default, because the plan does not show them', () => {
+    assert.doesNotMatch(block, /statuses:/);
+    assert.doesNotMatch(block, /default_rules:/);
+    assert.doesNotMatch(block, /^\s*-?\s*type:\s*(?:project|patch)/m);
+    for (const component of components) assert.deepEqual(component.keys, ['component_id', 'name', 'paths'], component.id);
+  });
+
+  it('is explained: the document names each, says they need nothing at upload, and says the plan', () => {
+    const section = sectionOf(read('docs/coverage.md'), '## Components\n');
+    for (const component of components) assert.ok(section.includes(`\`${component.id}\``), `the section does not name ${component.id}`);
+    assert.ok(section.includes('`packages/core/src/**`'), 'the section gives no example of a path');
+    assert.match(section, /need nothing at upload time/);
+    assert.match(section, /There are no component statuses/);
+    assert.match(section, /Components under "Available with Pro Plan"/);
+    assert.match(section, /Codecov shows components only on its Pro plan, as read on that\s+screen on that date/);
+    assert.match(section, /2026-11-18/);
+  });
+
+  it('the paid-plan section agrees: components are configured, and whether they show depends on the plan', () => {
+    const section = sectionOf(read('docs/coverage.md'), "## What needs Codecov's paid plan\n");
+    assert.match(section, /components/);
+    assert.match(section, /\[components\]\(#components\)[\s\S]*configured/);
+    assert.doesNotMatch(section, /None is relied on/);
+    assert.match(section, /depends on the plan/);
+  });
+});
+
 describe('the script\'s figure is not passed off as Codecov\'s', () => {
   // The script's comment said "This is the figure Codecov shows", written
   // before Codecov had taken an upload. The first one came out 902 lines

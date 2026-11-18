@@ -230,10 +230,43 @@ Like the coverage upload, a report Codecov does not take leaves a warning on
 a pull request and fails the job on `main`, and the token is read from the
 environment by name.
 
+## Components
+
+`codecov.yml` defines one
+[component](https://docs.codecov.com/docs/components) for each package the
+coverage run measures: `core`, `cli`, `mcp` and `tokenizer-openai`. A
+component is a filter over paths. It groups the files of one package in
+Codecov's file tree, whichever upload each file's lines came from.
+
+- **They need nothing at upload time.** A flag is set by the workflow when it
+  uploads a report. A component is defined in `codecov.yml` alone, so the
+  `Coverage` workflow did not change.
+- **The paths are the ones in the reports.** Every path in an uploaded report
+  is relative to the repository's root, as `packages/<name>/src/…`, and the
+  component for `core` is `packages/core/src/**`. Codecov's validator, run on
+  2026-11-18, returned that as the expression `(?s:packages/core/src/.*)\Z`.
+- **The two groupings differ.** A flag holds what one package's tests ran,
+  including lines of other packages. A component holds one package's files,
+  with lines run by any package's tests, which is what the table above counts.
+- **There are no component statuses**, and no statuses in `default_rules`.
+  The plan does not include them, and a status nobody can read is noise.
+  `coverage.test.js` holds the components to the list of packages the script
+  measures.
+
+Where they show: Codecov's documentation says a component can be picked in
+the filter above any file tree or file list in its app, and that a component's
+coverage over time can be viewed. The owner's Codecov screen on 2026-11-18
+listed Components under "Available with Pro Plan". So the configuration is in
+place, and Codecov shows components only on its Pro plan, as read on that
+screen on that date. Whether the account sees them was not checked beyond
+that screen.
+
 ## What needs Codecov's paid plan
 
 Codecov's settings page lists project coverage, flags and components as
-available with its Pro plan. None is relied on. The uploads are still flagged
-with the package's name, which costs nothing and is what Codecov would group
-by; whether the figures by flag are shown depends on the plan, and the
-figures by package are in every run's log either way.
+available with its Pro plan. No figure here is relied on from them. The
+uploads are still flagged with the package's name, which costs nothing and is
+what Codecov would group by, and the [components](#components) are
+configured for the same reason. Whether the figures by flag and by component
+are shown depends on the plan, and the figures by package are in every run's
+log either way.
