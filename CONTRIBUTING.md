@@ -100,10 +100,13 @@ npm run test:release # the bill of materials each release attaches, checked agai
 
 ### The linter
 
-`npm run lint` runs Biome over every tracked file and passes only when it has
-nothing to say: no warnings left standing, so a new one is seen. It lints and
-does not format. `biome.jsonc` is the whole configuration, and every rule it
-switches off has its reason on the lines above it.
+`npm run lint` runs Biome over every tracked file it has a rule for and
+passes only when it has nothing to say: no warnings left standing, so a new
+one is seen. It lints and does not format. `biome.jsonc` is the whole
+configuration, and every rule it switches off has its reason on the lines
+above it. It does not read Markdown, which it has no rule for, or the skills
+synced from elsewhere. It warns about any file over 1 MiB that it does read,
+and that warning fails like any other.
 
 When it reports something in a place that means it, say so next to the line
 and nowhere else:

@@ -11,8 +11,11 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
-  // Skills synced from elsewhere are not this repository's to edit.
-  "files": { "includes": ["**", "!.claude/skills/synced"] },
+  // Skills synced from elsewhere are not this repository's to edit. Markdown
+  // is left out because no rule here reports on it, and reading it only
+  // applied the size limit of 1 MiB a file: CHANGELOG.md reached it on
+  // 2026-11-18, and a warning is an error here (#751).
+  "files": { "includes": ["**", "!.claude/skills/synced", "!**/*.md"] },
   "formatter": { "enabled": false },
   "assist": { "enabled": false },
   "css": { "parser": { "tailwindDirectives": true } },
