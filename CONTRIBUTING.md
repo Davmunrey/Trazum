@@ -565,6 +565,12 @@ An approval with nothing in it is not one.
   `CodeQL`, `npm audit` and `PR readiness`, listed in
   `.github/rulesets/main-branch.json`. The `pr-guide` comment on every pull
   request says which one is next.
+- **The file is the policy, and GitHub's copy is checked against it.** A
+  change to `.github/rulesets/main-branch.json` does nothing until an admin
+  runs `npm run ruleset -- apply --yes`. `npm run ruleset` prints where the
+  two differ, a pull request that touches the file gets that in its log, and
+  the `Repository settings` workflow fails every Monday they do.
+  [SECURITY.md](SECURITY.md), "Needs an admin to switch on", has the rest.
 
 ## Measuring the token band
 

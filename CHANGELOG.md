@@ -13,6 +13,32 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The ruleset GitHub enforces is compared with the one in the repository.**
+  `.github/rulesets/main-branch.json` is the branch policy, and GitHub
+  enforces a copy an admin puts there. Nothing read the copy, and on
+  2026-11-18 it had drifted: it lacked `PR readiness`, which the file had
+  required for weeks, and allowed merge commits, which the file did not.
+  Every pull request that had changed the file was green. `npm run ruleset`
+  reads the live ruleset through `gh` and prints each difference, rule by
+  rule, naming the entry only one side has; it exits 1 when there is one. It
+  also reads the five merge settings the ruleset leans on, each with why, and
+  says "not read" for one the token is not shown, which is neither fine nor a
+  failure. `npm run ruleset -- apply` says what would change, and with
+  `--yes`, from an admin's own `gh`, writes the file to GitHub, sets the
+  settings and reads both back. The file is held exactly for what it states:
+  a parameter GitHub reports and the file is silent about is printed and left
+  alone, on reading and on writing. The `Repository settings` workflow runs
+  the comparison every Monday and fails on a difference; on a pull request
+  that touches the file it reports and does not fail, since such a pull
+  request differs from GitHub by design until an admin applies it. The
+  workflow reads and never writes, and no admin token is stored for it.
+  Its first run on a runner showed what a local run with an admin's token
+  could not: GitHub leaves `bypass_actors` and the four `allow_*` settings
+  out of its answer to the workflow's token. Comparing that absence with the
+  file's empty list would have failed every Monday for something nobody
+  changed, so those five are printed as "not read", and any other field that
+  goes missing is still a difference. `SECURITY.md` said "nothing syncs it";
+  it now says what does, and what the weekly run cannot see (#708).
 - **Line coverage, measured and sent to Codecov.** The repository said how
   many tests it had and, on five files, whether they would notice a change;
   nothing said which lines the tests run at all. `npm run coverage` runs the

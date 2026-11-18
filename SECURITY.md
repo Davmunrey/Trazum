@@ -200,7 +200,9 @@ Some of this cannot be committed to a file — it lives in repository settings.
   installs, CodeQL, dependency review, scheduled audit.
 - `.github/dependabot.yml` — weekly updates, routine patches grouped so real
   security bumps stay visible.
-- `.github/rulesets/main-branch.json` — an importable branch ruleset.
+- `.github/rulesets/main-branch.json` — the branch ruleset, and
+  `scripts/ruleset.mjs`, which compares it with the one GitHub enforces and
+  puts it there.
 - `scripts/sbom.mjs` — the CycloneDX bill of materials attached to every
   GitHub release: each workspace and every package any of them needs at run
   time, from the lockfile, checked before anything is uploaded and made on
@@ -208,12 +210,46 @@ Some of this cannot be committed to a file — it lives in repository settings.
 
 ### Needs an admin to switch on
 
-1. **Import the ruleset.** Settings → Rules → Rulesets → New ruleset → Import,
-   and select `.github/rulesets/main-branch.json`. It requires a pull request
-   with passing checks, `PR readiness` among them, squash merges and linear
+1. **Put the ruleset on GitHub.** `npm run ruleset -- apply --yes`, run by an
+   admin signed in to `gh` with their own token. It writes
+   `.github/rulesets/main-branch.json` over the ruleset of the same name, or
+   creates it, sets the merge settings below, then reads both back and says
+   whether GitHub now enforces the file. Without `--yes` it prints what would
+   change and changes nothing. The ruleset requires a pull request with
+   passing checks, `PR readiness` among them, squash merges and linear
    history, and CodeQL results with no open alert. It blocks force-pushes and
-   deletion of the default branch. Re-import it whenever the file changes: the
-   ruleset GitHub enforces is a copy, and nothing syncs it.
+   deletion of the default branch.
+
+   **GitHub enforces a copy, and the copy is checked.** `npm run ruleset`
+   compares it with the file, rule by rule, and the `Repository settings`
+   workflow runs that every Monday and fails when the two differ. It exists
+   because they did: on 2026-11-18 the copy lacked `PR readiness`, which the
+   file had required for weeks, and allowed merge commits, and every pull
+   request that had changed the file was green. Apply again whenever the file
+   changes. The workflow reads and never writes, and no token that could
+   rewrite branch protection is stored anywhere: a workflow that can loosen
+   the rules it is judged by is a worse problem than drift.
+
+   The file is held exactly for what it states. A parameter GitHub reports
+   and the file is silent about is printed and left alone, on reading and on
+   writing. A whole rule GitHub enforces and the file does not state is a
+   difference, and applying removes it.
+
+   The merge settings the ruleset leans on, set by the same command:
+   `allow_squash_merge` on, `allow_merge_commit` and `allow_rebase_merge` off
+   (the ruleset refuses both, so the buttons only offer an error),
+   `allow_update_branch` on (a branch must be current with `main` to merge),
+   and `web_commit_signoff_required` on (the sign-off check reads every
+   commit, the ones made in the browser too).
+
+   **What the weekly run cannot see.** GitHub leaves some of this out of its
+   answer to a token that does not administer the repository. Measured on
+   2026-11-18 on a runner, the workflow's token is shown every rule, the
+   required checks and `web_commit_signoff_required`, and is not shown who may
+   bypass the ruleset (`bypass_actors`) nor the four `allow_*` settings. The
+   run prints those five as "not read" and does not fail on them: not read is
+   not fine, and it is not drift either. An admin's `npm run ruleset` reads
+   all of it, so run it after anybody has been on the settings page.
 
    **It asks for zero approvals, deliberately.** The first version required
    one, and that deadlocked the repository: GitHub does not let you approve
