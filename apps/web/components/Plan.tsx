@@ -23,7 +23,8 @@ import type {
 
 import { track } from './Analytics';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import type { WebMessages } from '../lib/i18n';
 
 /**
@@ -105,12 +106,6 @@ export function Plan({
     );
     track('plan-verified', { actions: parsed.plan.actions.length });
   }
-
-  const Eyebrow = ({ children }: { children: React.ReactNode }) => (
-    <CardTitle className="text-[13px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-      {children}
-    </CardTitle>
-  );
 
   return (
     <>

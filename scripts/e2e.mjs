@@ -166,7 +166,7 @@ export const FLOWS = [
   {
     name: 'write: answering a question asks the next one and says how many are left',
     covers: ['write'],
-    async run({ open, panel, see }) {
+    async run({ page, open, panel, see, gone }) {
       await open('/?tab=write');
       const write = panel('write');
       await see(write.getByText('What should the model do, in one sentence?').first(), 'the first question');
@@ -174,6 +174,12 @@ export const FLOWS = [
       await write.getByRole('button', { name: 'Answer' }).click();
       await see(write.getByText('Who is the model being while it does that?').first(), 'the second question');
       await see(write.getByText('3 answers are still needed before a prompt can be written.'), 'how many answers are left');
+      // The first question is asked once, when the panel opens. Asked again
+      // when the language changes, it would put the reader back at the start.
+      await page.getByRole('button', { name: 'Español', exact: true }).click();
+      await see(write.getByText('¿Quién es el modelo mientras lo hace?').first(), 'the same question, in Spanish, after the language changes');
+      await see(write.getByText('Faltan 3 respuestas antes de poder escribir un prompt.'), 'the same count of answers left, in Spanish');
+      await gone(write.getByText('¿Qué debe hacer el modelo, en una frase?'), 'the first question, which was already answered');
     },
   },
   {
@@ -233,6 +239,41 @@ export const FLOWS = [
       }
       await open('/?tab=compare');
       await see(page.getByRole('tab', { name: 'Compare', selected: true }), 'the tab an address names');
+    },
+  },
+  {
+    name: 'tour: each page it visits runs its own demo, once',
+    covers: [],
+    async run({ page, open, see, is }) {
+      await open('/');
+      await page.getByRole('button', { name: 'Start the tour' }).click();
+      const tour = page.getByRole('dialog');
+      /** Next, and then the step the tour says it is on. */
+      const step = async (number) => {
+        if (number > 1) await tour.getByRole('button', { name: 'Next', exact: true }).click();
+        await see(tour.getByText(`${number} of 10`), `step ${number} of the tour`);
+      };
+      await step(1);
+      await step(2);
+      await see(page.locator('[data-tour="panel-bill"]').getByText('Catalogue-priced spend'), 'the sample month, priced in the bill');
+      await step(3);
+      await see(page.locator('[data-tour="panel-optimise"]').getByText(/^\d+ → \d+ input tokens$/), 'the sample prompt, optimised');
+      await step(4);
+      await see(page.locator('[data-tour="panel-write"]').getByText('What should the model do, in one sentence?').first(), 'the first question of the prompt writer');
+      await step(5);
+      await see(page.locator('[data-tour="panel-compare"]').getByText(/^\d+ → \d+ input tokens$/), 'the pair on screen, compared');
+      await step(6);
+      const terminal = page.locator('[data-tour="panel-playground"]');
+      // The typing hand writes each command and runs it. Subscribed twice, it would type and run each one twice.
+      const typed = ['trazum profile usage.jsonl', 'trazum optimize prompt.txt', 'trazum position usage.jsonl'];
+      for (const [index, command] of typed.entries()) {
+        await step(7 + index);
+        await see(terminal.getByText(`$ ${command}`, { exact: true }), `the hand's command, run: ${command}`);
+      }
+      await step(10);
+      for (const command of typed) is(await terminal.getByText(`$ ${command}`, { exact: true }).count(), 1, `how many times the hand ran ${command}`);
+      await tour.getByRole('button', { name: 'Done', exact: true }).click();
+      is(await tour.count(), 0, 'the number of tour dialogs left open after Done');
     },
   },
   {

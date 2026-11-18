@@ -34,7 +34,7 @@ Then, if you want to know whether to trust the numbers:
   sixteen criteria `npm run done` checks before a push and where each comes
   from, what each verdict means, and what only CI can say.
 - **[End-to-end tests](end-to-end-tests.md)**: the web app in a real browser,
-  doing what a visitor does: the twelve flows, the figures they expect and
+  doing what a visitor does: the thirteen flows, the figures they expect and
   where those come from, and what a green run does not say.
 - **[Mutation testing](mutation-testing.md)**: whether the tests would notice
   if the code stopped doing what they check: the files it runs on, the score as

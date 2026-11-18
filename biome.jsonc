@@ -35,17 +35,6 @@
         // TypeScript gives a `let` declared before a `try` the type of what is
         // assigned to it, and `strict` already refuses a real implicit any.
         "noImplicitAnyLet": "off",
-        // Each of these in the web app is a decision about a list that never
-        // reorders. They are read one by one in #696, with the hooks.
-        "noArrayIndexKey": "off"
-      },
-      "correctness": {
-        // Every one of the fifteen is an effect that runs on some of what it
-        // reads, on purpose or not. Changing a dependency list changes when
-        // an effect runs, and nothing yet drives the pages to say whether it
-        // still behaves: #696, after the end-to-end tests of #692.
-        "useExhaustiveDependencies": "off",
-        "noComponentHookFactories": "off"
       },
       "complexity": {
         // The tests match indentation with a regular expression literal.

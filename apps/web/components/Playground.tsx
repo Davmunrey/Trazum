@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Locale } from '@trazum/core';
 
@@ -77,12 +77,12 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
   }
 
   /** Stop the hand and drop what it half-typed. The visitor's input wins. */
-  function cancelTypist() {
+  const cancelTypist = useCallback(() => {
     if (typistRef.current.length === 0) return;
     for (const timer of typistRef.current) clearTimeout(timer);
     typistRef.current = [];
     setInput('');
-  }
+  }, []);
 
   const executeRef = useRef(execute);
   executeRef.current = execute;
@@ -111,11 +111,12 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
     });
     // Subscribed once — re-subscribing per render would double-type a line
     // mid-hand; the ref reassigned every render keeps `execute` current.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // `cancelTypist` reads only refs and a setter, so it is one function for
+    // the life of the tab and naming it here changes nothing about when this runs.
+  }, [cancelTypist]);
 
   // A hand still writing when the tab unmounts must not type into the void.
-  useEffect(() => () => cancelTypist(), []);
+  useEffect(() => () => cancelTypist(), [cancelTypist]);
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     cancelTypist();
@@ -195,6 +196,7 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
           )}
           {lines.map((line, index) => (
             <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: a transcript only grows at its end or is cleared whole, so a line's place never changes, and two lines can say the same
               key={index}
               className={
                 line.kind === 'input'

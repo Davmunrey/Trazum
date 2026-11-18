@@ -107,9 +107,9 @@ export function Writer({ t, locale }: { t: WebMessages; locale: Locale }) {
   );
 
   // The first question, asked before anybody types anything.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: asked once, when the panel opens. `send` is a new function when the language changes, and asking again with no answers would put a reader who is on the fourth question back on the first.
   useEffect(() => {
     void send({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const answer = async (value: string | null) => {

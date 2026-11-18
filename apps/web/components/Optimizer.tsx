@@ -28,7 +28,8 @@ import { CountUp } from './motion/CountUp';
 import { ShinyText } from './motion/ShinyText';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardHeader } from '@/components/ui/card';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -233,6 +234,7 @@ export function Optimizer({
    * dropdown change must never spend money unasked — those stay behind the
    * button. An automatic run also stays out of the history (see `run`).
    */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed to the pricing inputs alone, on purpose. `result` here would run it again on every answer it produces, and `prompt` would optimise half-typed text; the inputs it lists and does not read are what must start it.
   useEffect(() => {
     if (result === null) return;
     if (llmEnabled || suggest) return;
@@ -241,9 +243,6 @@ export function Optimizer({
       void run({ auto: true });
     }, 400);
     return () => clearTimeout(timer);
-    // Deliberately keyed to the pricing inputs alone: `result` here would
-    // re-fire on every answer, and `prompt` would optimise half-typed text.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible, level, reorder]);
 
   /**
@@ -264,10 +263,9 @@ export function Optimizer({
       setPrompt(sample);
       void runRef.current({ auto: true, promptOverride: sample });
     });
-    // Subscribed once; the ref reassigned every render keeps the dispatch on
-    // today's state instead of the first render's.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // Subscribed once: the setter never changes, and the ref reassigned every
+    // render keeps the dispatch on today's state instead of the first render's.
+  }, [setPrompt]);
 
   async function run(options: { auto?: boolean; promptOverride?: string } = {}) {
     // The tour's demo sets the prompt state and runs in the same breath;
@@ -353,20 +351,6 @@ export function Optimizer({
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   }
-
-  /**
-   * A section heading.
-   *
-   * The eyebrow — small, uppercase, dim — is what the hand-written stylesheet
-   * used and it is worth keeping: these headings label a panel, they do not
-   * compete with the numbers inside it. shadcn's `CardTitle` is a heavier
-   * default, so it is dressed down here rather than used raw.
-   */
-  const Eyebrow = ({ children }: { children: React.ReactNode }) => (
-    <CardTitle className="text-[13px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-      {children}
-    </CardTitle>
-  );
 
   return (
     <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
@@ -866,6 +850,7 @@ export function Optimizer({
                       {reorderResult.declined.length > 0 && (
                         <ul className="m-0 mt-2.5 list-none p-0 text-[13px] text-muted-foreground">
                           {reorderResult.declined.slice(0, 3).map((d, i) => (
+                            // biome-ignore lint/suspicious/noArrayIndexKey: lines of text with no state, replaced whole by each run, and nothing says two of them cannot read the same
                             <li key={i} className="mt-1 first:mt-0">
                               {d.reason === 'uncovered-script'
                                 ? t.results.reorderDeclinedScript(d.script ?? '')
@@ -906,6 +891,7 @@ export function Optimizer({
                           </div>
                           <ul className="m-0 mt-2 list-none p-0 font-mono text-[12.5px]">
                             {suggestions.suggestions.map((s, i) => (
+                              // biome-ignore lint/suspicious/noArrayIndexKey: lines of text with no state, replaced whole by each run, and nothing says two suggestions cannot read the same
                               <li key={i} className="flex min-w-0 items-baseline gap-[7px] py-px">
                                 <span className="max-w-[26ch] truncate text-terracotta line-through decoration-1">
                                   {s.before}
@@ -1012,6 +998,7 @@ export function Optimizer({
                       <pre className="m-0 max-h-[460px] overflow-auto rounded-lg border bg-muted p-3.5 font-mono text-[12.5px] leading-relaxed break-words whitespace-pre-wrap">
                         {diff.map((part, index) => (
                           <span
+                            // biome-ignore lint/suspicious/noArrayIndexKey: the parts of a diff are a sequence: the same text can be in it more than once, and its place is what a part is
                             key={index}
                             className={`diff-${part.type === 'same' ? 'same' : part.type}`}
                           >
@@ -1070,6 +1057,7 @@ export function Optimizer({
                               <ul className="m-0 mt-1.5 list-none p-0 font-mono text-[12.5px]">
                                 {rule.changes.map((change, index) => (
                                   <li
+                                    // biome-ignore lint/suspicious/noArrayIndexKey: lines of text with no state, replaced whole by each run, and nothing says a rule cannot make the same change twice
                                     key={index}
                                     className="flex min-w-0 items-baseline gap-[7px] py-px"
                                   >

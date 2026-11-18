@@ -10,7 +10,8 @@ import { onDemo } from '../lib/demo';
 import { AnimatedContent } from './motion/AnimatedContent';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Eyebrow } from '@/components/ui/eyebrow';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -159,12 +160,6 @@ export function Comparer({
       setLoading(false);
     }
   }
-
-  const Eyebrow = ({ children }: { children: React.ReactNode }) => (
-    <CardTitle className="text-[13px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
-      {children}
-    </CardTitle>
-  );
 
   /** Growth is what somebody has to act on, so growth is what gets the colour. */
   const toneOf = (delta: number): string =>

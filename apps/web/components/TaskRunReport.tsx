@@ -45,13 +45,17 @@ export function TaskRunReport({ report, t, onExport, onUse, onPolicy }: {
         {report.tools.findings.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">{c.noFindings}</p> : (
           <ul className="mt-2 divide-y">
             {report.tools.findings.map((finding, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: one report's findings are a fixed list, and any change to the form clears the report, so one report's list never becomes another's
               <li key={index} className="py-3 text-sm">
                 <div className="flex justify-between gap-3"><strong>{c.categories[finding.category]}</strong><span className="tabular-nums">×{number(finding.count)}</span></div>
                 <p className="text-muted-foreground">{finding.kind === 'repeated-failure' ? c.repeatedFailure : c.repeatedResult}</p>
                 <details className="mt-2">
                   <summary className="cursor-pointer underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-ring">{c.occurrences}</summary>
                   <ul className="mt-2 space-y-1 text-xs tabular-nums">
-                    {finding.occurrences.map((occurrence, n) => <li key={n}>{c.source} {number(occurrence.source)} · {c.line} {number(occurrence.line)} → {c.resultLine} {number(occurrence.resultLine)}</li>)}
+                    {finding.occurrences.map((occurrence, n) => (
+                      // biome-ignore lint/suspicious/noArrayIndexKey: lines of text with no state in a fixed list, and two calls in one message share a source and a line, so nothing in an occurrence is a key
+                      <li key={n}>{c.source} {number(occurrence.source)} · {c.line} {number(occurrence.line)} → {c.resultLine} {number(occurrence.resultLine)}</li>
+                    ))}
                   </ul>
                 </details>
               </li>

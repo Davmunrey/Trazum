@@ -13,7 +13,7 @@ page.
 
 ## What is checked
 
-Twelve flows, each from an empty browser:
+Thirteen flows, each from an empty browser:
 
 | Flow | What the page must show |
 | --- | --- |
@@ -22,10 +22,11 @@ Twelve flows, each from an empty browser:
 | Bill, on a phone | the same total at 390 pixels wide, with no sideways scroll |
 | Optimise | `8 → 6 input tokens`, the shorter prompt, and the rule that fired |
 | Compare | `18 → 6 input tokens` and `-12 tokens (-67%)` |
-| Write | the second question after the first is answered, and how many are left |
+| Write | the second question after the first is answered, how many are left, and the same question still there after the language changes |
 | Playground | the command list from `help`, and one command run |
 | Tasks | a recorded run read into a report: 303,000 tokens, `$1.575` |
 | Tabs | each one by click and by address, one panel at a time |
+| Tour | all ten steps: the bill, the optimiser and the comparison each run their sample, and the terminal types and runs each of its three commands once |
 | Appearance | dark applied at once and still there after a reload |
 | Language | Spanish on the page and in the `lang` attribute, after a reload too |
 | Phone menu | the tabs behind a menu, and the menu reaching them |
@@ -97,8 +98,9 @@ of a tenth.
 
 A step of the `Build and tests` job, after the web app is built and the
 privacy probe has run, on a server of its own. It is part of the required
-check, so a pull request that breaks a flow cannot merge. All twelve took 17
-seconds on four local cores on 2026-11-18.
+check, so a pull request that breaks a flow cannot merge. All thirteen took 26
+seconds on four local cores on 2026-11-18; the tour is nine of them, because
+it waits for a hand that types.
 
 ## Adding a flow
 
