@@ -28,7 +28,7 @@ const DOCS = ['docs/compliance/threat-model.md', 'docs/compliance/secure-coding.
 const walk = (dir, keep) =>
   readdirSync(dir).flatMap((name) => {
     const path = join(dir, name);
-    if (statSync(path).isDirectory()) return name === 'node_modules' || name.startsWith('.') ? [] : walk(path, keep);
+    if (statSync(path).isDirectory()) return name === 'node_modules' || name === 'generated' || name.startsWith('.') ? [] : walk(path, keep);
     return keep(path) ? [path] : [];
   });
 

@@ -552,3 +552,187 @@
 h1, h2, h3 { text-wrap: balance; }
 @media (min-width: 1024px) { .trazum-workspace { padding-top: 42px; } }
 @media (prefers-reduced-motion: reduce) { .trazum-dropzone { transition: none; } }
+
+/*
+ * The documentation: one document drawn by `components/docs/DocBody.tsx`,
+ * styled here and not by classes on each element, because a long document is
+ * tens of thousands of elements.
+ *
+ * Read mode (DESIGN.md): body text at a measure a person can read, headings
+ * in the display face on 2px rules, code and measurements in the mono stack,
+ * and no card around anything. Wide things scroll inside their own box and
+ * never the page: a code block, and a table wider than the column.
+ */
+.doc-body {
+  max-width: 78ch;
+  font-size: 16.5px;
+  line-height: 1.72;
+  overflow-wrap: break-word;
+}
+.doc-body.doc-wide { max-width: none; }
+.doc-body > :first-child { margin-top: 0; }
+.doc-body :is(p, ul, ol, blockquote, pre, .doc-table, details, .doc-picture, hr) { margin-top: 1.05rem; margin-bottom: 0; }
+.doc-body :is(h1, h2, h3, h4, h5, h6) {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.12;
+  scroll-margin-top: 1.5rem;
+  text-wrap: balance;
+}
+.doc-body h1 {
+  margin-top: 0;
+  font-size: clamp(2.25rem, 1.5rem + 3.2vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+.doc-body h2 {
+  margin-top: 3.75rem;
+  padding-top: 1.1rem;
+  border-top: 2px solid var(--foreground);
+  font-size: clamp(1.6rem, 1.3rem + 1.1vw, 2.1rem);
+  letter-spacing: -0.035em;
+}
+.doc-body h3 { margin-top: 2.5rem; font-size: 1.4rem; letter-spacing: -0.025em; }
+.doc-body h4 { margin-top: 2rem; font-size: 1.1rem; letter-spacing: -0.01em; }
+.doc-body :is(h5, h6) {
+  margin-top: 1.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.doc-body :is(h1, h2, h3, h4, h5, h6) + :is(p, ul, ol, pre, .doc-table, details) { margin-top: 0.85rem; }
+.doc-body h1 + p { font-size: 1.15rem; color: var(--muted-foreground); }
+.doc-body .doc-anchor {
+  margin-left: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.7em;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  opacity: 0;
+}
+.doc-body :is(h2, h3, h4, h5, h6):hover .doc-anchor { opacity: 1; }
+
+.doc-body a { color: var(--terracotta); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.doc-body a:hover { text-decoration-thickness: 2px; }
+/* A link that leaves the site says so to the eye only: the empty alternative keeps the arrow out of what a reader hears. */
+.doc-body a[data-external]::after { content: '\00a0\2197' / ''; font-size: 0.85em; }
+.doc-body :is(h1, h2, h3, h4, h5, h6) a[data-external]::after { content: none; }
+.doc-body strong { font-weight: 700; }
+
+.doc-body :is(ul, ol) { padding-left: 1.5rem; }
+.doc-body ul { list-style: square; }
+.doc-body ol { list-style: decimal; }
+.doc-body li { margin-top: 0.4rem; padding-left: 0.2rem; }
+.doc-body li::marker { color: var(--muted-foreground); }
+.doc-body li > :is(ul, ol) { margin-top: 0.4rem; }
+.doc-body li > :is(p, pre, .doc-table, blockquote, details):not(:first-child) { margin-top: 0.7rem; }
+
+.doc-body code {
+  padding: 0.08em 0.32em;
+  background: var(--layer);
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.doc-body :is(h1, h2, h3, h4) code { font-size: 0.78em; letter-spacing: 0; }
+.doc-body kbd {
+  padding: 0.05em 0.4em;
+  border: 1px solid var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+}
+
+.doc-body pre {
+  position: relative;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 1rem 1.1rem;
+  background: var(--paper-sunken);
+  border: 2px solid var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.6;
+  tab-size: 2;
+  white-space: pre;
+  scrollbar-width: thin;
+}
+.doc-body pre[data-lang]:not([data-lang='text']) { padding-top: 2rem; }
+.doc-body pre[data-lang]:not([data-lang='text'])::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.2rem 0.6rem;
+  background: var(--foreground);
+  color: var(--background);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.doc-body pre code { padding: 0; background: none; border: 0; font-size: inherit; line-height: inherit; overflow-wrap: normal; }
+.doc-body pre:focus-visible, .doc-body .doc-table:focus-visible { outline: 3px solid var(--terracotta); outline-offset: 2px; }
+
+.doc-body .doc-table { max-width: 100%; overflow-x: auto; border-top: 2px solid var(--foreground); border-bottom: 2px solid var(--foreground); }
+.doc-body table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 14.5px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.doc-body th {
+  padding: 0.55rem 0.9rem 0.55rem 0;
+  border-bottom: 2px solid var(--foreground);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-align: left;
+  text-transform: uppercase;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+.doc-body td { min-width: 7rem; max-width: 46ch; padding: 0.6rem 0.9rem 0.6rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.doc-body tr:last-child td { border-bottom: 0; }
+.doc-body :is(th, td):last-child { padding-right: 0.25rem; }
+.doc-body :is(th, td)[data-align='right'] { text-align: right; }
+.doc-body :is(th, td)[data-align='center'] { text-align: center; }
+.doc-body td code { font-size: 0.82em; }
+
+.doc-body blockquote { padding: 0.1rem 0 0.1rem 1.1rem; border-left: 2px solid var(--foreground); color: var(--muted-foreground); }
+.doc-body blockquote > :first-child { margin-top: 0; }
+.doc-body hr { border: 0; border-top: 2px solid var(--foreground); margin-top: 2.5rem; margin-bottom: 2.5rem; }
+
+.doc-body img { display: block; max-width: 100%; height: auto; border: 2px solid var(--foreground); }
+.doc-body a > img { border-color: var(--rule); }
+.doc-body .doc-center { text-align: center; }
+.doc-body .doc-center img { margin-inline: auto; }
+.doc-body .doc-center :is(h1, h2, h3):not(:first-child) { margin-top: 1rem; }
+.doc-body .doc-center h2 { border-top: 0; padding-top: 0; }
+
+/* A picture draws both schemes, and the page's own appearance picks one. */
+.doc-body .doc-picture .doc-dark { display: none; }
+:root[data-theme='dark'] .doc-body .doc-picture .doc-dark { display: block; }
+:root[data-theme='dark'] .doc-body .doc-picture .doc-light { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .doc-body .doc-picture .doc-dark { display: block; }
+  :root:not([data-theme='light']) .doc-body .doc-picture .doc-light { display: none; }
+}
+
+.doc-body details { border-top: 2px solid var(--foreground); border-bottom: 2px solid var(--foreground); }
+.doc-body summary {
+  padding: 0.75rem 0;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  list-style: none;
+}
+.doc-body summary::-webkit-details-marker { display: none; }
+.doc-body summary::before { content: '+'; display: inline-block; width: 1.4rem; font-family: var(--font-mono); }
+.doc-body details[open] > summary::before { content: '\2212'; }
+.doc-body details[open] > summary { border-bottom: 1px solid var(--rule); }
+.doc-body details > summary:focus-visible { outline: 3px solid var(--terracotta); outline-offset: 2px; }
+.doc-body details[open] > :nth-child(2) { margin-top: 1.25rem; }

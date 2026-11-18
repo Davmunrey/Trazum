@@ -8,15 +8,18 @@
  * of them at once. The words for each entry live in `site-copy.ts`, keyed by
  * the same ids, and its type makes a missing translation a build error.
  *
- * Only what exists today is linked. Documentation, models, roadmap, changelog
- * and brand pages are coming as pages of this site; until each one exists,
- * its entry points at the repository's own copy on GitHub.
+ * Only what exists today is linked. The documentation is a page of this site
+ * (`/docs`). Models, roadmap, changelog and brand pages are coming as pages
+ * of it too; until each one exists, its entry points at the repository's own
+ * copy on GitHub.
  */
 
 /** The repository. Every public page carries a button to it. */
 export const GITHUB_URL = 'https://github.com/Davmunrey/Trazum';
-/** The documentation index, on GitHub until the site has its own. */
-export const DOCS_URL = `${GITHUB_URL}/blob/main/docs/README.md`;
+/** The documentation: an index at `/docs` and one page per document under it. */
+export const DOCS_PATH = '/docs';
+/** The repository's own `docs/` folder, where the records the site does not publish are kept. */
+export const DOCS_ON_GITHUB = `${GITHUB_URL}/tree/main/docs`;
 export const CHANGELOG_URL = `${GITHUB_URL}/blob/main/CHANGELOG.md`;
 export const SECURITY_URL = `${GITHUB_URL}/blob/main/SECURITY.md`;
 export const LICENCE_URL = `${GITHUB_URL}/blob/main/LICENSE`;
@@ -49,7 +52,7 @@ export interface SiteLink {
 export const SITE_LINKS: Readonly<Record<SiteLinkId, SiteLink>> = {
   dashboard: { id: 'dashboard', href: DASHBOARD_PATH, external: false },
   playground: { id: 'playground', href: `${DASHBOARD_PATH}?tab=playground`, external: false },
-  docs: { id: 'docs', href: DOCS_URL, external: true },
+  docs: { id: 'docs', href: DOCS_PATH, external: false },
   github: { id: 'github', href: GITHUB_URL, external: true },
   npm: { id: 'npm', href: NPM_URL, external: true },
   changelog: { id: 'changelog', href: CHANGELOG_URL, external: true },

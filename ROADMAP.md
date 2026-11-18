@@ -2685,6 +2685,13 @@ that better than a proposal page would. Since #734 the landing is the site's
 front door at `/`, with one header and footer, and the application lives at
 `/app`; the old `/landing` and `/?tab=` addresses redirect there.
 
+**The documentation at `/docs`** (#735), the repository's own documents read
+on the site: an index grouped as `docs/README.md` groups them, and one page
+per published document at `/docs/<slug>`, built from the files when the site
+is built so nothing is written twice. Search over titles and headings runs in
+the page and sends nothing. Plans, the audit and the compliance records stay
+in the repository, and the index links them there.
+
 **A deployment overview at `/admin`** (`/api/admin`) for whoever runs the instance, off unless
 `TRAZUM_ADMINS` is set — and off means the page does not exist rather than
 refuses. It is careful about what it claims: Trazum has never seen a bill or an

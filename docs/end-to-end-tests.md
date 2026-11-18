@@ -13,7 +13,7 @@ page.
 
 ## What is checked
 
-Fourteen flows, each from an empty browser. They drive the application at
+Fifteen flows, each from an empty browser. They drive the application at
 `/app`, where it has lived since the landing took `/`; one starts on the
 landing:
 
@@ -29,6 +29,7 @@ landing:
 | Tasks | a recorded run read into a report: 303,000 tokens, `$1.575` |
 | Tabs | each one by click and by address, one panel at a time |
 | Site | the landing's headline and command, its GitHub button, its way into the dashboard, the sample month loaded there and priced at `$1.05` over eight calls, and an old `/?tab=` address landing on its panel at `/app` |
+| Docs | from the landing, the Docs entry to `/docs`, a search for `baseline gate`, the result for the heading "The CI gate: a budget is a ceiling, a baseline is a gate", and the command reference open at `#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate` with that heading scrolled into view, the document marked English, and View on GitHub going to `docs/commands.md` |
 | Tour | all ten steps: the bill, the optimiser and the comparison each run their sample, and the terminal types and runs each of its three commands once |
 | Appearance | dark applied at once and still there after a reload |
 | Language | Spanish on the page and in the `lang` attribute, after a reload too |
@@ -101,9 +102,9 @@ of a tenth.
 
 A step of the `Build and tests` job, after the web app is built and the
 privacy probe has run, on a server of its own. It is part of the required
-check, so a pull request that breaks a flow cannot merge. All fourteen took 42
+check, so a pull request that breaks a flow cannot merge. All fifteen took 34
 seconds by the times the runner printed, on a machine shared with other runs,
-on 2026-11-18; the tour is ten of them, because it waits for a hand that
+on 2026-11-18; the tour is nine of them, because it waits for a hand that
 types.
 
 ## Adding a flow

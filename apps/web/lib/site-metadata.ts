@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 
+import { DOCS_COPY } from './docs/copy';
+import { docHref } from './docs/manifest';
 import type { WebMessages } from './i18n/types';
 import { COPY } from './landing-copy';
 import type { MarketingLocale } from './marketing-locales';
-import { CANONICAL } from './site';
+import { CANONICAL, DOCS_PATH } from './site';
 import { SITE_COPY } from './site-copy';
 
 /**
@@ -47,6 +49,22 @@ export function dashboardMetadata(messages: WebMessages): Metadata {
     title: { absolute: title },
     ...card(title, messages.meta.description, CANONICAL.dashboard, messages.meta.ogLocale),
   };
+}
+
+export function docsIndexMetadata(locale: MarketingLocale): Metadata {
+  const t = DOCS_COPY[locale];
+  const title = `${t.indexTitle} · Trazum`;
+  return { title: { absolute: title }, ...card(title, t.indexLede, DOCS_PATH, OG_LOCALE[locale]) };
+}
+
+/**
+ * One document's page. The description is the document's first paragraph as
+ * the build trimmed it, in the document's language, which is English: a page
+ * of English text that described itself in Spanish would be a different claim.
+ */
+export function docMetadata(doc: { slug: string; title: string; description: string }): Metadata {
+  const title = `${doc.title} · Trazum docs`;
+  return { title: { absolute: title }, ...card(title, doc.description, docHref(doc.slug), OG_LOCALE.en) };
 }
 
 export function notFoundMetadata(locale: MarketingLocale): Metadata {

@@ -656,6 +656,7 @@ is 3.2%, 5.6%, 25.1% and 32.5%. Language-aware because one English divisor was
 37% wrong on German. `--exact-tokens` settles any doubt
 against the provider's free counting endpoint. The measurement story is in
 [the command reference](docs/commands.md#token-counting).
+
 ---
 
 ## Limitations, stated plainly
