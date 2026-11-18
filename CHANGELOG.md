@@ -13,6 +13,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The site opens on the landing, and the application moved to `/app`.**
+  `/` is the landing; the application is unchanged at `/app` and still opens
+  on the bill. `/?tab=<name>` redirects permanently (308) to `/app` with every
+  parameter it carried, `/landing` to `/`, and a bare `/` is never redirected:
+  `redirectFor` in `apps/web/lib/site.ts` decides, the middleware answers
+  before anything else, and the target is always this origin. Share links,
+  the badge, `/admin` and the API keep their addresses. Every public page has
+  one header and one footer, built from one list of entries: the full
+  wordmark home, Playground and Docs (the docs index on GitHub until the site
+  has its own), the language and appearance controls, a GitHub button drawn
+  inline with an accessible name, and the primary action into the dashboard;
+  below 1280px the entries move into a menu that is a disclosure and holds no
+  focus. The footer adds the licence, the changelog, the security policy and
+  the npm package. The landing is rebuilt from the README's own sentences:
+  its first line as the headline, `npx @trazum/cli bill` with a copy control,
+  the README's illustrative bill from `examples/claude-projects` (labelled as
+  the README labels it, and held to what the CLI prints), why the number holds
+  up, what never leaves the machine, the CI gate, the agents' budget check
+  and prompt trimming, and the command again. The application's rail and
+  phone bar gain the way back to the site and the same GitHub button, and the
+  bill panel opens on one control that loads the sample month. Each public
+  page has its own title, description, canonical address and social card,
+  drawn in the colours `scripts/brand.mjs` names (which gains the light
+  tokens, held to `globals.css` by `brand.test.js`), and an unknown address
+  gets a branded page with the way home. Every link to the web app in the
+  README, the docs, the skill and the wiki uses the new addresses, and
+  `site-links.test.js` fails on one that would only redirect. A fourteenth
+  end-to-end flow follows a visitor from the landing to a priced sample
+  month (#734).
 - **Discussions has a form for each category a visitor writes in, and one
   address.** GitHub Discussions was switched on on 2026-11-18, and the only
   thing that sent anybody there was a line in `config.yml`. `.github/DISCUSSION_TEMPLATE/`

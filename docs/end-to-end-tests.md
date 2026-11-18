@@ -13,7 +13,9 @@ page.
 
 ## What is checked
 
-Thirteen flows, each from an empty browser:
+Fourteen flows, each from an empty browser. They drive the application at
+`/app`, where it has lived since the landing took `/`; one starts on the
+landing:
 
 | Flow | What the page must show |
 | --- | --- |
@@ -26,6 +28,7 @@ Thirteen flows, each from an empty browser:
 | Playground | the command list from `help`, and one command run |
 | Tasks | a recorded run read into a report: 303,000 tokens, `$1.575` |
 | Tabs | each one by click and by address, one panel at a time |
+| Site | the landing's headline and command, its GitHub button, its way into the dashboard, the sample month loaded there and priced at `$1.05` over eight calls, and an old `/?tab=` address landing on its panel at `/app` |
 | Tour | all ten steps: the bill, the optimiser and the comparison each run their sample, and the terminal types and runs each of its three commands once |
 | Appearance | dark applied at once and still there after a reload |
 | Language | Spanish on the page and in the `lang` attribute, after a reload too |
@@ -98,9 +101,10 @@ of a tenth.
 
 A step of the `Build and tests` job, after the web app is built and the
 privacy probe has run, on a server of its own. It is part of the required
-check, so a pull request that breaks a flow cannot merge. All thirteen took 26
-seconds on four local cores on 2026-11-18; the tour is nine of them, because
-it waits for a hand that types.
+check, so a pull request that breaks a flow cannot merge. All fourteen took 42
+seconds by the times the runner printed, on a machine shared with other runs,
+on 2026-11-18; the tour is ten of them, because it waits for a hand that
+types.
 
 ## Adding a flow
 

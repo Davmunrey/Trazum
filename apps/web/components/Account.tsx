@@ -110,7 +110,7 @@ export function Account({
       // A full reload rather than clearing the state locally: signing out has
       // to drop anything the page is holding about the account, and the only
       // way to be sure it did is to stop holding anything.
-      window.location.assign('/');
+      window.location.assign('/app');
     } catch {
       setBusy(false);
     }
@@ -202,7 +202,7 @@ export function Account({
         setBusy(false);
         return;
       }
-      window.location.assign('/');
+      window.location.assign('/app');
     } catch {
       setBusy(false);
     }

@@ -84,6 +84,24 @@ const RUN = [['00', 100_000, 1_000], ['05', 200_000, 2_000]]
   .join('\n');
 
 /**
+ * The sample month the bill's first control prices: the Playground's
+ * `usage.jsonl` in `apps/web/lib/playground.ts`, eight calls, priced by hand
+ * from the price list (Opus 5 $5 in, $25 out, cache read a tenth of input and
+ * a five-minute cache write 1.25 times it; Sonnet 5 $2 and $10; Haiku 4.5 $1
+ * and $5, all per million tokens):
+ *
+ *   support-rag   Opus 5     3 calls   125,900 in    $0.6295
+ *                                         6,000 out   $0.15
+ *                                        98,500 read  $0.04925
+ *                                        17,300 write $0.108125   = $0.936875
+ *   summarise     Sonnet 5   3 calls    38,400 in    $0.0768
+ *                                         2,650 out   $0.0265     = $0.1033
+ *   classify      Haiku 4.5  2 calls     5,000 in    $0.005
+ *                                           115 out   $0.000575   = $0.005575
+ *                                               8 calls, total    $1.04575, shown as $1.05
+ */
+
+/**
  * The flows. `covers` names the tabs a flow opens; `e2e.test.mjs` requires
  * every tab the app renders to be covered by one, so a new tab arrives with
  * its flow or fails the build.
@@ -93,7 +111,7 @@ export const FLOWS = [
     name: 'bill: a pasted log is priced, to the cent, by part and by label',
     covers: ['bill'],
     async run({ page, open, panel, see }) {
-      await open('/?tab=bill');
+      await open('/app?tab=bill');
       const bill = panel('bill');
       await bill.getByRole('textbox', { name: 'Usage log to analyse' }).fill(LOG);
       await bill.getByRole('button', { name: 'Read the bill' }).click();
@@ -110,7 +128,7 @@ export const FLOWS = [
     name: 'bill: a paste that is not a log is refused in words, with the lines it could not read',
     covers: ['bill'],
     async run({ open, panel, see }) {
-      await open('/?tab=bill');
+      await open('/app?tab=bill');
       const bill = panel('bill');
       await bill.getByRole('textbox', { name: 'Usage log to analyse' }).fill('this is not a usage log\nnor is this');
       await bill.getByRole('button', { name: 'Read the bill' }).click();
@@ -123,7 +141,7 @@ export const FLOWS = [
     covers: ['bill'],
     viewport: PHONE,
     async run({ page, open, panel, see, noSidewaysScroll }) {
-      await open('/?tab=bill');
+      await open('/app?tab=bill');
       await noSidewaysScroll('before a log is read');
       const bill = panel('bill');
       await bill.getByRole('textbox', { name: 'Usage log to analyse' }).fill(LOG);
@@ -137,7 +155,7 @@ export const FLOWS = [
     name: 'optimise: a prompt comes back shorter, with the count and the rule that did it',
     covers: ['optimise'],
     async run({ open, panel, see, gone }) {
-      await open('/?tab=optimise');
+      await open('/app?tab=optimise');
       const optimise = panel('optimise');
       await see(optimise.getByRole('heading', { name: 'Nothing priced yet' }), 'the empty state');
       await optimise.getByRole('textbox', { name: 'Prompt to optimise' }).fill('Please summarise this text.');
@@ -152,7 +170,7 @@ export const FLOWS = [
     name: 'compare: two versions of a prompt are compared after minus before',
     covers: ['compare'],
     async run({ open, panel, see }) {
-      await open('/?tab=compare');
+      await open('/app?tab=compare');
       const compare = panel('compare');
       await see(compare.getByRole('heading', { name: 'Nothing compared yet' }), 'the empty state');
       await compare.getByRole('textbox', { name: 'Before' }).fill('Please summarise this text for me, thank you very much indeed.');
@@ -167,7 +185,7 @@ export const FLOWS = [
     name: 'write: answering a question asks the next one and says how many are left',
     covers: ['write'],
     async run({ page, open, panel, see, gone }) {
-      await open('/?tab=write');
+      await open('/app?tab=write');
       const write = panel('write');
       await see(write.getByText('What should the model do, in one sentence?').first(), 'the first question');
       await write.getByRole('textbox').first().fill('Summarise a support ticket in two sentences.');
@@ -186,7 +204,7 @@ export const FLOWS = [
     name: 'playground: help lists the commands, and one of them runs on the loaded sample',
     covers: ['playground'],
     async run({ open, panel, see }) {
-      await open('/?tab=playground');
+      await open('/app?tab=playground');
       const playground = panel('playground');
       const line = playground.getByRole('textbox', { name: 'Playground command line' });
       await line.fill('help');
@@ -202,7 +220,7 @@ export const FLOWS = [
     name: 'tasks: a recorded run becomes a report, with its tokens counted and priced',
     covers: ['tasks'],
     async run({ open, panel, see }) {
-      await open('/?tab=tasks');
+      await open('/app?tab=tasks');
       const tasks = panel('tasks');
       await see(tasks.getByRole('heading', { name: '01 / Recorded run' }), 'the first step');
       await tasks.locator('input[type="file"]').setInputFiles({ name: 'e2e-run.jsonl', mimeType: 'application/x-ndjson', buffer: Buffer.from(RUN) });
@@ -222,7 +240,7 @@ export const FLOWS = [
     name: 'tabs: each one opens by click and by address, one panel at a time',
     covers: ['bill', 'tasks', 'playground', 'optimise', 'write', 'compare'],
     async run({ page, open, see, is }) {
-      await open('/');
+      await open('/app');
       await see(page.getByRole('tab', { name: 'Your bill', selected: true }), 'the bill, which is where a first visit lands');
       await see(page.locator('[data-tour="panel-bill"]'), 'the bill panel');
       const tabs = [
@@ -237,15 +255,41 @@ export const FLOWS = [
         );
         is(shown.join(','), `panel-${tab}`, `the only panel shown after opening ${name}`);
       }
-      await open('/?tab=compare');
+      await open('/app?tab=compare');
       await see(page.getByRole('tab', { name: 'Compare', selected: true }), 'the tab an address names');
+    },
+  },
+  {
+    name: 'site: a visitor lands on the landing, follows the way in, loads the sample and reads a bill',
+    covers: ['bill'],
+    async run({ page, open, panel, see, gone, is }) {
+      await open('/');
+      await see(page.getByRole('heading', { level: 1, name: /^Know what your AI agents cost, per project/ }), 'the headline');
+      await see(page.locator('[data-command]').filter({ hasText: 'npx @trazum/cli bill' }).first(), 'the command, with its copy control');
+      is(
+        await page.locator('[data-site-header] [data-github-button]').first().getAttribute('href'),
+        'https://github.com/Davmunrey/Trazum',
+        'where the header’s GitHub button goes',
+      );
+      await page.locator('[data-site-header]').getByRole('link', { name: 'Open the dashboard' }).click();
+      await page.waitForURL((url) => url.pathname === '/app');
+      await page.locator('html[data-started="true"]').waitFor({ state: 'attached' });
+      const bill = panel('bill');
+      await bill.getByRole('button', { name: 'Load the sample month' }).click();
+      await see(bill.getByText('8 calls · $1.05'), 'the sample month: eight calls, $1.05');
+      await see(bill.getByRole('row', { name: /^summarise\s+\$0\.1033\s+10%\s+3$/ }), 'the summarise label: $0.1033 on three calls');
+      await gone(bill.getByRole('button', { name: 'Load the sample month' }), 'the sample control, once there is a bill');
+      // And an address written before the move still lands on the panel it named.
+      await open('/?tab=compare&from=readme');
+      is(new URL(page.url()).pathname + new URL(page.url()).search, '/app?tab=compare&from=readme', 'where the old address went');
+      await see(page.getByRole('tab', { name: 'Compare', selected: true }), 'the panel the old address named');
     },
   },
   {
     name: 'tour: each page it visits runs its own demo, once',
     covers: [],
     async run({ page, open, see, is }) {
-      await open('/');
+      await open('/app');
       await page.getByRole('button', { name: 'Start the tour' }).click();
       const tour = page.getByRole('dialog');
       /** Next, and then the step the tour says it is on. */
@@ -280,11 +324,11 @@ export const FLOWS = [
     name: 'appearance: dark is applied at once and is still there after a reload',
     covers: [],
     async run({ page, open, is }) {
-      await open('/');
+      await open('/app');
       is(await page.locator('html').getAttribute('data-theme'), 'light', 'the theme a light system starts in');
       await page.getByRole('button', { name: 'Dark', exact: true }).click();
       is(await page.locator('html').getAttribute('data-theme'), 'dark', 'the theme after choosing Dark');
-      await open('/');
+      await open('/app');
       is(await page.locator('html').getAttribute('data-theme'), 'dark', 'the theme after a reload');
       await page.getByRole('button', { name: 'Light', exact: true }).click();
       is(await page.locator('html').getAttribute('data-theme'), 'light', 'the theme after choosing Light');
@@ -294,11 +338,11 @@ export const FLOWS = [
     name: 'language: Spanish changes the page, its lang attribute, and survives a reload',
     covers: [],
     async run({ page, open, see, is }) {
-      await open('/');
+      await open('/app');
       await page.getByRole('button', { name: 'Español', exact: true }).click();
       await see(page.getByRole('tab', { name: 'Tu factura' }), 'the bill tab, in Spanish');
       is(await page.locator('html').getAttribute('lang'), 'es', 'the lang attribute after choosing Spanish');
-      await open('/');
+      await open('/app');
       await see(page.getByRole('tab', { name: 'Tu factura' }), 'the bill tab, still in Spanish after a reload');
       await see(page.getByRole('button', { name: 'Leer la factura' }), 'the button that reads a bill, in Spanish');
     },
@@ -308,7 +352,7 @@ export const FLOWS = [
     covers: ['optimise'],
     viewport: PHONE,
     async run({ page, open, see, is }) {
-      await open('/');
+      await open('/app');
       const visibleTabs = () => page.getByRole('tab').evaluateAll((tabs) => tabs.filter((tab) => tab.offsetParent !== null).length);
       is(await visibleTabs(), 0, 'the number of tabs showing before the menu is opened');
       await page.getByRole('button', { name: 'Open menu' }).click();

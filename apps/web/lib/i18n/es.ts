@@ -14,6 +14,7 @@ export const es: WebMessages = {
     description:
       'Reduce el coste de tus llamadas a la IA: acorta el prompt sin cambiar lo que pide y ve cuánto dinero supone al mes. O lee tu registro de uso (por completo en el navegador, sin subir nada) y ve adónde fue el dinero de verdad.',
     ogLocale: 'es_ES',
+    dashboardTitle: 'Panel',
   },
 
   booting: 'Cargando Trazum…',
@@ -62,6 +63,7 @@ export const es: WebMessages = {
     linkNpm: 'npm: @trazum/cli',
     linkDocs: 'Documentación',
     opensExternal: 'se abre en una pestaña nueva',
+    backToSite: 'Volver al sitio',
   },
 
   input: {
@@ -462,6 +464,8 @@ export const es: WebMessages = {
 
   bill: {
     tab: 'Tu factura',
+    sampleLead: '¿No tienes un log a mano? Tasa el mes de ejemplo y lee primero una factura completa.',
+    sampleAction: 'Cargar el mes de ejemplo',
     format:
       'Un objeto JSON por línea, cada uno con un "model" y el objeto "usage" que devolvió la API. '
       + 'Un "label" nombra la carga de trabajo y una "session" nombra la conversación; ambos son '

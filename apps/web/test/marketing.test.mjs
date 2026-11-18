@@ -1,8 +1,13 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { register } from 'node:module';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { statementLines } from '../../../scripts/draw-bill.mjs';
+
+register('./helpers/loader.mjs', import.meta.url);
 
 const here = dirname(fileURLToPath(import.meta.url));
 const web = join(here, '..');
@@ -15,49 +20,51 @@ const codeOf = (relative) =>
 /**
  * The marketing pages sell the product; these guards keep them from selling
  * anything the product is not. A Persuade surface in this repository plays
- * by the same rules as the app: no network, honest numbers, both locales,
- * and motion that respects the reader who asked for less of it.
+ * by the same rules as the app: no network, honest numbers, every language
+ * it claims, and motion that respects the reader who asked for less of it.
  */
+const SHELL = [
+  'components/Landing.tsx',
+  'components/marketing.tsx',
+  'components/site/GitHub.tsx',
+  'components/site/SiteHeader.tsx',
+  'components/site/SiteFooter.tsx',
+  'components/site/SiteFrame.tsx',
+  'components/site/CommandLine.tsx',
+  'components/site/NotFound.tsx',
+];
+
 describe('the marketing pages play by the app’s rules', () => {
   const marketing = codeOf('components/marketing.tsx');
-  const landing = codeOf('app/landing/page.tsx');
+  const locales = codeOf('lib/marketing-locales.ts');
+  const landing = codeOf('components/Landing.tsx');
+  const copy = codeOf('lib/landing-copy.ts');
+  const siteCopy = codeOf('lib/site-copy.ts');
 
-  it('never fetch — a static page has no business calling anywhere', () => {
-    for (const [name, code] of [
-      ['marketing.tsx', marketing],
-      ['landing', landing],
-    ]) {
-      assert.equal(/\bfetch\s*\(/.test(code), false, `${name} contains a fetch call`);
-      assert.equal(/XMLHttpRequest|sendBeacon|WebSocket/.test(code), false, `${name} opens a channel`);
+  it('never fetch: a static page has no business calling anywhere', () => {
+    /*
+      No star count from GitHub, no font from a foreign host, no analytics
+      call of their own. The policy is `connect-src 'self'`, and the site's
+      pages do not even use that.
+    */
+    for (const file of [...SHELL, 'lib/landing-copy.ts', 'lib/site-copy.ts', 'lib/site.ts', 'lib/social-card.tsx']) {
+      const code = codeOf(file);
+      assert.equal(/\bfetch\s*\(/.test(code), false, `${file} contains a fetch call`);
+      assert.equal(/XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(code), false, `${file} opens a channel`);
+      assert.equal(/https?:\/\/(?!github\.com\/Davmunrey|www\.npmjs\.com\/package\/@trazum)[\w.-]+/.test(code), false, `${file} names a third-party host`);
     }
   });
 
   it('respects prefers-reduced-motion, wherever the motion lives', () => {
     /**
-     * The claim is the landing's, not one component's, and this guard used to
-     * be pinned to the component.
-     *
-     * It asserted that `marketing.tsx` mentioned `prefers-reduced-motion` and
-     * contained `setShown(true); return;` — the two lines inside `Reveal`. So
-     * it passed for as long as `Reveal` existed and failed the moment it was
-     * deleted, which is backwards: `Reveal` was deleted **because** it
-     * rendered copy at zero opacity and left whole sections invisible when its
-     * observer never fired, and a guard that fails when a defect is removed is
-     * guarding an implementation rather than a promise.
-     *
      * The promise is that the landing's motion is switched off for a reader
-     * who asked for less of it. It is now one animation — the hero ledger
-     * filling — and it lives in the stylesheet, so that is where this looks.
+     * who asked for less of it. It is one animation, the bill's share bars
+     * filling, and it lives in the stylesheet, so that is where this looks.
+     * `Reveal` was deleted because it rendered copy at zero opacity; a guard
+     * pinned to it would have failed the day the defect was removed.
      */
     const css = read('app/globals.css');
     assert.match(css, /prefers-reduced-motion/, 'nothing gates motion for the reader who asked for less');
-
-    /*
-      Every keyframe animation the landing runs has to be inside a
-      no-preference block. Read off the stylesheet rather than listed here, so
-      an animation added next year is covered by existing rather than by
-      somebody remembering to add it to an array.
-    */
     const guarded = css
       .split(/@media \(prefers-reduced-motion: no-preference\)/)
       .slice(1)
@@ -65,139 +72,174 @@ describe('the marketing pages play by the app’s rules', () => {
     for (const name of ['ledger-fill']) {
       assert.match(guarded, new RegExp(`animation:\\s*${name}`), `${name} runs regardless of the reader's preference`);
     }
-
     // And the finished state is the default, so a browser that runs no
     // animation at all still draws the completed figure.
     assert.match(landing, /ledger-bar/, 'the landing no longer uses the class this guard describes');
   });
 
-  it('carries its own locale key, so an unreviewed language stays on the landing', () => {
-    // The marketing surface reaches five languages; the tool speaks two. They
-    // must not share storage, or a French landing would push 'fr' into a tool
-    // that has no reviewed French — the "never push an unreviewed language
-    // into the tool" invariant, pinned at its root.
-    assert.match(marketing, /MARKETING_LOCALE_KEY = 'trazum:marketing-locale'/);
+  it('carries its own locale key, so an unreviewed language stays on the site', () => {
+    // The site reaches five languages; the tool speaks two. They must not
+    // share storage, or a French landing would push 'fr' into a tool that has
+    // no reviewed French.
+    assert.match(locales, /MARKETING_LOCALE_KEY = 'trazum:marketing-locale'/);
+    assert.match(marketing, /MARKETING_LOCALE_KEY/);
+    assert.equal(/LOCALE_STORAGE_KEY/.test(marketing + landing), false, 'the marketing locale reuses the tool key');
   });
 
-  it('carries no price — the owner decided to stay open source, priceless', () => {
-    // "Deja la landing sin precios por ahora": no euro figure, no tier name,
-    // no pricing route. The open-source section may say hosted things will
-    // cost money one day; it may not say how much.
-    assert.equal(/€\s?\d|\/pricing/.test(landing), false, 'a price or pricing link crept back onto the landing');
+  it('carries no price: the owner decided to stay open source, priceless', () => {
+    // No euro figure, no tier name, no pricing route.
+    assert.equal(/€\s?\d|\/pricing/.test(landing + copy), false, 'a price or pricing link crept back onto the landing');
   });
 
   it('no private mailbox leaks into a public page', () => {
-    assert.equal(/gmail/.test(landing + marketing), false, 'a private mailbox leaked into a public page');
+    assert.equal(/gmail/.test(landing + marketing + copy + siteCopy), false, 'a private mailbox leaked into a public page');
   });
 
   it('external links carry rel="noreferrer noopener"', () => {
-    for (const code of [landing]) {
+    for (const file of SHELL) {
+      const code = codeOf(file);
       const targets = code.match(/target="_blank"|target: '_blank'/g) ?? [];
       const rels = code.match(/rel="noreferrer noopener"|rel: 'noreferrer noopener'/g) ?? [];
-      assert.ok(targets.length > 0, 'no external links found at all — the pattern moved');
-      assert.equal(targets.length, rels.length, 'an external link without rel protection');
+      assert.equal(targets.length, rels.length, `${file}: an external link without rel protection`);
     }
   });
 
   it('speaks five languages, and every one is complete', () => {
-    // The type system already forbids a partial COPY record — a missing key
-    // is a build error — so this pins the intent: five locales named, and the
-    // switcher renders all five. Adding German or Portuguese later is a
-    // fill-in-the-blanks that the compiler completes.
+    // The types forbid a partial record; this pins the intent: five named,
+    // and a copy block for each in both the landing's and the shell's words.
     for (const code of ['en', 'es', 'fr', 'de', 'pt']) {
-      assert.ok(
-        new RegExp(`\\n  ${code}: \\{`).test(landing),
-        `the landing is missing a ${code} copy block`,
-      );
+      assert.ok(new RegExp(`\\n  ${code}: \\{`).test(copy), `the landing is missing a ${code} copy block`);
+      assert.ok(new RegExp(`\\n  ${code}: \\{`).test(siteCopy), `the site shell is missing a ${code} copy block`);
     }
-    assert.match(marketing, /MARKETING_LOCALES = \['en', 'es', 'fr', 'de', 'pt'\]/);
+    assert.match(locales, /MARKETING_LOCALES = \['en', 'es', 'fr', 'de', 'pt'\]/);
   });
 
   it('says out loud which languages are machine-drafted, unreviewed', () => {
-    // The maintainers-doctrine pattern applied to selling copy: fr/de/pt are
-    // marked unreviewed and carry a visible note; en/es are reviewed and
-    // carry none. A translation shipped as authoritative without review would
-    // be the same lie the trimming dictionaries refuse.
-    assert.match(marketing, /fr: \{ name: 'Français', reviewed: false \}/);
-    assert.match(marketing, /en: \{ name: 'English', reviewed: true \}/);
-    assert.match(landing, /UNREVIEWED_NOTE/);
-    // The note is non-empty for every unreviewed language and empty for the
-    // reviewed ones — no note shown where a human vouched for the words.
+    // fr/de/pt are marked unreviewed and carry a visible note on every page
+    // of the site; en/es are reviewed and carry none.
+    assert.match(locales, /fr: \{ name: 'Français', reviewed: false \}/);
+    assert.match(locales, /en: \{ name: 'English', reviewed: true \}/);
+    assert.match(codeOf('components/site/SiteFrame.tsx'), /UNREVIEWED_NOTE\[locale\]/);
     for (const code of ['fr', 'de', 'pt']) {
       assert.ok(
-        new RegExp(`${code}: '[^']+GitHub`).test(landing),
+        new RegExp(`${code}: '[^']+GitHub`).test(siteCopy),
         `the ${code} unreviewed note is missing or does not point at GitHub`,
       );
     }
-    assert.match(landing, /en: '',\n  es: '',/);
+    assert.match(siteCopy, /en: '',\n  es: '',/);
   });
 
-  it('never pushes an unreviewed language into the tool', () => {
-    // The marketing locale has its own storage key: a French visitor reads a
-    // French landing and lands in the en/es tool, never a half-reviewed tool.
-    assert.match(marketing, /trazum:marketing-locale/);
-    assert.equal(/LOCALE_STORAGE_KEY/.test(marketing), false, 'the marketing locale reuses the tool key');
-  });
-
-  it('the landing’s headline figure is the one the rules actually produce', async () => {
-    /**
-     * This used to be a list of literals: `['−37.4%', '40–80%', '−50%']`,
-     * asserted to appear on the landing. Both halves of that were the same
-     * hand-typed number, so it could only catch a figure being deleted, never
-     * one being wrong — and one of them was.
-     *
-     * −37.4% described itself as `optimize --level aggressive` over the demo
-     * prompt. No prompt in this repository produces it. The demo prompt is the
-     * one `createPlaygroundFiles` loads as `prompt.txt`, which is what the
-     * Playground tab runs and what the Optimiser fills itself with when a
-     * visitor clicks through from this page — so it is the prompt whose figure
-     * the landing is allowed to quote, and it comes out at −20.1%.
-     *
-     * Derived here by running the rules, so the landing cannot claim a
-     * reduction the product does not deliver, and cannot drift the next time a
-     * rule is added.
-     */
-    const { optimize } = await import('@trazum/core');
-    const { createPlaygroundFiles } = await import('../lib/playground.ts');
-    const prompt = createPlaygroundFiles().get('prompt.txt');
-    assert.ok(prompt, 'the demo prompt the landing quotes is no longer in the playground files');
-
-    const result = optimize(prompt, { level: 'aggressive' });
-    const figure = `−${result.reductionPct.toFixed(1)}%`;
-
-    /*
-      Every reduction on both surfaces, not just one of them. `includes` was
-      the first spelling of this and it is too weak to be worth having: the
-      hero draws the figure and the proof row states it, so either could drift
-      alone and the page would still contain the right string somewhere.
-      A reduction is the only figure written to one decimal here; the Batch
-      50% and the routing span carry none.
-    */
-    const stated = (text) => [...text.matchAll(/−\d+\.\d%/g)].map((match) => match[0]);
-    for (const [where, text] of [
-      ['the landing', landing],
-      ['the share card', read('app/opengraph-image.tsx')],
-    ]) {
-      const figures = stated(text);
-      assert.ok(figures.length > 0, `${where} states no reduction at all`);
-      for (const said of figures) {
-        assert.equal(
-          said,
-          figure,
-          `${where} states ${said}; the rules take ${figure} off the demo prompt`,
-        );
-      }
+  it('invents no social proof, and names nobody else’s tool', () => {
+    for (const file of ['lib/landing-copy.ts', 'lib/site-copy.ts']) {
+      const text = codeOf(file);
+      assert.equal(/testimonial|trusted by|customers love|users worldwide|\d[\d,]*\+? (?:users|developers|teams|companies)/i.test(text), false, `${file}: invented social proof`);
+      assert.equal(/\b(?:Helicone|LangSmith|Langfuse|Datadog|OpenMeter|Portkey)\b/.test(text), false, `${file}: a comparison with a named tool`);
+      assert.equal(/—/.test(text), false, `${file}: an em-dash in the new prose`);
     }
   });
+});
 
-  it('the landing’s other figures are the product’s own, with their sources named', () => {
-    // The model-routing and Batch spans the profile report itself states. The
-    // routing span's floor is derived from the prices in
-    // packages/core/test/pricing-review.test.js, which is where it belongs:
-    // it is arithmetic on the catalogue, not a property of this page.
-    for (const figure of ['60–80%', '−50%']) {
-      assert.ok(landing.includes(figure), `the measured figure ${figure} left the landing`);
+/**
+ * The worked example on the landing is the README's illustrative bill, and
+ * every figure in it is one the CLI prints.
+ *
+ * The page cannot run the CLI, so it carries the figures; this runs the CLI,
+ * through the same `scripts/draw-bill.mjs` that draws the README's picture,
+ * and fails on any figure the CLI would not print. A price change redraws the
+ * README picture (`bill-image.test.js` asks for that) and then fails here
+ * until the landing and the social card say the same.
+ */
+describe('the landing’s bill is the one the CLI prints', () => {
+  const lines = statementLines();
+  /** A row of the CLI's table, by its first cell: [name, calls, usd, share]. */
+  const row = (name) => {
+    const line = lines.find((candidate) => candidate.trim().split(/\s+/)[0] === name);
+    assert.ok(line !== undefined, `the CLI prints no row named ${name}`);
+    const cells = line.trim().split(/\s+/);
+    return { name: cells[0], calls: Number(cells[1]), usd: cells[2], share: cells.at(-1) };
+  };
+
+  it('the total, the calls and the window', async () => {
+    const { ILLUSTRATIVE_BILL } = await import('../lib/landing-copy.ts');
+    const [, usd, calls] = lines[1].match(/(\$[\d,.]+) across (\d+) priced call/);
+    assert.equal(ILLUSTRATIVE_BILL.total, usd, 'the landing’s total is not the CLI’s');
+    assert.equal(ILLUSTRATIVE_BILL.calls, Number(calls), 'the landing’s call count is not the CLI’s');
+    const window = lines.join(' ').match(/covers (\d{4}-\d\d-\d\d) → (\d{4}-\d\d-\d\d) \(([\d.]+) days\)/);
+    assert.ok(window !== null, 'the CLI no longer states the window');
+    assert.deepEqual([ILLUSTRATIVE_BILL.from, ILLUSTRATIVE_BILL.to, ILLUSTRATIVE_BILL.days], window.slice(1, 4));
+    assert.equal(ILLUSTRATIVE_BILL.command, 'trazum bill examples/claude-projects');
+  });
+
+  it('every project and every model, on the row of the same name', async () => {
+    const { ILLUSTRATIVE_BILL } = await import('../lib/landing-copy.ts');
+    const shown = [...ILLUSTRATIVE_BILL.projects, ...ILLUSTRATIVE_BILL.models];
+    assert.ok(ILLUSTRATIVE_BILL.projects.length >= 2 && ILLUSTRATIVE_BILL.models.length >= 2);
+    for (const entry of shown) assert.deepEqual({ ...entry }, row(entry.name), `${entry.name} differs from the CLI`);
+    // And nothing the CLI prints is left off: a table with a row missing still adds up wrongly.
+    const printed = (header) => {
+      const start = lines.findIndex((line) => new RegExp(`^\\s+${header}\\s+calls`).test(line));
+      const rows = [];
+      for (let at = start + 1; at < lines.length && lines[at].trim() !== ''; at += 1) rows.push(lines[at].trim().split(/\s+/)[0]);
+      return rows;
+    };
+    assert.deepEqual(ILLUSTRATIVE_BILL.projects.map((r) => r.name), printed('project'));
+    assert.deepEqual(ILLUSTRATIVE_BILL.models.map((r) => r.name), printed('model'));
+  });
+
+  it('is labelled the way the README labels it, in every language', async () => {
+    const { COPY } = await import('../lib/landing-copy.ts');
+    const readme = readFileSync(join(web, '../../README.md'), 'utf8');
+    assert.match(readme, /Illustrative data from \[`examples\/claude-projects`\][^\n]*\nnot a customer result/);
+    assert.match(COPY.en.billNote, /^Illustrative data, not a customer result\. Generated from the CLI output\.$/);
+    for (const [locale, t] of Object.entries(COPY)) {
+      assert.ok(t.billNote.length > 20, `${locale}: the bill is not labelled`);
+      assert.equal(t.billSource, 'examples/claude-projects');
     }
-    assert.equal(/testimonial|logo/i.test(landing), false, 'invented social proof on the landing');
+    assert.match(codeOf('components/Landing.tsx'), /\{t\.billNote\}/);
+    assert.match(codeOf('lib/social-card.tsx'), /\{note\}/, 'the social card shows the bill without its label');
+  });
+});
+
+/**
+ * The landing's English sentences are the README's. Each one below is looked
+ * for in the README, whitespace collapsed and the README's markup stripped,
+ * so a claim written for the landing alone fails here.
+ */
+describe('every English sentence on the landing is one the README makes', () => {
+  const readme = readFileSync(join(web, '../../README.md'), 'utf8')
+    .replace(/\*\*|`|\[|\]\([^)]*\)/g, '')
+    .replace(/[’]/g, "'")
+    .replace(/\s+/g, ' ');
+
+  it('the headline, the lede, the reasons and what never leaves', async () => {
+    const { COPY } = await import('../lib/landing-copy.ts');
+    const t = COPY.en;
+    const norm = (text) => text.replace(/[’]/g, "'").replace(/\s+/g, ' ');
+    const verbatim = [
+      t.heroTitle,
+      ...t.heroLede.split(/(?<=\.) /),
+      t.reasons.map(([title]) => title),
+      t.reasons.flatMap(([, body]) => body.split(/(?<=\.) /)),
+      'Local analysis does not upload your files.',
+      'Requires Node.js 20 or newer.',
+      'npx may download Trazum from npm.',
+      'On a subscription, this is API-equivalent cost, not what you paid.',
+      'Unpriced models are reported as gaps.',
+      'Nothing is called and nothing is spent to answer.',
+      'One binary, two exit codes',
+      'never touching code, URLs, email addresses or placeholders',
+      'the things that move 60% to 80% are which model the call goes to, the Batch API, prompt caching, and what re-sending the conversation costs',
+      'What leaves: a receipt, a report, a gate verdict.',
+      'What never crosses the line: the prompt text, the model\'s answer, file paths, branch names and credentials.',
+    ].flat();
+    for (const sentence of verbatim) {
+      assert.ok(readme.includes(norm(sentence).replace(/^(.)/, (c) => c)), `the README does not say: ${sentence}`);
+    }
+    // And the landing says them: the two lists at the end are the boundary picture's own words.
+    assert.equal(t.leaves, 'A receipt, a report, a gate verdict.');
+    assert.deepEqual(t.neverItems.map((item) => item.toLowerCase().replace(/[’]/g, "'")), ['the prompt text', "the model's answer", 'file paths', 'branch names', 'credentials']);
+    assert.ok(t.heroTitle.startsWith('Know what your AI agents cost, per project'));
+    assert.equal(t.eyebrow, 'Open source · Local analysis · No provider key needed to get started');
+    assert.ok(readme.includes(t.eyebrow), 'the eyebrow is not the README’s line');
   });
 });

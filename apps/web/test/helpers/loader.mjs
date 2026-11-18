@@ -17,7 +17,8 @@
  * and both i18n catalogues are the real modules, so what these tests exercise is
  * the actual optimisation and the actual messages.
  */
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const STUB = new URL('./next-server.mjs', import.meta.url).href;
@@ -63,4 +64,35 @@ export function resolve(specifier, context, nextResolve) {
   }
 
   return nextResolve(specifier, context);
+}
+
+/**
+ * `.tsx`, compiled with the SWC that Next itself ships, so a test can render
+ * a component rather than read its source.
+ *
+ * Node strips the types from a `.ts` file on its own and has no answer for
+ * JSX. The compiler is the one `next build` uses, already installed with
+ * Next, so this adds no dependency and cannot read JSX differently from the
+ * build. Added for the site shell, whose promise (every public page carries
+ * the header, the GitHub button and the way into the dashboard) is about
+ * what renders.
+ */
+const require = createRequire(import.meta.url);
+let swc;
+
+export async function load(url, context, nextLoad) {
+  if (!url.startsWith('file:') || !url.endsWith('.tsx')) return nextLoad(url, context);
+  swc ??= require('next/dist/build/swc');
+  await swc.loadBindings?.();
+  const filename = fileURLToPath(url);
+  const { code } = await swc.transform(readFileSync(filename, 'utf8'), {
+    filename,
+    jsc: {
+      parser: { syntax: 'typescript', tsx: true },
+      transform: { react: { runtime: 'automatic' } },
+      target: 'es2022',
+    },
+    module: { type: 'es6' },
+  });
+  return { format: 'module', source: code, shortCircuit: true };
 }

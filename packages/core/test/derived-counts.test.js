@@ -202,8 +202,8 @@ function pages() {
 describe('every count this repository states about itself', () => {
   const surfaces = () => [
     ...pages(),
-    /* The landing states the same counts, five times over, in a tsx. */
-    { path: 'apps/web/app/landing/page.tsx', text: copyOf('apps/web/app/landing/page.tsx') },
+    /* The landing states the same counts, five times over, in its copy module. */
+    { path: 'apps/web/lib/landing-copy.ts', text: copyOf('apps/web/lib/landing-copy.ts') },
   ];
 
   it('reads the pages it claims to read', () => {

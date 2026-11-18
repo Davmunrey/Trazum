@@ -5,6 +5,7 @@ import { analyticsConnectSrc } from '@/lib/analytics';
 import { allowed, apiRoute } from '@/lib/api-methods';
 import { createRateLimiter } from '@/lib/rate-limit';
 import { routeOf, securityEvent } from '@/lib/security-log';
+import { redirectFor } from '@/lib/site';
 
 /**
  * A Content-Security-Policy with a real `script-src`, which needs a nonce, which
@@ -108,6 +109,16 @@ export function downloadsAsAttachment(pathname: string, method: string): boolean
 }
 
 export function middleware(request: NextRequest) {
+  /**
+   * The two addresses that moved, answered before anything else and with a
+   * 308, so a link, a bookmark and a search index all learn the new address
+   * once. `redirectFor` in `lib/site.ts` says which they are and why the
+   * target can only ever be this origin. A bare `/` is the landing and is
+   * never redirected.
+   */
+  const moved = redirectFor(request.nextUrl);
+  if (moved !== null) return NextResponse.redirect(moved, 308);
+
   /**
    * A method the route does not serve (OWASP ASVS 4.0.3 14.5.1). Next would
    * answer it with a 405 of its own and nothing would record it; answered

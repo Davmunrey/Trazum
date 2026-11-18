@@ -9,6 +9,7 @@ import {
   ACID,
   DARK,
   INK,
+  LIGHT,
   MARK,
   markGlyphPath,
   markGroundPath,
@@ -75,6 +76,32 @@ describe('the palette is the web app’s, not a copy that can drift', () => {
       const declared = block.match(new RegExp(`${TOKEN[role]}:\\s*(#[0-9a-f]{6})`));
       assert.ok(declared !== null, `the dark theme no longer declares ${TOKEN[role]}`);
       assert.equal(declared[1], value, `${role} is ${value} here and ${declared[1]} in the app's ${TOKEN[role]}`);
+    }
+  });
+
+  it('takes every light value from the token of that role in the light theme', () => {
+    /*
+      The light theme is the `:root` block, the first one in the file; the
+      explicit dark theme redeclares the same names further down, so this
+      reads only up to the end of that first block.
+    */
+    const at = css.search(/:root\s*\{/);
+    assert.ok(at !== -1, 'globals.css no longer opens with a :root block');
+    const block = css.slice(at, css.indexOf('\n}', at));
+    const LIGHT_TOKEN = {
+      canvas: '--paper',
+      raised: '--paper-raised',
+      sunken: '--paper-sunken',
+      text: '--ink',
+      secondary: '--ink-soft',
+      rule: '--rule',
+    };
+    assert.deepEqual(Object.keys(LIGHT_TOKEN).sort(), Object.keys(LIGHT).sort(), 'a role with no token to hold it to');
+    for (const [role, value] of Object.entries(LIGHT)) {
+      const declared = block.match(new RegExp(`${LIGHT_TOKEN[role]}:\\s*(#[0-9a-f]{6})`));
+      assert.ok(declared !== null, `the light theme no longer declares ${LIGHT_TOKEN[role]}`);
+      assert.equal(declared[1], value, `${role} is ${value} here and ${declared[1]} in the app's ${LIGHT_TOKEN[role]}`);
+      assert.ok(design.includes(value), `${value} is not in DESIGN.md's token table`);
     }
   });
 
@@ -273,6 +300,37 @@ describe('the README’s pictures are drawn in this palette and no other', () =>
       assert.ok(runs.length > 10, `${path} has no transcript in it`);
       const spaced = runs.filter((text) => text.includes(' '));
       assert.deepEqual(spaced, [], `${path} writes ordinary spaces, which <img> collapses`);
+    }
+  });
+});
+
+/**
+ * The card a link preview shows for each public page of the web app.
+ *
+ * Drawn by `apps/web/lib/social-card.tsx` and served by each page's
+ * `opengraph-image.tsx`. It is a picture like the three above, so the same
+ * rule holds: every colour in it is one `brand.mjs` names, and it takes them
+ * from there rather than typing them. A hex literal in the source is a colour
+ * that would outlive the next change to the palette.
+ */
+describe('the web app’s social card is drawn in this palette and no other', () => {
+  const card = read('apps/web/lib/social-card.tsx');
+
+  it('imports its colours from brand.mjs', () => {
+    assert.match(card, /import \{[^}]*\bACID\b[^}]*\} from '\.\.\/\.\.\/\.\.\/scripts\/brand\.mjs'/);
+    for (const name of ['ACID', 'INK', 'LIGHT', 'DARK']) {
+      assert.ok(new RegExp(`\\b${name}\\b[.,}]`).test(card.slice(card.indexOf('export function'))), `the card does not use ${name}`);
+    }
+  });
+
+  it('types no colour of its own', () => {
+    const typed = [...card.matchAll(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(/g)].map(([hit]) => hit);
+    assert.deepEqual(typed, [], `the card types colours brand.mjs does not name: ${typed.join(', ')}`);
+  });
+
+  it('is the card both public pages draw', () => {
+    for (const page of ['apps/web/app/opengraph-image.tsx', 'apps/web/app/app/opengraph-image.tsx']) {
+      assert.match(read(page), /return socialCard\(/, `${page} draws something else`);
     }
   });
 });

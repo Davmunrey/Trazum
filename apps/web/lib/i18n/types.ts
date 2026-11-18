@@ -23,6 +23,8 @@ export interface WebMessages {
     description: string;
     /** OpenGraph locale, e.g. `en_US`. */
     ogLocale: string;
+    /** The application's page title at `/app`, before " · Trazum". */
+    dashboardTitle: string;
   };
 
   /** What the boot screen says while a route's JavaScript is still arriving. */
@@ -69,6 +71,8 @@ export interface WebMessages {
     linkDocs: string;
     /** Appended to an external link's accessible name: it leaves this app. */
     opensExternal: string;
+    /** The rail's way back to the public site at `/`. */
+    backToSite: string;
   };
 
   input: {
@@ -411,6 +415,14 @@ export interface WebMessages {
 
   bill: {
     tab: string;
+    /**
+     * The control a first visit meets before anything else on the panel: it
+     * prices the sample month, the one the tour and the Playground use, so a
+     * visitor with no log to hand sees a whole bill before deciding to paste
+     * their own.
+     */
+    sampleLead: string;
+    sampleAction: string;
     /**
      * The shape of the file, which the page header does not say.
      *
