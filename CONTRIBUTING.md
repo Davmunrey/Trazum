@@ -288,6 +288,27 @@ not on record in `mutation.baseline.json`. The answer is nearly always a test.
 Planting a fault by hand and naming the test that caught it is still asked of
 every new guard: the tool covers five files, and a guard can be anywhere.
 
+### End to end, in a browser
+
+The web app's own tests read modules and rendered components. `scripts/e2e.mjs`
+opens the built page in a real browser and does what a visitor does: pastes a
+log and reads the bill to the cent, optimises and compares a prompt, loads a
+recorded run, changes the theme and the language, and reaches the tabs on a
+phone. [docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twelve
+flows, what they do not check, and the lines that install the browser driver
+outside the workspace.
+
+```bash
+npm run e2e -- --url http://127.0.0.1:3124 --chrome "$CHROME" --playwright "$PW"
+npm run e2e -- --list
+```
+
+They run in CI as a step of the required check. Two rules if you touch the web
+app. **A new tab arrives with a flow**: `e2e.test.mjs` fails on a tab a visitor
+can open that has no flow named for it. And **an expected figure is worked out by hand**,
+in a comment beside it, never copied from what the page printed: a test that
+asks the product for the answer agrees with any answer.
+
 **A comment that names a guard must name one that exists.** These
 cross-references carry weight — *"`security.test.js` permits `fetch` only in the
 two modules that exist to make calls"* is how a reader learns a rule is held
