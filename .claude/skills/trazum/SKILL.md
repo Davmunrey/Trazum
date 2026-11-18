@@ -26,7 +26,7 @@ spell it for you.
 | Call MCP tools but not a shell | the MCP server | **[Through MCP](#through-mcp)** below — twelve tools in this checkout, no shell needed |
 | Call a local HTTP service | `trazum serve` | `GET /openapi.json` describes `POST /cost`; loopback only |
 | Import a module | the library | **[From code](#from-code)** below — `@trazum/core`, zero dependencies, browser-safe |
-| None of these | the web app | <https://trazum.vercel.app> — the pure subset runs in the page |
+| None of these | the web app | <https://trazum.vercel.app/app?tab=playground> — the pure subset runs in the page |
 
 If more than one row fits, prefer the shell: it is the whole surface, and the
 other doors are subsets of it. Prefer MCP over asking a human to run something
@@ -130,7 +130,7 @@ Three things hold for both, and getting them wrong is worse than not checking:
 
 ## Trying it without installing
 
-The web app's **Playground** tab (<https://trazum.vercel.app>) is the CLI's
+The web app's **Playground** tab (<https://trazum.vercel.app/app?tab=playground>) is the CLI's
 pure subset running in the page — `optimize`, `check`, `profile`, `position`,
 `diff`, `semantic`, `from-otel`, `from-claude-code`, `models` and `rules` —
 against sample files already loaded, through the same `@trazum/core`

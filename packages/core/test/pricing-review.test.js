@@ -247,7 +247,7 @@ describe('the span a model switch is worth', () => {
     'README.md',
     '.claude/skills/trazum/SKILL.md',
     'plugin/skills/trazum/SKILL.md',
-    'apps/web/app/landing/page.tsx',
+    'apps/web/lib/landing-copy.ts',
   ];
 
   it('states the prices as its floor and its ceiling, in every language', () => {

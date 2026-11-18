@@ -81,6 +81,25 @@ describe('every tab a visitor can open has a flow that opens it', () => {
     assert.ok(!FLOWS.some((flow) => flow.covers.includes('library')));
   });
 
+  it('one flow starts where a visitor starts, on the landing, and ends on a priced bill', () => {
+    /*
+      Every other flow opens the application at /app. This one is the path
+      the site exists for: the landing at /, its way in, the sample control.
+    */
+    const site = FLOWS.find((flow) => flow.name.startsWith('site: '));
+    assert.ok(site, 'no flow starts on the landing');
+    const source = site.run.toString();
+    assert.match(source, /^[\s\S]*?await open\('\/'\);/, 'the site flow does not start at /');
+    for (const step of ['[data-site-header]', 'Open the dashboard', 'Load the sample month', '8 calls · $1.05', "open('/?tab=compare"]) {
+      assert.ok(source.includes(step), `the site flow no longer does: ${step}`);
+    }
+    for (const flow of FLOWS.filter((candidate) => candidate !== site)) {
+      for (const [, path] of flow.run.toString().matchAll(/open\('([^']*)'\)/g)) {
+        assert.ok(path.startsWith('/app'), `"${flow.name}" opens ${path}, which is not the application`);
+      }
+    }
+  });
+
   it('every flow has a name of its own and something to run', () => {
     const names = FLOWS.map((flow) => flow.name);
     assert.equal(new Set(names).size, names.length);
@@ -196,7 +215,19 @@ describe('the bill the flows expect is still the bill the price list gives', () 
     // The recorded run on the Tasks tab: 300,000 in and 3,000 out, in thousandths of a dollar.
     assert.equal(100_000 + 1_000 + 200_000 + 2_000, 303_000);
     assert.equal((300_000 * 5 + 3_000 * 25) / 1_000, 1_575);
-    for (const shown of ['2 calls · $1.43', '\\$1\\.35', '\\$0\\.0400', '270,000', '80,000', '1,600', '303,000', '$1.575']) {
+    // The sample month the landing's flow loads, in millionths of a dollar.
+    const micro = (tokens, perMTok) => tokens * perMTok;
+    const opus = micro(125_900, 5) + micro(6_000, 25) + micro(98_500, 0.5) + micro(17_300, 6.25);
+    const sonnet = micro(38_400, 2) + micro(2_650, 10);
+    const haiku = micro(5_000, 1) + micro(115, 5);
+    assert.deepEqual([opus, sonnet, haiku], [936_875, 103_300, 5_575]);
+    assert.equal(Math.round((opus + sonnet + haiku) / 10_000), 105, 'the sample month is not $1.05');
+    for (const [id, input, output] of [['claude-sonnet-5', 2, 10], ['claude-haiku-4-5', 1, 5]]) {
+      assert.equal(getModel(id).inputPerMTok, input, `${id} input moved: re-price the sample month in scripts/e2e.mjs`);
+      assert.equal(getModel(id).outputPerMTok, output, `${id} output moved: re-price the sample month in scripts/e2e.mjs`);
+    }
+    assert.equal(multipliersFor(getModel('claude-opus-5')).cacheWrite5m, 1.25);
+    for (const shown of ['2 calls · $1.43', '\\$1\\.35', '\\$0\\.0400', '270,000', '80,000', '1,600', '303,000', '$1.575', '8 calls · $1.05', '\\$0\\.1033']) {
       assert.ok(source.includes(shown), `scripts/e2e.mjs no longer expects ${shown}`);
     }
   });

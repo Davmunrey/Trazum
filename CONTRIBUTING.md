@@ -312,9 +312,10 @@ The web app's own tests read modules and rendered components. `scripts/e2e.mjs`
 opens the built page in a real browser and does what a visitor does: pastes a
 log and reads the bill to the cent, optimises and compares a prompt, loads a
 recorded run, changes the theme and the language, and reaches the tabs on a
-phone. [docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the thirteen
-flows, what they do not check, and the lines that install the browser driver
-outside the workspace.
+phone, and follows the landing into the dashboard.
+[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the fourteen flows,
+what they do not check, and the lines that install the browser driver outside
+the workspace.
 
 ```bash
 npm run e2e -- --url http://127.0.0.1:3124 --chrome "$CHROME" --playwright "$PW"

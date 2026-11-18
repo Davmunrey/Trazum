@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import {
+  ArrowLeft,
   ArrowUpRight,
   BookMarked,
   BookOpen,
@@ -22,23 +23,10 @@ import {
   X,
 } from 'lucide-react';
 
-/**
- * The GitHub mark, inlined. lucide dropped brand icons in the major this app
- * ships, and a folder-with-a-branch metaphor under a link labelled "GitHub"
- * asks the reader to translate; the mark they already know does not. Same
- * `currentColor` contract as every lucide glyph, so the row's states apply.
- */
-function GitHubMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" className={className}>
-      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
-    </svg>
-  );
-}
-
 import type { Locale } from '@trazum/core';
 
 import { BrandMark } from './BrandMark';
+import { GitHubButton } from './site/GitHub';
 import { Account, type SessionResponse } from './Account';
 import { Bill } from './Bill';
 import { Tasks } from './Tasks';
@@ -56,6 +44,7 @@ import { TOUR_SEEN_KEY } from '../lib/tour';
 import { usePromptText } from '../lib/prompt-text';
 import { useScenario } from '../lib/scenario';
 import { applyTheme, saveTheme, storedTheme, type Theme } from '../lib/theme';
+import { DOCS_URL, HOME_PATH, NPM_URL } from '../lib/site';
 
 /** Where the rail's expanded/collapsed preference lives between visits. */
 const RAIL_STORAGE_KEY = 'trazum:rail';
@@ -532,15 +521,19 @@ export function App({
   };
 
   /**
-   * Straight to the repository, the package and the docs — the places this
-   * page otherwise only alludes to. External on purpose and marked as such:
-   * `no-referrer` is already site-wide, so a share token can never ride
-   * along, and the arrow glyph says "this leaves the app" before the click.
+   * The way back to the public site, then the package and the docs: the
+   * places this page otherwise only alludes to. The two that leave are
+   * external on purpose and marked as such: `no-referrer` is already
+   * site-wide, so a share token can never ride along, and the arrow glyph
+   * says "this leaves the app" before the click. The repository is not a
+   * row here: it is the same GitHub button every page of the site carries,
+   * at the foot of the rail. The addresses are `lib/site.ts`'s, the same the
+   * site's header and footer use.
    */
   const RESOURCES = [
-    { href: 'https://github.com/Davmunrey/Trazum', label: t.page.linkGitHub, Icon: GitHubMark },
-    { href: 'https://www.npmjs.com/package/@trazum/cli', label: t.page.linkNpm, Icon: Package },
-    { href: 'https://github.com/Davmunrey/Trazum/tree/main/docs', label: t.page.linkDocs, Icon: BookOpen },
+    { href: HOME_PATH, label: t.page.backToSite, Icon: ArrowLeft, external: false },
+    { href: NPM_URL, label: t.page.linkNpm, Icon: Package, external: true },
+    { href: DOCS_URL, label: t.page.linkDocs, Icon: BookOpen, external: true },
   ];
 
   /**
@@ -582,9 +575,23 @@ export function App({
             'pr-10 lg:pr-2.5',
           )}
         >
-          {railCollapsed && <BrandMark className="size-8 shrink-0 text-terracotta" />}
+          {/*
+            The wordmark goes home to the site, as a wordmark does. The rail's
+            Resources group says so in words as well, for a reader who would
+            not think to press a logo.
+          */}
+          {railCollapsed && (
+            <a href={HOME_PATH} aria-label={`Trazum, ${t.page.backToSite}`} title={t.page.backToSite} className={FOCUS_RING}>
+              <BrandMark className="size-8 shrink-0 text-terracotta" />
+            </a>
+          )}
           {!railCollapsed && (
-            <span className="flex min-w-0 flex-col">
+            <a
+              href={HOME_PATH}
+              aria-label={`Trazum, ${t.page.backToSite}`}
+              title={t.page.backToSite}
+              className={cn('flex min-w-0 flex-col', FOCUS_RING)}
+            >
               {/*
                 A wordmark, not the document's heading.
 
@@ -600,7 +607,7 @@ export function App({
               <span className="truncate text-[11px] text-faint" title={t.meta.tagline}>
               {t.meta.tagline}
             </span>
-            </span>
+            </a>
           )}
         </div>
       </div>
@@ -699,14 +706,14 @@ export function App({
             {t.page.groupResources}
           </div>
         )}
-        {RESOURCES.map(({ href, label, Icon }) => (
+        {RESOURCES.map(({ href, label, Icon, external }) => (
           <a
             key={href}
             href={href}
-            target="_blank"
-            rel="noreferrer noopener"
+            {...(external
+              ? { target: '_blank', rel: 'noreferrer noopener', 'aria-label': `${label}, ${t.page.opensExternal}` }
+              : { 'aria-label': label, 'data-back-to-site': '' })}
             title={railCollapsed ? label : undefined}
-            aria-label={`${label}, ${t.page.opensExternal}`}
             className={cn(
               'group/link flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-layer-hover hover:text-foreground',
               FOCUS_RING,
@@ -717,10 +724,12 @@ export function App({
             {!railCollapsed && (
               <>
                 <span className="min-w-0 flex-1 truncate">{label}</span>
-                <ArrowUpRight
-                  className="size-[13px] shrink-0 text-faint opacity-0 transition-opacity group-hover/link:opacity-100 group-focus-visible/link:opacity-100"
-                  aria-hidden="true"
-                />
+                {external && (
+                  <ArrowUpRight
+                    className="size-[13px] shrink-0 text-faint opacity-0 transition-opacity group-hover/link:opacity-100 group-focus-visible/link:opacity-100"
+                    aria-hidden="true"
+                  />
+                )}
               </>
             )}
           </a>
@@ -751,6 +760,18 @@ export function App({
       {/* Account and language live at the foot of the rail: page-level controls,
           not part of the navigation, and reached last rather than first. */}
       <div className={cn('mt-auto flex flex-col gap-2 border-t p-2', railCollapsed && 'items-center')}>
+        {/*
+          The same GitHub button the site's header and footer carry, so the
+          repository is one recognisable control wherever a visitor is.
+          Collapsed, it is the mark alone, and its name still says where it
+          goes.
+        */}
+        <GitHubButton
+          label={t.page.linkGitHub}
+          opensExternal={t.page.opensExternal}
+          compact={railCollapsed}
+          className={cn('min-h-9', !railCollapsed && 'w-full')}
+        />
         <Account t={t} session={session} collapsed={railCollapsed} />
         <div role="group" aria-label={t.page.themeLabel} className={cn('flex gap-1 border p-1', railCollapsed && 'flex-col')}>
           {([
@@ -833,7 +854,15 @@ export function App({
         >
           <Menu className="size-[18px]" aria-hidden="true" />
         </Button>
-        <span className="font-display text-[23px] leading-none font-bold">Trazum</span>
+        {/* The wordmark is the way back to the site, here as on the rail. */}
+        <a
+          href={HOME_PATH}
+          aria-label={`Trazum, ${t.page.backToSite}`}
+          className={cn('mr-auto font-display text-[23px] leading-none font-bold', FOCUS_RING)}
+        >
+          Trazum
+        </a>
+        <GitHubButton label={t.page.linkGitHub} opensExternal={t.page.opensExternal} compact className="size-9 min-h-9" />
       </div>
 
       {/* The scrim. Clicking it closes, which is the other half of Escape. Its

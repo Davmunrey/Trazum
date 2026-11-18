@@ -58,7 +58,7 @@ export async function GET(request: Request): Promise<Response> {
   // side and not worth a stack trace — send them back to the page they left.
   if (params.get('error')) {
     securityEvent('auth.sign_in', 'failure', { reason: 'cancelled', route });
-    return redirect('/?signin=cancelled', [cleared]);
+    return redirect('/app?signin=cancelled', [cleared]);
   }
 
   const cookieValue = parseCookies(request.headers.get('cookie')).get(

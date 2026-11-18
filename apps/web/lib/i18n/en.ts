@@ -14,6 +14,7 @@ export const en: WebMessages = {
     description:
       'Cut the cost of your AI calls: shorten the prompt without changing what it asks for, and see what that is worth per month. Or read your usage log (entirely in the browser, nothing uploaded) and see where the money actually went.',
     ogLocale: 'en_US',
+    dashboardTitle: 'Dashboard',
   },
 
   booting: 'Loading Trazum…',
@@ -63,6 +64,7 @@ export const en: WebMessages = {
     linkNpm: 'npm: @trazum/cli',
     linkDocs: 'Documentation',
     opensExternal: 'opens in a new tab',
+    backToSite: 'Back to the site',
   },
 
   input: {
@@ -459,6 +461,8 @@ export const en: WebMessages = {
 
   bill: {
     tab: 'Your bill',
+    sampleLead: 'No log to hand? Price the sample month and read a whole bill first.',
+    sampleAction: 'Load the sample month',
     format:
       'One JSON object per line, each with a "model" and the "usage" object the API returned. '
       + 'A "label" names the workload and a "session" names the conversation; both are optional, '

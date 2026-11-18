@@ -46,7 +46,23 @@ export const DARK = {
   bad: '#f39f87',
 };
 
-export const MONO = 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
+/**
+ * The light tokens, for the one picture drawn on paper: the social card each
+ * public page of the web app draws (`apps/web/lib/social-card.tsx`), which a
+ * link preview shows beside light pages. `brand.test.js` holds each value to
+ * the token of its role in `globals.css`'s light theme, as it holds `DARK` to
+ * the dark one.
+ */
+export const LIGHT = {
+  canvas: '#f6f4ec',
+  raised: '#fbf9f1',
+  sunken: '#eeeee0',
+  text: '#20231e',
+  secondary: '#555a4f',
+  rule: '#999f8a',
+};
+
+export const MONO ='ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
 /**
  * The wordmark's face, then what a machine without it has. An SVG shown
  * through `<img>` cannot load a font, so the name is drawn in whatever bold

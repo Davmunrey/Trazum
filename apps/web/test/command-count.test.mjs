@@ -128,7 +128,7 @@ describe('copy that counts the commands counts them right', () => {
     const wrong = [];
     const files = [
       ...readdirSync(I18N).filter((file) => file.endsWith('.ts')).map((file) => join(I18N, file)),
-      join(ROOT, 'apps/web/app/landing/page.tsx'),
+      join(ROOT, 'apps/web/lib/landing-copy.ts'),
     ];
     for (const name of files) {
       const text = readFileSync(name, 'utf8');

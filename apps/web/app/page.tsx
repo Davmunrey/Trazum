@@ -1,20 +1,22 @@
 import { headers } from 'next/headers';
+import type { Metadata } from 'next';
 
-import { PRICING_LAST_REVIEWED, listModels } from '@trazum/core';
+import { Landing } from '../components/Landing';
+import { marketingLocaleFromHeader } from '../lib/marketing-locales';
+import { landingMetadata } from '../lib/site-metadata';
 
-import { App } from '../components/App';
-import { localeFromHeaders } from '../lib/i18n';
+/**
+ * `/`: the landing, the site's front door. The application is at `/app`.
+ *
+ * The language comes from `Accept-Language` for the first paint and for the
+ * title and description a crawler or a link preview reads; once the page
+ * loads, a language the reader chose before takes over.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  return landingMetadata(marketingLocaleFromHeader((await headers()).get('accept-language')));
+}
 
-export default async function Page() {
-  // First paint follows the browser's Accept-Language; once the client
-  // hydrates, a locale the reader picked previously takes over.
-  const locale = localeFromHeaders((await headers()).get('accept-language'));
-
-  // Passed from the server so the Compare tab can name the model it priced with
-  // on first paint, rather than showing a bare id until a fetch lands.
-  const models = listModels().map((m) => ({ id: m.id, displayName: m.displayName }));
-
-  return (
-    <App initialLocale={locale} pricingReviewed={PRICING_LAST_REVIEWED} models={models} />
-  );
+export default async function Home() {
+  const locale = marketingLocaleFromHeader((await headers()).get('accept-language'));
+  return <Landing initialLocale={locale} />;
 }

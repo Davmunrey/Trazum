@@ -35,7 +35,7 @@ reports, CI and pricing overrides. [Command reference](https://github.com/Davmun
 
 ### Web
 
-[Open the Playground](https://trazum.vercel.app/?tab=playground) to try sample
+[Open the Playground](https://trazum.vercel.app/app?tab=playground) to try sample
 files. For local development, run `npm install`, `npm run build`, then
 `npm run dev:web`. [Web setup and API recipes](https://github.com/Davmunrey/Trazum/blob/main/docs/setup.md#web).
 

@@ -9,7 +9,7 @@ acceptance decision. It makes no model calls and does not run the task for you.
 
 ## Dashboard
 
-Open [Tasks](https://trazum.vercel.app/?tab=tasks). No account is required.
+Open [Tasks](https://trazum.vercel.app/app?tab=tasks). No account is required.
 
 1. Choose **Analyze a run**, select Claude Code or Codex, then choose complete
    JSONL session files for one task. Change the format before adding files from

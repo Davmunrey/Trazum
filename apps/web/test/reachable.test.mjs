@@ -70,7 +70,7 @@ describe('what the app renders, the reader can actually see and tell apart', () 
   it('finds the surfaces it claims to read', () => {
     assert.ok(files.length >= 20, `only ${files.length} tsx files walked`);
     assert.ok(
-      files.some((file) => file.path === 'app/landing/page.tsx'),
+      files.some((file) => file.path === 'components/Landing.tsx'),
       'the landing is not in the walk',
     );
     assert.ok(

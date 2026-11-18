@@ -676,6 +676,33 @@ export function Bill({ t }: { t: WebMessages }) {
   return (
     <div className="flex flex-col gap-[18px]">
       {/*
+        The first thing a new visitor meets: one control that prices the
+        sample month, the same one the tour prices and the Playground's
+        `usage.jsonl` holds, through the same path a paste takes. Somebody who
+        arrived from the landing with no log in hand sees a whole bill before
+        deciding whether to bring their own. Gone once there is a report, like
+        the input it sits above; the tour's demo is the other way to the same
+        sample, and this is not a second copy of it but the visible door to it.
+      */}
+      {analysis === null && (
+        <div
+          data-sample-entry=""
+          className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-2 border-rule-strong bg-layer px-[18px] py-4"
+        >
+          <p className="m-0 max-w-[60ch] text-[15px] leading-relaxed font-medium">{t.bill.sampleLead}</p>
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => {
+              const sample = createPlaygroundFiles().get('usage.jsonl') ?? '';
+              if (sample !== '') replaceDataset(sample, null);
+            }}
+          >
+            {t.bill.sampleAction}
+          </Button>
+        </div>
+      )}
+      {/*
         The machinery gets out of the way once it has answered.
 
         Everything below — the explanation, the privacy note, the drop zone,

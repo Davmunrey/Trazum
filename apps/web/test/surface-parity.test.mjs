@@ -20,7 +20,8 @@ const MCP = join(repoRoot, 'packages/mcp/dist/index.js');
  * *"One core does the measuring; four surfaces carry it. They cannot disagree,
  * because they are the same functions."*
  *
- * That sentence is on the landing page in five languages. It is the product's
+ * That sentence was on the landing page in five languages; the landing and the
+ * README now say it as "the same @trazum/core functions the terminal runs". It is the product's
  * architectural claim and the reason a reader is expected to believe that the
  * figure in their terminal, the one their agent quotes, and the one on the page
  * are the same figure. Nothing checked it.
@@ -123,13 +124,20 @@ describe('the four surfaces answer with one number', () => {
 
   it('still makes the claim this exists to check', async () => {
     /*
-      Read off the landing rather than quoted here. If the sentence ever goes,
-      the guard for it should be reconsidered rather than left running against
-      a promise nobody makes any more.
+      Read off the pages that make it rather than quoted here. If the claim
+      ever goes, the guard for it should be reconsidered rather than left
+      running against a promise nobody makes any more.
+
+      The landing used to say "they cannot disagree, because they are the
+      same functions". Since #734 every sentence on it is one the README
+      makes, and the README's spelling of this promise is that the page runs
+      "the same @trazum/core functions the terminal runs". Both make it now.
     */
     const { readFileSync } = await import('node:fs');
-    const landing = readFileSync(join(here, '../app/landing/page.tsx'), 'utf8');
-    assert.match(landing, /cannot disagree, because they are the same functions/);
+    const landing = readFileSync(join(here, '../lib/landing-copy.ts'), 'utf8');
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    assert.match(landing, /the same @trazum\/core functions the terminal runs/);
+    assert.match(readme, /the same `@trazum\/core` functions the terminal runs/);
   });
 
   it('prices the same log the same way, everywhere a reader can ask', async () => {

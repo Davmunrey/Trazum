@@ -52,7 +52,7 @@ npx @trazum/cli bill ./usage-export.jsonl
 ```
 
 [Supported inputs](docs/usage-logs.md) ·
-[Try sample data in your browser](https://trazum.vercel.app/?tab=playground)
+[Try sample data in your browser](https://trazum.vercel.app/app?tab=playground)
 
 ## Why the number holds up
 
@@ -95,7 +95,7 @@ context or guarantee more messages under your provider's limits.
 
 [Subscription efficiency workflow](docs/quick-start.md#subscription-efficiency).
 
-**In the [Tasks dashboard](https://trazum.vercel.app/?tab=tasks) and CLI/MCP 2.6.0:** [task efficiency](docs/task-efficiency.md)
+**In the [Tasks dashboard](https://trazum.vercel.app/app?tab=tasks) and CLI/MCP 2.6.0:** [task efficiency](docs/task-efficiency.md)
 connects Claude Code/Codex task usage, repeated-tool evidence, a reversible
 instruction policy and an explicit acceptance decision. Compare observed usage
 before and after a change without inferring success or guaranteed savings.
@@ -166,7 +166,7 @@ Claude Desktop and the rest are one paste:
 The server is listed on the [official MCP registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.Davmunrey/trazum)
 as `io.github.Davmunrey/trazum`, and every release updates the listing.
 
-**[Or run it right now, without installing anything: the Playground](https://trazum.vercel.app/?tab=playground)**
+**[Or run it right now, without installing anything: the Playground](https://trazum.vercel.app/app?tab=playground)**
 
 That link opens the CLI's pure subset running in the page, against sample files
 already loaded, through the same `@trazum/core` functions the terminal runs.
@@ -429,7 +429,7 @@ reports, CI and pricing overrides. [Command reference](docs/commands.md).
 
 ### Web
 
-[Open the Playground](https://trazum.vercel.app/?tab=playground) to try sample
+[Open the Playground](https://trazum.vercel.app/app?tab=playground) to try sample
 files. For local development, run `npm install`, `npm run build`, then
 `npm run dev:web`. [Web setup and API recipes](docs/setup.md#web).
 

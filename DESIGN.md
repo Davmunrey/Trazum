@@ -45,6 +45,16 @@ The README's three pictures, the extension's icon and the web app's icon files a
 
 Icons: `favicon.ico` (16, 32, 48), a 180px Apple touch icon, 192px and 512px manifest icons and a 512px maskable one. The two that a device cuts to its own shape are full-bleed, with no border to slice through.
 
+## Site shell
+
+- Addresses: `/` is the landing, `/app` the application. `/?tab=` and `/landing` redirect (308) and are never linked. Entries live in `apps/web/lib/site.ts`; a page that does not exist yet links its GitHub copy.
+- Header: one 72px bar with a 2px rule under it. Full wordmark home, then the entries, then language, appearance, GitHub and the one primary action into the dashboard, in that order. Below 1280px: wordmark, GitHub mark and a Menu button opening a disclosure panel in the page flow, not a dialog; Escape closes it.
+- GitHub button: the mark drawn inline (no request to GitHub), 2px border on paper, never acid; its name says GitHub and that it opens a new tab. Mark alone only where the word cannot fit. The same component in the header, the footer, the landing and the rail.
+- Primary action: acid fill, 2px ink border, 3px hard offset, an arrow. One per region.
+- Footer: paper, 2px rule above, wordmark, one line, the GitHub button, and two link groups (product, project).
+- Sections: full-width bands separated by 2px rules, alternating paper and layer; one ink band per page at most. No card inside a band except the one figure the band is about.
+- Social card: 1200 by 630, paper and ink with the page's title, the illustrative bill in the dark tokens, the command in the acid fill; colours from `scripts/brand.mjs` only.
+
 ## Layout and controls
 
 Desktop rail: 252px, collapsible to 72px. Below 1024px: existing accessible drawer and compact brand bar. Task headings range from 38px to 56px. Strong 2px borders identify working regions; thinner rules separate data rows. No rounded card language. Cards inside cards reduce to section rules and transparent backgrounds.

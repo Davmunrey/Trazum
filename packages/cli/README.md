@@ -29,7 +29,7 @@ npx @trazum/cli bill ./usage-export.jsonl
 ```
 
 [Supported inputs](https://github.com/Davmunrey/Trazum/blob/main/docs/usage-logs.md) ·
-[Try sample data in your browser](https://trazum.vercel.app/?tab=playground)
+[Try sample data in your browser](https://trazum.vercel.app/app?tab=playground)
 
 ## Choose one change, then check it
 

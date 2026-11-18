@@ -448,7 +448,8 @@ describe('the account control does not advertise what the deployment lacks', () 
   it('reloads on sign-out rather than clearing state in place', () => {
     // The page holds prompts and results. Dropping the account without
     // dropping those leaves somebody else's work on a signed-out screen.
-    assert.match(account, /window\.location\.assign\('\/'\)/);
+    // A full load of the application, which lives at /app since #734.
+    assert.match(account, /window\.location\.assign\('\/app'\)/);
   });
 });
 

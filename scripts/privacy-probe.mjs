@@ -144,7 +144,7 @@ try {
     if (entry) entry.failure = request.failure()?.errorText ?? 'failed';
   });
 
-  const start = new URL('/?tab=bill', base);
+  const start = new URL('/app?tab=bill', base);
   await page.goto(start.href, { waitUntil: 'networkidle', timeout: timeoutMs });
 
   const box = page.getByRole('textbox', { name: 'Usage log to analyse' });
