@@ -353,6 +353,47 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **Nine places where two documents disagreed now agree, and two were not
+  contradictions.** An issue listed eleven candidates; each was read on both
+  sides against the code and this file. Real: (1) `ROADMAP.md` offered the
+  editor extension as open and scheduled while saying it shipped in 1.86.0.
+  Both are true of different facts, and each place now says which: it is built
+  and packages to a `.vsix`, and it is not on the Marketplace, which is #640.
+  (2) The `Under consideration` opening said nothing there was built, above an
+  entry struck through as shipped; it now says the struck entries are the
+  record of what the file went back on. (3) `docs/mutation-testing.md` said 38
+  survivors for the audit and 35 everywhere else: the audit ran over the 38
+  that were on record that day, and the page now says so and gives the 35 the
+  record holds now. (4) and (5) The plan index called the 1.83 to 2.0 plan
+  written and nothing delivered, and the 2.4 plan in progress; 2.0.0 and 2.4.0
+  are in this file, and the rows say what each delivered and, for 2.4, what
+  waits on something outside. (6) `docs/commands.md` called LangSmith, Helicone
+  and LiteLLM unbuilt above the three sections that document them, and
+  `ROADMAP.md` called `from-langsmith` unreleased; it is in 1.83.0. The plan
+  itself stays as written and the index row says what became of it. (8) The
+  1.52 to 1.60 plan says Mistral is unfronted; the 1.82.0 entry in this file
+  has the gateway fronting it, and the index row says so, leaving xAI and
+  Moonshot.
+  (10) The roadmap's forecast that the tokenizer question lands in 1.54.0 now
+  carries what happened: 1.85.0 answered it with a separate package, #642 asks
+  about DeepSeek and Mistral ones, and 1.54.0 stays open for Google, xAI and
+  Moonshot. (11) The roadmap's last section stated the rule for versions
+  below 1.0; it now gives the three meanings `VERSIONING.md` states and calls
+  the below-1.0 rule history. Not contradictions: (7) the README says xAI
+  retired `grok-4` on 2026-05-15, which is xAI's notice, and the catalogue
+  has no `retired` mark on it, which records a refusal nobody here has seen;
+  and (9) `docs/our-own-medicine.md` says Moonshot and xAI were not probed for
+  availability while the roadmap says Google's estimator error is unmeasured,
+  which are two questions. Both pairs are left as written.
+
+  Three guards keep them from coming back. `docs.test.js` reads the plan
+  index and fails a row that says a plan is unfinished when the release the
+  plan ends at has a heading here. `mutation.test.js` holds every count of
+  survivors on record in `docs/mutation-testing.md` to `mutation.baseline.json`.
+  `roadmap-forecast.test.js` read `ROADMAP.md` only, and now reads every page
+  that says what exists, plans and records excluded, for a shipped converter
+  called unbuilt. Planted, fourteen faults, all caught. (#727)
+
 - **Segmenting a text of many protected spans no longer takes the square of
   them.** For every match, the segmenter asked whether it overlapped a range
   already reserved by looking at every reserved range, and asked whether a

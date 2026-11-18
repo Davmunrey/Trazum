@@ -3077,9 +3077,9 @@ and [the 1.77 plan](docs/plan-1.77.md) were both delivered in full.
 **Four things this section listed as waiting have since been built**, and
 they are named here because a forecast that keeps promising delivered work
 is the same fault as a claim nobody checks. The verdict bridge shipped in
-1.82.0, along with `from-litellm` and `from-helicone`; `from-langsmith` is
-merged and unreleased. Each converter waited for the same thing and got
-it: a format read out of the tool's own source rather than guessed at.
+1.82.0, along with `from-litellm` and `from-helicone`; `from-langsmith` was
+merged and unreleased then, and shipped in 1.83.0. Each converter waited for
+the same thing and got it: a format read out of the tool's own source rather than guessed at.
 `roadmap-forecast.test.js` fails if this section ever again describes a
 command the CLI already dispatches.
 
@@ -3135,9 +3135,11 @@ the last release:
 
 Two of those wait on a credential this repository does not have, and inventing
 either answer is the estimating-and-measuring merge that 1.36–1.40 spent five
-releases removing. The third waits on a decision nobody has made. **The gaps stay
-gaps**: renumbering them away would rewrite a document whose whole value is having
-been written before the code.
+releases removing. The third waits on a decision nobody has made. **That one was
+made later, and built is not published.** 1.86.0 built the extension as
+`trazum-vscode` and it packages to a `.vsix`; it is not on the VS Code
+Marketplace, which is #640. **The gaps stay gaps**: renumbering them away would
+rewrite a document whose whole value is having been written before the code.
 
 What comes after 1.61.0 is not written down, because it is not decided. An arc
 announced here today with nothing behind it would be a projection on the roadmap
@@ -3161,7 +3163,8 @@ and the arc closes saying so rather than implying a queue.
 1.57's remaining chapter — what belongs on the model's side of the line — needs a
 provider credential this repository does not have, the same block 1.54.0 sits
 behind. 1.58 is an editor extension, which this roadmap has called a distribution
-commitment rather than a feature since 0.10.0.
+commitment rather than a feature since 0.10.0. 1.86.0 built it, and it is still
+not on the Marketplace (#640).
 
 **1.52.0, 1.53.0, 1.55.0 and 1.56.0 are delivered.** The gateway stopped buffering the whole
 upstream reply before writing a byte back, and then learned who it can stand in
@@ -3271,15 +3274,21 @@ moves it. An entry there is not a queue with the front of it hidden — it is th
 reasoning for why the thing is not scheduled, and it is written down so that
 deciding differently later is a visible act. **Three of those entries are now
 scheduled**: the tokenizer question lands in 1.54.0, cost alerting is what
-1.56.0 has to answer honestly, and the editor extension is 1.58.0.
+1.56.0 has to answer honestly, and the editor extension is 1.58.0. Two of the
+three have moved since. The tokenizer question was answered in 1.85.0 by a
+separate package, `@trazum/tokenizer-openai`; whether to ship DeepSeek and
+Mistral packages too is #642, and 1.54.0 itself stays open for Google, xAI and
+Moonshot. The editor extension was built in 1.86.0 and is not on the
+Marketplace (#640).
 
 ## Under consideration
 
 Not scheduled. Listed so the reasoning is on the record.
 
-**Nothing here is built.** That is the whole meaning of the heading, and it
-stopped being true without anybody noticing: the editor extension shipped as
-`trazum-vscode` in 1.86.0 and the per-model-family tokenizer as
+**Nothing here is built, apart from the entries struck through or annotated as
+shipped, which stay as the record of what this file went back on.** That is the
+whole meaning of the heading, and it stopped being true without anybody
+noticing: the editor extension shipped as `trazum-vscode` in 1.86.0 and the per-model-family tokenizer as
 `@trazum/tokenizer-openai` in 1.85.0, while both stayed listed below as things
 this file was still thinking about. The release sections above recorded them as
 released the whole time, so one file said both at once. `roadmap-truth.test.js`
@@ -3368,6 +3377,8 @@ nobody remembers to move it.
 
 ## How versions are decided
 
-See [VERSIONING.md](VERSIONING.md). Briefly: while below 1.0, minor versions
-may contain breaking API changes and always say so at the top of their
-changelog entry.
+See [VERSIONING.md](VERSIONING.md). Briefly: a major version is the only one
+that carries a breaking change to the public API, a minor closes an arc, and a
+patch is a chapter of the arc in progress or a pricing correction. Below 1.0,
+which is history now, minor versions could break the API and said so at the top
+of their changelog entry.

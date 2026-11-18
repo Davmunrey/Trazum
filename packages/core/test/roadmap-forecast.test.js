@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -183,5 +184,66 @@ describe('the roadmap does not promise what it already delivered', () => {
     // And it names commands that now exist, so it would fail the check above.
     assert.ok(dispatched.has('from-otel'));
     assert.ok(dispatched.has('from-otel'));
+  });
+});
+
+describe('a page that says what exists does not call a shipped converter unbuilt', () => {
+  /**
+   * The roadmap guard above reads one file. `docs/commands.md` carried the
+   * same sentence, *"Vendor-specific converters (LangSmith, Helicone, LiteLLM)
+   * are named as next, not built now"*, in the middle of the paragraph above
+   * the three sections that document them, and nothing read it because the
+   * guard named a file.
+   *
+   * Which pages: every Markdown file that describes the product as it is.
+   * Left out are the records, which say what was true when they were written:
+   * the changelog, the release notes, the roadmap (read above, by section) and
+   * the plans, whose whole value is having been written before the code.
+   */
+  const RECORD = /^(CHANGELOG\.md|RELEASES\.md|ROADMAP\.md|docs\/plan-[^/]+\.md|\.agents\/.*)$/;
+  const PENDING =
+    /stays? named|waits? to be asked|not (yet )?built|unbuilt|yet to be built|still waiting|named as (the )?next/i;
+
+  const pages = () =>
+    execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '*.md'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+    })
+      .split('\n')
+      .filter((path) => path !== '' && !RECORD.test(path));
+
+  it('reads the pages it claims to read', () => {
+    const found = pages();
+    assert.ok(found.length >= 30, `only ${found.length} pages walked`);
+    assert.ok(found.includes('docs/commands.md'), 'docs/commands.md is not in the walk');
+    assert.ok(!found.includes('docs/plan-1.71.md'), 'a plan is a record and is not walked');
+  });
+
+  it('never has a pending phrase in a sentence about a converter the CLI dispatches', () => {
+    const subjectOf = (command) => command.slice('from-'.length).replace(/-/g, '[- ]?');
+    const wrong = [];
+    let pending = 0;
+    for (const path of pages()) {
+      const text = readFileSync(join(ROOT, path), 'utf8').replace(/```[\s\S]*?```/g, '');
+      /* A table row is a unit of its own: a row has no full stop to end it. */
+      for (const block of text.split(/\n\n+|\n(?=\|)/)) {
+        for (const sentence of block.split(/(?<=[.!?])\s+/)) {
+          if (!PENDING.test(sentence)) continue;
+          pending += 1;
+          for (const command of dispatched) {
+            if (!command.startsWith('from-')) continue;
+            const named = sentence.includes(`\`${command}\``) || sentence.includes(`trazum ${command}`);
+            const subject = new RegExp(`\\b${subjectOf(command)}\\b`, 'i').test(sentence);
+            if (named || subject) wrong.push(`${path}: "${command}" is dispatched, and this calls it pending`);
+          }
+        }
+      }
+    }
+    assert.ok(pending >= 1, 'no sentence in any page was about something unbuilt, so nothing was checked');
+    assert.deepEqual(
+      wrong,
+      [],
+      `a page says a shipped converter is unbuilt:\n  ${[...new Set(wrong)].join('\n  ')}`,
+    );
   });
 });
