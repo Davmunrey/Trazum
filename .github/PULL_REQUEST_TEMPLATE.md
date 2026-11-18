@@ -1,7 +1,8 @@
 Fixes #
 
-<!-- The issue this resolves. Open it first if there is none: the PR readiness
-     check refuses a description without a closing keyword. -->
+<!-- The issue this resolves. Open it first if there is none, and wait for a
+     maintainer to label it `accepted`: the PR readiness check refuses a
+     description without a closing keyword, and an issue nobody agreed to. -->
 
 ## What this changes
 

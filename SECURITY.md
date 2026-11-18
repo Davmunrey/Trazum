@@ -216,8 +216,10 @@ Some of this cannot be committed to a file — it lives in repository settings.
    creates it, sets the merge settings below, then reads both back and says
    whether GitHub now enforces the file. Without `--yes` it prints what would
    change and changes nothing. The ruleset requires a pull request with
-   passing checks, `PR readiness` among them, squash merges and linear
-   history, and CodeQL results with no open alert. It blocks force-pushes and
+   passing checks, squash merges and linear history, and CodeQL results with
+   no open alert. Three of the required checks are about the pull request
+   and not its code: `PR readiness` (it names an issue a maintainer accepted,
+   and has a changelog line), `Signed-off-by on every commit` and `cla`. It blocks force-pushes and
    deletion of the default branch.
 
    **GitHub enforces a copy, and the copy is checked.** `npm run ruleset`

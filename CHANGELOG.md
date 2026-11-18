@@ -218,6 +218,24 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **A pull request has more to pass before it can merge.** On 2026-11-18
+  somebody outside the project asked to take an issue for the first time,
+  and the rules had been written for pull requests that all came from the
+  owner. Three things changed. `Signed-off-by on every commit` and `cla` ran
+  on every pull request and neither was required, so an unsigned commit or
+  an unsigned contributor could be merged by a click made in a hurry; both
+  are in the ruleset's required checks now. `PR readiness` asked for an
+  issue number and never for what stood behind it; it now reads the issue
+  and refuses the pull request unless a maintainer labelled it `accepted`,
+  says which label it carries instead, refuses a closed issue whatever it
+  carries, and refuses to judge when it cannot read the issue. Dependabot and a pull request labelled `no-issue` are not
+  asked. And `AGENTS.md` says what an agent may do with somebody else's
+  work, which is nothing the owner has not decided: no assigning, accepting,
+  approving, merging, closing or answering. It is written down because it
+  happened that day. `CONTRIBUTING.md` has the same rule from the
+  contributor's side, with what a pull request from outside is read for. The
+  ruleset still asks for zero approving reviews: with one maintainer,
+  merging is already that maintainer's act (#718).
 - **The three React rules are on, and each of their 27 findings is answered
   where it is.** `biome.jsonc` switched `useExhaustiveDependencies`,
   `noArrayIndexKey` and `noComponentHookFactories` off until something drove

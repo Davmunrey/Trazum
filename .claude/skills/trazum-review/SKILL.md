@@ -146,7 +146,7 @@ is the order that has cost this project the most. The rest follow.
 - **Applies to:** every change
 - **Stated in:** `CONTRIBUTING.md`, "Pull requests", and "Issue first"
 - **Held by:** `pr-readiness.test.js`, `changelog-coverage.test.js`, and the `PR readiness` check on the pull request
-- **Check:** the description opens with a closing keyword and an issue number, and the diff adds a line under `## Unreleased` in `CHANGELOG.md`.
+- **Check:** the description opens with a closing keyword and an issue number, that issue carries `accepted`, and the diff adds a line under `## Unreleased` in `CHANGELOG.md`.
 
 ### `signed-off` · Every commit is signed off
 

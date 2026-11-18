@@ -1,13 +1,22 @@
 #!/usr/bin/env node
 /**
- * Two rules a pull request is expected to keep, checked rather than asked for.
+ * Three rules a pull request is expected to keep, checked rather than asked for.
  *
  * 1. **It names the issue it resolves.** The description carries a closing
  *    keyword and a reference: `Fixes #639`. A change with no issue has no record
  *    of the problem apart from the solution. Exempt: Dependabot, and a pull
  *    request a maintainer labels `no-issue`.
  *
- * 2. **Its changelog line lands under `## Unreleased`, and it has one.**
+ * 2. **That issue was accepted.** It carries the `accepted` label, which a
+ *    maintainer puts on when the work is agreed to. Until 2026-11-18 any issue
+ *    would do: a pull request could name one its own author had opened a
+ *    minute earlier, still `needs-triage`, and pass. That was fine while every
+ *    pull request came from the owner. On the day somebody outside first
+ *    offered work it stopped being fine (#718). The same two exemptions apply.
+ *    An issue that cannot be read is not taken as accepted: the check refuses
+ *    to judge.
+ *
+ * 3. **Its changelog line lands under `## Unreleased`, and it has one.**
  *    `changelog-coverage.test.js` can only ask whether `Unreleased` is empty
  *    after the newest tag. On 2026-11-17 a branch merged `main` after the 2.7.9
  *    and 2.7.10 releases, git applied the merge without a conflict, and the
@@ -20,7 +29,8 @@
  *    Dependabot from the second. A maintainer who means to correct a released
  *    entry labels the pull request `changelog-history`.
  *
- * The decision is `readiness()`, a pure function; `main()` is the I/O, run by
+ * The decision is `readiness()`, a pure function; `main()` is the I/O, which
+ * now includes asking GitHub for each linked issue's labels, run by
  * .github/workflows/pr-readiness.yml. packages/core/test/pr-readiness.test.js
  * holds the decision, including the 2.7.9 misplacement as it happened.
  */
@@ -32,6 +42,14 @@ const CLOSING = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+((?:[\w.-]+\
 const VERSION_HEADING = /^\d+\.\d+\.\d+\b/;
 const BOTS = new Set(['dependabot[bot]']);
 
+/**
+ * Whether the pull request is excused from naming an accepted issue:
+ * Dependabot's, and one a maintainer labelled `no-issue`.
+ */
+export function exempt(author, labels = []) {
+  return BOTS.has(author) || labels.includes('no-issue');
+}
+
 /** Issue references a merge would close, in body order, without repeats. */
 export function linkedIssues(body) {
   const seen = [];
@@ -39,6 +57,44 @@ export function linkedIssues(body) {
     if (!seen.includes(ref)) seen.push(ref);
   }
   return seen;
+}
+
+/** The label a maintainer puts on an issue when the work is agreed to. */
+export const ACCEPTED = 'accepted';
+
+/**
+ * What stands between the linked issues and "a maintainer agreed to this",
+ * one sentence for each that falls short. `issues` is what GitHub answered
+ * for each reference: `{ ref, labels, pullRequest, closed }`, or
+ * `{ ref, missing }` when there is no such issue. A closed issue does not
+ * count, whatever it carries: hundreds of closed issues here were accepted
+ * once, and naming any of them would otherwise open the gate. A reference to another repository cannot be
+ * looked up with this repository's token, and is not taken on trust.
+ */
+export function unaccepted(linked, issues = []) {
+  const problems = [];
+  for (const ref of linked) {
+    if (!ref.startsWith('#')) {
+      problems.push(`${ref} is in another repository, so nothing here can say it was accepted. Name an issue of this repository.`);
+      continue;
+    }
+    const issue = issues.find((candidate) => candidate.ref === ref);
+    if (issue === undefined) {
+      problems.push(`Issue ${ref} was not read, so nothing says it was accepted. Re-run this check.`);
+    } else if (issue.missing === true) {
+      problems.push(`Issue ${ref} does not exist in this repository. Name the issue this resolves.`);
+    } else if (issue.pullRequest === true) {
+      problems.push(`${ref} is a pull request, not an issue. Name the issue this resolves.`);
+    } else if (issue.closed === true) {
+      problems.push(`Issue ${ref} is closed. A pull request resolves an open issue: name the one this is for, or ask for ${ref} to be reopened.`);
+    } else if (!issue.labels.includes(ACCEPTED)) {
+      const carries = issue.labels.length === 0 ? 'no label' : issue.labels.map((label) => `\`${label}\``).join(', ');
+      problems.push(
+        `Issue ${ref} is not accepted yet: it carries ${carries}. A pull request is for work a maintainer has agreed to (CONTRIBUTING.md › Issue first). Once the issue is labelled \`${ACCEPTED}\`, re-run this check or edit the description.`,
+      );
+    }
+  }
+  return problems;
 }
 
 /** `CHANGELOG.md` split at its `## ` headings: [{ heading, lines }], preamble first. */
@@ -99,14 +155,16 @@ export function changelogChanges(before, after) {
  * The verdict for one pull request. Returns the problems, each a sentence that
  * says what to do; an empty list means ready.
  */
-export function readiness({ body, author, labels = [], changelogBefore, changelogAfter }) {
+export function readiness({ body, author, labels = [], issues = [], changelogBefore, changelogAfter }) {
   const problems = [];
   const bot = BOTS.has(author);
-  if (!bot && !labels.includes('no-issue') && linkedIssues(body).length === 0) {
+  const excused = exempt(author, labels);
+  if (!excused && linkedIssues(body).length === 0) {
     problems.push(
       'Name the issue this resolves: put `Fixes #<n>` in the description. Open the issue first if there is none; a maintainer can label a pull request `no-issue` when it truly needs none.',
     );
   }
+  if (!excused) problems.push(...unaccepted(linkedIssues(body), issues));
   const changes = changelogChanges(changelogBefore, changelogAfter);
   if (!changes.release && !labels.includes('changelog-history')) {
     for (const { version, lines } of changes.misplaced) {
@@ -135,25 +193,64 @@ function fileAt(sha, path) {
   }
 }
 
-function main() {
-  const { PR_BODY, PR_AUTHOR, PR_LABELS, BASE_SHA, HEAD_SHA } = process.env;
+/**
+ * What GitHub says of each linked issue of this repository: its labels,
+ * whether it is closed, and whether it is in fact a pull request. A number with no issue behind it is
+ * `missing`. Any other answer throws: an issue that could not be read must
+ * not come back looking like one with no labels.
+ */
+export async function readIssues(refs, { repository, token, api = 'https://api.github.com', fetcher = fetch }) {
+  const read = [];
+  for (const ref of refs.filter((candidate) => candidate.startsWith('#'))) {
+    const response = await fetcher(`${api}/repos/${repository}/issues/${ref.slice(1)}`, {
+      headers: { accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    });
+    if (response.status === 404 || response.status === 410) {
+      read.push({ ref, missing: true });
+      continue;
+    }
+    if (!response.ok) throw new Error(`GitHub answered ${response.status} for issue ${ref}`);
+    const issue = await response.json();
+    read.push({ ref, labels: (issue.labels ?? []).map((label) => (typeof label === 'string' ? label : label.name)), pullRequest: issue.pull_request !== undefined, closed: issue.state === 'closed' });
+  }
+  return read;
+}
+
+async function main() {
+  const { PR_BODY, PR_AUTHOR, PR_LABELS, BASE_SHA, HEAD_SHA, GH_TOKEN, GITHUB_REPOSITORY, GITHUB_API_URL } = process.env;
   if (!BASE_SHA || !HEAD_SHA) {
     // A gate that cannot see the pull request must not report it ready.
     console.error('pr-readiness: BASE_SHA and HEAD_SHA are required; refusing to judge without them.');
+    return 2;
+  }
+  const labels = PR_LABELS ? JSON.parse(PR_LABELS) : [];
+  let issues = [];
+  try {
+    // Not asked for a pull request that is excused: Dependabot's description
+    // quotes other projects' changelogs, "fixes #12" and all, and its pull
+    // request must not wait on an answer nobody will use.
+    if (!exempt(PR_AUTHOR, labels)) {
+      if (!GITHUB_REPOSITORY) throw new Error('GITHUB_REPOSITORY is not set');
+      issues = await readIssues(linkedIssues(PR_BODY), { repository: GITHUB_REPOSITORY, token: GH_TOKEN, ...(GITHUB_API_URL ? { api: GITHUB_API_URL } : {}) });
+    }
+  } catch (error) {
+    // The same rule: what cannot be read is not reported as fine.
+    console.error(`pr-readiness: the linked issue could not be read (${error.message}); refusing to judge without it.`);
     return 2;
   }
   const mergeBase = git('merge-base', BASE_SHA, HEAD_SHA).trim();
   const verdict = readiness({
     body: PR_BODY,
     author: PR_AUTHOR,
-    labels: PR_LABELS ? JSON.parse(PR_LABELS) : [],
+    labels,
+    issues,
     changelogBefore: fileAt(mergeBase, 'CHANGELOG.md'),
     changelogAfter: fileAt(HEAD_SHA, 'CHANGELOG.md'),
   });
   console.log(`Linked issue: ${verdict.linked.join(', ') || 'none'}`);
   console.log(`Release pull request: ${verdict.release ? 'yes' : 'no'}`);
   if (verdict.problems.length === 0) {
-    console.log('Ready: the issue is named and the changelog line is under Unreleased.');
+    console.log('Ready: the issue is named and accepted, and the changelog line is under Unreleased.');
     return 0;
   }
   for (const problem of verdict.problems) console.log(`::error::${problem}`);
@@ -162,4 +259,14 @@ function main() {
 
 const invokedDirectly =
   process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
-if (invokedDirectly) process.exitCode = main();
+if (invokedDirectly) {
+  main().then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (error) => {
+      console.error(`pr-readiness: ${error.message}`);
+      process.exitCode = 2;
+    },
+  );
+}

@@ -170,8 +170,9 @@ export const CRITERIA = [
     needs: [],
     async check({ changelog }) {
       if (changelog === null) return notRun('there is no base to compare with: fetch it, or name one with --base');
-      // A body that names an issue, so the only problems left are the changelog's, in CI's own words.
-      const { problems, release } = readiness({ body: 'Fixes #1', author: '', changelogBefore: changelog.before, changelogAfter: changelog.after });
+      // Excused from the issue rules, the way a `no-issue` pull request is, so
+      // the only problems left are the changelog's, in CI's own words.
+      const { problems, release } = readiness({ body: '', author: '', labels: ['no-issue'], changelogBefore: changelog.before, changelogAfter: changelog.after });
       if (problems.length > 0) return failed(problems.join(' '));
       return passed(release ? 'a release: it adds a version heading' : '');
     },

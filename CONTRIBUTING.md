@@ -28,7 +28,8 @@ Two deliberate exceptions:
 
 Every commit in a pull request must carry a `Signed-off-by:` line. The `DCO`
 check reads the range your branch adds and fails on any commit that does not,
-naming the SHA.
+naming the SHA. It is a required check: a pull request with an unsigned commit
+cannot be merged.
 
 ```bash
 git commit -s                     # for work you have not committed yet
@@ -59,7 +60,9 @@ whole argument.
 
 Your first pull request will be greeted by the CLA workflow: it asks you to
 post one sentence, records the signature in the repository, and turns its
-check green — once, covering everything you contribute afterwards. What you
+check green — once, covering everything you contribute afterwards. That check
+is required too, so a pull request cannot be merged before its author has
+signed. What you
 sign is [docs/cla/CLA.md](docs/cla/CLA.md), and its preamble says plainly
 what it is for: Trazum stays MIT, you keep your copyright, and the
 maintainer gets a licence broad enough that no future relicensing of new
@@ -501,6 +504,37 @@ problem outlives a pull request that is closed. The `PR readiness` check refuses
 a description with no closing keyword. Dependabot is exempt, and a maintainer
 can label a pull request `no-issue` when it truly needs none.
 
+**And the issue has to be accepted.** `PR readiness` reads the issue the
+description names and refuses the pull request unless it carries `accepted`,
+the label a maintainer puts on when the work is agreed to. It says which
+label the issue carries instead, and it refuses a closed issue whatever it
+carries. Until 2026-11-18 any issue would do, one opened a minute earlier by
+the pull request's own author included (#718). So the order is: open the issue, wait for `accepted`, then write the change. A
+pull request written first is not wasted, but it waits; once the issue is
+accepted, re-run the check or edit the description. An issue the check
+cannot read is not taken as accepted: the check fails and says it could not
+judge.
+
+### Work from somebody outside
+
+Everybody is welcome to take an issue, and the same rules apply to everybody.
+Three things are worth knowing before you start:
+
+- **Ask on the issue first, and wait for the maintainer to say it is yours.**
+  The maintainer assigns it. Nobody and nothing else does: not a bot, and not
+  an agent working for the maintainer.
+- **Green checks are necessary and not sufficient.** The maintainer reads
+  every pull request before it merges, and on a pull request from outside
+  reads `.github/` and `scripts/` first: GitHub runs a pull request's
+  workflows as the pull request has them, so its checks say what its own
+  author's code says about itself. For the same reason the workflows on a
+  first pull request do not run until the maintainer approves them.
+- **Quality is the test, not volume.** A pull request that adds a guard says
+  what fault was planted to prove it. One that states a number says how it
+  was measured. One that changes what a prompt asks for is refused whatever
+  it saves. These are the rules above; they are repeated here because a
+  change that cannot meet them is declined, kindly and without a long thread.
+
 ### Review
 
 Every pull request is read before it merges, and the ruleset requires every
@@ -562,9 +596,9 @@ An approval with nothing in it is not one.
   happened on 2026-11-17 (#666). `PR readiness` refuses a line added inside a
   released version, and the fix is to move it back under `## Unreleased`.
 - **Required checks:** `Build and tests`, both `GitHub Action self-test` jobs,
-  `CodeQL`, `npm audit` and `PR readiness`, listed in
-  `.github/rulesets/main-branch.json`. The `pr-guide` comment on every pull
-  request says which one is next.
+  `CodeQL`, `npm audit`, `PR readiness`, `Signed-off-by on every commit` and
+  `cla`, listed in `.github/rulesets/main-branch.json`. The `pr-guide` comment
+  on every pull request says which one is next.
 - **The file is the policy, and GitHub's copy is checked against it.** A
   change to `.github/rulesets/main-branch.json` does nothing until an admin
   runs `npm run ruleset -- apply --yes`. `npm run ruleset` prints where the
