@@ -1,0 +1,20 @@
+---
+# What Codacy leaves out when it reads this repository.
+#
+# Codacy was installed by the repository's owner on 2026-11-18. It reviews and
+# reports; it is not a required check and writes nothing here. CONTRIBUTING.md,
+# "Review", says how a finding of its is handled: traced in the code before
+# anybody acts on it.
+#
+# Only paths can be set from this file. Which patterns are on is set in
+# Codacy's own Code patterns page, and issue #767 records the three that are
+# wrong for this repository and why.
+#
+# Left out, so that a finding is reported once and against the file a person
+# edits: the two directories that are written by a script from a source that
+# is read anyway. .deepsource.toml leaves out the same two, and a test holds
+# the two lists to each other. Nothing else is left out: the tests are read
+# like the rest.
+exclude_paths:
+  - "wiki/**"
+  - "plugin/skills/**"

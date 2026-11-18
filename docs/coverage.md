@@ -270,3 +270,31 @@ what Codecov would group by, and the [components](#components) are
 configured for the same reason. Whether the figures by flag and by component
 are shown depends on the plan, and the figures by package are in every run's
 log either way.
+
+## Codacy
+
+The same reports go to [Codacy](https://app.codacy.com/gh/Davmunrey/Trazum)
+as well, from the last step of the same workflow. Codecov is where the record
+is kept. Codacy is a second reader: it shows the figure beside what it finds
+in the code, and nothing here waits on it.
+
+- The reporter is Codacy's own, fetched at a pinned version, 14.1.3, and
+  refused unless its checksum is the SHA-512 its publisher lists beside that
+  release. Its install script is not used, because that fetches whatever is
+  latest when it runs, and no action is taken for it either.
+- The token is the repository secret `CODACY_PROJECT_TOKEN`. The reporter
+  reads it from the environment by name; it is never on a command line. It
+  has to be a *repository* secret, for the reason Codecov's does: the job
+  names no environment. Where there is none, as on a fork's pull request, the
+  step says so and fetches nothing. Codacy lets such a token live a year at
+  most; [the rotation page](compliance/secret-rotation.md) has the steps.
+- The step cannot fail the job because of Codacy. A reporter that cannot be
+  fetched and an upload Codacy refuses each leave a warning. The one thing
+  that does fail it is a reporter whose checksum is not the pinned one, which
+  is not run.
+- A pull request is measured at a merge commit GitHub makes for the run, which
+  Codacy has never seen, so the reporter is told the commit that was pushed.
+
+Codacy is not a required check, and neither it nor DeepSource can be: a test
+holds the ruleset to that. What each of them reads is in
+[`.codacy.yaml`](../.codacy.yaml) and [`.deepsource.toml`](../.deepsource.toml).

@@ -39,6 +39,11 @@ jobs:
       # package depends on it.
       CODECOV_CLI_VERSION: v11.3.2
       CODECOV_CLI_SHA256: 8e1bfb71661378530f6ea21e82b414095899e565cbb4cf555c613064be17b973
+      # Codacy's reporter, pinned the same way. The checksum is the SHA-512 its
+      # publisher lists beside the release of this version on GitHub, which is
+      # the one its own install script compares against.
+      CODACY_REPORTER_VERSION: 14.1.3
+      CODACY_REPORTER_SHA512: 73a6c93fc5db509fd0423d6e545759c3f61d8360ee12054e32a9277daab6add0da6c6639248f6ed6c0042366440293ebc0b6144325aef52c5d3d4b230d65eb17
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -111,4 +116,47 @@ jobs:
           fi
           if [ "$refused" = "1" ]; then
             echo "::warning::Codecov did not take the upload, so nothing is recorded there for this pull request. The figures measured above stand."
+          fi
+
+      # A second reader of the same reports. Codecov is where the record is
+      # kept; Codacy shows the figure beside what it finds in the code, and
+      # nothing here waits on it. So this step cannot fail the job because of
+      # Codacy: no token, a download that fails and an upload Codacy refuses
+      # each leave a line in the log and stop there. One thing does fail it,
+      # and should: a reporter whose checksum is not the one pinned above is
+      # not run, and the job says so.
+      #
+      # The reporter is fetched only when there is a token to use it with, so
+      # a fork's pull request, which has none, fetches nothing. Its install
+      # script is not used: that fetches whatever is latest at run time.
+      #
+      # The token is a repository secret, read by the reporter from the
+      # environment by name and never on a command line. Like Codecov's, it
+      # has to be a repository secret: this job names no environment.
+      - name: Send the same reports to Codacy, where there is a token for it
+        env:
+          CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
+          # A pull request is measured at a merge commit GitHub makes for the
+          # run, which Codacy has never seen. It is told the commit that was
+          # pushed.
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [ -z "$CODACY_PROJECT_TOKEN" ]; then
+            echo "No Codacy token here, so nothing is sent to Codacy."
+            exit 0
+          fi
+          echo "A Codacy token is set."
+          reporter="$RUNNER_TEMP/codacy-coverage-reporter"
+          if ! curl -fsSL --retry 3 -o "$reporter" "https://artifacts.codacy.com/bin/codacy-coverage-reporter/${CODACY_REPORTER_VERSION}/codacy-coverage-reporter-linux"; then
+            echo "::warning::Codacy's reporter could not be fetched, so nothing is sent to Codacy from this run. The figures measured above stand."
+            exit 0
+          fi
+          echo "${CODACY_REPORTER_SHA512}  $reporter" | sha512sum --check --strict -
+          chmod +x "$reporter"
+          reports=()
+          for report in coverage/*.lcov; do
+            reports+=(-r "$report")
+          done
+          if ! "$reporter" report --commit-uuid "$COMMIT" --force-coverage-parser lcov "${reports[@]}"; then
+            echo "::warning::Codacy did not take the coverage, so nothing is recorded there for this commit. The figures measured above stand, and Codecov's record is not affected."
           fi

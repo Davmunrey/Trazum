@@ -609,6 +609,13 @@ before it is acted on; a real one is fixed, a wrong one is answered on its
 thread with what was traced, and either way the thread is resolved by a
 person. A security finding stays open until the maintainer decides.
 
+Two more read the repository since 2026-11-18, installed by its owner: Codacy,
+whose paths are in [`.codacy.yaml`](.codacy.yaml), and DeepSource, whose
+analyzers are in [`.deepsource.toml`](.deepsource.toml). The same rule holds
+for both. Neither is a required check, neither writes to the repository, and a
+finding of theirs that is wrong is not quieted by changing code that was
+right: the first reading of Codacy's, group by group, is in #767.
+
 **An agent.** A coding agent working in a checkout has the same questions as a
 skill, [`.claude/skills/trazum-review/SKILL.md`](.claude/skills/trazum-review/SKILL.md).
 It reads a diff and reports findings with file and line, each naming the rule
