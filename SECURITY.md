@@ -113,6 +113,12 @@ empty.
 
 **Analytics is off unless you switch it on**, and never receives prompt content
 — only aggregate numbers (reduction percentage, level, model, locale).
+Vercel Speed Insights is a second switch, also off by default
+(`NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS=1` at build time). It sends page
+performance measurements, not those numbers, and the script that sends them is
+served by Vercel and was not read. Every URL the app lets it send has its share
+token replaced and its query dropped first, and the Content-Security-Policy is
+the same with it on and off.
 
 **`pull_request`, never `pull_request_target`.** The latter runs with a
 writable token and repository secrets *against the contributor's code*, which

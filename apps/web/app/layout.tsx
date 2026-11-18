@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 
 import { THEME_BOOTSTRAP } from '../lib/theme';
 import { Analytics } from '../components/Analytics';
+import { SpeedInsights } from '../components/SpeedInsights';
 import { getWebMessages, localeFromHeaders } from '../lib/i18n';
 import './globals.css';
 
@@ -56,6 +57,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         {children}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

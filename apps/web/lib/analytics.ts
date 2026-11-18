@@ -15,6 +15,21 @@
 /** Analytics is off unless the operator sets this. Off is the default. */
 export const ANALYTICS_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 
+/**
+ * Vercel Speed Insights is off unless the operator sets this to exactly `1`.
+ *
+ * A build-time switch, like the PostHog key, read in this one place.
+ * `SpeedInsights.tsx` decides from it whether to load the package, and
+ * `middleware.ts` does not read it at all, because the policy is the same
+ * either way.
+ *
+ * Exactly `1`, and nothing else: `0`, `false`, `true`, `yes`, an empty string
+ * and a value with a stray space are all off. A switch that reads "anything
+ * set" turns on for the person who wrote `NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS=0`
+ * to say no.
+ */
+export const SPEED_INSIGHTS = process.env.NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS === '1';
+
 const DEFAULT_HOST = 'https://eu.i.posthog.com';
 
 export const ANALYTICS_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? DEFAULT_HOST;
@@ -128,4 +143,44 @@ export function scrubAnalyticsEvent<T extends AnalyticsEvent>(event: T | null): 
     ...($set !== undefined ? { $set } : {}),
     ...($set_once !== undefined ? { $set_once } : {}),
   };
+}
+
+/**
+ * What `@vercel/speed-insights` hands to `beforeSend`, read from
+ * `dist/next/index.d.ts` of version 2.1.0: a `type` (only `'vital'`), the
+ * page's `url`, and the `route` the package computed, where a dynamic segment
+ * is already written as `[token]`.
+ */
+export interface SpeedInsightsEvent {
+  type: 'vital';
+  url: string;
+  route?: string;
+}
+
+/**
+ * The last thing a Speed Insights measurement passes through before the
+ * script sends it, by the same rule PostHog events go through.
+ *
+ * The URL goes through `redactUrl`, so `/c/<token>` becomes `/c/:token` and the
+ * query and fragment are dropped. The `route` goes through it as well, so the
+ * package's `/c/[token]` is sent as `/c/:token`, the same spelling as the
+ * URL, and a route that carried a token is cleaned. Only `type`, `url` and `route` are passed on: a field a later
+ * version of the package adds is dropped here rather than sent unread.
+ *
+ * Returns `null`, which the package reads as "do not send", for a `url` that is
+ * not a string or does not parse as an absolute URL. `redactUrl` would treat
+ * such a value as a bare path and pass it on, which is right for a posthog-js
+ * property and wrong here: a measurement whose URL cannot be checked is not
+ * sent at all.
+ */
+export function scrubSpeedInsightsEvent(event: SpeedInsightsEvent | null | undefined): SpeedInsightsEvent | null {
+  if (!event || typeof event.url !== 'string') return null;
+  try {
+    new URL(event.url);
+  } catch {
+    return null;
+  }
+  const out: SpeedInsightsEvent = { type: event.type, url: redactUrl(event.url) };
+  if (typeof event.route === 'string') out.route = redactUrl(event.route);
+  return out;
 }

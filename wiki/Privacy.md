@@ -29,5 +29,18 @@ prompt library shipped and made that conditional.
   recordings, heatmaps and surveys are switched off by name, nothing is kept
   in a cookie, and every URL an event carries has its share token replaced
   (`/c/:token`) and its query dropped before it leaves the browser.
+- Vercel Speed Insights is **off by default**, and is a separate switch from
+  PostHog. It measures page performance and is not one of the aggregate metrics
+  above. It switches on only when the operator builds the web app with
+  `NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS=1`; any other value, including `0` and
+  `true`, leaves it off. Off, the package is not loaded and no script is added
+  to the page. On, the page adds a script that Vercel serves at
+  `/_vercel/speed-insights/script.js`, so it works only on a Vercel
+  deployment. That script is not in the package and was not read when this was
+  written, so what it sends is known only from the hook the package offers: a
+  measurement carries the page's URL and route. Both pass through the rule
+  PostHog events use (share token replaced with `:token`, query and fragment
+  dropped), and a measurement whose URL cannot be parsed is dropped, not sent.
+  The Content-Security-Policy is the same with it on and off.
 - LLM keys entered in the UI are used for that request and discarded; they are
   neither logged nor persisted.

@@ -140,7 +140,8 @@ Listed so nobody rotates them in a hurry, or guards them as if they were:
   never holds one.
 - **What the browser is told:** `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_POSTHOG_HOST`
   and `NEXT_PUBLIC_POSTHOG_KEY`, a public project key the browser sends with
-  every event; `VERCEL_URL`, which the platform sets.
+  every event; `NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS`, a switch that holds no
+  secret; `VERCEL_URL`, which the platform sets.
 - A caller's own model key arrives with one request, is used for it, and is
   never logged or kept. There is nothing to rotate on this side.
 
