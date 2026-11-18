@@ -120,10 +120,12 @@ export function Tasks({ t }: { t: WebMessages }) {
                 <input ref={fileInput} type="file" accept=".jsonl,.json,.txt" multiple className="hidden" aria-label={c.files} onChange={(event) => { const selected = Array.from(event.target.files ?? []); event.target.value = ''; void selectFiles(selected); }} />
                 <Button type="button" variant="outline" onClick={() => fileInput.current?.click()}>{c.files}</Button>
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{c.fileHint}</p>
-                {!files.length ? <p className="mt-4 text-sm text-muted-foreground">{c.noFiles}</p> : <ol className="mt-3 divide-y">{files.map((file, index) => <li key={index} className="flex min-w-0 items-start justify-between gap-2 py-2 text-sm">
+                {!files.length ? <p className="mt-4 text-sm text-muted-foreground">{c.noFiles}</p> : <ol className="mt-3 divide-y">{files.map((file, index) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: a row holds no state, two files can have one name, and the number shown beside each is its place in the list
+                  <li key={index} className="flex min-w-0 items-start justify-between gap-2 py-2 text-sm">
                   <span className="min-w-0 break-words [overflow-wrap:anywhere]"><span className="tabular-nums">{number(index + 1)}.</span> {file.name}<span className="block text-xs text-muted-foreground">{file.format}</span></span>
                   <Button type="button" variant="ghost" size="sm" aria-label={`${c.remove} ${file.name}`} onClick={() => { setFiles(files.filter((_, n) => n !== index)); invalidateRun(); }}>{c.remove}</Button>
-                </li>)}</ol>}
+                </li>))}</ol>}
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm font-medium">{c.taskId}<input className={field} required maxLength={80} pattern="[A-Za-z0-9][A-Za-z0-9._\-]{0,79}" aria-describedby="task-id-hint" value={taskId} onChange={(event) => setTaskId(event.target.value)} /></label>

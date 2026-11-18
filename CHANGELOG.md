@@ -141,6 +141,38 @@ merged commit with no entry is a change only `git log` remembers.
   and every file but those five, which are 446 of the core's roughly 15,700
   possible mutants. (#690)
 
+### Changed
+
+- **The three React rules are on, and each of their 27 findings is answered
+  where it is.** `biome.jsonc` switched `useExhaustiveDependencies`,
+  `noArrayIndexKey` and `noComponentHookFactories` off until something drove
+  the pages. The end-to-end tests do now, so each finding was read. Of the
+  seven effects behind the fifteen dependency findings, four get the
+  dependency: the playground's `cancelTypist` and the share control's
+  `refresh` become one function for the life of the component, and the
+  optimiser's demo names its setter. Three carry a reason on their own line,
+  because the dependency the rule asks for is the bug: the bill re-prices only
+  when the price card changes, the optimiser re-runs only when a pricing input
+  moves, and the prompt writer asks its first question once. Of the nine index
+  keys, the hours of the hourly chart are data and are keyed as data; eight
+  stay, each with why its list has nothing else to key by. The three `Eyebrow`
+  components defined inside `Comparer`, `Optimizer` and `Plan` are one, in
+  `components/ui/eyebrow.tsx`: defined inside, each heading was unmounted and
+  remounted on every render of its panel. The issue counted 28; #697 had
+  already removed a fourth `Eyebrow` nobody used. Two of the suggested fixes
+  were planted as the rule words them, and both break the page: naming `send`
+  in the prompt writer's effect puts a reader back on the first question when
+  the language changes, and naming an unstable `cancelTypist` stops the
+  tour's typing hand before it runs a command. The end-to-end tests gain what
+  catches each: a language change in the middle of the prompt writer, and a
+  thirteenth flow that walks the tour's ten steps and requires each of the
+  terminal's three commands to be typed and run once. One existing test
+  pinned the share control's dependency list as text and failed on the
+  change; it now checks what it meant, that the effect depends on the sign-in
+  state and that `refresh` is one function, so naming it cannot ask the
+  server again on every render. The count of rules switched off goes from 16
+  to 13 (#696).
+
 ### Fixed
 
 - **A quick edit to a description no longer leaves a cancelled required

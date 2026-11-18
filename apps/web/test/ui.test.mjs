@@ -890,8 +890,20 @@ describe('the share list is asked for only when there is an account to ask about
    */
   it('returns before the fetch when nobody is signed in, and asks again on sign-in', () => {
     const code = codeOf('components/ShareControl.tsx');
-    const effect = code.slice(code.indexOf('useEffect(() => {'), code.indexOf('}, [signedIn]);') + 15);
-    assert.ok(effect.includes('}, [signedIn]);'), 'the effect must depend on the sign-in state');
+    const start = code.indexOf('useEffect(() => {');
+    const end = code.indexOf('\n  }, [', start);
+    assert.ok(start !== -1 && end !== -1, 'ShareControl has no effect with a dependency list');
+    const effect = code.slice(start, end);
+    const depends = /^\n {2}\}, \[([^\]]*)\]\);/.exec(code.slice(end))?.[1].split(',').map((name) => name.trim()) ?? [];
+    assert.ok(depends.includes('signedIn'), 'the effect must depend on the sign-in state');
+    /*
+      The effect also names `refresh`, which it calls. That is only safe while
+      `refresh` is one function for the life of the control: a new one on
+      every render would run the effect, and the request, on every render,
+      which is the failed resource this test exists to keep off the page.
+    */
+    assert.deepEqual(depends.filter((name) => name !== 'signedIn'), ['refresh']);
+    assert.match(code, /const refresh = useCallback\(async \(\) => \{[\s\S]*?\n {2}\}, \[\]\);/, 'refresh must be stable: useCallback with no dependencies');
     const guard = effect.indexOf('if (!signedIn)');
     const ask = effect.indexOf('refresh()');
     assert.ok(guard !== -1 && ask !== -1 && guard < ask, 'the sign-in guard must come before the request');

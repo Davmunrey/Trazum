@@ -72,17 +72,26 @@ describe('nothing is switched off without saying why', () => {
 
   it('counts the rules that are off, so adding one is a decision somebody sees', () => {
     const off = lines.filter((line) => /^\s*"[A-Za-z]+": "off",?$/.test(line)).length;
-    assert.equal(off, 16, 'a rule was switched off or back on: say which and why in the pull request, then change this number');
+    assert.equal(off, 13, 'a rule was switched off or back on: say which and why in the pull request, then change this number');
   });
 
   it('names an open issue for every rule that is off until something else is done', () => {
     for (const [, issue] of config.matchAll(/#(\d+)/g)) {
       assert.ok(Number(issue) > 0);
     }
-    // The three React rules wait for #696; the file must still say so while they are off.
+  });
+
+  it('keeps the three React rules on: each finding was read and answered where it is', () => {
+    /*
+      They were off until #696, with twenty-seven findings behind them. Each
+      one is now a dependency that was added, a key that comes from the data,
+      or an excuse on its own line saying why not. Switching a rule off again
+      would hide the next finding along with the ones that were answered.
+    */
     for (const rule of ['noArrayIndexKey', 'useExhaustiveDependencies', 'noComponentHookFactories']) {
-      if (config.includes(`"${rule}": "off"`)) assert.match(config, /#696/, rule);
+      assert.ok(!config.includes(`"${rule}"`), `${rule} is configured in biome.jsonc again: it is on by default, and an excuse belongs beside the line`);
     }
+    assert.doesNotMatch(config, /#696/);
   });
 });
 

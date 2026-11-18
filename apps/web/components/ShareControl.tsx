@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import type { WebMessages } from '../lib/i18n';
@@ -58,12 +58,14 @@ export function ShareControl({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  async function refresh() {
+  // It reads nothing but the server's answer, so it is one function for the
+  // life of the control and the effect below can name it.
+  const refresh = useCallback(async () => {
     const response = await fetch('/api/shares', { credentials: 'same-origin' });
     if (!response.ok) return;
     setEnabled(true);
     setShares((await response.json()).shares);
-  }
+  }, []);
 
   useEffect(() => {
     // Signed out, or no accounts on this deployment: both mean there is no link
@@ -75,7 +77,7 @@ export function ShareControl({
     }
     // A refusal still leaves `enabled` false and renders nothing.
     void refresh().catch(() => {});
-  }, [signedIn]);
+  }, [signedIn, refresh]);
 
   if (!enabled) return null;
 

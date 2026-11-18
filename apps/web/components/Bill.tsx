@@ -173,6 +173,13 @@ function priceCardFrom(text: string): { catalogue: PricingCatalogue; touched: nu
   return null;
 }
 
+/**
+ * The hours of a UTC day, 0 to 23. The hourly chart draws one bar for each,
+ * with or without spend in it, and the hour is what a bar is: its key, its
+ * title and its place.
+ */
+const HOURS_OF_DAY = Array.from({ length: 24 }, (_, hour) => hour);
+
 export function Bill({ t }: { t: WebMessages }) {
   const [pasted, setPasted] = useState('');
   const [logText, setLogText] = useState<string | null>(null);
@@ -210,9 +217,9 @@ export function Bill({ t }: { t: WebMessages }) {
   // A new card re-prices whatever is already on screen, in place: the same
   // log, the same window, the new rates. The bundled snapshot returns the
   // same way when the card is cleared.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: it runs when the price card changes and on nothing else. The log is read when the reader presses the button, and `analyze` is a new function on every render, so listing what it reads would price the log again on every keystroke.
   useEffect(() => {
     if (logText !== null) analyze(logText, previousText);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priceCard]);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   /** The time window, as `YYYY-MM-DD` strings; `''` is no bound. */
@@ -1357,7 +1364,7 @@ function Report({
                     aria-label={t.bill.hourChartLabel}
                     className="flex h-12 items-end gap-px"
                   >
-                    {Array.from({ length: 24 }, (_, hour) => {
+                    {HOURS_OF_DAY.map((hour) => {
                       const usd = byHour.get(hour) ?? 0;
                       return (
                         <div
