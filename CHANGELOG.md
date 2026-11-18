@@ -13,6 +13,30 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **One command that says whether a change is done, and why not.** The pieces
+  of the loop were all here: `npm run verify`, the required checks,
+  `PR readiness`. What joined them was one session's habit, and on 2026-11-17
+  it missed twice: a new test file invisible to a test that reads the list of
+  tracked files until it was staged (#685), and a release reported finished
+  before its packages could be downloaded (#688). `npm run done` runs sixteen
+  criteria in order and answers each with `passed`, `FAILED` and the reason,
+  or `not run` and what is missing: every new file tracked, every commit
+  signed off, a changelog line under `Unreleased`, an issue named, then each
+  step of CI's required job as CI writes it (the command of a one-line step is
+  read out of `ci.yml` when it runs), then mutation testing when a changed
+  file brings it into play. It adds no criterion of its own, fixes nothing,
+  and exits 0 only when everything that applies passed; `not run` is not
+  `passed`, and part of the list is never a verdict. `done.test.js` fails
+  when a step is added to the required job that is neither a criterion nor
+  left out with its reason, when a criterion names a step, a heading or a
+  test that is not there, and when the script gains a command that writes.
+  [docs/done.md](docs/done.md) states the loop, and a new `AGENTS.md` points
+  a coding agent at the command, the document and the review skill. Its first
+  whole run, on this change, answered "not done": three lint findings in its
+  own test. Thirty-eight faults were planted against `done.test.js`; all were
+  caught, one only after it was planted again, because it had removed one of
+  the two places `AGENTS.md` names the command and the file still named it
+  (#694).
 - **A review skill that carries this repository's own rules.** What a review
   here looks for was written for a person in `CONTRIBUTING.md` and for a bot in
   `.coderabbit.yaml`, and a coding agent in a checkout had neither as something
