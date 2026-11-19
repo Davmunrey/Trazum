@@ -126,9 +126,22 @@ export function formulaFromTarball({ version, bytes }) {
   return formula({ version, sha256: sha256Of(bytes) });
 }
 
+/**
+ * The registry document of one of this project's own packages. The name comes
+ * from the registry's answer about the CLI, so it is checked before it goes
+ * into a URL: only `@trazum/<name>` is read, and the request can only ever go
+ * to the registry's own origin.
+ */
+export function registryDocumentUrl(name) {
+  if (!/^@trazum\/[a-z0-9][a-z0-9._-]*$/.test(name)) throw new Error(`not a package of this project: ${JSON.stringify(name)}`);
+  const url = new URL(`/${name.replace('/', '%2f')}`, REGISTRY);
+  if (url.origin !== REGISTRY) throw new Error(`${name} would be read from ${url.origin}, not ${REGISTRY}`);
+  return url;
+}
+
 /** When npm published `name@version`, from the package document's `time` map. */
 async function publishTime(name, version) {
-  const response = await fetch(`${REGISTRY}/${name.replaceAll('/', '%2f')}`);
+  const response = await fetch(registryDocumentUrl(name));
   if (!response.ok) throw new Error(`npm has no ${name} (${response.status})`);
   return (await response.json()).time?.[version];
 }

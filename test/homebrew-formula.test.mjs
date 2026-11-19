@@ -12,6 +12,7 @@ import {
   formula,
   formulaFromTarball,
   readFormula,
+  registryDocumentUrl,
   sha256Of,
   tarballUrl,
   tooYoung,
@@ -160,5 +161,17 @@ describe("the formula waits for npm's packages to be a day old", () => {
 
   it('refuses a package npm gives no time for, rather than guessing its age', () => {
     assert.match(tooYoung([cli, { ...core, time: undefined }], Date.parse('2027-01-01T00:00:00Z')), /no publish time for @trazum\/core@3\.0\.1/);
+  });
+});
+
+describe("the registry document a package's age is read from", () => {
+  it('is the scoped name, escaped, on the registry itself', () => {
+    assert.equal(registryDocumentUrl('@trazum/core').href, 'https://registry.npmjs.org/@trazum%2fcore');
+  });
+
+  it('refuses a name that is not one of this project, or that could leave the registry', () => {
+    for (const name of ['left-pad', '@evil/core', '@trazum/../x', '@trazum/core/../../x', '//evil.example/x', '@trazum/', '@trazum/Core']) {
+      assert.throws(() => registryDocumentUrl(name), /not a package of this project/, name);
+    }
   });
 });
