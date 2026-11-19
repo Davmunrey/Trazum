@@ -326,7 +326,7 @@ log and reads the bill to the cent, optimises and compares a prompt, loads a
 recorded run, changes the theme and the language, and reaches the tabs on a
 phone, follows the landing into the dashboard, and scrolls the landing's
 story from top to bottom and back.
-[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-two flows,
+[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-three flows,
 what they do not check, and the lines that install the browser driver outside
 the workspace.
 

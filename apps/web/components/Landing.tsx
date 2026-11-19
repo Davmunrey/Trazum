@@ -145,7 +145,7 @@ function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
       </section>
 
       <section aria-labelledby="close-title" data-landing-close="" className="border-t-2 border-foreground">
-        <div className={`${WRAP} grid items-end gap-10 py-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16 lg:py-24`}>
+        <div className={`${WRAP} grid items-end gap-10 py-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16 lg:py-20`}>
           <div>
             <h2
               id="close-title"

@@ -690,6 +690,38 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The landing's terminal stood in the top of its window; it is centred
+  now.** Measured in a browser at five sizes, light and dark, through the
+  whole story: at 1440x900 the bill's output had 72 px above it and 525
+  below halfway through its scene, its middle 226 px above the window's,
+  and once the output filled the column the lines scrolled on up to the
+  window's edge. Two things put it there. The column printed from its top
+  and moved only to scroll, and it scrolled and was sized by a line height
+  worked out for 19 px type while the lines were set in the still page's
+  15 px. Now the line height is read from the column's own type, the
+  column is centred across the free part of the window (beside the scene's
+  plate on a wide screen, under it and above the marker on a tall one) and
+  down it, and lines scrolled past its top are clipped, so a long output
+  has the same room above as below: 72 and 72 at 1440x900, 16 and 16 at
+  390x844. On a tall screen the free part is under the showing scene's own
+  plate, so `Story.tsx` measures each plate's foot when the stage or a
+  plate changes size, never while scrolling. As one plate gives way to the
+  next the output moves to the next scene's middle while only the plate it
+  moves away from is up, so it is never under a plate; on a tall screen the
+  plates fade where they stand instead of sliding 24 px. Across the swap
+  from the gate to the trimming, whose plate is 97 px taller at 390x844,
+  the output's top moves at most 16.5 px between two frames 0.5% of the
+  story apart (24.5 px of scrolling); there and at 768x1024 it comes no
+  closer than 15.8 px to a plate. The plate on a phone keeps the page's 16 px gutter (it was
+  15.6), and the closing band's padding is the other bands' 80 px at
+  1024 px and up (it was 96). The type, the copy, the colours, the scenes and their timing are
+  as they were. A browser flow measures where the output stands after each
+  run of output at 1440x900 and 390x844 and fails beyond 3 px or on a plate
+  taller than its words, and holds the output clear of the plates through
+  each swap at 390x844 and 768x1024; ten faults were planted in the page
+  and three in the flow's own test, the alignment as deployed and plates
+  stretched to the tallest one's height among them, and each was caught.
+  (#770)
 - **The pull-request guide no longer asks Dependabot to link an issue.** A
   bot cannot, so on a green dependency update (#655) the guide named
   `@dependabot[bot]` and never reached the step that moves it: the

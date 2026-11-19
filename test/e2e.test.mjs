@@ -152,6 +152,17 @@ describe('every tab a visitor can open has a flow that opens it', () => {
     assert.equal(named('appearance: the public site')[0].context?.colorScheme, 'dark');
   });
 
+  it('a flow measures where the terminal’s output stands, wide and on a phone (#770)', () => {
+    const centred = FLOWS.filter((flow) => flow.name.startsWith('landing: ') && flow.run.toString().includes('terminalOffCentre'));
+    assert.equal(centred.length, 1, 'no landing flow measures the terminal’s output against the middle of its free part');
+    const [flow] = centred;
+    assert.match(flow.name, /middle of the free part/);
+    const source = flow.run.toString();
+    assert.ok(source.includes('[{ width: 1440, height: 900 }, PHONE]'), 'it does not measure at 1440x900 and on a phone');
+    assert.ok(source.includes('TERMINAL_STOPS'), 'it does not stop in every terminal scene');
+    assert.ok(source.includes('PLATE_SWAPS') && source.includes('outputClearance'), 'it does not hold the output clear of the plates as they swap');
+  });
+
   it('every flow has a name of its own and something to run', () => {
     const names = FLOWS.map((flow) => flow.name);
     assert.equal(new Set(names).size, names.length);

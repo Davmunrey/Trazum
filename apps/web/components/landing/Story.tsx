@@ -95,6 +95,48 @@ function useStoryProgress(ref: React.RefObject<HTMLDivElement | null>) {
   }, [ref]);
 }
 
+/**
+ * The free part of the window on a tall screen, where the terminal's column is centred (#770): under the plate of
+ * the scene that is showing, at that plate's own height, and above the marker. CSS cannot read one box's height into
+ * another's place, so this measures each plate's foot and the marker's top when the stage or a plate changes size
+ * (a resize, the face arriving), never while scrolling, and writes them on the stage; the motion crosses from one
+ * scene's free part to the next's as the plates swap. A wide screen does not read them: there the plate stands
+ * beside the column.
+ */
+function useFreeArea(ref: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const element = ref.current;
+    if (element === null || document.documentElement.dataset.motion !== 'scroll' || typeof ResizeObserver === 'undefined') return;
+    const world = element.querySelector<HTMLElement>('.story-world');
+    const marker = element.querySelector<HTMLElement>('.story-marker');
+    const plates = [...element.querySelectorAll<HTMLElement>('.scene-cap')];
+    if (world === null || marker === null || plates.length === 0) return;
+    const written = new Map<string, string>();
+    const write = (name: string, value: number) => {
+      const text = `${Math.round(value * 100) / 100}px`;
+      if (written.get(name) === text) return;
+      written.set(name, text);
+      world.style.setProperty(name, text);
+    };
+    const measure = () => {
+      // Under each scene's plate, at its own height: the free part of that scene starts at the plate's foot.
+      for (const plate of plates) {
+        const scene = plate.closest<HTMLElement>('[data-scene]')?.dataset.scene;
+        if (scene) write(`--free-t-${scene}`, plate.offsetTop + plate.offsetHeight);
+      }
+      // The foot: the marker, or the scene's name standing over it, whichever is higher.
+      // A name is placed on the marker (its offset parent), from inside the marker's border.
+      const names = [...marker.querySelectorAll<HTMLElement>('.mk-label')].map((name) => marker.offsetTop + marker.clientTop + name.offsetTop);
+      write('--free-b', Math.min(marker.offsetTop, ...names));
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(world);
+    for (const plate of plates) observer.observe(plate);
+    measure();
+    return () => observer.disconnect();
+  }, [ref]);
+}
+
 function runClass(style: string): string {
   return [...style].map((letter) => `t-${letter}`).join(' ');
 }
@@ -225,6 +267,7 @@ function Laptop({ t }: { t: LandingCopy }) {
 export function Story({ t }: { t: LandingCopy }) {
   const ref = useRef<HTMLDivElement>(null);
   useStoryProgress(ref);
+  useFreeArea(ref);
 
   const scene = (id: Exclude<SceneId, 'never'>) => TIMED.filter(({ block }) => SCENE_OF[block.id] === id);
   // The terminal's widest line, for the type size that fits it.
@@ -264,6 +307,7 @@ export function Story({ t }: { t: LandingCopy }) {
                 <Transcript scene="trim" timed={scene('trim')} />
               </section>
             </div>
+            <div aria-hidden="true" className="term-cut" data-mv="" style={moves('st-term-cut')} />
           </div>
 
           <section className="story-never" data-mv="" style={moves('st-words-never')} data-scene="never" aria-labelledby="scene-never">
