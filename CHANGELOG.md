@@ -709,7 +709,9 @@ merged commit with no entry is a change only `git log` remembers.
   on hostile input and only ever read the repository's own documents. Also fixed while reading: the terminal
   pictures' accessible name now escapes a quotation mark, the image runs as user 1000 by number, and the two plans'
   repeated headings name their arc. `docs/coverage.md`, "Codacy",
-  says what is off and why. (#772)
+  says what is off and why. The nine findings Codacy raised on this change's own code, in the new script and the new
+  detector, were read and recorded the same way, and a tenth, the record quoting the CI database's throwaway login,
+  was reworded. (#772)
 - **The landing's terminal stood in the top of its window; it is centred
   now.** Measured in a browser at five sizes, light and dark, through the
   whole story: at 1440x900 the bill's output had 72 px above it and 525

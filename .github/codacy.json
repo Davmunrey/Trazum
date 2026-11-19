@@ -36,7 +36,7 @@
       "file": ".github/workflows/ci.yml",
       "count": 1,
       "reason": "NotExploitable",
-      "why": "postgres://trazum_ci:trazum_ci@127.0.0.1 is the throwaway role the same step creates in the runner's own PostgreSQL, started for that step, empty, reachable only on the runner's loopback, and gone with the runner."
+      "why": "The connection string in the PostgreSQL step names the throwaway role and password that the same step creates in the runner's own PostgreSQL, started for that step, empty, reachable only on the runner's loopback, and gone with the runner."
     },
     {
       "pattern": "ESLint8_@typescript-eslint_no-empty-function",
@@ -83,9 +83,9 @@
     {
       "pattern": "Semgrep_javascript.audit.detect-replaceall-sanitization.detect-replaceall-sanitization",
       "file": "scripts/terminal-picture.mjs",
-      "count": 1,
+      "count": 2,
       "reason": "FalsePositive",
-      "why": "esc() escapes &, < and > for the SVG's text, which is the CLI's own transcript of the repository's examples. Reading it found the one attribute it wrote, aria-label, did not escape a quotation mark; that is fixed in #772 (attribute()), and the finding about replaceAll itself is wrong."
+      "why": "esc() escapes &, < and > for the SVG's text, which is the CLI's own transcript of the repository's examples. Reading it found the one attribute it wrote, aria-label, did not escape a quotation mark; that is fixed in #772 (attribute()), and the finding about replaceAll itself is wrong. attribute() adds the quotation mark to esc() for the one attribute; it is the second of the two."
     },
     {
       "pattern": "Semgrep_javascript.lang.security.audit.detect-redos.detect-redos",
@@ -167,9 +167,9 @@
     {
       "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
       "file": "packages/core/src/structure.ts",
-      "count": 6,
+      "count": 7,
       "reason": "FalsePositive",
-      "why": "Built once from the module's own constants (the contradiction axes, the example labels) or, in keyPattern, from a schema key escaped by escapeRegExp. All measured linear: the slowest 0.92 ms at 32,000 characters against 0.22 ms at 8,000. The loop that asked the key pattern of every sentence was quadratic and is fixed in #772."
+      "why": "Built once from the module's own constants (the contradiction axes, the example labels) or, in keyPattern, from a schema key escaped by escapeRegExp. All measured linear: the slowest 0.92 ms at 32,000 characters against 0.22 ms at 8,000. The loop that asked the key pattern of every sentence was quadratic and is fixed in #772. findRestatedFormat builds each key's pattern once, sticky, and tries it only at the place one pass over the text found the key."
     },
     {
       "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
@@ -184,6 +184,13 @@
       "count": 1,
       "reason": "FalsePositive",
       "why": "Built from the heading pattern this script declares at line 141, `## The \\d+ commands`: 0.035 ms at 32,000 characters against 0.009 ms at 8,000 on its worst input found (\"## The 1\" lines with no tail)."
+    },
+    {
+      "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
+      "file": "scripts/codacy.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "globToRegExp builds a pattern from a path of .codacy.yaml, every character but * and ? escaped, * as [^/]* and ** as .*: `**/test/**` measured linear, 0.036 ms at 32,000 characters of \"a/\" against 0.018 ms at 8,000."
     },
     {
       "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
@@ -222,6 +229,13 @@
     },
     {
       "pattern": "Semgrep_javascript_timing_rule-possible-timing-attacks",
+      "file": "scripts/codacy.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`token !== undefined` asks whether the run was given a token at all, to decide whether to send the api-token header; it compares with undefined, not with a secret, on the maintainer's own machine."
+    },
+    {
+      "pattern": "Semgrep_javascript_timing_rule-possible-timing-attacks",
       "file": "scripts/npm-publish-preflight.mjs",
       "count": 1,
       "reason": "FalsePositive",
@@ -247,6 +261,13 @@
       "count": 1,
       "reason": "FalsePositive",
       "why": "`anchor !== hash` compares the address's fragment with the release it names, in the visitor's own browser. No secret is compared."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_crypto_rule-node-timing-attack",
+      "file": "scripts/codacy.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`token !== undefined` asks whether the run was given a token at all; it compares with undefined, not with a secret."
     },
     {
       "pattern": "Semgrep_rules_lgpl_javascript_crypto_rule-node-timing-attack",
@@ -335,9 +356,9 @@
     {
       "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
       "file": "packages/core/src/structure.ts",
-      "count": 1,
+      "count": 2,
       "reason": "FalsePositive",
-      "why": "the contradiction patterns of `AXES` (structure.ts:88 to 162), every one measured: measured linear, 0.919 ms at 32,000 characters against 0.224 ms at 8,000 on its worst input found (\"redacta\" and a space). The slowest of the nine is reported; each is in regex-timings.json."
+      "why": "the contradiction patterns of `AXES` (structure.ts:88 to 162), every one measured: measured linear, 0.919 ms at 32,000 characters against 0.224 ms at 8,000 on its worst input found (\"redacta\" and a space). The slowest of the nine is reported; each is in regex-timings.json. The second is a key's own pattern tried once, sticky, at the place the one pass found it: a lookbehind, the escaped key and a lookahead, linear in the key."
     },
     {
       "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
@@ -359,6 +380,13 @@
       "count": 1,
       "reason": "FalsePositive",
       "why": "`SCHEME` (line 173) on a link of the repository's own documents: measured linear, 0.031 ms at 32,000 characters against 0.008 ms at 8,000 on its worst input found (scheme characters, no colon)."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "scripts/codacy.mjs",
+      "count": 2,
+      "reason": "FalsePositive",
+      "why": "`UUID`, an anchored pattern of fixed width, tested on the uuid a line of .github/codacy.json writes: measured linear, 0.003 ms at 32,000 characters against 0.005 ms at 8,000."
     },
     {
       "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
@@ -415,6 +443,13 @@
       "count": 1,
       "reason": "FalsePositive",
       "why": "A maintainer's script: the host is Google's, fixed, and the id is a model id from the bundled catalogue."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_ssrf_rule-node-ssrf",
+      "file": "scripts/codacy.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "ask() fetches base() plus a path this script writes. base() is the constant API, https://app.codacy.com/api/v3, followed by this repository's own provider, organisation and name, all constants."
     },
     {
       "pattern": "Semgrep_rules_lgpl_javascript_ssrf_rule-node-ssrf",
