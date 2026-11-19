@@ -53,6 +53,16 @@ const render = (locale = 'en') => server.renderToStaticMarkup(React.createElemen
 
 const decode = (text) => text.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 /** The text of some markup, tags and entities gone. */
+/** Every tag removed, repeated until none is left, so a removal cannot join two halves into a new one. */
+const withoutTags = (html) => {
+  let before;
+  let after = html;
+  do {
+    before = after;
+    after = before.replace(/<[^>]*>/g, '');
+  } while (after !== before);
+  return after;
+};
 const textOf = (html) => decode(html.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ');
 /** The markup of the one element `<tag data-attr="value"` opens, to its closing tag. */
 const blockOf = (html, tag, attr, value) => {
@@ -80,7 +90,7 @@ describe('the page and the documentation are one source', () => {
           assert.ok(text.includes(`href="${client.code}"`), `${locale}/${client.id}: the button does not go to ${client.code}`);
         } else {
           assert.ok(text.includes(client.code.split('\n')[0]), `${locale}/${client.id}: the first line is not there`);
-          assert.ok(decode(item.replace(/<[^>]*>/g, '')).includes(client.code), `${locale}/${client.id}: the snippet is not there whole`);
+          assert.ok(decode(withoutTags(item)).includes(client.code), `${locale}/${client.id}: the snippet is not there whole`);
         }
       }
     }
