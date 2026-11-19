@@ -198,6 +198,15 @@ describe('the SessionStart hook that runs it', () => {
     assert.match(hookCode, /recover-workspace\.sh/);
   });
 
+  it('installs with npm ci, which never rewrites package-lock.json', () => {
+    // `npm install` writes the lockfile back in the layout of whatever npm the
+    // container has: on 2026-11-18 npm 10.9 dropped 48 `libc` lines from a
+    // lockfile a newer npm wrote, and every session began with a change nobody
+    // made (#788). `npm ci` installs the lockfile as it is.
+    assert.match(hookCode, /\bnpm ci\b/, 'the hook does not install with npm ci');
+    assert.doesNotMatch(hookCode, /\bnpm (install|i)\b/, 'the hook runs npm install, which rewrites the lockfile');
+  });
+
   it('is registered in .claude/settings.json', () => {
     const settings = JSON.parse(readFileSync(join(repoRoot, '.claude', 'settings.json'), 'utf8'));
     const entries = settings.hooks?.SessionStart?.flatMap((group) => group.hooks) ?? [];
