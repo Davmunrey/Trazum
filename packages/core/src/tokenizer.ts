@@ -207,7 +207,7 @@ const HANGUL = /[가-힯]/;
  * declined to classify — a change that helps nothing measured and hurts the two
  * samples the estimator gets right.
  */
-const DEFAULT_DIVISOR = 4;
+export const DEFAULT_DIVISOR = 4;
 
 /** Effective word length: non-ASCII characters split into more tokens. */
 function effectiveLength(word: string): number {

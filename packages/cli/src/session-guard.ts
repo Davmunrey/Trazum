@@ -131,7 +131,7 @@ export type SessionCost =
   | { kind: 'floor'; usd: number; unpricedModels: string[] }
   | { kind: 'cannot-tell'; cause: CannotTellCause };
 
-async function jsonlFiles(folder: string): Promise<string[] | null> {
+export async function jsonlFiles(folder: string): Promise<string[] | null> {
   const info = await stat(folder).catch(() => null);
   if (info === null || !info.isDirectory()) return [];
   try {

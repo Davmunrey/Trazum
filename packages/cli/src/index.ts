@@ -19,6 +19,8 @@ import {
   breaches,
   cacheableMinimum,
   analyzeCachePrefix,
+  analyzeSessionWaste,
+  sessionCwd,
   billFigures,
   billLevers,
   buildWeeklySummary,
@@ -348,6 +350,7 @@ import {
   planGuard,
   viewGuard,
 } from './session-guard.js';
+import { readSession, sizeOf } from './waste.js';
 import { MAX_COLUMNS, Report, WINDOW, c, cErr, fitPath, sectionHeading, table, wrap } from './style.js';
 import type { Cell, TableColumn } from './style.js';
 
@@ -396,6 +399,10 @@ const VALUE_FLAGS = new Set([
   // `session-guard check|install`: the two dollar thresholds, which have no default.
   'warn',
   'stop',
+  // `waste`: a CLAUDE.md to size, the MCP servers the person says are loaded, and the fewest reads worth listing.
+  'claude-md',
+  'mcp-servers',
+  'min-reads',
   'from-log',
   'min-usd',
   'payload',
@@ -943,6 +950,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   doctor: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'otlp-out'],
   proactive: ['only', 'dry-run', 'yes', 'json'],
   'session-guard': ['warn', 'stop', 'on-cannot-tell', 'dry-run', 'yes'],
+  waste: ['claude-md', 'mcp-servers', 'min-reads', 'json'],
 };
 
 function rejectUnknownFlags(args: Args, t: CliMessages): void {
@@ -15019,6 +15027,87 @@ async function commandSessionGuard(args: Args, t: CliMessages): Promise<void> {
   if (action === 'install') console.log(c.dim(t.sessionGuard.apiEquivalent()));
 }
 
+/**
+ * `trazum waste <transcript.jsonl>`: what a coding-agent session paid for twice,
+ * or for nothing, priced at the bundled catalogue from the session's own counts.
+ *
+ * It recommends and changes nothing: no file is written, edited or opened for
+ * writing. It reads the transcript and its subagents' transcripts, and the
+ * *size* of one CLAUDE.md. Like `session-guard` it never loads the project's
+ * config or a pricing overlay, so every figure is the bundled, dated catalogue's.
+ */
+async function commandWaste(args: Args, t: CliMessages): Promise<void> {
+  for (const flag of ['pricing', 'pricing-live', 'config']) {
+    if (args.flags.has(flag)) throw new Error(t.waste.refusedFlag(`--${flag}`));
+  }
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.waste.noPath());
+  const rawMin = stringFlag(args, 'min-reads');
+  const minReads = rawMin === undefined ? 3 : Number(rawMin);
+  if (!Number.isInteger(minReads) || minReads < 2) throw new Error(t.waste.minReadsBad(rawMin ?? ''));
+
+  const session = await readSession(resolvePath(target));
+  if (!session.ok) throw new Error(session.cause === 'not-found' ? t.waste.notFound(target) : t.waste.unreadable(target));
+
+  const explicit = stringFlag(args, 'claude-md');
+  const cwd = sessionCwd(session.texts[0] ?? '');
+  const claudePath = explicit ?? (cwd === undefined ? undefined : join(cwd, 'CLAUDE.md'));
+  const size = claudePath === undefined ? null : await sizeOf(claudePath);
+  const servers = (stringFlag(args, 'mcp-servers') ?? '')
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name !== '');
+
+  const report = analyzeSessionWaste(session.texts, {
+    catalogue: BUNDLED_CATALOGUE,
+    on: new Date(),
+    minReads,
+    mcpServers: servers,
+    ...(size === null ? {} : { claudeMd: [size] }),
+  });
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+  if (report.cannotTell !== null) {
+    console.log(t.waste.cannotTell());
+    return;
+  }
+
+  const w = t.waste;
+  console.log(c.bold(w.heading(report.session.calls, report.session.threads)));
+  console.log(c.dim(w.apiEquivalent(report.pricing.lastReviewed)));
+  if (report.unpricedModels.length > 0) console.log(c.dim(w.unpriced(report.unpricedModels.join(', '))));
+
+  console.log(`\n${c.bold(w.readsHeading())}`);
+  if (report.reads.findings.length === 0) console.log(w.readsNone(report.reads.minReads));
+  for (const row of report.reads.findings) {
+    console.log(`  ${row.path}`);
+    console.log(`    ${w.readLine(row.reads, row.repeats, row.measured, row.tokens, row.usd === null ? null : formatUsd(row.usd))}`);
+  }
+  if (report.reads.omitted > 0) console.log(c.dim(w.readsOmitted(report.reads.omitted)));
+  if (report.reads.usd !== null) console.log(w.readsTotal(formatUsd(report.reads.usd), report.reads.measured, report.reads.repeats));
+  else if (report.reads.repeats > 0) console.log(w.readsUnmeasured(report.reads.repeats));
+
+  console.log(`\n${c.bold(w.mcpHeading())}`);
+  if (report.mcp.source === 'none') console.log(w.mcpNoList());
+  else {
+    console.log(report.mcp.unused.length === 0 ? w.mcpAllCalled(report.mcp.loaded) : w.mcpSummary(report.mcp.loaded, report.mcp.called, report.mcp.source));
+    for (const server of report.mcp.unused) console.log(`  ${w.mcpUnused(server.server, server.tools)}`);
+    if (report.mcp.unused.length > 0) console.log(c.dim(w.mcpNotPriced()));
+  }
+
+  console.log(`\n${c.bold(w.claudeHeading())}`);
+  if (report.claudeMd.findings.length === 0) console.log(w.claudeNone(claudePath ?? ''));
+  for (const f of report.claudeMd.findings) {
+    console.log(`  ${f.path}`);
+    console.log(`    ${w.claudeLine(f.bytes, f.tokens, f.calls, formatUsd(f.usd), formatUsd(f.usdLow), formatUsd(f.usdHigh), report.claudeMd.bandPct)}`);
+  }
+
+  console.log(`\n${c.dim(w.nothingChanged())}`);
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   if (argv[0] === 'task') {
@@ -15093,6 +15182,11 @@ async function main(): Promise<void> {
   // Before the config loads, for the reason `commandSessionGuard` gives.
   if (args.command === 'session-guard') {
     await commandSessionGuard(args, t);
+    return;
+  }
+  // The same for `waste`: it prices at the bundled catalogue and reads a transcript, not a project's config.
+  if (args.command === 'waste') {
+    await commandWaste(args, t);
     return;
   }
 

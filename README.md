@@ -231,7 +231,7 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
     ┌────────────┬─────────────┼─────────────┬─────────────┐
  @trazum/cli  @trazum/mcp  trazum-vscode  @trazum/web    action/
- 58 commands   MCP server    the editor      Next.js    comments on
+ 59 commands   MCP server    the editor      Next.js    comments on
               for your agents  status bar               pull requests
 
               @trazum/tokenizer-openai   optional: exact counts for OpenAI
@@ -328,8 +328,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 58 commands — [the table
-above](#the-58-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 59 commands — [the table
+above](#the-59-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -349,8 +349,9 @@ from the exit codes it is supposed to relay.
 <a id="the-55-commands"></a>
 <a id="the-56-commands"></a>
 <a id="the-57-commands"></a>
+<a id="the-58-commands"></a>
 
-## The 58 commands
+## The 59 commands
 
 | Command | What it answers |
 |---|---|
@@ -391,6 +392,7 @@ from the exit codes it is supposed to relay.
 | [`trazum weekly`](docs/commands.md#the-week-written-down-trazum-weekly) | What did the week cost, what moved, and what should change first? *The bill for seven days, against the seven before, and three ranked changes, each a projection that says so. A file or stdout; the Action posts it where you name.* |
 | [`trazum proactive`](docs/commands.md#speaking-first-trazum-proactive) | What speaks without being asked, and is it on? *Turns on the status line, a scheduled watch and the MCP server, one asked-for item at a time, and turns them off again.* |
 | [`trazum session-guard`](docs/commands.md#a-spend-limit-for-a-session-trazum-session-guard) | Will a Claude Code session stop at a dollar figure I set? *A hook that warns once and then stops, at two thresholds with no defaults, in API-equivalent cost. Reads only the session's transcript.* |
+| [`trazum waste`](docs/commands.md#what-a-session-paid-for-twice-trazum-waste) | What did this coding-agent session pay for twice, and what is that worth? *A file read again, MCP servers loaded and never called, a CLAUDE.md carried every turn, each priced from the session's own counts at the dated catalogue, or named and not priced when the transcript does not record it. Recommends, edits nothing, reads counts and paths only.* |
 | [`trazum pulse`](docs/commands.md#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum position`](docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
 | [`trazum receipt`](docs/commands.md#a-figure-that-still-answers-elsewhere-trazum-receipt) | What did this cost, in a form that still answers when read somewhere else? *Counts, and the money split so it can be added up rather than believed. No prompt text, no answers, no paths: there is no field for them.* |

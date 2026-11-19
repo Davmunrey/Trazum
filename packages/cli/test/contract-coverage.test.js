@@ -71,6 +71,7 @@ const CLAIMED = {
   '## The pulse document': 'packages/cli/test/contract-coverage.test.js',
   '## The proactive document': 'packages/cli/test/proactive.test.js',
   '## The bench document': 'packages/cli/test/bench.test.js',
+  '## The waste document': 'packages/cli/test/waste.test.js',
   '## The rule-yield document': 'packages/cli/test/contract-coverage.test.js',
   '## The gateway refusal document': 'packages/cli/test/gateway-proxy.test.js',
   '## The prompt-draft document': 'packages/core/test/write-assembly.test.js',
@@ -474,7 +475,7 @@ const WORDS = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
   'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
   'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'twenty-one',
-  'twenty-two', 'twenty-three', 'twenty-four', 'twenty-five', 'twenty-six',
+  'twenty-two', 'twenty-three', 'twenty-four', 'twenty-five', 'twenty-six', 'twenty-seven',
 ];
 const ORDINALS = {
   13: 'thirteenth',
@@ -491,6 +492,7 @@ const ORDINALS = {
   24: 'twenty-fourth',
   25: 'twenty-fifth',
   26: 'twenty-sixth',
+  27: 'twenty-seventh',
 };
 
 /** "a seventeenth", "an eighteenth" — the article belongs to the word, not the template. */
