@@ -802,6 +802,16 @@ ${bold('OPCIONES DE check')}
                               comprobable pasa. Los presupuestos aplican por fichero como
                               siempre; el baseline necesita el repositorio entero y se
                               omite, diciéndolo.
+  --base <ref>                Pone además precio a cada prompt cambiado en ese commit y
+                              aquí: tokens, y su coste de entrada al mes con las
+                              llamadas al mes que "volumes" indica para su label, o por
+                              llamada si no indica ninguna. Cada cifra nombra su precio
+                              y el día en que se leyó. El commit se lee de esta copia
+                              con git y nunca se descarga; si no está, se dice.
+  --max-monthly-increase-usd <usd>
+                              Con --base: falla si los prompts con volumen indicado
+                              cuestan al mes más de estos dólares por encima de la
+                              base. Desactivado salvo que se pase.
 
   Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
   así una plantilla que crece sin control rompe la build en vez de la factura.
@@ -1201,6 +1211,9 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     labels    { "support-rag": "prompts/soporte.txt" }: qué fichero de prompt
               manda cada label del registro de uso, para que "trazum profile"
               lea el fichero y diga por qué falla una caché que falla
+    volumes   { "support-rag": 30000 }: llamadas al mes de una label que
+              "labels" asocia, para que "check --base" ponga precio a ese
+              prompt por meses. Un prompt sin volumen va por llamada, y se dice
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } }: presupuestos en
               dólares para "trazum profile". Una etiqueta con presupuesto y sin
               llamadas se informa como no medida, nunca como aprobada
@@ -3032,6 +3045,49 @@ ${bold('EJEMPLOS')}
       'La puerta de baseline se omite con --files-from: compara el repositorio entero contra el registro comprometido, y una lista parcial se leería como eliminaciones. Los presupuestos se comprueban por fichero como siempre; ejecuta «trazum check .» para el baseline.',
     exactCountsCost: (files) =>
       `Contando ${files} ${files === 1 ? 'fichero' : 'ficheros'} con la API, una llamada por cada uno. Esto tarda un momento.`,
+  },
+  againstBase: {
+    heading: (ref, sha) => `Frente a la base, ${ref} en ${sha}`,
+    columnTokens: () => 'Tokens, base → cabeza',
+    columnCalls: () => 'Llamadas al mes',
+    columnBase: () => 'Base',
+    columnHead: () => 'Cabeza',
+    columnPrice: () => 'Precio',
+    notStated: () => 'sin indicar',
+    perMonth: (usd) => `${usd} al mes`,
+    perCall: (usd) => `${usd} por llamada`,
+    price: (perMTok, model, provider, readOn) =>
+      `${perMTok} por millón de tokens de entrada, ${model}, precios de ${provider} leídos el ${readOn}`,
+    priceOverlay: (perMTok, model, readOn) =>
+      `${perMTok} por millón de tokens de entrada, ${model}, capa local de precios fechada el ${readOn}`,
+    promo: (until) => `precio promocional hasta el ${until}`,
+    totals: (base, head, change) =>
+      `Los prompts con volumen indicado: ${base} al mes en la base, ${head} en la cabeza (${change}).`,
+    perCallNote: (count) =>
+      `${count} ${count === 1 ? 'prompt cambiado no tiene' : 'prompts cambiados no tienen'} volumen indicado, así que su coste es solo por llamada. Para ponerle precio a un mes, asocia el fichero del prompt en "labels" e indica sus llamadas al mes en "volumes" de trazum.config.json.`,
+    inputOnly: () =>
+      'Tokens de entrada al precio de entrada, los dos lados a los mismos precios. La salida queda fuera: editar un prompt no fija cuánto escribe el modelo.',
+    modelDefault: (model) =>
+      `Con el modelo por defecto de Trazum, ${model}, porque la config no fija usage.model. Fíjalo para poner precio al modelo al que se envían los prompts.`,
+    unchanged: (count) =>
+      `${count} ${count === 1 ? 'prompt es igual' : 'prompts son iguales'} en los dos lados.`,
+    nothingChanged: () => 'Ningún prompt de aquí cambió frente a la base.',
+    gateWithin: (change, limit) => `El aumento mensual, ${change}, está dentro del límite de ${limit}.`,
+    gateBreached: (change, limit) => `El aumento mensual, ${change}, supera el límite de ${limit}.`,
+    gateNotJudged: (count) =>
+      `El límite juzga solo los prompts con volumen indicado: ${count} ${count === 1 ? 'prompt cambiado no se juzgó' : 'prompts cambiados no se juzgaron'}.`,
+    unavailable: (why, ref) =>
+      why === 'no-commit'
+        ? `La base, ${ref}, no está en esta copia, así que no se comparó nada. No se descarga nada para buscarla. En GitHub Actions, pon fetch-depth: 0 en actions/checkout.`
+        : why === 'not-a-repository'
+          ? `Esto no es un repositorio git, así que no hay base con la que comparar ${ref}.`
+          : `No se pudo ejecutar git, así que la base, ${ref}, no se leyó.`,
+    gateUnavailable: (limit) =>
+      `El límite de aumento mensual de ${limit} no juzgó nada, porque la base no se pudo leer, y una puerta que no juzga nada falla.`,
+    gateNeedsBase: () =>
+      '--max-monthly-increase-usd limita lo que un cambio añade al coste mensual frente a una base, así que necesita --base <ref>.',
+    noStdin: () =>
+      '--base lee de git el lado base de un fichero, y la entrada estándar no tiene lado base. Nombra el fichero.',
   },
   profile: {
     noTarget: () =>

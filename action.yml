@@ -40,6 +40,9 @@ inputs:
     description: 'Distinguishes comments from two runs reporting on different things in the same pull request.'
     required: false
     default: 'default'
+  max-monthly-increase-usd:
+    description: 'With target, on a pull request: fail the build when the changed prompts cost more than this many dollars a month more than on the base branch, at the volumes trazum.config.json states under "volumes". Off unless set. The base is read from the checkout with git, never fetched, so actions/checkout needs fetch-depth: 0.'
+    required: false
   suggest-fixes:
     description: 'Post the optimised prompt as a GitHub suggested change, applied with one button. Needs github-token and pull-requests write. Safe level only. A suggestion can only anchor to lines in the diff, so a prompt only partly changed by the pull request gets a notice instead.'
     required: false
@@ -123,6 +126,12 @@ runs:
         TRAZUM_UNTIL: ${{ inputs.until }}
         TRAZUM_WEEKLY_SUMMARY: ${{ inputs.weekly-summary }}
         TRAZUM_PLAN_PULL_REQUEST: ${{ inputs.plan-pull-request }}
+        TRAZUM_MAX_MONTHLY_INCREASE_USD: ${{ inputs.max-monthly-increase-usd }}
+        # The pull request's base commit, empty on any other event. The check
+        # reads that commit's prompts from the checkout with git (#785), so on
+        # a pull request the report says what the change does to each prompt's
+        # cost against the base branch. Nothing is fetched for it.
+        TRAZUM_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         TRAZUM_ACTION_PATH: ${{ github.action_path }}
       # Every optional flag is added only when it was actually given. Passing
       # `--level safe` unconditionally is what made a config file's `level` and
@@ -153,8 +162,8 @@ runs:
             echo "outcome=1" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [ -n "$TRAZUM_MAX_USD$TRAZUM_AGAINST$TRAZUM_MAX_GROWTH_USD$TRAZUM_MAX_CACHE_LOSS_USD$TRAZUM_LABEL$TRAZUM_SINCE$TRAZUM_UNTIL" ]; then
-            echo "::error title=Trazum::'plan-pull-request' proposes edits and gates nothing, over the whole log. Remove max-usd, against, max-growth-usd, max-cache-loss-usd, label, since and until, or run the gate in its own step."
+          if [ -n "$TRAZUM_MAX_USD$TRAZUM_AGAINST$TRAZUM_MAX_GROWTH_USD$TRAZUM_MAX_CACHE_LOSS_USD$TRAZUM_LABEL$TRAZUM_SINCE$TRAZUM_UNTIL$TRAZUM_MAX_MONTHLY_INCREASE_USD" ]; then
+            echo "::error title=Trazum::'plan-pull-request' proposes edits and gates nothing, over the whole log. Remove max-usd, against, max-growth-usd, max-cache-loss-usd, max-monthly-increase-usd, label, since and until, or run the gate in its own step."
             echo "outcome=1" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -180,8 +189,8 @@ runs:
             echo "outcome=1" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if [ -n "$TRAZUM_MAX_USD$TRAZUM_AGAINST$TRAZUM_MAX_GROWTH_USD$TRAZUM_MAX_CACHE_LOSS_USD$TRAZUM_SINCE" ]; then
-            echo "::error title=Trazum::'weekly-summary' writes a note and gates nothing, and its week is the seven days before 'until'. Remove max-usd, against, max-growth-usd, max-cache-loss-usd and since, or run the gate in its own step."
+          if [ -n "$TRAZUM_MAX_USD$TRAZUM_AGAINST$TRAZUM_MAX_GROWTH_USD$TRAZUM_MAX_CACHE_LOSS_USD$TRAZUM_SINCE$TRAZUM_MAX_MONTHLY_INCREASE_USD" ]; then
+            echo "::error title=Trazum::'weekly-summary' writes a note and gates nothing, and its week is the seven days before 'until'. Remove max-usd, against, max-growth-usd, max-cache-loss-usd, max-monthly-increase-usd and since, or run the gate in its own step."
             echo "outcome=1" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -213,6 +222,21 @@ runs:
           echo "::warning title=Trazum::The 'file' input is deprecated; rename it to 'target'."
         fi
 
+        # The monthly increase gate prices prompts against the pull request's
+        # base, so it belongs to the prompt gate and to a pull request. Asked
+        # for anywhere else it would judge nothing, and a gate that judged
+        # nothing is refused rather than passed.
+        if [ -n "$TRAZUM_MAX_MONTHLY_INCREASE_USD" ] && [ -n "$TRAZUM_USAGE_LOG" ]; then
+          echo "::error title=Trazum::'max-monthly-increase-usd' gates the prompts in 'target' against the pull request's base. It does not apply to 'usage-log'; use max-growth-usd with against for a log."
+          echo "outcome=1" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ -n "$TRAZUM_MAX_MONTHLY_INCREASE_USD" ] && [ -z "$TRAZUM_BASE_SHA" ]; then
+          echo "::error title=Trazum::'max-monthly-increase-usd' compares with the pull request's base branch, and this run is not on a pull request."
+          echo "outcome=1" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
         if [ -n "$TRAZUM_USAGE_LOG" ]; then
           args=(profile "$TRAZUM_USAGE_LOG")
           [ -n "$TRAZUM_MAX_USD" ] && args+=(--max-usd "$TRAZUM_MAX_USD")
@@ -230,6 +254,15 @@ runs:
           args=(check "$target")
           [ -n "$TRAZUM_MAX_TOKENS" ] && args+=(--max-tokens "$TRAZUM_MAX_TOKENS")
           [ -n "$TRAZUM_LEVEL" ] && args+=(--level "$TRAZUM_LEVEL")
+          # Compared only where the base commit is in the checkout, or where
+          # the limit asks for it. A default checkout is shallow and does not
+          # hold the base, and a run that never asked for the comparison gets
+          # no line about it; the limit, which cannot be judged without it,
+          # gets the CLI's own refusal and its fix (#785).
+          if [ -n "$TRAZUM_BASE_SHA" ] && { [ -n "$TRAZUM_MAX_MONTHLY_INCREASE_USD" ] || git cat-file -e "${TRAZUM_BASE_SHA}^{commit}" 2>/dev/null; }; then
+            args+=(--base "$TRAZUM_BASE_SHA")
+          fi
+          [ -n "$TRAZUM_MAX_MONTHLY_INCREASE_USD" ] && args+=(--max-monthly-increase-usd "$TRAZUM_MAX_MONTHLY_INCREASE_USD")
         fi
         [ -n "$TRAZUM_CONFIG" ] && args+=(--config "$TRAZUM_CONFIG")
         [ -n "$TRAZUM_REPORT_LOCALE" ] && args+=(--locale "$TRAZUM_REPORT_LOCALE")
@@ -298,7 +331,7 @@ runs:
           elif [ -n "$TRAZUM_USAGE_LOG" ]; then
             echo "::error title=Trazum::The spend gate failed — the log is over its budget or grew past its limit, or the profile could not run. See the run summary."
           else
-            echo "::error title=Trazum::A prompt busts its token budget, or the check could not run. See the run summary."
+            echo "::error title=Trazum::A prompt busts its token budget, the monthly increase against the base is over its limit, or the check could not run. See the run summary."
           fi
           exit 1
         fi

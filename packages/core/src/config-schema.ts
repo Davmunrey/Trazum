@@ -189,6 +189,19 @@ export interface TrazumConfig {
    */
   labels?: Record<string, string>;
   /**
+   * Calls a month, per label in `labels`: the volume somebody stated for the
+   * prompt file that label sends.
+   *
+   * `trazum check --base` (#785) prices each changed prompt a month at a
+   * time on the base branch and on the head, and a month needs a number of
+   * calls. That number is a statement about traffic, so it is written here,
+   * keyed by the same labels `plan --edits` and `profile` read, rather than
+   * guessed: a prompt whose label has no volume is priced per call, and the
+   * report says so. A volume for a label `labels` does not map is refused,
+   * because it could only ever be attached to nothing.
+   */
+  volumes?: Record<string, number>;
+  /**
    * Money budgets for `trazum profile`, in dollars.
    *
    * `budgets` gates the tokens a prompt file may hold; this gates the dollars
@@ -344,6 +357,7 @@ export const CONFIG_KEYS = keyList<TrazumConfig>({
   usage: true,
   budgets: true,
   labels: true,
+  volumes: true,
   spend: true,
   limits: true,
   sources: true,
@@ -564,6 +578,35 @@ function parseLabels(raw: unknown, source: string): Record<string, string> {
     labels[label] = value;
   }
   return labels;
+}
+
+/**
+ * `volumes`: label to calls a month, each label one `labels` maps to a file.
+ *
+ * Zero is allowed, because "this prompt is not sent at all yet" is a volume
+ * somebody can state. A negative or non-finite number is not a volume.
+ */
+function parseVolumes(
+  raw: unknown,
+  labels: Record<string, string> | undefined,
+  source: string,
+): Record<string, number> {
+  if (!isPlainObject(raw)) throw new ConfigError('"volumes" must be an object', source);
+
+  const volumes: Record<string, number> = {};
+  for (const [label, value] of Object.entries(raw)) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      throw new ConfigError(`volumes["${label}"] must be a number of calls a month, 0 or more`, source);
+    }
+    if (labels === undefined || labels[label] === undefined) {
+      throw new ConfigError(
+        `volumes["${label}"] names a label "labels" does not map to a prompt file, so the volume belongs to no prompt`,
+        source,
+      );
+    }
+    volumes[label] = value;
+  }
+  return volumes;
 }
 
 function parseBudgets(raw: unknown, source: string): Record<string, number> {
@@ -1196,6 +1239,7 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
   if (document.usage !== undefined) config.usage = parseUsage(document.usage, source);
   if (document.budgets !== undefined) config.budgets = parseBudgets(document.budgets, source);
   if (document.labels !== undefined) config.labels = parseLabels(document.labels, source);
+  if (document.volumes !== undefined) config.volumes = parseVolumes(document.volumes, config.labels, source);
   if (document.spend !== undefined) config.spend = parseSpend(document.spend, source);
   if (document.limits !== undefined) config.limits = parseLimits(document.limits, source);
   if (document.sources !== undefined) config.sources = parseSources(document.sources, source);
