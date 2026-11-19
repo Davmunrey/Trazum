@@ -27,7 +27,7 @@
   {
     "title": "The bill where a team already looks",
     "description": "The bill is printed, saved or gated. Next: the same measured figures as metrics for the dashboards a team already runs, and what was spent in a repository while a branch was written, said as a time window and never as the cost of the change.",
-    "issues": [776, 777, 789]
+    "issues": [776, 777, 789, 824]
   },
   {
     "title": "A repository a stranger can contribute to",
@@ -37,12 +37,12 @@
   {
     "title": "Tests that would notice a wrong price",
     "description": "Line coverage says the code that prices a call runs under test. Mutation testing says whether a test would notice it pricing a call wrongly, and today it reaches six files of the core and, in two more, the functions that choose a rate and multiply by it. Next: the catalogue's own numbers, where a sample found published prices that no test would notice changing.",
-    "issues": [731, 745, 763]
+    "issues": [731, 745, 763, 820]
   },
   {
     "title": "Every agent's sessions",
     "description": "The bill reads what each coding agent already keeps on disk. Next: OpenCode's SQLite sessions, and a reader for Cursor, GitHub Copilot CLI, Cline and Amp as soon as somebody supplies one real session of each.",
-    "issues": [645, 648, 728, 729, 730, 782, 786]
+    "issues": [645, 648, 728, 729, 730, 782, 786, 821, 822, 823, 825, 826]
   },
   {
     "title": "Every provider, counted and priced exactly",
@@ -57,7 +57,7 @@
   {
     "title": "Where people meet Trazum",
     "description": "The editor extension on the VS Code Marketplace, the playground as a Hugging Face Space, the hosted web app measured for how fast it loads, off unless its operator asks, a page that says what Trazum Pro is and that it is not open yet, and a download page at /download for the files each release carries.",
-    "issues": [640, 646, 723, 774, 780, 781, 793]
+    "issues": [640, 646, 723, 774, 780, 781, 793, 827]
   },
   {
     "title": "The optional model pass",
