@@ -5,6 +5,8 @@ import { register } from 'node:module';
 import { before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { recordedVersion } from '../../../scripts/npm-channel.mjs';
+
 /**
  * `/download`: a page that tells a visitor what to run and what to fetch,
  * held to the sources it is drawn from and to what the repository says.
@@ -109,12 +111,13 @@ describe('the page and the documentation are one source', () => {
     }
     const mcp = JSON.parse(read('packages/mcp/package.json'));
     assert.equal(download.DOWNLOAD.mcpPackage, mcp.name);
-    assert.equal(download.DOWNLOAD.version, mcp.version);
+    assert.equal(download.DOWNLOAD.version, recordedVersion(mcp.version, ROOT));
   });
 
   it('is at the version the repository is at', () => {
-    assert.equal(download.DOWNLOAD.version, JSON.parse(read('package.json')).version);
-    assert.equal(download.DOWNLOAD.version, JSON.parse(read('apps/web/package.json')).version);
+    // The release on latest. On a next's tree the manifests carry the prerelease and the page keeps the release (scripts/npm-channel.mjs).
+    assert.equal(download.DOWNLOAD.version, recordedVersion(JSON.parse(read('package.json')).version, ROOT));
+    assert.equal(download.DOWNLOAD.version, recordedVersion(JSON.parse(read('apps/web/package.json')).version, ROOT));
   });
 
   it('shows the Action line the setup guide documents, and every pin the guide documents is that one', () => {

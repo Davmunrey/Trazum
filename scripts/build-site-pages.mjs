@@ -63,6 +63,7 @@ import { buildDocs, literal, moduleOf } from './build-docs-site.mjs';
 import { BRAND_FILES, pngSize } from './brand-files.mjs';
 import { fontPath } from './wordmark.mjs';
 import { assetNames, assetUrl, clients as installClients, mcpPackage, releaseUrl } from './install-snippets.mjs';
+import { recordedVersion } from './npm-channel.mjs';
 import { DELIBERATELY_UNPRICED } from './price-drift.mjs';
 import { FILE as MILESTONES_FILE, milestoneUrl, problemsWithFile } from './milestones.mjs';
 
@@ -547,7 +548,8 @@ export function buildBrand({ root = ROOT } = {}) {
 export function buildDownload({ root = ROOT } = {}) {
   const errors = [];
   const readJson = (path) => JSON.parse(readFileSync(join(root, path), 'utf8'));
-  const version = readJson('package.json').version;
+  // The release on latest: on a next's tree, not the prerelease its manifests carry (npm-channel.mjs).
+  const version = recordedVersion(readJson('package.json').version, root);
   const mcp = mcpPackage(root);
   if (mcp.version !== version) errors.push(`packages/mcp/package.json is at ${mcp.version} and package.json at ${version}`);
   const names = assetNames(version);

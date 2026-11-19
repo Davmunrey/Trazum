@@ -26,6 +26,7 @@
     "done": "node scripts/done.mjs",
     "coverage": "node scripts/coverage.mjs",
     "ruleset": "node scripts/ruleset.mjs",
+    "environments": "node scripts/environments.mjs",
     "milestones": "node scripts/milestones.mjs",
     "codacy": "node scripts/codacy.mjs",
     "lint": "biome lint --error-on-warnings .",

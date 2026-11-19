@@ -1,0 +1,38 @@
+{
+  "about": "The GitHub Environments this repository's workflows run under, as the repository states them. scripts/environments.mjs compares them with what GitHub enforces and, with an admin's own token, applies them. Secrets are listed by name only (`optional_secrets` may be absent: VERCEL_TEAM_ID is needed only when the Vercel project belongs to a team): a value never goes in this file, and the script never writes one. `branches` and `tags` are the deployment branch policy; null means any branch may use the environment. See docs/releasing.md and docs/setup.md, \"Staging and production\".",
+  "environments": [
+    {
+      "name": "staging",
+      "why": "Where the web app's merged build waits before production. Vercel's Git integration builds it on every merge to main, with domains not assigned, so no workflow job deploys it and none runs here today. Declared with its reviewer so a job that one day does deploy to staging is gated from its first run.",
+      "reviewers": ["Davmunrey"],
+      "prevent_self_review": false,
+      "wait_timer": 0,
+      "branches": ["main"],
+      "tags": [],
+      "secrets": [],
+      "optional_secrets": []
+    },
+    {
+      "name": "production",
+      "why": "promote-web.yml promotes a staged build of the web app, or rolls production back, under this environment. The approval is the button.",
+      "reviewers": ["Davmunrey"],
+      "prevent_self_review": false,
+      "wait_timer": 0,
+      "branches": ["main"],
+      "tags": [],
+      "secrets": ["VERCEL_TOKEN", "VERCEL_PROJECT_ID"],
+      "optional_secrets": ["VERCEL_TEAM_ID"]
+    },
+    {
+      "name": "release",
+      "why": "release.yml publishes to npm under this environment, on latest from main or a stable tag and on next from a v*.*.*-next.N tag. Any branch may enter it, because a dry run from a release pull request's branch is how the stored token is checked before the merge (docs/releasing.md); the approval, and the publish steps' push-only gate, are what stand between a branch and the registry.",
+      "reviewers": ["Davmunrey"],
+      "prevent_self_review": false,
+      "wait_timer": 0,
+      "branches": null,
+      "tags": null,
+      "secrets": ["NPM_TOKEN"],
+      "optional_secrets": []
+    }
+  ]
+}

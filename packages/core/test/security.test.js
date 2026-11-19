@@ -2022,8 +2022,8 @@ describe('the packaged Action', () => {
       .filter((step) => /NODE_AUTH_TOKEN/.test(step));
 
     const allowed = [
-      // An upload, from the package's own directory.
-      /^\s*run: npm publish --provenance --access public\s*$/m,
+      // An upload, from the package's own directory, on the channel decide chose (npm-channel.test.js).
+      /^\s*run: npm publish --provenance --access public --tag "\$NPM_DIST_TAG"\s*$/m,
       // The preflight, and nothing chained to it.
       /^\s*run: node scripts\/npm-publish-preflight\.mjs token\s*$/m,
     ];

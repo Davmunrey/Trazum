@@ -26,6 +26,8 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
+import { recordedVersion } from './npm-channel.mjs';
+
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const REPOSITORY_URL = 'https://github.com/Davmunrey/Trazum';
@@ -33,10 +35,14 @@ export const REPOSITORY_URL = 'https://github.com/Davmunrey/Trazum';
 /** The server's server name inside every client's own config. */
 export const SERVER_KEY = 'trazum';
 
-/** The package a client starts, and the version the repository is at. */
+/**
+ * The package a client starts, and the version the repository is at: the
+ * release on latest, which on a `next` tree is not the prerelease its
+ * manifests carry (npm-channel.mjs). A page never tells a reader to install a test build.
+ */
 export function mcpPackage(root = ROOT) {
   const manifest = JSON.parse(readFileSync(join(root, 'packages/mcp/package.json'), 'utf8'));
-  return { name: manifest.name, version: manifest.version };
+  return { name: manifest.name, version: recordedVersion(manifest.version, root) };
 }
 
 /**

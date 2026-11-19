@@ -148,6 +148,31 @@ Check it: the step's log says whether a token was set, never the token, and
 whether Codacy took the reports. Without the secret it says nothing is sent,
 and fetches nothing.
 
+### `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID`
+
+Environment secrets of the `production` environment, read by the two steps of
+`.github/workflows/promote-web.yml` and no other, which hand them to
+`scripts/promote-web.mjs`. The script sends the token to Vercel's API and to no
+other host, and never prints it. The job runs only after a reviewer approves it
+on the `production` environment, so nothing reaches the token before then.
+`VERCEL_PROJECT_ID` and `VERCEL_TEAM_ID` are identifiers rather than
+credentials; they are stored as secrets so that no Vercel identifier is
+written in this repository, and `VERCEL_TEAM_ID` is set only when the project
+belongs to a team. The token is the one to rotate: a leaked one can change
+which build serves the production domains.
+
+1. On Vercel's tokens page, make a new token for the account or team that
+   holds the project. Its value is shown once.
+2. Replace the `VERCEL_TOKEN` secret of the `production` environment.
+3. Delete the old token on the same page.
+4. Run `Promote the web app` with `promote` and the deployment production
+   serves now. It reads that deployment, refuses because it has served
+   production already, and changes nothing.
+
+Check it: that run's first step fails on the deployment's state and not with
+"Vercel answered 401" or "403". A refused token is answered before anything
+is changed.
+
 ### `N0_GITEA_HOST`, `N0_GITEA_USER`, `N0_GITEA_TOKEN`
 
 Read only by `.github/workflows/mirror-to-n0.yml`, which mirrors the repository

@@ -1,0 +1,89 @@
+name: Promote the web app
+
+# Production is promoted, never deployed.
+#
+# Every merge to main is built by Vercel's Git integration as a production
+# deployment that is *staged*: "Auto-assign Custom Production Domains" is off
+# on the Vercel project, so the build serves its own address and not the
+# production domains. That staged build is staging. This workflow is the
+# button that puts one on the production domains, without rebuilding it, so
+# what was looked at is what goes live; or that puts production back on a
+# build that served it before. docs/setup.md, "Staging and production", has
+# the whole flow and the Vercel pages it rests on.
+#
+# The button is the approval. The job runs under the `production`
+# environment, which has a required reviewer and admits main only, and holds
+# the Vercel token as an environment secret, so nothing reaches the token
+# before somebody approves. `.github/environments.json` states that
+# environment and `npm run environments` checks GitHub enforces it.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'promote: a staged build goes live. rollback: production goes back to a build that served it before.'
+        type: choice
+        options: [promote, rollback]
+        default: promote
+      deployment:
+        description: 'The deployment: its id (dpl_...) or its *.vercel.app address, from the Vercel dashboard or the commit status on main.'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  # One change to production at a time, and never cancelled halfway: Vercel
+  # runs one promotion or rollback per project and refuses the next with 409.
+  group: promote-web
+  cancel-in-progress: false
+
+jobs:
+  production:
+    name: Production
+    # The workflow file that runs is the one on the branch it was started
+    # from, so a branch could bring its own steps to the token. The
+    # environment admits main only as well; this says it in the file.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://trazum.vercel.app
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/promote-web.mjs
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+
+      # Read before anything changes: the deployment has to be a staged
+      # production build of this project to be promoted, and one that served
+      # production to be rolled back to. A preview would be rebuilt with
+      # production variables, which is a build nobody looked at. The inputs
+      # reach the script through the environment, never spliced into the
+      # shell.
+      - name: Is that deployment one this may target?
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          ACTION: ${{ inputs.action }}
+          DEPLOYMENT: ${{ inputs.deployment }}
+        run: node scripts/promote-web.mjs check "$ACTION" "$DEPLOYMENT"
+
+      - name: Promote it, or roll back to it
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+          ACTION: ${{ inputs.action }}
+          DEPLOYMENT: ${{ inputs.deployment }}
+        run: node scripts/promote-web.mjs "$ACTION" "$DEPLOYMENT"

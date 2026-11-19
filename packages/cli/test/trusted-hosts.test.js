@@ -49,7 +49,7 @@ const KINDS = new Set([
   'credential exchange',
   /** Public data, fetched with no credential at all. */
   'public data, no credential',
-  /** Reaches GitHub or npm. Never a model call, never a prompt. */
+  /** Reaches GitHub, npm or the web app's host. Never a model call, never a prompt. */
   'tooling, not a model call',
   /** Printed for a human to open. Nothing is sent here. */
   'documentation link',
@@ -97,6 +97,11 @@ const HOSTS = {
 
   'https://api.github.com': 'tooling, not a model call',
   'https://registry.npmjs.org': 'tooling, not a model call',
+  // Asked by `scripts/promote-web.mjs`, from `promote-web.yml` behind the
+  // `production` environment's approval, to read a deployment of the web app
+  // and put it on the production domains. The Vercel token goes here and
+  // nowhere else. A deployment platform, never a prompt.
+  'https://api.vercel.com': 'tooling, not a model call',
   // Asked by `scripts/codacy.mjs` for the findings Codacy lists on this
   // repository and its tool settings, and told with an account token what to
   // switch off and dismiss. A code-review service, never a prompt.
