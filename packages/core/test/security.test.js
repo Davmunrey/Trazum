@@ -2170,6 +2170,12 @@ describe('the packaged Action', () => {
       !/\.find\(\s*\(?entry\)?\s*=>\s*entry\.server\?\.name/.test(readback),
       'the read-back takes the first listing by name, which is whichever version the search returns first',
     );
+    // 3.0.1 published and the read-back failed anyway: the search answers 30
+    // entries a page, 3.0.1 was the thirty-first, and the step read one page.
+    assert.ok(
+      readback.includes('nextCursor'),
+      'the read-back reads only the first page of the search, so a server with more than 30 versions is never found',
+    );
     assert.ok(
       /for attempt in \$\(seq/.test(readback) && readback.includes('sleep'),
       'the read-back asks once rather than waiting for the registry to catch up',

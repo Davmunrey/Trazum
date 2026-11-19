@@ -622,6 +622,11 @@ jobs:
       # `mcp-registry-preflight.mjs` already learned this about npm and polls
       # until the answer arrives. The same lesson had not been applied one step
       # further down.
+      #
+      # **And it read one page.** The search answers 30 entries at a time and
+      # names the next page in `metadata.nextCursor`. 3.0.0 was the thirtieth
+      # version, so it was found; 3.0.1, the thirty-first, published correctly
+      # and the check failed a minute later, reading only the first page.
       - name: The registry serves what we just sent
         run: |
           set -euo pipefail
@@ -629,20 +634,30 @@ jobs:
           want="$(node -p "require('./packages/mcp/server.json').version")"
 
           for attempt in $(seq 1 12); do
-            listed="$(curl -fsSL "https://registry.modelcontextprotocol.io/v0.1/servers?search=$name" \
-              | node -e "
-                let raw = '';
-                process.stdin.on('data', (chunk) => { raw += chunk; });
-                process.stdin.on('end', () => {
-                  const [name, want] = process.argv.slice(1);
-                  const versions = (JSON.parse(raw).servers ?? [])
-                    .map((entry) => entry.server)
-                    .filter((server) => server?.name === name)
-                    .map((server) => server.version);
+            listed="$(node -e "
+                const [name, want] = process.argv.slice(1);
+                const versions = [];
+                let cursor;
+                (async () => {
+                  // Every page: the registry answers 30 entries at a time and
+                  // names the next page in metadata.nextCursor, so the version
+                  // just sent can sit past the first page.
+                  do {
+                    const url = new URL('https://registry.modelcontextprotocol.io/v0.1/servers');
+                    url.searchParams.set('search', name);
+                    if (cursor) url.searchParams.set('cursor', cursor);
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    const page = await response.json();
+                    for (const entry of page.servers ?? []) {
+                      if (entry.server?.name === name) versions.push(entry.server.version);
+                    }
+                    cursor = page.metadata?.nextCursor;
+                  } while (cursor);
                   // Every version the registry holds, so the answer cannot
                   // depend on which one the search happens to return first.
                   console.log(versions.includes(want) ? 'yes' : versions.join(',') || 'none');
-                });
+                })().catch(() => console.log('unreachable'));
               " "$name" "$want")" || listed='unreachable'
 
             if [ "$listed" = "yes" ]; then

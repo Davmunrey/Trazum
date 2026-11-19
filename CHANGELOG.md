@@ -13,7 +13,13 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-No changes yet.
+### Fixed
+
+- **A release's MCP registry check reads every page.** (#806) The registry's search answers 30 entries a page and names the next one in `metadata.nextCursor`. The check read only the first page, so 3.0.0, the thirtieth version, passed, and 3.0.1, the thirty-first, failed a minute after it had published correctly and was listed with its npm package and its `.mcpb`. The check now follows the cursor until there is none. `security.test.js` fails when the cursor is removed from the step.
+
+### Changed
+
+- **The Homebrew formula names `@trazum/cli` 3.0.1**, with the SHA-256 `59eb2a96…079a` of the tarball npm serves, checked against `sha256sum` on that tarball.
 
 ## 3.0.1 — 2026-11-19
 
