@@ -190,3 +190,17 @@ export function billRange(input: {
     leftOut,
   };
 }
+
+/**
+ * The recorded figure divided by each delivery count (#825): the arithmetic and
+ * nothing else. `null` where the count is zero, so a figure is never divided by
+ * nothing and never printed as $0. It is an average over the span: it says
+ * nothing about what any one commit, pull request or day was worth or cost.
+ */
+export function perDelivery(
+  usd: number,
+  delivery: { commits: number; pullRequests: number; days: number },
+): { perCommit: number | null; perPullRequest: number | null; perDay: number | null } {
+  const per = (count: number): number | null => (count > 0 ? usd / count : null);
+  return { perCommit: per(delivery.commits), perPullRequest: per(delivery.pullRequests), perDay: per(delivery.days) };
+}

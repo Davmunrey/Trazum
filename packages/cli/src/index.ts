@@ -263,6 +263,7 @@ import type {
 import {
   GitUnavailableError,
   commitTimes,
+  rangeDelivery,
   contentAt,
   gitAvailable,
   namesByRevision,
@@ -272,7 +273,7 @@ import {
   runSelf,
 } from './git.js';
 import type { Revision } from './git.js';
-import { billRange, projectLabelOfRoot, windowOf } from './bill-range.js';
+import { billRange, perDelivery, projectLabelOfRoot, windowOf } from './bill-range.js';
 import { canonicalZone, dayInZone, groupByDayInZone, nextDay, startOfDayInZone } from './zone.js';
 import { currentFileDigests, planEditsFor } from './plan-edits.js';
 import { baseGateFails, priceAgainstBase, readBothSides, volumeFor } from './base-cost.js';
@@ -918,7 +919,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'send', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'git-range', 'since', 'until', 'by', 'agent', 'timezone'],
+  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'send', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'git-range', 'delivery', 'since', 'until', 'by', 'agent', 'timezone'],
   weekly: ['label', 'label-from-project', 'out', 'o', 'until', 'notify', 'pricing', 'pricing-live'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
@@ -3674,6 +3675,7 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   /* A range of commits asks a different question and prints its own statement (#777). */
   const gitRange = stringFlag(args, 'git-range');
   if (gitRange !== undefined) return billGitRange(args, gitRange, pricing, t);
+  if (args.flags.has('delivery')) throw new Error(t.bill.deliveryNeedsRange());
   /*
     The statement answers first (#758). What was read, file by file, is a
     note on the answer, and on a terminal it printed above it: five lines of
@@ -4082,6 +4084,17 @@ async function billGitRange(args: Args, range: string, pricing: PricingCatalogue
   const answer = billRange({ claudeCodeLines, otherSources, project, window, catalogue: pricing });
   if (answer.projectRecords === 0) throw new Error(t.bill.rangeNoProject());
 
+  /* `--delivery`: what git shows landed in the same range, as counts (#825). */
+  let delivery: ReturnType<typeof rangeDelivery> = null;
+  if (boolFlag(args, 'delivery')) {
+    try {
+      delivery = rangeDelivery(range, { cwd: root });
+    } catch (error) {
+      if (error instanceof GitUnavailableError) throw new Error(t.bill.rangeNoGit());
+      throw error;
+    }
+  }
+
   const at = (ms: number): string => new Date(ms).toISOString().replace('.000Z', 'Z');
   const out: string[] = [
     '',
@@ -4104,6 +4117,17 @@ async function billGitRange(args: Args, range: string, pricing: PricingCatalogue
   const left = answer.leftOut;
   out.push(t.bill.rangeLeftOut(answer.outsideCalls, left.otherProjects, left.otherSources, left.undated));
   if (answer.inside.unpricedCalls > 0) out.push(t.bill.rangeUnpriced(answer.inside.unpricedCalls));
+  /* After everything the plain view prints, so the flag only adds lines at the end (#825). */
+  if (delivery !== null) {
+    out.push('', t.bill.rangeDelivered(delivery.commits, delivery.merges, delivery.pullRequests, delivery.days));
+    if (answer.inside.sessions > 0) {
+      const per = perDelivery(answer.inside.usd, delivery);
+      const fmt = (usd: number | null): string | null => (usd === null ? null : formatUsd(usd));
+      out.push(t.bill.rangeDividedBy(fmt(per.perCommit), fmt(per.perPullRequest), fmt(per.perDay)));
+    } else {
+      out.push(t.bill.rangeDividedNothing());
+    }
+  }
   out.push('');
   console.log(out.join('\n'));
   if (gathered.claudeCodeFiles > 0) console.error(t.bill.apiEquivalent());

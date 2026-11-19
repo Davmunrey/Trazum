@@ -4287,6 +4287,51 @@ inside and the part outside.
   `--receipt`, `--send`, `--table`, `--stamp`, `-o` and every `--*-out` are refused
   beside it by name, because a flag quietly overridden would put another period on the
   page than the one asked for.
+- **Beside what landed: `--delivery` (#825).** "What did we get for it" is the
+  next question after "what did it cost", and local git can answer part of it.
+  `bill --git-range main..HEAD --delivery` adds two lines at the end of the same
+  view and changes none above them:
+
+  ```
+  Landed in the same range, from local git: 8 commit(s), 1 of them merge commits; 2 pull request(s) named by number in a subject; 2 UTC day(s) with a commit. A pull request merged by rebase names no number, so that count can be low.
+  The figure above divided by each count: $0.5000 per commit, $2.00 per pull request, $2.00 per day. Two numbers over one span, not what any commit, pull request or day cost.
+  ```
+
+  That is the output for the made-up repository of `bill-git-delivery.test.js`,
+  worked out by hand there: $4.00 recorded, over 8 commits, 2 pull requests and 2
+  days. It is one flag and not a `--by commit|pr|day`, on purpose: `--by` already
+  cuts a bill into days, weeks and months, and a per-commit or per-pull-request
+  row would be a figure for one change, which the transcripts cannot give (see
+  below). What the flag prints is the one figure the view already stands behind,
+  divided by three counts.
+  - **Commits** are every commit `git log` lists for the range, merge commits
+    included and said (`1 of them merge commits`), the same count as the span line.
+  - **Pull requests** are counted from local git alone, by the number in two
+    shapes GitHub writes: `Merge pull request #N from ...` on a merge commit, and
+    `... (#N)` closing the subject of a squash commit. A number counts once however
+    many commits carry it. The subject is read for that number and goes out of
+    scope: only the number is kept, and no number is printed. A pull request merged
+    by rebase leaves no number in git, a subject that mentions `(#N)` anywhere but
+    its end does not count, and a squash commit on `main` is only in the range if
+    the range reaches it, so the count is a floor and says so. With none named, the
+    line says there is no figure per pull request and never prints $0.
+  - **Days** are UTC calendar days on which a commit was *committed*, the day it
+    landed, and not the day it was written: a commit written on a Monday and
+    rebased on a Wednesday is a Wednesday here. `--timezone` is refused beside
+    `--git-range`, so the days are UTC like the span.
+  - **Only metadata is read**: the log is asked for the parents, the commit time
+    and the subject, and never for a name, an email, a body or a hash, which
+    `bill-git-delivery.test.js` holds by the exact format string and by greping
+    the output for the names, subjects, branch and hashes of its made-up commits.
+  - **The division is the only arithmetic**, over the figure of the sessions that
+    began and ended inside the span, not the ones named as straddling. It is an
+    average over one span: it does not say that a commit, a pull request or a day
+    cost that amount, and the line says so, in the same words as the figure above
+    it. With no session inside the span there is nothing to divide, and it says
+    that instead. The team roll-up of this is Trazum Pro's, not this command's.
+  - `--delivery` without `--git-range` is refused by name. Without `--delivery`
+    the output is byte for byte what it was, held by
+    `bill-git-delivery.test.js`. It is also refused beside the flags `--git-range` refuses.
 - **On a pull request.** The Action does not take `--git-range`, and that is on
   purpose: the sessions are on the developer's machine, and a hosted runner has
   none, so a step there would print nothing or, worse, a figure from a folder
