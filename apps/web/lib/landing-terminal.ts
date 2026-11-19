@@ -94,7 +94,7 @@ export const TERMINAL: readonly TerminalBlock[] = [
       [],
       [["Beyond shortening the prompt","b"]],
       [["  ",""],["→","a"],[" ",""],["$8.34","g"],["  ",""],["This task may not need Claude Opus 5","b"]],
-      [["           ",""],["By length and vocabulary the prompt looks like \"haiku\" complexity.","d"]],
+      [["           ",""],["By length and vocabulary the prompt looks like \"small\" complexity.","d"]],
       [["           On Claude Haiku 5.5 you would go from $8.51 to $0.1702 per month.","d"]],
       [["           This is a keyword heuristic, not a judgement about answer quality.","d"]],
       [["           Measure it before switching in production: `trazum route","d"]],

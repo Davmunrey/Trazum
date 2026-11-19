@@ -130,10 +130,10 @@ is not a report:
 | `createdAt` | When the plan was made (ISO 8601). A prediction nobody dated is a prediction nobody can be held to. |
 | `span` | The period the figures cover, or null when the log carried no clock. |
 | `pricingLastReviewed` | The price catalogue behind every dollar — the overlay's date when one was in effect, so a later check can tell "the prediction was wrong" from "the prices changed". |
-| `actions[]` | Ranked, largest money first. Each has `kind` (`route`, `batch`, `route+batch`, `fix-truncation`, `fix-caching`), `label`, `model`, and exactly one of `savingUsd` (projected) or `stakeUsd` (already spent, measured) — never both, because a projection and a measurement in one field is a number that is neither. |
+| `actions[]` | Ranked, largest money first. Each has `kind` (`route`, `batch`, `route+batch`, `fix-truncation`, `fix-caching`, `edit-file`), `label`, `model`, and exactly one of `savingUsd` (projected) or `stakeUsd` (already spent, measured) — never both, because a projection and a measurement in one field is a number that is neither. An `edit-file` action, which only `--edits` writes and which comes last, carries neither: its figure is `detail.baseline`, measured. |
 | `actions[].assumes[]` | What the log cannot confirm, as typed objects (`{"kind": "model-capability", "model": ...}`, `{"kind": "batch-window"}`, ...) rather than prose — renderers localize them, and a verification can match them structurally. |
 | `actions[].check` | The Trazum command that can check the assumption, when one exists. |
-| `actions[].detail` | `routeTo` for the moved calls; `measured` for the pieces behind a stake (the wasted and retry dollars, the cache counterfactual); `baseline` — the slice as the plan saw it (calls, dollars, tokens per call), the "before" a later verification attributes the world's movement against. |
+| `actions[].detail` | `routeTo` for the moved calls; `measured` for the pieces behind a stake (the wasted and retry dollars, the cache counterfactual); `baseline` — the slice as the plan saw it (calls, dollars, tokens per call), the "before" a later verification attributes the world's movement against; `edit` for an `edit-file` action, its fields in [the plan document](plan-format.md#an-edit). |
 | `projectedSavingUsd` | Projected savings summed. Additive by construction: same-slice compositions arrive pre-combined inside one action. With `--min-usd` it covers only the actions the document holds — the file never contradicts itself; what was dropped is stated on the terminal with its worth. |
 | `measuredStakeUsd` | Measured stakes summed — money already paid to problems this plan names, kept apart from the projections. Filtered the same way. |
 | `totalUsd` | The bill the plan was made against. |
@@ -694,3 +694,18 @@ instruction block's state, not whether a harness loaded or obeyed it.
 | `policyId` | `repeat-review-v1`. |
 | `applied` | `true` after apply, `false` after revert. |
 | `changed` | Whether this invocation changed the selected instruction file; idempotent repeats return `false`. |
+
+## The capability an advisory names
+
+No field of any document above carries it, and this is where a consumer who
+reads the `model-downgrade` advisory in `trazum optimize --json`, or in the
+response of `POST /api/optimize`, will look. The advisory's `detail` is a
+sentence for a person, and it quotes what the heuristic judged the prompt to
+need in the words a catalogue model's `capability` has: `small`, `mid` or
+`large`. Until 3.0.0 it quoted `haiku`, `sonnet` or `opus`. Read the sentence
+for display and never parse it: the id, the severity and `estimatedMonthlyUsd`
+are the fields. The same three names are what `recommendTier` returns and what
+`cheapestOfCapability` takes in code. `capability-names.test.js`, in the core
+and in the CLI, and `api.test.mjs` hold that none of the old three is quoted on
+those surfaces. The MCP server's `optimize_prompt` prints an advisory's title
+and not its detail, so no name reaches it.

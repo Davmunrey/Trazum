@@ -893,6 +893,28 @@ export interface CliMessages {
     /** A --since/--until window no record falls in: refused, never a $0 bill. */
     windowMatchesNothing(from: string, to: string): string;
     written(file: string): string;
+    /** --git-range cannot be combined with a flag that sets the period, the project or an output. */
+    rangeConflict(flag: string): string;
+    /** git could not be run, or the directory is not inside a repository. */
+    rangeNoGit(): string;
+    rangeNoRepository(): string;
+    /** git did not know the range. */
+    rangeBad(range: string): string;
+    /** The range holds no commit, so it has no span. */
+    rangeEmpty(range: string): string;
+    rangeHeading(range: string): string;
+    rangeWindow(from: string, to: string, commits: number): string;
+    rangeInside(usd: string, calls: number, sessions: number): string;
+    rangeNothingInside(): string;
+    rangeStraddleHeading(count: number): string;
+    rangeStraddleRow(session: string, from: string, to: string, insideUsd: string, insideCalls: number, outsideUsd: string, outsideCalls: number): string;
+    rangeNoStraddle(): string;
+    /** What the figure is, and that it is not the cost of the change. */
+    rangeMeaning(): string;
+    rangeLeftOut(outsideCalls: number, otherProjects: number, otherSources: number, undated: number): string;
+    rangeUnpriced(calls: number): string;
+    /** No record of any session read belongs to this repository's project folder. */
+    rangeNoProject(): string;
   };
 
   fromOpenrouter: {
@@ -1342,6 +1364,43 @@ export interface CliMessages {
     filesFromSummary(checked: number, listed: number, dropped: number): string;
     /** The baseline is whole-repository; a partial list checks budgets only. */
     filesFromNoBaseline(): string;
+  };
+
+  /**
+   * `check --base` (#785): each changed prompt's cost on the base branch and
+   * on the head. One section for the terminal and the Markdown report, so
+   * the two say the same thing about the same figures.
+   */
+  againstBase: {
+    /** `ref` as given, `sha` its short commit. */
+    heading(ref: string, sha: string): string;
+    columnTokens(): string;
+    columnCalls(): string;
+    columnBase(): string;
+    columnHead(): string;
+    columnPrice(): string;
+    notStated(): string;
+    perMonth(usd: string): string;
+    perCall(usd: string): string;
+    /** Every figure's price, and who said so on which day. */
+    price(perMTok: string, model: string, provider: string, readOn: string): string;
+    priceOverlay(perMTok: string, model: string, readOn: string): string;
+    promo(until: string): string;
+    totals(base: string, head: string, change: string): string;
+    perCallNote(count: number): string;
+    inputOnly(): string;
+    modelDefault(model: string): string;
+    unchanged(count: number): string;
+    nothingChanged(): string;
+    gateWithin(change: string, limit: string): string;
+    gateBreached(change: string, limit: string): string;
+    gateNotJudged(count: number): string;
+    unavailable(why: 'no-git' | 'not-a-repository' | 'no-commit', ref: string): string;
+    gateUnavailable(limit: string): string;
+    /** `--max-monthly-increase-usd` compares with a base, so it needs one. */
+    gateNeedsBase(): string;
+    /** Standard input has no base side to read. */
+    noStdin(): string;
   };
 
   /**
@@ -2067,6 +2126,18 @@ export interface CliMessages {
     footer(): string;
     /** The plan saved as dated JSON — what 1.39's verify will hold it to. */
     wrote(path: string): string;
+    /** `--edits` with no `labels` in the configuration: there is no file to read. */
+    editsNeedLabels(): string;
+    /** `--reorder` without `--edits`: it is a step of an edit, not a plan of its own. */
+    reorderNeedsEdits(): string;
+    /** An edit's measured figure: the workload's bill as the log measured it. */
+    editMeasured(usd: string, calls: string, inputPerCall: string): string;
+    /** What the edit does to which file, with the estimator's tokens labelled as estimated. */
+    editChange(path: string, reordered: boolean, tokensBefore: string, tokensAfter: string): string;
+    /** How verify checks an edit. */
+    editCheck(): string;
+    /** A label the configuration maps to a file that produced no edit, and why. */
+    editSkipped(why: 'no-traffic' | 'unreadable' | 'not-tracked' | 'source-file' | 'unchanged', label: string, path: string): string;
   };
 
   /**
@@ -2124,6 +2195,16 @@ export interface CliMessages {
     allWithin(gates: string): string;
     webhookFailed(status: string): string;
     watching(minutes: string): string;
+    /** `--sessions` names each folder it reads, so nothing is read silently. */
+    readingSessions(agent: string, dir: string): string;
+    /** `--sessions` and `--payload` name two sources, and a cycle has one. */
+    sessionsAndPayload(): string;
+    /** Sessions were found and none of them holds usage a price can be put on. */
+    noSessionUsage(): string;
+    /** `--notify` on a platform with no notifier: said, and the other transports carry on. */
+    notifyUnavailable(command: string): string;
+    /** The notifier is there and refused, usually because nobody is at a desktop. */
+    notifyFailed(command: string, why: string): string;
   };
 
   /**
@@ -2277,6 +2358,10 @@ export interface CliMessages {
     batchUnobservable(): string;
     truncationObserved(retryBillUsd: string): string;
     cacheObserved(deltaUsd: string, outcome: VerifyOutcome): string;
+    /** An edit landed: the workload's input per call, before and after, measured. */
+    editObserved(before: string, after: string): string;
+    /** An edit did not land: the file still holds the text the plan was made from. */
+    editNotMade(path: string): string;
     /** The world's movement, measured: never a verdict, always both numbers. */
     attribution(callsBefore: string, callsAfter: string, outBefore: string, outAfter: string): string;
     gateFailed(failures: string, total: string): string;
@@ -2345,6 +2430,52 @@ export interface CliMessages {
     money(before: string, after: string, delta: string): string;
     moneyIncomparableScenario(): string;
     moneyIncomparablePricing(was: string, now: string): string;
+  };
+  /**
+   * `trazum weekly`: the week in Markdown, written to be read in an issue by
+   * somebody who did not run it.
+   *
+   * Every figure these sentences carry is handed in already formatted, and
+   * `strayFigures` reads the finished text back against the two weeks' bills,
+   * so a sentence here cannot introduce a number of its own. The three words a
+   * reader must never have to infer are in them: *measured* for the two
+   * weeks, *projected* for a saving that has not happened, and what `verify`
+   * will say afterwards.
+   */
+  weekly: {
+    heading(firstDay: string, lastDay: string): string;
+    billHeading(): string;
+    billTotal(usd: string, calls: string): string;
+    /** The week holds no call: said as that, never as a bill of nothing. */
+    noCalls(firstDay: string, lastDay: string): string;
+    colModel(): string;
+    colCalls(): string;
+    colUsd(): string;
+    moreModels(count: string): string;
+    unpriced(models: string, calls: string): string;
+    undated(count: string): string;
+    movedHeading(firstDay: string, lastDay: string): string;
+    /** The week before holds no call, so there is nothing to compare with. */
+    noWeekBefore(): string;
+    moved(delta: string, pct: string | null, now: string, before: string, calls: string): string;
+    unchanged(now: string, before: string): string;
+    moversHeading(): string;
+    mover(model: string, before: string, now: string, delta: string): string;
+    changesHeading(): string;
+    noChanges(): string;
+    projected(usd: string): string;
+    stake(usd: string): string;
+    measuredBefore(usd: string, calls: string): string;
+    moreChanges(count: string): string;
+    verifyHow(): string;
+    footer(): string;
+    /** The summary was not written: a figure in it is in neither week's bill. */
+    strayFigures(figures: string): string;
+    wrote(path: string): string;
+    /** The one sentence a desktop notification carries: the bill, and the movement when there is one to state. */
+    notifyUnavailable(command: string): string;
+    notifyFailed(command: string, why: string): string;
+    headline(usd: string, calls: string, delta: string | null, pct: string | null): string;
   };
   /** `trazum proactive`: what speaks first, turned on and off from one command. */
   proactive: {

@@ -1,0 +1,12 @@
+{
+  "name": "trazum",
+  "version": "3.0.1",
+  "description": "What your AI agents cost, priced from the logs on this machine, and a check on a prompt before it is sent. The server answers when asked; it intercepts nothing and sends nothing anywhere.",
+  "mcpServers": {
+    "trazum": {
+      "command": "npx",
+      "args": ["-y", "@trazum/mcp@3.0.1"]
+    }
+  },
+  "contextFileName": ".claude/skills/trazum/SKILL.md"
+}

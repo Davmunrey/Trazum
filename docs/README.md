@@ -39,7 +39,7 @@ Then, if you want to know whether to trust the numbers:
   each run's test results, to find the test that fails now and then, and the
   size of the web app's built files.
 - **[End-to-end tests](end-to-end-tests.md)**: the web app in a real browser,
-  doing what a visitor does: the twenty-three flows, the figures they expect and
+  doing what a visitor does: the twenty-five flows, the figures they expect and
   where those come from, and what a green run does not say.
 - **[Mutation testing](mutation-testing.md)**: whether the tests would notice
   if the code stopped doing what they check: the files it runs on, the score as
@@ -87,6 +87,7 @@ In the order somebody actually meets them:
 | [The plan document](plan-format.md) | The one output meant to be kept, committed and diffed |
 | [JSON output](json-output.md) | Every machine-readable document, field by field |
 | [The format](format.md) | What another tool must do to emit or read this format |
+| [The pricing dataset](pricing-dataset.md) | The price catalogue as JSON with every release: each row's page and date, and what it refuses |
 
 ## I am extending it
 

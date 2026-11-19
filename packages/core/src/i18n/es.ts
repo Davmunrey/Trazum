@@ -182,9 +182,9 @@ export const es: CoreMessages = {
         'La Batch API aplica un 50% de descuento sobre entrada y salida. La mayoría de lotes terminan en menos de una hora, con un máximo de 24. Sirve para clasificación masiva, enriquecimiento de datos o evaluaciones: cualquier cosa que no responda a un usuario en tiempo real.',
     }),
 
-    modelDowngrade: ({ modelName, tier, candidateName, currentUsd, candidateUsd }) => ({
+    modelDowngrade: ({ modelName, capability, candidateName, currentUsd, candidateUsd }) => ({
       title: `Esta tarea quizá no necesite ${modelName}`,
-      detail: `Por longitud y vocabulario, el prompt parece de complejidad "${tier}". Con ${candidateName} pasarías de ${currentUsd} a ${candidateUsd} al mes. Es una heurística por palabras clave, no un juicio de calidad. Mídelo antes de cambiar en producción: \`trazum route <log.jsonl> --prompt-file <prompt> --cases <casos> --yes\` envía los mismos casos a ambos modelos y dice si el barato sigue haciendo el trabajo.`,
+      detail: `Por longitud y vocabulario, el prompt parece de complejidad "${capability}". Con ${candidateName} pasarías de ${currentUsd} a ${candidateUsd} al mes. Es una heurística por palabras clave, no un juicio de calidad. Mídelo antes de cambiar en producción: \`trazum route <log.jsonl> --prompt-file <prompt> --cases <casos> --yes\` envía los mismos casos a ambos modelos y dice si el barato sigue haciendo el trabajo.`,
     }),
 
     tierSignalsConflict: ({ complexSignals, simpleSignals }) => ({

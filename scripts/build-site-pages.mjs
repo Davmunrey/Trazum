@@ -62,6 +62,7 @@ import { UnknownConstruct, inlineText, parseMarkdown, walkBlocks, walkInlines } 
 import { buildDocs, literal, moduleOf } from './build-docs-site.mjs';
 import { BRAND_FILES, pngSize } from './brand-files.mjs';
 import { fontPath } from './wordmark.mjs';
+import { assetNames, assetUrl, clients as installClients, mcpPackage, releaseUrl } from './install-snippets.mjs';
 import { DELIBERATELY_UNPRICED } from './price-drift.mjs';
 import { FILE as MILESTONES_FILE, milestoneUrl, problemsWithFile } from './milestones.mjs';
 
@@ -72,7 +73,7 @@ export const GENERATED = join(ROOT, 'apps/web/lib/history/generated');
 /** What a release's number may be. It becomes a file name, an address and a key. */
 export const VERSION = /^(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})\.(0|[1-9]\d{0,3})$/;
 
-const WRITER = "scripts/build-site-pages.mjs from CHANGELOG.md, ROADMAP.md, .github/milestones.json, DESIGN.md, globals.css and the catalogue's source";
+const WRITER = "scripts/build-site-pages.mjs from CHANGELOG.md, ROADMAP.md, .github/milestones.json, DESIGN.md, globals.css, the catalogue's source, the install snippets and the setup guide";
 
 /** How many releases, besides the unreleased changes, `/changelog` draws in full. */
 export const FEATURED = 3;
@@ -535,14 +536,52 @@ export function buildBrand({ root = ROOT } = {}) {
 /* Writing                                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * What `/download` is made of, read from the files that hold each fact: the
+ * install snippets from `scripts/install-snippets.mjs` (the source
+ * `docs/agents.md` is held to), the names of the release's files from the same
+ * module, the version from `package.json`, and the Action's pinned line from
+ * the setup guide, the first place a reader is told to copy it. Every pin the
+ * setup guide documents must be the same one, or the build stops and says so.
+ */
+export function buildDownload({ root = ROOT } = {}) {
+  const errors = [];
+  const readJson = (path) => JSON.parse(readFileSync(join(root, path), 'utf8'));
+  const version = readJson('package.json').version;
+  const mcp = mcpPackage(root);
+  if (mcp.version !== version) errors.push(`packages/mcp/package.json is at ${mcp.version} and package.json at ${version}`);
+  const names = assetNames(version);
+  const file = (name) => ({ name, url: assetUrl(version, name) });
+
+  const PIN = /Davmunrey\/Trazum@([0-9a-f]{40}) {2}# (\d+\.\d+\.\d+)/g;
+  const setup = readFileSync(join(root, 'docs/setup.md'), 'utf8');
+  const pins = new Set([...setup.matchAll(PIN)].map((match) => `${match[1]} ${match[2]}`));
+  if (pins.size !== 1) errors.push(`docs/setup.md pins the Action ${pins.size} different ways; the download page shows one`);
+  const [sha, label] = [...pins][0]?.split(' ') ?? ['', ''];
+
+  return {
+    errors,
+    data: {
+      version,
+      mcpPackage: mcp.name,
+      cliPackage: readJson('packages/cli/package.json').name,
+      clients: installClients(mcp),
+      files: { vsix: file(names.vsix), mcpb: file(names.mcpb), sums: file(names.sums), sbom: file(names.sbom) },
+      releaseUrl: releaseUrl(version),
+      action: { sha, label },
+    },
+  };
+}
+
 /** Everything the three pages are made of. Nothing is written. */
 export function buildSitePages({ root = ROOT } = {}) {
   const docs = buildDocs({ root });
   const changelog = buildChangelog({ root, docs });
   const roadmap = buildRoadmap({ root, docs });
   const brand = buildBrand({ root });
+  const download = buildDownload({ root });
   let sources = {};
-  const errors = [...docs.errors.filter((message) => message.startsWith('CHANGELOG.md') || message.startsWith('ROADMAP.md')), ...changelog.errors, ...roadmap.errors, ...brand.errors];
+  const errors = [...docs.errors.filter((message) => message.startsWith('CHANGELOG.md') || message.startsWith('ROADMAP.md')), ...changelog.errors, ...roadmap.errors, ...brand.errors, ...download.errors];
   try {
     sources = providerSources(readFileSync(join(root, 'packages/core/src/pricing.ts'), 'utf8'));
   } catch (error) {
@@ -553,7 +592,7 @@ export function buildSitePages({ root = ROOT } = {}) {
   for (const image of docs.images) {
     if (/^CHANGELOG|^ROADMAP/.test(image)) errors.push(`${image}: the changelog and the roadmap pages do not copy images`);
   }
-  return { docs, changelog, roadmap, brand, sources, unpriced: deliberatelyUnpriced(), errors };
+  return { docs, changelog, roadmap, brand, download: download.data, sources, unpriced: deliberatelyUnpriced(), errors };
 }
 
 /** Write what `buildSitePages` returned, replacing what a previous run wrote. */
@@ -595,6 +634,7 @@ export function writeSitePages(result, { generated = GENERATED } = {}) {
   const { tokens, typeface, voice, dont, files } = result.brand;
   writeFileSync(join(generated, 'brand.ts'), moduleOf({ tokens, typeface, voice, dont, files }, 'BrandData', '../types', WRITER));
   writeFileSync(join(generated, 'models.ts'), moduleOf({ sources: result.sources, unpriced: result.unpriced }, 'ModelsExtra', '../types', WRITER));
+  writeFileSync(join(generated, 'download.ts'), moduleOf(result.download, 'DownloadData', '../types', WRITER));
   return { indexBytes: Buffer.byteLength(moduleOf(index, 'ChangelogIndex', '../types', WRITER)), pages: pages.length };
 }
 
@@ -608,7 +648,7 @@ function main() {
   const written = writeSitePages(result);
   const { index } = changelogModules(result.changelog);
   console.log(
-    `site pages: ${result.changelog.releases.length} changelog entries (${index.featured.length} drawn in full, ${written.indexBytes} bytes of module), ${result.roadmap.milestones.length} milestones, ${Object.keys(result.sources).length} provider sources, ${result.unpriced.length} unpriced models listed, ${result.brand.tokens.length} colour tokens and ${result.brand.files.length} brand files`,
+    `site pages: ${result.changelog.releases.length} changelog entries (${index.featured.length} drawn in full, ${written.indexBytes} bytes of module), ${result.roadmap.milestones.length} milestones, ${Object.keys(result.sources).length} provider sources, ${result.unpriced.length} unpriced models listed, ${result.brand.tokens.length} colour tokens, ${result.brand.files.length} brand files and ${result.download.clients.length} install snippets for ${result.download.version}`,
   );
 }
 

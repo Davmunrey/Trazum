@@ -31,6 +31,11 @@ skills-lock.json
 # cannot cost somebody that.
 *.vsix
 
+# The MCP bundle, and the folder scripts/release-assets.mjs writes into: the
+# release carries them, the repository does not.
+*.mcpb
+/release-assets/
+
 # Written by `npm run coverage`; the Coverage workflow uploads it and nothing keeps it.
 /coverage/
 

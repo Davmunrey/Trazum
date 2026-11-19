@@ -10,8 +10,8 @@ import {
   applyPricingOverlay,
   buildAdvisories,
   catalogueFromOverlay,
-  cheapestOfTier,
-  cheapestOfTierIn,
+  cheapestOfCapability,
+  cheapestOfCapabilityIn,
   listModels,
   openrouterOverlay,
   parsePricingOverlay,
@@ -28,6 +28,11 @@ import { record } from '../../../scripts/record-recommendations.mjs';
  * not come back on a model, an overlay that still writes it is refused by
  * name, and every recommendation that used to choose by it chooses by
  * `capability` and gives the answer it gave before.
+ *
+ * `recommendTier` and the lookups that take its answer speak `capability`
+ * too, `small`, `mid` and `large`, and the recorded answers were carried over
+ * to those names without changing a model: `capability-names.test.js` holds
+ * the names and the surfaces they reach.
  */
 
 const source = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -151,7 +156,7 @@ describe('recommendations choose by `capability`, and give the answers they gave
   /**
    * Recorded from the tree before the removal, where they chose by `tier`.
    * Every model in the catalogue, at three prompts the heuristic reads as
-   * `haiku`, `sonnet` and `opus`, and the cheapest of each tier by provider.
+   * `small`, `mid` and `large`, and the cheapest of each capability by provider.
    * A catalogue change that moves one of these answers is a recommendation
    * changing: `node scripts/record-recommendations.mjs` writes the file again
    * from the build; read its diff, commit it with the change and say why.
@@ -188,12 +193,12 @@ describe('recommendations choose by `capability`, and give the answers they gave
     }
   });
 
-  it('the cheapest of each tier', () => {
-    for (const [tier, id] of Object.entries(recorded.cheapestOfTier)) {
-      assert.equal(or(() => cheapestOfTier(tier)), id, `cheapestOfTier(${tier})`);
-      for (const [provider, expected] of Object.entries(recorded.cheapestOfTierIn[tier])) {
-        const found = or(() => cheapestOfTierIn(BUNDLED_CATALOGUE, tier, on, provider === '*' ? undefined : provider));
-        assert.equal(found, expected, `cheapestOfTierIn(${tier}, ${provider})`);
+  it('the cheapest of each capability', () => {
+    for (const [capability, id] of Object.entries(recorded.cheapestOfCapability)) {
+      assert.equal(or(() => cheapestOfCapability(capability)), id, `cheapestOfCapability(${capability})`);
+      for (const [provider, expected] of Object.entries(recorded.cheapestOfCapabilityIn[capability])) {
+        const found = or(() => cheapestOfCapabilityIn(BUNDLED_CATALOGUE, capability, on, provider === '*' ? undefined : provider));
+        assert.equal(found, expected, `cheapestOfCapabilityIn(${capability}, ${provider})`);
       }
     }
   });
@@ -216,13 +221,13 @@ describe('recommendations choose by `capability`, and give the answers they gave
 
   it('a model is ranked by the `capability` it carries', () => {
     // Nothing can write `tier` any more, so moving `capability` alone must move
-    // the answer: Haiku 5.5 restated as `mid` stops being the cheapest `haiku`
-    // and becomes the cheapest `sonnet`.
-    const anthropic = (catalogue, tier) => or(() => cheapestOfTierIn(catalogue, tier, on, 'anthropic'));
-    assert.equal(anthropic(BUNDLED_CATALOGUE, 'haiku'), 'claude-haiku-5-5', 'the example moved: pick another');
+    // the answer: Haiku 5.5 restated as `mid` stops being the cheapest `small`
+    // and becomes the cheapest `mid`.
+    const anthropic = (catalogue, capability) => or(() => cheapestOfCapabilityIn(catalogue, capability, on, 'anthropic'));
+    assert.equal(anthropic(BUNDLED_CATALOGUE, 'small'), 'claude-haiku-5-5', 'the example moved: pick another');
     const moved = catalogueFromOverlay(JSON.stringify({ lastReviewed: '2027-01-15', models: { 'claude-haiku-5-5': { capability: 'mid' } } }));
-    assert.notEqual(anthropic(moved, 'haiku'), 'claude-haiku-5-5');
-    assert.equal(anthropic(moved, 'sonnet'), 'claude-haiku-5-5');
+    assert.notEqual(anthropic(moved, 'small'), 'claude-haiku-5-5');
+    assert.equal(anthropic(moved, 'mid'), 'claude-haiku-5-5');
 
     // And the advisory, on two models an overlay adds with no provider.
     const added = catalogueFromOverlay(
@@ -235,13 +240,13 @@ describe('recommendations choose by `capability`, and give the answers they gave
         },
       }),
     );
-    const [prompt, tokens] = recorded.prompts.haiku;
+    const [prompt, tokens] = recorded.prompts.small;
     const advise = (model) =>
       buildAdvisories(prompt, tokens, { model, callsPerMonth: 10_000, avgOutputTokens: 400, batchEligible: false }, { on, pricing: added, locale: 'en' })
         .find((a) => a.id === 'model-downgrade');
     assert.match(advise('acme-big')?.detail ?? '', /Acme Small/, 'a `large` model was not offered the `small` one');
     assert.equal(advise('acme-odd'), undefined, 'a model of unrecorded capability was told it is overpowered');
     // `unknown` is a name the lookups take as well, and it finds `unknown`.
-    assert.equal(or(() => cheapestOfTierIn(added, 'unknown', on)), 'acme-odd');
+    assert.equal(or(() => cheapestOfCapabilityIn(added, 'unknown', on)), 'acme-odd');
   });
 });

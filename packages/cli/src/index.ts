@@ -19,7 +19,9 @@ import {
   breaches,
   cacheableMinimum,
   analyzeCachePrefix,
+  billFigures,
   billLevers,
+  buildWeeklySummary,
   bucketedCacheEconomics,
   bucketedProfile,
   buildHistory,
@@ -149,12 +151,14 @@ import {
   positionAt,
   positionReport,
   PRICING_LAST_REVIEWED,
+  modelFrom,
   reviewedForModels,
   PROVIDER_REVIEWED,
   STALE_PRICING_DAYS,
   profilePrompt,
   profileToCsv,
   profileUsage,
+  weekWindows,
   promptId,
   providerFromEnv,
   pruneExamples,
@@ -172,6 +176,8 @@ import {
   isOffered,
   SOURCE_EXTENSIONS,
   suggestRewrites,
+  billOtlpInput,
+  toBillOtlpMetrics,
   toOtlpMetrics,
   toPromptfoo,
   UNLABELLED,
@@ -187,6 +193,7 @@ import type {
   ProfileCsvShape,
   MeasuredUsage,
   PruneReport,
+  PlanAction,
   PlanDocument,
   StoredReport,
   VerifiedAction,
@@ -219,6 +226,7 @@ import type {
   FailurePolicy,
   GatewayStanding,
   UsageProfileReport,
+  WeekWindow,
   BillPeriodUnit,
   WaiverUse,
   InitDecline,
@@ -253,6 +261,8 @@ import type {
 } from '@trazum/core/node';
 
 import {
+  GitUnavailableError,
+  commitTimes,
   contentAt,
   gitAvailable,
   namesByRevision,
@@ -262,6 +272,11 @@ import {
   runSelf,
 } from './git.js';
 import type { Revision } from './git.js';
+import { billRange, projectLabelOfRoot, windowOf } from './bill-range.js';
+import { currentFileDigests, planEditsFor } from './plan-edits.js';
+import { baseGateFails, priceAgainstBase, readBothSides, volumeFor } from './base-cost.js';
+import type { BaseCostReport } from './base-cost.js';
+import type { EditSkip } from './plan-edits.js';
 import { fetchProviderUsage, findCredential } from './connect.js';
 import { STORE_DIR, appendRecords, readStore, rewriteStore } from './store-fs.js';
 import { WAIVER_LOG, appendWaiverUse, readWaiverLog } from './waiver-log.js';
@@ -279,9 +294,13 @@ import {
   readWatchState,
   writeWatchState,
 } from './watch-run.js';
+import { notificationFor, sendNotification } from './watch-notify.js';
 import { LOCALE_ENV_VARS, detectLocale, getCliMessages } from './i18n/index.js';
 import {
   MAX_SUMMARY_CHARS,
+  baseChangeText,
+  basePriceText,
+  baseSideText,
   fitWithin,
   renderBlameMarkdown,
   renderCheckMarkdown,
@@ -304,6 +323,7 @@ import type { CliMessages } from './i18n/index.js';
 // style.test.js holds the contract: stripped colour output is byte-identical
 // to plain output, and a pipe stays plain.
 import { runCrontab } from './git.js';
+import { checkedWeekly } from './weekly.js';
 import {
   ITEMS as PROACTIVE_ITEMS,
   BACKUP_SUFFIX,
@@ -385,6 +405,9 @@ const VALUE_FLAGS = new Set([
   'max-usd',
   'max-growth-usd',
   'max-cache-loss-usd',
+  // `check --base <ref>` and its gate (#785).
+  'base',
+  'max-monthly-increase-usd',
   'max-stale-hours',
   'measure',
   'workload',
@@ -408,6 +431,8 @@ const VALUE_FLAGS = new Set([
   'html-out',
   'pdf-out',
   'otlp-out',
+  // `bill --git-range <range>`: the commits whose span the statement sums.
+  'git-range',
   'pricing',
   'prompt',
   'out',
@@ -841,15 +866,15 @@ const COMMAND_FLAGS: Record<string, string[]> = {
     'tokens-only', 'cost', 'prompt', 'suggest', 'apply-suggestions',
     'cache-suggestions', 'from-log', 'label', 'all-labels',
   ],
-  check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline', 'files-from'],
+  check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline', 'files-from', 'base', 'max-monthly-increase-usd'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
   profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'html-out', 'pdf-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source', 'allow-empty'],
-  plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
+  plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live', 'edits', 'reorder'],
   verify: ['against', 'gate', 'json', 'markdown-out', 'pricing', 'pricing-live'],
   history: ['store', 'json', 'markdown-out'],
   connect: ['since', 'until', 'payload', 'store', 'json', 'out', 'markdown-out', 'pricing', 'pricing-live', 'dry-run'],
   store: ['prune', 'keep', 'json', 'pricing', 'pricing-live', 'dry-run'],
-  watch: ['once', 'interval', 'since', 'payload', 'webhook', 'json', 'pricing', 'pricing-live'],
+  watch: ['once', 'interval', 'since', 'payload', 'sessions', 'notify', 'webhook', 'json', 'pricing', 'pricing-live'],
   serve: ['port', 'socket', 'log', 'pricing', 'pricing-live'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
@@ -872,7 +897,8 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'since', 'until', 'by'],
+  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'git-range', 'since', 'until', 'by'],
+  weekly: ['label', 'label-from-project', 'out', 'o', 'until', 'notify', 'pricing', 'pricing-live'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
@@ -3618,6 +3644,9 @@ async function readUsageLogOnly(file: string, t: CliMessages, billPath: string =
  * a bill rather than usage, and pointed at `reconcile`.
  */
 async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  /* A range of commits asks a different question and prints its own statement (#777). */
+  const gitRange = stringFlag(args, 'git-range');
+  if (gitRange !== undefined) return billGitRange(args, gitRange, pricing, t);
   /*
     The statement answers first (#758). What was read, file by file, is a
     note on the answer, and on a terminal it printed above it: five lines of
@@ -3650,19 +3679,81 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   }
 }
 
-async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
-  /* Refused before any file is read: a bad shape found after the receipt
-     printed would end a run that looked finished with an error. */
-  const csvShape = csvShapeOf(args, t);
-  /* "What did this month cost" is the question a Claude Code folder of a
-     year's sessions answers worst without a period. */
-  const period = billingPeriod(args, t);
-  const byFlag = stringFlag(args, 'by');
-  if (byFlag !== undefined && byFlag !== 'day' && byFlag !== 'week' && byFlag !== 'month') {
-    throw new Error(t.bill.badBy(byFlag));
-  }
-  const by = byFlag as BillPeriodUnit | undefined;
+/**
+ * `trazum weekly [<file|dir>...]`: the week in Markdown, for somebody to read
+ * in an issue (#757).
+ *
+ * It reads what `bill` reads, prices the seven days before `--until` and the
+ * seven before those with the same catalogue, and writes the bill, what moved
+ * and the three changes `plan` ranks first. It writes a file or stdout and
+ * nothing else: it holds no GitHub token and makes no call. Where the summary
+ * is posted is the Action's business, and the Action's inputs are the owner's
+ * word for where.
+ *
+ * Every dollar amount and percentage in the finished text is read back against
+ * the two weeks' bills. A summary with one that is in neither is refused and
+ * nothing is written: the number would be read, believed and not re-added.
+ */
+async function commandWeekly(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  const now = Date.now();
+  const until = parseWhen(args, 'until', true, t, now);
+  const windows = weekWindows(until.ms ?? now);
+  const { lines } = await gatherUsageLines(args, t);
+  const text = lines.join('\n');
+  const profileWeek = (week: WeekWindow): UsageProfileReport =>
+    profileUsage(text, { catalogue: pricing, sinceMs: week.sinceMs, untilMs: week.untilMs });
+  const current = profileWeek(windows.current);
+  const previous = profileWeek(windows.previous);
+  const plan = buildPlan(current, billLevers(current, { catalogue: pricing }), pricing.lastReviewed);
 
+  const { markdown, headline } = checkedWeekly(
+    buildWeeklySummary(current, previous, plan, windows),
+    billFigures(current, previous, plan),
+    t,
+  );
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, markdown, 'utf8');
+    console.error(t.weekly.wrote(out));
+  } else {
+    process.stdout.write(markdown);
+  }
+
+  /*
+    The person at the machine, once the summary is safely written: the same
+    notifier `watch --notify` uses, carrying one sentence of figures that went
+    through the same check as the file. Off unless asked for; where the
+    platform has no notifier it is said and the file stands.
+  */
+  if (boolFlag(args, 'notify')) {
+    const sent = sendNotification(notificationFor([headline]));
+    if (sent.outcome === 'unavailable') console.error(c.yellow(t.weekly.notifyUnavailable(sent.command)));
+    if (sent.outcome === 'failed') console.error(c.yellow(t.weekly.notifyFailed(sent.command, sent.error)));
+  }
+}
+
+/**
+ * What `bill` and `weekly` read: every path given, or every coding agent's own
+ * sessions when none is, converted in memory to the one record shape the
+ * profile reads. Everything said about a file is said here, once, so the two
+ * commands refuse and report the same way.
+ */
+interface GatheredUsage {
+  lines: string[];
+  sources: number;
+  fileCount: number;
+  claudeCodeFiles: number;
+  codexFiles: number;
+  geminiCliFiles: number;
+  codexEvidence: { source: string; basis: string; files: number; duplicates: number; missingModel: number; unsupported: number; unparseable: number };
+  agentLines: Map<AgentId, string[]>;
+  /** The records no coding agent's session folder produced: a log, a provider export, spans. */
+  otherLines: string[];
+  labelledByProject: number;
+}
+
+async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsage> {
   /*
     No path is the most common first run, and it used to be a refusal: the
     person had to know where Claude Code keeps its sessions before the one
@@ -3738,6 +3829,7 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
   let geminiRemainder = 0;
   /* Each agent's own records, so a bill that read more than one can say which spent what. */
   const agentLines = new Map<AgentId, string[]>();
+  const otherLines: string[] = [];
   const codexEvidence = { source: 'codex', basis: 'api-equivalent-telemetry', files: 0, duplicates: 0, missingModel: 0, unsupported: 0, unparseable: 0 };
   const lines: string[] = [];
   let sources = 0;
@@ -3863,7 +3955,11 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
       case 'usage-log': {
         /* Already the shape every door reads: passed through line by line,
            and what does not parse is the receipt's own unread-lines gap. */
-        for (const line of text.split('\n')) if (line.trim() !== '') lines.push(line);
+        for (const line of text.split('\n')) {
+          if (line.trim() === '') continue;
+          lines.push(line);
+          otherLines.push(line);
+        }
         break;
       }
     }
@@ -3872,6 +3968,8 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
       const own = agentLines.get(shape) ?? [];
       for (const record of records) own.push(JSON.stringify(record));
       agentLines.set(shape, own);
+    } else {
+      for (const record of records) otherLines.push(JSON.stringify(record));
     }
     sources += 1;
     const count = shape === 'usage-log' ? null : records.length;
@@ -3916,6 +4014,89 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
   if (geminiRemainder > 0) console.error(t.fromGeminiCli.remainder(geminiRemainder));
 
   if (sources === 0) throw new Error(t.bill.nothingRead());
+  return { lines, sources, fileCount: files.length, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, otherLines, labelledByProject };
+}
+
+/**
+ * `trazum bill --git-range <range>` (#777): what was recorded in this
+ * repository's Claude Code sessions between the first and the last commit of
+ * the range. The reasoning, and what the figure is not, is in `bill-range.ts`.
+ *
+ * Every flag that would set the period, the project or a file to write is
+ * refused rather than ignored: a `--since` quietly overridden by the commits
+ * would put a different period on the page than the one asked for.
+ */
+async function billGitRange(args: Args, range: string, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  for (const flag of ['since', 'until', 'label', 'by', 'out', 'receipt', 'table', 'stamp', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out']) {
+    if (args.flags.has(flag)) throw new Error(t.bill.rangeConflict(`--${flag}`));
+  }
+  if (!boolFlag(args, 'label-from-project', true)) throw new Error(t.bill.rangeConflict('--no-label-from-project'));
+
+  const cwd = process.cwd();
+  if (!gitAvailable(cwd)) throw new Error(t.bill.rangeNoGit());
+  const root = repositoryRoot(cwd);
+  if (root === null) throw new Error(t.bill.rangeNoRepository());
+  let times;
+  try {
+    times = commitTimes(range, { cwd: root });
+  } catch (error) {
+    if (error instanceof GitUnavailableError) throw new Error(t.bill.rangeNoGit());
+    throw error;
+  }
+  if (times === null) throw new Error(t.bill.rangeBad(range));
+  const window = windowOf(times);
+  if (window === null) throw new Error(t.bill.rangeEmpty(range));
+
+  const gathered = await gatherUsageLines(args, t);
+  const claudeCodeLines = gathered.agentLines.get('claude-code') ?? [];
+  const otherSources =
+    (gathered.agentLines.get('codex')?.length ?? 0) + (gathered.agentLines.get('gemini-cli')?.length ?? 0) + gathered.otherLines.length;
+  const project = projectLabelOfRoot(root);
+  const answer = billRange({ claudeCodeLines, otherSources, project, window, catalogue: pricing });
+  if (answer.projectRecords === 0) throw new Error(t.bill.rangeNoProject());
+
+  const at = (ms: number): string => new Date(ms).toISOString().replace('.000Z', 'Z');
+  const out: string[] = [
+    '',
+    t.bill.rangeHeading(range),
+    '',
+    t.bill.rangeWindow(at(window.fromMs), at(window.toMs), window.commits),
+    answer.inside.sessions > 0
+      ? t.bill.rangeInside(formatUsd(answer.inside.usd), answer.inside.calls, answer.inside.sessions)
+      : t.bill.rangeNothingInside(),
+  ];
+  if (answer.straddling.length > 0) {
+    out.push('', t.bill.rangeStraddleHeading(answer.straddling.length));
+    for (const s of answer.straddling) {
+      out.push(t.bill.rangeStraddleRow(s.session, at(s.firstMs), at(s.lastMs), formatUsd(s.insideUsd), s.insideCalls, formatUsd(s.outsideUsd), s.outsideCalls));
+    }
+  } else {
+    out.push('', t.bill.rangeNoStraddle());
+  }
+  out.push('', t.bill.rangeMeaning());
+  const left = answer.leftOut;
+  out.push(t.bill.rangeLeftOut(answer.outsideCalls, left.otherProjects, left.otherSources, left.undated));
+  if (answer.inside.unpricedCalls > 0) out.push(t.bill.rangeUnpriced(answer.inside.unpricedCalls));
+  out.push('');
+  console.log(out.join('\n'));
+  if (gathered.claudeCodeFiles > 0) console.error(t.bill.apiEquivalent());
+}
+
+async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  /* Refused before any file is read: a bad shape found after the receipt
+     printed would end a run that looked finished with an error. */
+  const csvShape = csvShapeOf(args, t);
+  /* "What did this month cost" is the question a Claude Code folder of a
+     year's sessions answers worst without a period. */
+  const period = billingPeriod(args, t);
+  const byFlag = stringFlag(args, 'by');
+  if (byFlag !== undefined && byFlag !== 'day' && byFlag !== 'week' && byFlag !== 'month') {
+    throw new Error(t.bill.badBy(byFlag));
+  }
+  const by = byFlag as BillPeriodUnit | undefined;
+
+  const { lines, sources, fileCount, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, otherLines, labelledByProject } =
+    await gatherUsageLines(args, t);
 
   const text = lines.join('\n');
   const report = profileUsage(text, {
@@ -3930,6 +4111,34 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
     importEvidence: [{ ...codexEvidence, complete: codexEvidence.missingModel + codexEvidence.unsupported + codexEvidence.unparseable === 0 }],
   };
   const json = JSON.stringify(billDocument, null, 2);
+
+  /*
+    The bill as OTLP metrics, when asked for: a file and nothing sent, the way
+    `doctor --otlp-out` does it. Priced here from the same records through the
+    same `profileUsage`, split by day, project, model and agent; a day still
+    being measured is counted in the payload's resource and not drawn as a
+    point. See `toBillOtlpMetrics`.
+  */
+  const otlpPath = stringFlag(args, 'otlp-out');
+  if (otlpPath !== undefined) {
+    const written = await writeOtlp(args, () =>
+      toBillOtlpMetrics(
+        billOtlpInput(
+          [
+            { agent: null, lines: otherLines },
+            ...[...agentLines.entries()].map(([agent, own]) => ({ agent: AGENT_NAMES[agent], lines: own })),
+          ],
+          {
+            catalogue: pricing,
+            ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+            ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+            nowMs: Date.now(),
+          },
+        ),
+      ),
+    );
+    if (written) console.error(t.report.reportWritten(otlpPath));
+  }
 
   /*
     A terminal gets a statement a person can read; a pipe gets the receipt.
@@ -3948,7 +4157,7 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
   } else if (!statement) {
     console.log(json);
   }
-  console.error(t.bill.sources(sources, files.length));
+  console.error(t.bill.sources(sources, fileCount));
   printReceiptSummary(document, t);
   const agentSessions = claudeCodeFiles + codexFiles + geminiCliFiles > 0;
   /*
@@ -7689,6 +7898,25 @@ async function commandCheck(
   // A flag beats the config, as everywhere else. -1 means "not given".
   const flagBudget = numberFlag(args, 'max-tokens', -1, t);
 
+  /*
+    `--base <ref>` (#785): each changed prompt's cost on that commit and
+    here. Its gate needs it, and standard input has no base side; both are
+    refused before anything is read.
+  */
+  const baseRef = stringFlag(args, 'base');
+  const maxIncrease = args.flags.has('max-monthly-increase-usd')
+    ? numberFlag(args, 'max-monthly-increase-usd', 0, t)
+    : null;
+  if (maxIncrease !== null && baseRef === undefined) throw new Error(t.againstBase.gateNeedsBase());
+  const compare = async (
+    kind: 'file' | 'directory' | 'list',
+    on: string,
+    listed?: readonly string[],
+  ): Promise<BaseCostReport | null> =>
+    baseRef === undefined
+      ? null
+      : againstBase(baseRef, kind, on, listed, maxIncrease, config, counter, pricing);
+
   /**
    * `--files-from -` reads a file list from stdin — the shape
    * `git diff --name-only` already produces — so a pre-commit hook is one
@@ -7704,18 +7932,22 @@ async function commandCheck(
       .split('\n')
       .map((line) => line.trim())
       .filter((line) => line !== '');
-    await checkDirectory('.', args, flagBudget, config, counter, level, t, locale, pricing, listed);
+    const base = await compare('list', '.', listed);
+    await checkDirectory('.', args, flagBudget, config, counter, level, t, locale, pricing, listed, base);
     return;
   }
 
   const asDirectory = target !== undefined && target !== '-' ? await isDirectory(target) : false;
 
   if (asDirectory) {
-    await checkDirectory(target!, args, flagBudget, config, counter, level, t, locale, pricing);
+    const base = await compare('directory', target!);
+    await checkDirectory(target!, args, flagBudget, config, counter, level, t, locale, pricing, undefined, base);
     return;
   }
 
+  if (baseRef !== undefined && (target === undefined || target === '-')) throw new Error(t.againstBase.noStdin());
   const prompt = await readInput(target, t, maxInputFlag(args, t));
+  const base = target === undefined ? null : await compare('file', target);
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
   // A single file falls back to the config budget for its own path, so
@@ -7739,6 +7971,7 @@ async function commandCheck(
       t,
       locale,
       pricing,
+      base,
     );
     return;
   }
@@ -7764,6 +7997,7 @@ async function commandCheck(
       tokenSource: counter.source,
       band: bandFor(prompt),
       truncated: false,
+      ...(base === null ? {} : { againstBase: base }),
       t,
     }),
   );
@@ -7779,6 +8013,7 @@ async function commandCheck(
         optimizedTokens: verdict.optimizedTokens,
         wouldFitOptimized:
           verdict.optimizedTokens !== null ? verdict.optimizedTokens <= maxTokens : null,
+        ...(base === null ? {} : { againstBase: base }),
       }),
     );
   } else if (ok) {
@@ -7797,8 +8032,106 @@ async function commandCheck(
     }
     draw.print((line) => console.error(line));
   }
+  if (base !== null && !boolFlag(args, 'json')) printAgainstBase(base, t);
 
   if (!ok) process.exitCode = 1;
+  if (base !== null && baseGateFails(base)) process.exitCode = 1;
+}
+
+/**
+ * Reads both sides and prices them: the CLI's half of `check --base` (#785).
+ *
+ * The model is the one `usage.model` names, or Trazum's default, and the
+ * report says which. The volume comes from `volumes` through `labels`, and
+ * from nowhere else.
+ */
+async function againstBase(
+  ref: string,
+  kind: 'file' | 'directory' | 'list',
+  target: string,
+  listed: readonly string[] | undefined,
+  maxIncreaseUsd: number | null,
+  config: TrazumConfig,
+  counter: Counter,
+  pricing: PricingCatalogue,
+): Promise<BaseCostReport> {
+  const read = await readBothSides({
+    ref,
+    target,
+    kind,
+    ...(listed === undefined ? {} : { listed }),
+    extensions: config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS],
+    ignore: config.ignore ?? [],
+  });
+  if (read.status === 'unavailable') {
+    return {
+      status: 'unavailable',
+      ref,
+      why: read.why,
+      gate: maxIncreaseUsd === null ? null : { maxIncreaseUsd },
+    };
+  }
+  const configured = config.usage?.model;
+  return priceAgainstBase({
+    ref,
+    sha: read.sha,
+    pairs: read.pairs,
+    count: (text) => counter.count(text),
+    model: modelFrom(pricing, configured ?? DEFAULT_USAGE.model),
+    modelFrom: configured === undefined ? 'default' : 'config',
+    pricing,
+    volumeOf: (pair) => volumeFor(pair, config.labels ?? {}, config.volumes ?? {}),
+    maxIncreaseUsd,
+  });
+}
+
+/** The base comparison in the terminal: the same figures as the Markdown, one prompt a row. */
+function printAgainstBase(report: BaseCostReport, t: CliMessages): void {
+  const ab = t.againstBase;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const draw = new Report();
+  draw.blank();
+  if (report.status === 'unavailable') {
+    draw.note('caution', ab.unavailable(report.why, report.ref));
+    if (report.gate !== null) draw.text(ab.gateUnavailable(formatUsd(report.gate.maxIncreaseUsd)), { tone: 'error' });
+    draw.print();
+    return;
+  }
+  draw.heading(ab.heading(report.ref, report.sha.slice(0, 7)));
+  if (report.gate !== null) {
+    const change = formatSignedUsd(report.totals?.changeUsd ?? 0);
+    const limit = formatUsd(report.gate.maxIncreaseUsd);
+    draw.text(report.gate.breached ? ab.gateBreached(change, limit) : ab.gateWithin(change, limit), {
+      tone: report.gate.breached ? 'error' : 'good',
+    });
+  }
+  if (report.rows.length === 0) draw.text(ab.nothingChanged());
+  for (const row of report.rows) {
+    const tokens = `${row.base === null ? '–' : n(row.base.tokens)} → ${row.head === null ? '–' : n(row.head.tokens)}`;
+    draw.blank();
+    draw.text(row.id, { tone: 'bold' });
+    draw.text(
+      `${ab.columnTokens()}: ${tokens} · ${ab.columnCalls()}: ${row.callsPerMonth === null ? ab.notStated() : n(row.callsPerMonth)}`,
+      { indent: '    ' },
+    );
+    draw.text(
+      `${ab.columnBase()}: ${baseSideText(row.base, t)} · ${ab.columnHead()}: ${baseSideText(row.head, t)} · ${t.markdown.columnChange()}: ${baseChangeText(row, t)}`,
+      { indent: '    ' },
+    );
+    draw.text(basePriceText(row, report.price, t), { indent: '    ', tone: 'dim' });
+  }
+  if (report.totals !== null) {
+    draw.blank().text(
+      ab.totals(formatUsd(report.totals.baseUsd), formatUsd(report.totals.headUsd), formatSignedUsd(report.totals.changeUsd)),
+    );
+  }
+  draw.blank();
+  if (report.gate !== null && report.perCallOnly > 0) draw.text(ab.gateNotJudged(report.perCallOnly), { tone: 'dim' });
+  if (report.perCallOnly > 0) draw.text(ab.perCallNote(report.perCallOnly), { tone: 'dim' });
+  if (report.unchanged > 0) draw.text(ab.unchanged(report.unchanged), { tone: 'dim' });
+  if (report.modelFrom === 'default') draw.text(ab.modelDefault(report.price.displayName), { tone: 'dim' });
+  draw.text(ab.inputOnly(), { tone: 'dim' });
+  draw.print();
 }
 
 async function isDirectory(path: string): Promise<boolean> {
@@ -7844,15 +8177,17 @@ async function writeMarkdown(args: Args, render: () => string): Promise<void> {
  * full disk on a metrics runner must not turn a survey into a failure — the
  * survey is the thing somebody asked for, and the metrics are a copy of it.
  */
-async function writeOtlp(args: Args, build: () => unknown): Promise<void> {
+async function writeOtlp(args: Args, build: () => unknown): Promise<boolean> {
   const path = stringFlag(args, 'otlp-out');
-  if (!path) return;
+  if (!path) return false;
 
   try {
     await writeFile(path, `${JSON.stringify(build(), null, 2)}\n`, 'utf8');
+    return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(c.yellow(`Could not write ${path}: ${message}`));
+    return false;
   }
 }
 
@@ -7887,6 +8222,7 @@ async function checkEmbedded(
   t: CliMessages,
   locale: Locale,
   pricing: PricingCatalogue,
+  base: BaseCostReport | null = null,
 ): Promise<void> {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
@@ -7913,6 +8249,7 @@ async function checkEmbedded(
       tokenSource: counter.source,
       band,
       truncated: false,
+      ...(base === null ? {} : { againstBase: base }),
       t,
     }),
   );
@@ -7931,12 +8268,13 @@ async function checkEmbedded(
             ok: !isOverBudget(v),
           })),
           declined: extraction.declined,
+          ...(base === null ? {} : { againstBase: base }),
         },
         null,
         2,
       ),
     );
-    if (!ok) process.exitCode = 1;
+    if (!ok || (base !== null && baseGateFails(base))) process.exitCode = 1;
     return;
   }
 
@@ -7961,7 +8299,8 @@ async function checkEmbedded(
   }
 
   console.log();
-  if (!ok) process.exitCode = 1;
+  if (base !== null) printAgainstBase(base, t);
+  if (!ok || (base !== null && baseGateFails(base))) process.exitCode = 1;
 }
 
 /**
@@ -8375,6 +8714,16 @@ async function commandWatch(
     webhook = checked.url;
   }
 
+  /*
+    One source to a cycle. `--sessions` is the sessions `bill` reads with no
+    path, so the command that needs no setup can alert; refused beside
+    `--payload` before anything is read, because a cycle that quietly picked
+    one of two would be watching the other's silence.
+  */
+  const sessions = boolFlag(args, 'sessions');
+  if (sessions && stringFlag(args, 'payload') !== undefined) throw new Error(t.watch.sessionsAndPayload());
+  const notify = boolFlag(args, 'notify');
+
   const intervalRaw = stringFlag(args, 'interval');
   const once = boolFlag(args, 'once') || intervalRaw === undefined;
   let intervalMs = 0;
@@ -8390,38 +8739,59 @@ async function commandWatch(
   }
 
   const cycle = async (): Promise<number> => {
-    const state = await readWatchState(root);
+    /*
+      What was reported about one source says nothing about the other's
+      figures: a crossing kept quiet because the store had already said it
+      must not keep quiet one that only the sessions show. A state the other
+      source wrote is a first cycle for this one, and writing over it below is
+      what keeps the two from reading each other's record.
+    */
+    const prior = await readWatchState(root);
+    const state = prior !== null && (prior.source === 'sessions') !== sessions ? null : prior;
     const nowMs = Date.now();
 
     /**
-     * Where the measurements come from: a saved payload when one is named
-     * (which is how this is tested and how an air-gapped run works), and the
-     * store otherwise. A cycle that found nothing to measure says so — a
-     * watcher over nothing is a green light nobody earned.
+     * Where the measurements come from: the sessions on this machine when
+     * `--sessions` is given, a saved payload when one is named (which is how
+     * this is tested and how an air-gapped run works), and the store
+     * otherwise. A cycle that found nothing to measure says so — a watcher
+     * over nothing is a green light nobody earned.
      */
     const payloadPath = stringFlag(args, 'payload');
-    let pull;
-    if (payloadPath !== undefined) {
-      pull = normalizeAnthropicUsage(JSON.parse(await readFile(payloadPath, 'utf8')));
+    let report: WatchedReport;
+    let cacheDeltaUsd: number | undefined;
+    let sessionFolders: string[] = [];
+    if (sessions) {
+      const measured = await watchedSessions(pricing, t);
+      report = measured.report;
+      cacheDeltaUsd = measured.cacheDeltaUsd;
+      sessionFolders = measured.folders;
     } else {
-      const { resolved } = await readStore(root);
-      if (resolved.records.length === 0) throw new Error(t.watch.nothingToWatch(STORE_DIR));
-      pull = {
-        provider: 'store',
-        granularity: 'bucketed' as const,
-        buckets: bucketsFromRecords(resolved.records),
-        window: null,
-        gaps: [],
-        unavailable: [],
-      };
-    }
+      let pull;
+      if (payloadPath !== undefined) {
+        pull = normalizeAnthropicUsage(JSON.parse(await readFile(payloadPath, 'utf8')));
+      } else {
+        const { resolved } = await readStore(root);
+        if (resolved.records.length === 0) throw new Error(t.watch.nothingToWatch(STORE_DIR));
+        pull = {
+          provider: 'store',
+          granularity: 'bucketed' as const,
+          buckets: bucketsFromRecords(resolved.records),
+          window: null,
+          gaps: [],
+          unavailable: [],
+        };
+      }
 
-    const report = bucketedProfile(pull, { catalogue: pricing });
-    const cache = bucketedCacheEconomics(report);
+      const bucketed = bucketedProfile(pull, { catalogue: pricing });
+      const cache = bucketedCacheEconomics(bucketed);
+      report = bucketed;
+      cacheDeltaUsd = cache.verdict === 'no-cache' ? undefined : cache.deltaUsd;
+    }
     const result = evaluateWatch({
       report,
       thresholds,
-      cacheDeltaUsd: cache.verdict === 'no-cache' ? undefined : cache.deltaUsd,
+      cacheDeltaUsd,
       nowMs,
       lastCoveredToMs: state?.lastCoveredToMs ?? undefined,
       alreadyFired: new Set(Object.keys(state?.fired ?? {})),
@@ -8430,6 +8800,7 @@ async function commandWatch(
     if (asJson) {
       console.log(JSON.stringify({ schemaVersion: 1, firedAtMs: nowMs, ...result }, null, 2));
     } else {
+      for (const line of sessionFolders) console.log(c.dim(line));
       if (result.gap !== null) {
         console.log(c.yellow(wrap(t.watch.gap(day(result.gap.fromMs), day(result.gap.toMs)), 76, '  ')));
       }
@@ -8505,6 +8876,27 @@ async function commandWatch(
       }
     }
 
+    /*
+      The person at the machine, for what is new this cycle and nothing else:
+      a crossing already reported is `suppressed`, and a notification about it
+      would be the second one. The text is the sentence the terminal printed,
+      built from the same figures, and `notificationFor` takes nothing but
+      sentences, so a prompt, a path or a project name has no way in.
+    */
+    if (notify && result.crossings.length > 0) {
+      const sent = sendNotification(
+        notificationFor(
+          result.crossings.map((crossing) =>
+            t.watch.crossed(crossing.gate, formatUsd(crossing.measuredUsd), formatUsd(crossing.limitUsd), crossing.day),
+          ),
+        ),
+      );
+      // Said on stderr so a `--json` reader's stdout stays the document, and
+      // swallowed for the reason the webhook's failure is.
+      if (sent.outcome === 'unavailable') console.error(c.yellow(t.watch.notifyUnavailable(sent.command)));
+      if (sent.outcome === 'failed') console.error(c.yellow(t.watch.notifyFailed(sent.command, sent.error)));
+    }
+
     const fired = { ...(state?.fired ?? {}) };
     for (const crossing of result.crossings) fired[firedKey(crossing.gate, crossing.day)] = nowMs;
     await writeWatchState(root, {
@@ -8512,6 +8904,7 @@ async function commandWatch(
       lastCycleMs: nowMs,
       lastCoveredToMs: report.span?.toMs ?? state?.lastCoveredToMs ?? null,
       fired,
+      ...(sessions ? { source: 'sessions' as const } : {}),
     });
 
     return result.crossings.length + result.suppressed.length;
@@ -8529,6 +8922,66 @@ async function commandWatch(
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
     await cycle();
   }
+}
+
+/** What a gate is judged against: a connected report has it, and so do the sessions. */
+type WatchedReport = Parameters<typeof evaluateWatch>[0]['report'];
+
+/**
+ * What `trazum watch --sessions` judges: the sessions Claude Code, Codex and
+ * Gemini CLI keep on this machine, read the way `bill` reads them with no
+ * path and priced the way `bill` prices them.
+ *
+ * The folders are `agentSessionFolders`, the walk is `bill`'s, the converters
+ * are the ones `from-claude-code`, `from-codex` and `from-gemini-cli` use, and
+ * the money is `profileUsage`'s, so a total here is the total `bill` prints for
+ * the same folders. Only those three agents' files: a file no agent claims is
+ * not this command's to guess at, and `bill` is where it gets named.
+ *
+ * What comes back is the part of a report a gate is judged against, with no
+ * prompt text in it: the records the converters make carry counts and a model,
+ * and the folders named are the agents' own, never a project.
+ */
+async function watchedSessions(
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<{ report: WatchedReport; cacheDeltaUsd: number | undefined; folders: string[] }> {
+  const { found, tried } = await agentSessionFolders(process.env);
+  if (found.length === 0) throw new Error(t.bill.noPath(tried.join(', ')));
+  const lines: string[] = [];
+  for (const { path } of found) {
+    const entries = await readdir(path, { recursive: true, withFileTypes: true });
+    const files = entries
+      .filter((entry) => entry.isFile() && isUsageLogName(entry.name))
+      .map((entry) => join(entry.parentPath, entry.name))
+      .sort();
+    for (const file of files) {
+      const text = await readUsageLog(file, t);
+      const [shape, ...others] = usageShapesOf(text);
+      if (shape === undefined || others.length > 0) continue;
+      const records =
+        shape === 'claude-code'
+          ? claudeCodeRecords(text, {}).records
+          : shape === 'codex'
+            ? codexRecords(text, {}).records
+            : shape === 'gemini-cli'
+              ? geminiCliRecords(text, {}).records
+              : [];
+      for (const record of records) lines.push(JSON.stringify(record));
+    }
+  }
+  const profile = profileUsage(lines.join('\n'), { catalogue: pricing });
+  if (profile.total.calls === 0) throw new Error(t.watch.noSessionUsage());
+  const cache = cacheEconomics(profile.total);
+  return {
+    report: {
+      span: profile.span === null ? null : { fromMs: profile.span.fromMs, toMs: profile.span.toMs },
+      total: { totalUsd: profile.total.totalUsd },
+      byDay: profile.spendByDay.map((entry) => ({ day: entry.day, usd: entry.usd, calls: entry.calls })),
+    },
+    cacheDeltaUsd: cache.verdict === 'not-attempted' || cache.verdict === 'unpriced' ? undefined : cache.deltaUsd,
+    folders: found.map(({ agent, path }) => t.watch.readingSessions(AGENT_NAMES[agent], path)),
+  };
 }
 
 /**
@@ -9304,7 +9757,12 @@ async function commandVerify(
   const raw = texts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
   const report = profileUsage(raw, { catalogue: pricing });
 
-  const verification = verifyPlan(plan, report, { currentPricingLastReviewed: pricing.lastReviewed });
+  // An edit is checked in the tree as well as in the log: the files it names
+  // are hashed where they are now, and a file that is not there says so.
+  const verification = verifyPlan(plan, report, {
+    currentPricingLastReviewed: pricing.lastReviewed,
+    files: await currentFileDigests(plan),
+  });
   const gate = boolFlag(args, 'gate');
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
@@ -9332,6 +9790,17 @@ async function commandVerify(
       }
       if (v.action.kind === 'fix-caching' && v.outcome !== 'cannot-tell') {
         rows.push(t.verify.cacheObserved(formatUsd(Number(v.observed.deltaUsd ?? 0)), v.outcome));
+      }
+      if (v.action.kind === 'edit-file' && v.observed.file === 'as-planned-from') {
+        rows.push(t.verify.editNotMade(v.action.detail.edit?.path ?? ''));
+      }
+      if (v.action.kind === 'edit-file' && v.observed.file === 'edited' && v.outcome !== 'cannot-tell') {
+        rows.push(
+          t.verify.editObserved(
+            n(Math.round(Number(v.observed.inputPerCallTokensBefore ?? 0))),
+            n(Math.round(Number(v.observed.inputPerCallTokens ?? 0))),
+          ),
+        );
       }
       if (v.attribution?.calls !== undefined) {
         rows.push(
@@ -11530,11 +11999,21 @@ function reportCacheVerdict(report: UsageProfileReport, t: CliMessages): void {
  */
 async function commandPlan(
   args: Args,
+  config: TrazumConfig,
   pricing: PricingCatalogue,
   t: CliMessages,
 ): Promise<void> {
   const path = args.positional[0];
   if (path === undefined) throw new Error(t.plan.noTarget());
+  /*
+    `--edits` (#796): an edit to each prompt file the configuration maps a
+    label to, made by the deterministic steps and recorded by hash. Refused
+    before the log is read when it cannot do anything, rather than after.
+  */
+  const withEdits = boolFlag(args, 'edits');
+  if (boolFlag(args, 'reorder') && !withEdits) throw new Error(t.plan.reorderNeedsEdits());
+  const labelMap = config.labels ?? {};
+  if (withEdits && Object.keys(labelMap).length === 0) throw new Error(t.plan.editsNeedLabels());
 
   const GZ = LOG_EXTENSIONS.map((ext) => `${ext}.gz`);
   const READABLE = [...LOG_EXTENSIONS, ...GZ];
@@ -11558,13 +12037,47 @@ async function commandPlan(
   if (report.total.calls === 0) throw new Error(t.plan.nothingPriced());
   const levers = billLevers(report, { catalogue: pricing });
   const plan = buildPlan(report, levers, pricing.lastReviewed);
+  let editSkips: EditSkip[] = [];
+  if (withEdits) {
+    const planned = await planEditsFor({
+      report,
+      labels: labelMap,
+      steps: boolFlag(args, 'reorder') ? ['reorder', 'trim'] : ['trim'],
+      disabledRules: config.disable ?? [],
+      pricing,
+    });
+    // Last, because they carry no money to rank by: the edit's figure is the
+    // workload's measured bill, not a saving, and ranking it among savings
+    // would be ranking it by a number it does not have.
+    plan.actions.push(...planned.actions);
+    editSkips = planned.skipped;
+  }
 
+  /*
+    `--min-usd` is a floor on money, and an edit carries none, so it keeps
+    every edit: one dropped for having no projected saving would have been
+    dropped for being honest about it.
+  */
   const minUsd = typeof args.flags.get('min-usd') === 'string' ? numberFlag(args, 'min-usd', 0, t) : 0;
-  const actions = plan.actions.filter((a) => (a.savingUsd ?? a.stakeUsd ?? 0) >= minUsd);
+  const kept = (a: PlanAction): boolean => a.kind === 'edit-file' || (a.savingUsd ?? a.stakeUsd ?? 0) >= minUsd;
+  const actions = plan.actions.filter(kept);
   const filtered = plan.actions.length - actions.length;
   const droppedUsd = plan.actions
-    .filter((a) => (a.savingUsd ?? a.stakeUsd ?? 0) < minUsd)
+    .filter((a) => !kept(a))
     .reduce((sum, a) => sum + (a.savingUsd ?? a.stakeUsd ?? 0), 0);
+  /** An edit's figure and change, in the order the reader needs them. */
+  const editLines = (action: PlanAction): { money: string; rows: string[] } | null => {
+    const edit = action.detail.edit;
+    const base = action.detail.baseline;
+    if (action.kind !== 'edit-file' || edit === undefined || base === undefined) return null;
+    return {
+      money: t.plan.editMeasured(formatUsd(base.usd), n(base.calls), n(Math.round(base.inputPerCallTokens))),
+      rows: [
+        t.plan.editChange(edit.path, edit.steps.includes('reorder'), n(edit.beforeTokens), n(edit.afterTokens)),
+        t.plan.editCheck(),
+      ],
+    };
+  };
 
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   /**
@@ -11598,17 +12111,25 @@ async function commandPlan(
     }
     for (const action of actions) {
       const name = action.label === UNLABELLED ? t.profile.unlabelled() : action.label;
+      const edit = editLines(action);
       const money =
-        action.savingUsd !== null
-          ? t.plan.projected(formatUsd(action.savingUsd))
-          : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
+        edit !== null
+          ? edit.money
+          : action.savingUsd !== null
+            ? t.plan.projected(formatUsd(action.savingUsd))
+            : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
       lines.push('');
       lines.push(`### ${t.plan.action(action.kind, name, action.model)} — ${money}`);
+      for (const row of edit?.rows ?? []) lines.push(`- ${row}`);
       if (action.detail.routeTo !== undefined) {
         lines.push(`- ${t.plan.routeTo(action.detail.routeTo.displayName, action.kind === 'route+batch')}`);
       }
       for (const assumption of action.assumes) lines.push(`- ${t.plan.assume(assumption)}`);
       if (action.check !== null) lines.push(`- ${t.plan.check(action.check)}`);
+    }
+    if (editSkips.length > 0) {
+      lines.push('');
+      for (const skip of editSkips) lines.push(`- _${t.plan.editSkipped(skip.why, skip.label, skip.path)}_`);
     }
     if (filtered > 0) {
       lines.push('');
@@ -11642,10 +12163,13 @@ async function commandPlan(
   if (plan.span === null) draw.text(t.plan.noClock(), { tone: 'dim' });
   for (const action of actions) {
     const name = action.label === UNLABELLED ? t.profile.unlabelled() : action.label;
+    const edit = editLines(action);
     const money =
-      action.savingUsd !== null
-        ? t.plan.projected(formatUsd(action.savingUsd))
-        : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
+      edit !== null
+        ? edit.money
+        : action.savingUsd !== null
+          ? t.plan.projected(formatUsd(action.savingUsd))
+          : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
     draw.blank();
     // The action and its money on one line when the window holds them; the
     // money under the action when it does not, never split from its word.
@@ -11654,6 +12178,7 @@ async function commandPlan(
     if (draw.fits(whole)) draw.line(whole);
     else draw.text(title, { first: `  ${draw.markOf('point')} `, indent: '    ', tone: 'bold' }).text(money, { indent: '    ' });
     // The module's `wrap`, at the widths these lines always had on a pipe.
+    for (const row of edit?.rows ?? []) draw.line(`    ${c.dim(wrap(row, 72, '    '))}`);
     if (action.detail.routeTo !== undefined) {
       draw.line(`    ${c.dim(wrap(t.plan.routeTo(action.detail.routeTo.displayName, action.kind === 'route+batch'), 1000, '    '))}`);
     }
@@ -11662,6 +12187,8 @@ async function commandPlan(
     }
     if (action.check !== null) draw.line(`    ${c.dim(wrap(t.plan.check(action.check), 72, '      '))}`);
   }
+  if (editSkips.length > 0) draw.blank();
+  for (const skip of editSkips) draw.text(t.plan.editSkipped(skip.why, skip.label, skip.path), { tone: 'dim' });
   if (filtered > 0) draw.blank().text(t.plan.filtered(n(filtered), formatUsd(minUsd), formatUsd(droppedUsd)), { tone: 'dim' });
   if (plan.batchExcludedUsd > 0) draw.blank().text(t.plan.batchExcluded(formatUsd(plan.batchExcludedUsd)), { tone: 'dim' });
   draw.blank().text(t.plan.footer(), { tone: 'dim' });
@@ -12917,6 +13444,7 @@ async function checkDirectory(
   locale: Locale,
   pricing: PricingCatalogue,
   only?: readonly string[],
+  base: BaseCostReport | null = null,
 ): Promise<void> {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
@@ -13036,6 +13564,7 @@ async function checkDirectory(
             path: baselineOutcome.path,
           }
         : undefined,
+      ...(base === null ? {} : { againstBase: base }),
       t,
     }),
   );
@@ -13061,12 +13590,14 @@ async function checkDirectory(
                 ? v.optimizedTokens <= v.maxTokens
                 : null,
           })),
+          ...(base === null ? {} : { againstBase: base }),
         },
         null,
         2,
       ),
     );
     if (failures.length > 0 || declined.length > 0) process.exitCode = 1;
+    if (base !== null && baseGateFails(base)) process.exitCode = 1;
     return;
   }
 
@@ -13156,9 +13687,12 @@ async function checkDirectory(
       t,
     );
   }
+  if (base !== null) printAgainstBase(base, t);
   console.log();
 
   if (bad) process.exitCode = 1;
+  // A fourth verdict about the same run, and as independent as the others.
+  if (base !== null && baseGateFails(base)) process.exitCode = 1;
 }
 
 /** Joins two path fragments for display and glob matching, always with `/`. */
@@ -14300,7 +14834,7 @@ async function main(): Promise<void> {
       await commandProfile(args, config, configDir, pricing, t);
       break;
     case 'plan':
-      await commandPlan(args, pricing, t);
+      await commandPlan(args, config, pricing, t);
       break;
     case 'verify':
       await commandVerify(args, pricing, t);
@@ -14409,6 +14943,9 @@ async function main(): Promise<void> {
       break;
     case 'bill':
       await commandBill(args, pricing, t);
+      break;
+    case 'weekly':
+      await commandWeekly(args, pricing, t);
       break;
     case 'from-helicone':
       await commandFromHelicone(args, t);

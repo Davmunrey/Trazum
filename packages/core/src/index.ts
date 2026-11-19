@@ -75,10 +75,14 @@ export type {
 } from './receipt.js';
 export { heartbeats } from './heartbeat.js';
 export { ruleYield } from './rule-yield.js';
-export { buildPlan, planLabelName, parsePlanDocument, PLAN_ACTION_KINDS } from './plan.js';
+export { buildPlan, planLabelName, parsePlanDocument, planEditProblem, PLAN_ACTION_KINDS, PLAN_EDIT_STEPS } from './plan.js';
 export type { PlanParseFailure, PlanParseResult } from './plan.js';
-export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
+export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument, PlanEdit, PlanEditStep } from './plan.js';
+export { applyPlanEdit, isEditableFile, planEdits, planFileEdit, runPlanEditSteps } from './plan-edit.js';
+export type { PlanDigest, PlanEditApplication, PlanEditRefusal, PlanFileEditInput } from './plan-edit.js';
 export { verifyPlan } from './verify.js';
+export { buildWeeklySummary, billFigures, strayFigures, weekWindows, weeklyMarker, WEEK_MS, WEEKLY_CHANGES, WEEKLY_MODELS, WEEKLY_MOVERS } from './weekly.js';
+export type { BillFigures, WeekWindow, WeeklyChange, WeeklyModelRow, WeeklyMover, WeeklySummary } from './weekly.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
 export { outcomeReport, judgeOutcome, OUTCOME_UNLOCKS } from './outcome.js';
 export {
@@ -417,8 +421,27 @@ export {
 } from './maintainers.js';
 export type { DictionaryRecord, DictionaryStanding } from './maintainers.js';
 export { toPromptfoo } from './promptfoo.js';
-export { toOtlpMetrics } from './otlp.js';
-export type { OtlpAttribute, OtlpDataPoint, OtlpInput, OtlpMetric, OtlpPayload } from './otlp.js';
+export {
+  OTLP_COST_BASIS,
+  OTLP_COST_BASIS_KEY,
+  OTLP_TOKEN_TYPES,
+  billOtlpInput,
+  dayIsClosed,
+  toBillOtlpMetrics,
+  toOtlpMetrics,
+} from './otlp.js';
+export type {
+  BillOtlpExcluded,
+  BillOtlpInput,
+  BillOtlpOptions,
+  BillOtlpRow,
+  OtlpAttribute,
+  OtlpDataPoint,
+  OtlpInput,
+  OtlpMetric,
+  OtlpPayload,
+  OtlpTokenType,
+} from './otlp.js';
 export type { PromptfooExport, PromptfooOptions, PromptfooWarning } from './promptfoo.js';
 export type { ProfileOptions, PromptProfile } from './profile.js';
 export { SUGGEST_SYSTEM_PROMPT, applyRewrites, rejectionText, suggestRewrites } from './suggest.js';
@@ -442,9 +465,9 @@ export {
   getModel,
   listModels,
   effectivePricing,
-  cheapestOfTier,
+  cheapestOfCapability,
   modelFrom,
-  cheapestOfTierIn,
+  cheapestOfCapabilityIn,
   multipliersFor,
   isOffered,
   serviceTierOf,

@@ -484,6 +484,21 @@ Three things to get right when reporting on this:
   If the user's answer to a breach is to re-record, say that the diff is the
   record of the decision.
 
+`--base <ref>` asks the other question a pull request raises: what does this
+change do to each prompt's cost against the base branch?
+
+```bash
+trazum check prompts/ --base origin/main --max-monthly-increase-usd 25
+```
+
+The base is read from the local clone with git and never fetched. Each changed
+prompt gets its tokens on both sides and its input cost, a month at the calls
+`volumes` states for its label, or per call when none is stated. Each figure
+names its price and the day that price was read. The limit is off unless
+given, and judges only prompts with a stated volume. **Do not suggest a volume
+to make a figure appear**: a per-call figure is the honest answer when nobody
+has said how often the prompt is sent.
+
 ## Reporting into a pull request
 
 `--markdown-out <file>` on `check` or `diff` writes the same report as
@@ -503,7 +518,7 @@ the answer.
 
 ## The config file
 
-`trazum.config.json`, found by walking up from the working directory. Seventeen
+`trazum.config.json`, found by walking up from the working directory. Twenty
 keys, and an unknown one is a hard error rather than a silent no-op:
 
 | Key | What it settles |
@@ -512,6 +527,7 @@ keys, and an unknown one is a hard error rather than a silent no-op:
 | `usage` | The scenario every dollar figure is projected over |
 | `budgets` | Per-pattern token ceilings for `check` on a directory |
 | `labels` | Which **prompt file** each usage-log label sends, so `profile` can say *why* caching loses money on a label rather than only that it does. It is not a renaming map: the schema validates each value as a file path |
+| `volumes` | Calls a month for a label `labels` maps, so `check --base` can price that prompt a month at a time against the base branch. A prompt with none is priced per call, and the report says so. Never fill this in with a guess: it is a statement about traffic |
 | `spend` | The dollar gates: `maxUsd`, `monthlyUsd`, `maxDayUsd`, `maxSessionUsd`, `maxCacheLossUsd`, `byLabel`, `bySource`, `substitute` |
 | `limits` | The enforcement policy every door reads before a call: `dayUsd`, `sessionUsd`, `byLabel` — positive USD ceilings, judged identically at the gateway, `serve` and `spend_guard` |
 | `sources` | Where `--by-source` finds each fleet member's log |

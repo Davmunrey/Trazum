@@ -127,12 +127,38 @@ describe('every tab a visitor can open has a flow that opens it', () => {
       assert.ok(brandSource.includes(step), `the brand flow no longer does: ${step}`);
     }
     /*
+      And the Pro flow, which starts there too: the page is in the header, and
+      what it is held to is what a visitor would rely on. The tiers as the
+      owner decided them, the one mailto, and no request off the site.
+    */
+    const proFlow = FLOWS.find((flow) => flow.name.startsWith('pro: '));
+    assert.ok(proFlow, 'no flow follows the Pro entry');
+    const proSource = proFlow.run.toString();
+    assert.match(proSource, /^[\s\S]*?await open\('\/'\);/, 'the pro flow does not start at /');
+    for (const step of ["name: 'Pro'", "url.pathname === '/pro'", 'Not open yet', '€1,499 a month', 'mailto:', 'requested', 'unreadable', "name: 'Dark'"]) {
+      assert.ok(proSource.includes(step), `the pro flow no longer does: ${step}`);
+    }
+    /*
+      And the Download flow, which starts there too: the page is in the header.
+      What it is held to is what a visitor would act on: the version the page
+      says it is for, every command at that exact version, the files linked by
+      one scheme and never through `latest`, no store named, and no request off
+      the site.
+    */
+    const downloadFlow = FLOWS.find((flow) => flow.name.startsWith('download: '));
+    assert.ok(downloadFlow, 'no flow follows the Download entry');
+    const downloadSource = downloadFlow.run.toString();
+    assert.match(downloadSource, /^[\s\S]*?await open\('\/'\);/, 'the download flow does not start at /');
+    for (const step of ["name: 'Download'", "url.pathname === '/download'", 'cli,mcp,extension,action,checksums', '@trazum/cli@${version}', 'claude-code,claude-desktop-bundle', 'releases/download/v${version}', 'releases/latest', 'marketplace', 'sha256sum --check', 'requested', 'unreadable', "name: 'Dark'"]) {
+      assert.ok(downloadSource.includes(step), `the download flow no longer does: ${step}`);
+    }
+    /*
       The landing's own flows (#744) start at / too: the story told by
       scrolling, and the public site's light-first appearance. Each says so in
       its name; any other flow opening / is a mistake this still catches.
     */
     const landing = (flow) => flow.name.startsWith('landing: ') || flow.name.startsWith('appearance: the public site');
-    for (const flow of FLOWS.filter((candidate) => candidate !== site && candidate !== docs && candidate !== models && candidate !== brand && !landing(candidate))) {
+    for (const flow of FLOWS.filter((candidate) => candidate !== site && candidate !== docs && candidate !== models && candidate !== brand && candidate !== proFlow && candidate !== downloadFlow && !landing(candidate))) {
       for (const [, path] of flow.run.toString().matchAll(/open\('([^']*)'\)/g)) {
         assert.ok(path.startsWith('/app'), `"${flow.name}" opens ${path}, which is not the application`);
       }

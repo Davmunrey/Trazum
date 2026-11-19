@@ -410,7 +410,9 @@ export const es: WebMessages = {
             ? `Sacar ${label} de ${model} y enviarlo por lotes`
             : kind === 'fix-truncation'
               ? `Evitar que ${label} en ${model} se trunque y se reintente`
-              : `Arreglar la caché de ${label} para ${model}`,
+              : kind === 'edit-file'
+                ? `Editar el fichero de prompt que ${label} envía a ${model}`
+                : `Arreglar la caché de ${label} para ${model}`,
     projectedAmount: (usd) => `${usd} proyectados`,
     stakedAmount: (usd) => `${usd} ya gastados en ello`,
     noAmount: 'sin cifra',
@@ -422,7 +424,9 @@ export const es: WebMessages = {
         ? 'estas llamadas toleran una ventana de lote. Nadie salvo tú sabe si es así.'
         : kind === 'cache-reuse'
           ? 'el prefijo se reutilizaría de verdad dentro de la vida de la caché.'
-          : 'algo que el registro no puede confirmar.',
+          : kind === 'file-is-what-label-sends'
+            ? 'el fichero es lo que envía este flujo. La configuración lo dice; el registro guarda tokens, no ficheros.'
+            : 'algo que el registro no puede confirmar.',
     check: 'Compruébalo con: ',
     andMore: (count) => `…y ${count} más, en el plan guardado.`,
     save: 'Guardar plan.json',
@@ -458,7 +462,11 @@ export const es: WebMessages = {
         ? 'Ese flujo no tiene tráfico con precio en este registro. Puede haberse renombrado, movido o parado; nada de eso es un ahorro.'
         : reason === 'fields-stopped'
           ? 'Los campos con los que se juzgaría esta acción ya no están en el registro. Nada degradado cuenta como aprobado.'
-          : 'El registro no anota el nivel al que esta acción movió las llamadas, así que el movimiento no se ve.',
+          : reason === 'file-not-read'
+            ? 'Es una edición a un fichero de tu repositorio, y una pestaña del navegador no puede leerlo. trazum verify, ejecutado en el repositorio, sí puede.'
+            : reason === 'file-changed'
+              ? 'El fichero no tiene ni el texto del que partió el plan ni el que prometió. Siguió cambiando, y nada aquí cuenta eso como aprobado.'
+              : 'El registro no anota el nivel al que esta acción movió las llamadas, así que el movimiento no se ve.',
     callsMoved: (before, after) => `Llamadas: ${before} cuando se hizo el plan, ${after} ahora.`,
   },
 
@@ -1130,7 +1138,7 @@ export const es: WebMessages = {
       cli: {
         title: 'La CLI, completa',
         body:
-          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Este checkout tiene 56 comandos; instala la CLI publicada con «npm i -g @trazum/cli». El nuevo flujo task requiere compilar el repositorio hasta su publicación. «help» lista lo que el navegador puede ejecutar.',
+          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Este checkout tiene 57 comandos; instala la CLI publicada con «npm i -g @trazum/cli». El nuevo flujo task requiere compilar el repositorio hasta su publicación. «help» lista lo que el navegador puede ejecutar.',
       },
       finish: {
         title: 'Ese es el tour',

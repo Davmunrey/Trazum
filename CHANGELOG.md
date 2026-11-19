@@ -13,6 +13,106 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **`trazum bill --git-range <range>` says what was recorded in this repository's sessions while a range of commits was written.** (#777) `trazum bill ~/.claude/projects --git-range main..HEAD`, run from the repository, takes the times of the range from `git log` (the earliest author time to the latest author or commit time, so a rebased commit still starts the span at the day it was written) and sums the Claude Code records of this repository's project whose timestamps fall in it. **The output says what the figure is: everything recorded in this repository during that span, not the cost of the change**, in English and Spanish, and nothing in it says the change caused the spend.
+  - *Which project is this repository's, without reading a branch or a path out of a transcript.* Claude Code names a project's folder after its absolute path, every character that is not a letter or a digit written as `-`. That encoding cannot be undone and is not: git gives the repository's root, the same encoding is applied to it, and a record belongs to the repository when the folder it was found in has that name (the label `--label-from-project` already puts on every record). `gitBranch` and `cwd` stay dropped by the reader. A session started in a subdirectory or a worktree sits in a folder of another name and is not matched, a session read from a single file has no folder to match, and when nothing matches the command says so instead of printing $0. Records from Codex, Gemini CLI and logs have no such folder and are counted as left out.
+  - *Sessions that cross an edge are named, not added.* A session whose first and last call are both inside the span is in the figure. One that began before it or went on after it is listed with its first and last call and what each side cost, and is in neither the figure nor the left-out calls. A call with no timestamp is counted out; a call to a model the catalogue does not price is named, never $0.
+  - *Git.* The log call is `commitTimes` in `packages/cli/src/git.ts`, the one module that runs a program. It reads times only (no author name, subject or hash), refuses a range that begins with `-` or holds a space or control character before it reaches the argv, and tells a range git refused from a git that could not run. The flag is refused beside `--since`, `--until`, `--label`, `--no-label-from-project`, `--by`, `--receipt`, `--table`, `--stamp`, `-o` and every `--*-out`, by name.
+  - *The Action* does not take it. The sessions are on the developer's machine and a hosted runner usually has none; `docs/commands.md` says so and shows the step for a runner that does. No input was added to `action.yml`.
+  - *Tests.* `packages/cli/test/bill-git-range.test.js` builds a real repository in a temporary directory with fixed author and commit dates (one commit rebased, so the two differ) and made-up sessions, and checks the figure worked out by hand: $3.00 + $1.00 = $4.00 over 4 calls in 2 sessions, two straddling sessions at $0.20 / $2.00 and $0.40 / $2.00, 2 calls of wholly outside sessions, 1 record of another project and 1 undated call left out. Planted one at a time and put back, 10 of 10 caught: a record of a wholly outside session counted; a straddling session counted as inside; a branch name from a transcript in the output (the reader passed `gitBranch` on and the straddle row printed it); the author time ignored; another project's records counted; a range reaching git as an option (`--output=` wrote a file); the edge instants excluded; the undated call counted; a worktree folder matched by prefix; the output reworded to say the change caused the spend.
+- **`trazum bill --otlp-out <file>` writes the measured bill as OpenTelemetry metrics.** (#776) Per UTC day, project, model and agent: `trazum.bill.cost` (USD, `asDouble`), `trazum.bill.tokens` (by `trazum.token.type`) and `trazum.bill.calls`, with what the catalogue cannot price as its own `trazum.bill.unpriced.calls` and `trazum.bill.unpriced.tokens`, which carry no dollar figure. Every cost point carries `trazum.cost.basis=api-equivalent`, because on a plan the figure is not what was paid. It is written through `otlp.ts` under `doctor --otlp-out`'s encoding rules (64-bit integers as strings, money as a double) and it sends nothing: shipping the file is the collector's job. No OpenTelemetry dependency. **A day still being measured is not a point:** today, and any day the `--since`/`--until` window cuts, are left out of every metric and named in the resource (`trazum.bill.open_days`, `open_calls`, `open_cost_usd`, `open_tokens`, `open_unpriced_calls`), as are calls with no clock (`trazum.bill.undated_*`), all present at zero when empty, so the series plus those attributes add to the bill. `bill-otlp.test.js` round-trips a fixture to the totals the bill's own JSON prints, to within 1e-9 dollars, and by project and model. Planted and caught, with the results recorded on the pull request: a cost point with no `trazum.cost.basis`, a day written closed that is still open (at the end of the day, and at either end of a window), a cost 1% off the bill, cache reads dropped from the tokens, unpriced calls not carried, money written as an integer, a dropped agent attribute, and an open day not counted in the resource. Documented in `docs/commands.md`, under `bill`; help text in English and Spanish.
+- **The price catalogue is published as an open dataset, with every release.** (#784) `scripts/pricing-dataset.mjs` writes `packages/core/src/pricing.ts`, read from the built `@trazum/core`, as one JSON document per release: one row per model and rate (input, output, each band, service tier, past period and promotion, the cache and batch ratios a model states, the geography multiplier and the web search fee), each with its provider, its unit, the pages that provider's prices were read from and the date. 3.0.1's document holds 734 rows for 91 models in 223,259 bytes, at `https://trazum.vercel.app/datasets/pricing/3.0.1.json`, beside `schema-1.json` (a JSON Schema) and `changelog.json`. MIT, the repository's licence. `docs/pricing-dataset.md` is the page for whoever consumes it.
+  - *Sources are per provider, because the catalogue keeps them so.* The pages were prose above each date in `PROVIDER_REVIEWED`; `PROVIDER_SOURCES` in `pricing.ts` is that prose as data, the pages read on the date (Google's at aistudio.google.com, Mistral's at its inference page and three model cards), and `provider-sources.test.js` fails on a page the comment above the date does not name. No model is given a source of its own. No price or other catalogue value changed.
+  - *Patterns from literals.* The validator compiles a schema `pattern` only from a table of literals, one for each pattern the schema names, and refuses any other, so no regular expression is ever built from the document it checks (Codacy, PR #809).
+  - *What it refuses.* A price of zero, below zero or not a number stops the build, naming the model; so do an empty value anywhere but a batch ratio (the catalogue's `null` for "no batch API"), a provider with no date or no page, and a field of the catalogue the script does not know how to write. A ratio a model does not state gets no row: the catalogue's defaults are published once, in `defaults`. A model the catalogue does not price has no row at all. Nothing is fetched.
+  - *Releases.* `prepare-release.mjs` writes the next version's document, the changelog and the schema from the catalogue as built, and refuses to rewrite a version already published. The `assets` job of `release.yml` copies the document as `trazum-pricing-<version>.json` only when it is byte for byte what the catalogue at the published commit builds, and `SHA256SUMS` covers it. 3.0.1's document was written after 3.0.1 was cut, from a `pricing.ts` whose only change since that tag is `PROVIDER_SOURCES`, so it is on the site and not on the release, and `changelog.json` names no release asset for it.
+  - *Held by `test/pricing-dataset.test.mjs`*: the document read back, by code that shares nothing with the builder, is `MODELS` field for field; every row has its provider's pages and date; no value is zero; the published document is exactly what the script builds while `pricing.ts` is the file it records (by SHA-256); every published version satisfies the schema and lists what changed since the one before; the changelog and the schema are what the script writes. Planted and caught, each then restored: a row without a date (in the published file, and from the builder for xAI's rows), a value that differs from the catalogue (Fable 5.2's input 8 to 9 in the published file, and a band's output written as its input by the builder), a model priced at zero (Fable 5.2's input at 0 in `pricing.ts`, and a row at 0 in the published file), a page named nowhere in its review comment, a provider with no pages, a catalogue field left out, a ratio filled with the default, a schema keyword the validator does not read, a hand edit to `changelog.json` and to a document's `changes`, the upload removed from `release.yml`, `prepare-release.mjs` not writing the dataset, and `write` rewriting a published version. One plant was not caught, and is not a fault the guard claims: `mistral.ai/pricing` as a Mistral page, which the comment does name (the August review began there); the guard checks that a page is named, not that it was read on the date.
+- **A plan can carry an edit to a tracked file, and the Action can open the pull request that makes it.** (#796) `plan` wrote what to do and `verify` said whether it worked; for a change that is an edit to a prompt, the tool already produced the new text and stopped at printing it.
+  - *The action.* `trazum plan <log> --edits` adds an `edit-file` action for each prompt file `labels` in `trazum.config.json` maps a workload to: the text the `safe` rules make of it (`--reorder` first moves stable blocks ahead of the first placeholder), recorded by the SHA-256 of the file before and of the text after, with the steps, the level and the rules left off. The text itself is not in the plan, so a hand-edited plan has nowhere to put other text; `applyPlanEdit` in the core is the only way to the new text, and it refuses a file that is not the one the plan saw and a result that is not the one it promised. Only a file git tracks gets an edit (`isTracked` in `git.ts`, the one module that runs git), never a source file, and a mapped label that gets none is named with the reason. An edit projects no saving: its figure is the workload's bill as the log measured it, and the file's tokens before and after are labelled as the estimator's. `--min-usd` keeps edits, which carry no money to be under. Nothing is written to the file.
+  - *Verify.* `verify` hashes each edited file where it is now. Arrived needs both the promised text in the file and the workload's input tokens per call below the plan's baseline in the newer log. The file still as the plan found it did not arrive; a file holding anything else, or gone, is `cannot-tell: file-changed` and fails `--gate`; where nothing can read the file (the browser tab) it is `cannot-tell: file-not-read` and fails nothing.
+  - *The document.* `PlanDocument` gains the `edit-file` kind, `detail.edit`, the assumption `file-is-what-label-sends` and the two cannot-tell reasons, and stays `schemaVersion: 1`: additions only, and a plan written before them parses and verifies as it did. `parsePlanDocument` refuses an `edit-file` action whose edit is missing, names a path that is absolute, climbs with `..`, has an empty or `.` segment, a backslash or a control character, or names `.git`, or carries a level other than `safe`. The HTTP savings API and the MCP savings tools keep refusing an `edit-file` action: they take text, not a repository, and could only answer that the file cannot be read.
+  - *The Action.* A new input, `plan-pull-request`, off unless `'true'`, makes the plan from `usage-log` and runs one new step, `Open the plan's pull request` (`action/open-plan-pr.mjs`), the only step of the Action that writes to a repository. Through the Git Data API it reads each file from the default branch, makes the edit again there, writes one commit on a new branch `trazum/plan-<hash of the edits>` and opens one pull request whose body is the plan. It refuses the whole pull request when one file moved on; creates nothing when the plan has no edit or every edit is already on the default branch; reuses the open pull request for the same edits, does not reopen a closed one, and leaves alone a branch of that name with no pull request; creates no ref but its own, calls no merge endpoint, and sets no label, reviewer or assignee. It never fails the build for not opening. `docs/ci.md` shows it in a job of its own with `contents: write` and `pull-requests: write`; no other step gains a permission or the token. The mode refuses `target`, `weekly-summary` and every gate and window beside it.
+  - *Tests.* `packages/core/test/plan-edit.test.js`, `packages/cli/test/plan-edits.test.js` (a real git repository in a temporary directory) and `action/test/open-plan-pr.test.mjs`, which drives the step against an in-memory stand-in for the GitHub API with no socket. Planted one at a time and put back, 20 caught and 0 escaped: a file the plan did not list added to the commit; text other than the promised text committed; `plan --edits` writing the file; a pull request opened with no change (both guards removed); a second pull request for the same plan, once by naming the branch after the whole document and once by not looking for the existing pull request; the default branch as the ref; a file's mode dropped; Markdown that is not the plan accepted as the body; a file that moved on accepted; an edit to a source file; a path climbing out of the repository; an edit projecting a saving; verify arriving on the file without the log; verify reading a file still as planned-from as arrived; an untracked file given an edit; verify not reading the files; `--min-usd` dropping an edit; the step run without `plan-pull-request`; an `edit-file` action with no edit parsed.
+
+- **On a pull request, the Action's comment says what the change does to each prompt's cost against the base branch.** (#785) The Action gated a prompt on its token budget and on drift past a recorded baseline; it did not say that this change makes these prompts cost so much more or less a month than they do on the base.
+  - *The command.* `trazum check <target> --base <ref>` reads the prompts under the target at that commit and here, and gives every prompt that differs, was added or was removed a row: tokens on both sides, input cost on both sides and the difference. The base is read from the clone with `git ls-tree` and `git show` through `git.ts` (new: `commitOf`, `filesAt`), never fetched; a ref the clone does not have is reported as not compared, with the fix, and never replaced by the working tree. A ref starting with a dash is refused before git runs. Paths the directory walk would skip are skipped at the base too, through the new `walkIncludes` beside `walkPrompts` in the core. A prompt marked in a source file is compared prompt by prompt. `--json` carries it as `againstBase`; `--markdown-out` puts the table at the top of the report.
+  - *What a figure is.* Input tokens at the model's input price, both sides at the same prices, so a repricing cannot read as a change the pull request made. Output is left out, because a prompt edit does not set it. The model is `usage.model`, or the default, and the report says which. Every row names its price per million input tokens and the day that price was read: the provider's review date in the catalogue (`reviewedForModels`), or a local overlay's own date.
+  - *The volume.* A month is the calls somebody stated: a new config key, `volumes`, gives calls a month per label, and `labels` (the map `plan --edits` reads) says which prompt file the label sends. A prompt with no stated volume is priced per call and counted as such; several labels sending one file add up, and one of them without a volume leaves the file per call. A volume for a label `labels` does not map, or a negative one, is refused.
+  - *The gate.* `--max-monthly-increase-usd`, and the Action input `max-monthly-increase-usd`, off unless set: fails when the prompts with a stated volume cost more than that much more a month on the head, names the changed prompts it could not judge, and fails when the base could not be read. The Action passes `github.event.pull_request.base.sha` to the check step through `env:`, so on a pull request the table is in the same report and the same comment, one per `comment-key` as before; it refuses the limit off a pull request, with `usage-log`, with `weekly-summary` and with `plan-pull-request`. `actions/checkout` needs `fetch-depth: 0` for the base to be in the clone, which `docs/ci.md` shows. Without it and without the limit, the Action does not compare, so a default shallow checkout's report is unchanged.
+  - *Tests.* `packages/cli/test/check-base.test.js` (a real git repository with a base and a head, and the expected table worked out by hand in its header), `action/test/base-comparison.test.mjs` (runs the check step's own script with bash against a stand-in CLI, and posts the rendered table twice through `post-comment.mjs`) and a `walkIncludes` agreement test in `walk-ignore.test.js`. Planted one at a time and put back, 15 caught and 0 escaped: the base read from the head; a missing volume treated as one call a month; a price without its date, once in the rendered row and once in the report; `walkIncludes` keeping a dot directory; a volume for an unmapped label accepted; the gate never breaching; the gate breaching at the limit exactly; a gate on an unreadable base passing; the Action not handing over the base; the Action running the limit off a pull request; a dashed ref reaching git; a marked prompt taking its file's volume; a label with no volume skipped in a sum; the base not held to the walk's rules.
+
+### Fixed
+
+- **A release's MCP registry check reads every page.** (#806) The registry's search answers 30 entries a page and names the next one in `metadata.nextCursor`. The check read only the first page, so 3.0.0, the thirtieth version, passed, and 3.0.1, the thirty-first, failed a minute after it had published correctly and was listed with its npm package and its `.mcpb`. The check now follows the cursor until there is none. `security.test.js` fails when the cursor is removed from the step.
+
+### Changed
+
+- **The Action pin in `docs/setup.md` and `docs/running.md` moves to 3.0.1** (`9b0b245`). The 3.0.1 release PR was prepared without the 3.0.0 tag fetched, so `prepare-release` found no newer tag and left the pin at 2.7.12; the docs-pin guard in `security.test.js` caught the two releases of lag.
+- **The Homebrew formula names `@trazum/cli` 3.0.1**, with the SHA-256 `59eb2a96…079a` of the tarball npm serves, checked against `sha256sum` on that tarball.
+
+## 3.0.1 — 2026-11-19
+
+### Added
+
+- **Trazum can be downloaded from the project's own places, with no marketplace account.** (#774, #780, #781; advances #640, which stays open because no listing exists) The owner asked on 2026-11-19 for everything needed so it can be downloaded. Six parts:
+  - *Release files.* A new `assets` job of `release.yml`, which needs the job that publishes (so after `npm actually serves every package` and after the release page exists; the publish order is untouched), builds `trazum-vscode-<version>.vsix` with `@vscode/vsce@4.1.1` and `trazum-mcp-<version>.mcpb` with `@anthropic-ai/mcpb@2.1.2` (`mcpb validate` first), makes `SHA256SUMS` over them and the bill of materials, and attaches the three with the workflow's own token. The job holds `contents: write` and no npm credential, `id-token` or environment, because it runs two packagers fetched by `npx`; the step that holds the token runs none of them. No marketplace, no new secret. The workflow makes no build-provenance attestation, so none is claimed. A manual run builds the files and attaches nothing. Built once here on 2026-11-19: the `.vsix` is 456,522 bytes in 132 files, the `.mcpb` 492,983 bytes in 132 files.
+  - *A fault the first `.vsix` had.* `npm run package:vscode` produced 8 files and 8.39 kB, and none was `@trazum/core`, which `dist/extension.js` imports: the ignore file excluded `node_modules`. The extension would have failed to load for want of it. `scripts/release-assets.mjs` now lays the extension out with the closure the lockfile names and `.vscodeignore` lets exactly that package through. Not run inside VS Code or Cursor: only that the built `dist/reading.js` resolves its import from the unpacked file.
+  - *The bundle.* `manifest.json` uses only fields of the format's `MANIFEST.md` (spec 0.3) and claims no platform: its `compatibility` is the Node version the package already declares. It holds the server's built files, `@trazum/core`'s built files, the licence and the icon, and nothing the lockfile does not name. Its server was started from the unpacked bundle under plain Node and answered `initialize` and `tools/list`. Not opened in Claude Desktop. The bundle is unsigned.
+  - *The registry.* The committed `server.json` stays npm only: the digest of a file built after the release PR merged cannot be in it. The `mcp-registry` job now waits for `assets`, downloads the bundle and `SHA256SUMS` from the release, and `scripts/mcpb-registry-entry.mjs` adds the `mcpb` entry (address and `fileSha256`) to the copy it publishes, refusing when the file and the sums disagree. A failed attachment therefore holds the listing back until the job is re-run. Not run: it runs for the first time at the next release.
+  - *Homebrew.* `packaging/homebrew/trazum.rb` (`@trazum/cli` 3.0.0, its npm tarball's SHA-256, `depends_on "node"` and `std_npm_args`) is written by `scripts/homebrew-formula.mjs`, which compares the tarball's sha512 with the registry's before hashing it; a test holds the file to a fixture tarball with no network. **Pushing it to the tap is a manual step, named in `RELEASES.md`**: `docs/compliance/secret-rotation.md` covers no token for it and #781 forbids asking for one. Not tried with `brew install`.
+  - *Gemini CLI, Codex and the other clients.* `gemini-extension.json` starts `@trazum/mcp` at the exact version with the skill as its context file (fields from Gemini CLI's own extension reference); `docs/agents.md` gains a table and snippets for Claude Code, Claude Desktop (bundle and JSON), Cursor, VS Code, Codex (command and TOML) and Gemini CLI, written by `scripts/install-snippets.mjs` from `packages/mcp/package.json` and held to it by a test. `prepare-release.mjs` moves the manifest and the table with the version. Not tried with `gemini extensions install`.
+  - *The page.* `/download`, in the header, footer and sitemap and in the site's five languages: the CLI (`npx`, `npm install -g`, the tap) at the exact version, the MCP snippets drawn from the same source as `docs/agents.md`, the `.vsix` with how to install it, the Action's pinned line read from `docs/setup.md`, and the checksums. Links go to `releases/download/v<version>/<name>` for the version the site is built at, never `releases/latest`; so for a short while after a release merges, and for 2.7.12 itself, whose release carries none of these files, those addresses do not answer, and the page says so. It names no store, loads nothing and sends nothing: a twenty-fifth browser flow watches the network, measures contrast in both themes and checks a phone, and took 2,145 ms on 2026-11-19 against a local production build.
+
+
+## 3.0.0 — 2026-11-19
+
+### Added
+
+- **`trazum weekly` writes the week down, and the Action posts it where the owner names.** (#757) `bill` and `plan`
+  answered when somebody asked, and the README's answer to "tell me weekly" was a cron line and a mailbox nobody
+  read. `trazum weekly [<file|dir>...] [--until <when>] [-o <file>] [--notify]` reads what `bill` reads (the agents'
+  own session folders with no path) and writes Markdown: the bill for the seven days before `--until`, what moved
+  against the seven before (both measured, same catalogue, half-open windows so no call is in both), and the three
+  changes `plan` ranks first. A change that has not happened is *projected, not measured* and is printed beside what
+  that workload cost this week, which is measured; a loss already paid is *already spent*; `verify` is named as what
+  measures it afterwards, and nothing is projected beyond the week. Every dollar amount and percentage in the text
+  is read back against the two weeks' reports, worked out from the reports and not from the summary, and a
+  summary holding one that is in neither is refused and not written. A week with no call is said to have none, a
+  week before with no call has no comparison and no percentage, and unpriced and undated calls are counted out
+  loud. `--notify` shows one line of figures (no name, no path) through the notifier `watch --notify` uses. The CLI
+  holds no token and makes no request. For a repository the Action gains `weekly-summary` (`issue` or `comment`)
+  and `weekly-summary-issue`: with `usage-log` it writes the summary and `action/post-weekly.mjs` posts it to the
+  one place named, with the workflow's own token and `issues: write`. A week is posted once: a re-run replaces its
+  own post (found by a marker naming the week, authored by a bot) and never an issue or comment a person wrote. It
+  sets no label or assignee, refuses `target` and every gate in the same run, and never fails the build for not
+  posting. Planted and caught (16): a total in the summary scaled, a movement taken the wrong way round, weeks that
+  overlap, the figure check switched off in the core and in the command, a figure printed that is not in the bill, a
+  projection worded as done, a notification carrying names, the CLI reaching for a token, a second issue for the same
+  week, a comment on an issue the owner did not name, a contributor's issue overwritten, a place the owner did not
+  name accepted, a file that is not a summary posted, a third place for the step, and a gate allowed beside the
+  summary. **Not in this change,
+  and split into #796:** the mode that makes the deterministic edits on a branch and opens one pull request whose
+  body is the plan.
+
+- **`trazum watch --sessions` judges the budgets against the sessions on this machine, with no store, and
+  `trazum watch --notify` tells the person at the screen.** (#756) `watch` judged the store, which is empty until
+  `trazum connect <provider> --store` fills it, while `trazum bill` reads the sessions Claude Code, Codex and Gemini
+  CLI already keep on disk. So the command that needs no setup could not alert, and the one that alerts needed the
+  most. `--sessions` reads the folders `bill` reads with no path, through the same readers and the same catalogue,
+  and judges `spend.maxUsd`, `spend.maxDayUsd` and `spend.maxCacheLossUsd` as it always has: a measured crossing and
+  never a projection, a day still being measured not yet judgeable rather than passed. A crossing is reported once
+  and then prints as `STILL OVER`, and a restart names the stretch nobody was watching, the same as for the store.
+  The two sources keep their record apart in `.trazum/watch.json` (a new optional `source` field, written only by
+  `--sessions`), so what one reported never quiets a crossing only the other shows. `--notify` is a desktop
+  notification through what the platform already has (`osascript`, `notify-send`, a PowerShell toast), nothing
+  installed and no dependency added, off unless asked for. It fires for what is new this cycle, and carries the
+  sentence the terminal prints and nothing else: no prompt text, no file path, no project name. The program is
+  started without a shell and the text is handed over as data, never spliced into a script. Where the machine has
+  no notifier the run says so and the exit code, the output and `--webhook` carry on. What `watch` does with the
+  store, a payload and `--webhook` is unchanged. The notifier was tested here with a stand-in on Linux; the macOS and
+  Windows calls are tested as the arguments they build and were not run on those systems.
+
 ### Removed
 
 - **Breaking, for 3.0.0: `tier` is gone from a model in the pricing catalogue. Use `capability`.** It was
@@ -56,7 +156,81 @@ merged commit with no entry is a change only `git log` remembers.
   `VERSIONING.md` entry put back; and the recording script skipping a prompt, and skipping a provider. The refusal
   is in English only, as every error of the overlay is. (#764)
 
+- **Breaking, for 3.0.0: `recommendTier` answers in `small`, `mid` and `large`, and the lookups that take its answer
+  are renamed to match.** (#798) #764 took `tier` out of a model and left the five old names (`haiku`, `sonnet`, `opus`,
+  `frontier`, `unknown`) as the inputs and outputs of four functions and of the `model-downgrade` advisory, with a
+  table, `CAPABILITY_OF_TIER`, translating them to the `capability` a model carries. The owner decided on
+  2026-11-19 that one vocabulary is spoken in 3.0.0, the model's, and that no release keeps both. A name of the old
+  ladder was a vendor's, said about a task that may be sent to any vendor's model; `recommendTier` reads a prompt
+  and has three answers, so `frontier` and `unknown` were never among its outputs. The migration, repeated here as
+  `VERSIONING.md` asks:
+
+  | | Was | Is |
+  | --- | --- | --- |
+  | `recommendTier(prompt, tokens)` returns | `'haiku'`, `'sonnet'`, `'opus'` | `'small'`, `'mid'`, `'large'` |
+  | `recommendTierDetailed(...)` returns | `{ tier, complexSignals, simpleSignals, conflicted }` | `{ capability, complexSignals, simpleSignals, conflicted }` |
+  | `cheapestOfTier(tier)` | takes `haiku` ... `unknown` | `cheapestOfCapability(capability)`, takes `small`, `mid`, `large`, `frontier`, `unknown` |
+  | `cheapestOfTierIn(catalogue, tier, on, provider?)` | takes `haiku` ... `unknown` | `cheapestOfCapabilityIn(catalogue, capability, on, provider?)`, same arguments after the second |
+  | `CAPABILITY_OF_TIER`, `TierName` | exported | removed: nothing translates, and a `capability` is a `Capability` |
+  | `ModelDowngradeParams.tier` (a locale catalogue's `modelDowngrade`) | `tier: string` | `capability: string` |
+  | `haiku` / `sonnet` / `opus` as the name of an answer | `haiku`, `sonnet`, `opus` | `small`, `mid`, `large`; `frontier` and `unknown` are unchanged |
+
+  - **A consumer of the JSON** reads `small`, `mid` or `large` where the `detail` of a `model-downgrade` advisory
+    quoted `"haiku"`, `"sonnet"` or `"opus"`: in `trazum optimize --json`, in the response of `POST /api/optimize`
+    and in the text the report, the web page and the playground print, in English and Spanish. No field carried the
+    name and none is added or removed; the `detail` is a sentence for display, and `docs/json-output.md` now says
+    so under "The capability an advisory names". The advisory's id, severity and `estimatedMonthlyUsd` are unchanged.
+  - **The MCP server** changes nothing, and neither do the GitHub Action and the VS Code extension: `optimize_prompt`
+    prints an advisory's id and title and not its detail, no tool schema named a tier, and the other two never
+    read the advisory. A client written against them needs no migration.
+  - **In code**, a call to `cheapestOfTier('sonnet')` is `cheapestOfCapability('mid')`; an `if (tier === 'opus')` on
+    what `recommendTier` returned is `=== 'large'`; a custom locale catalogue reads `capability` in `modelDowngrade`.
+    A name of the old ladder passed to `cheapestOfCapability` or `cheapestOfCapabilityIn` throws, as an unknown
+    capability always did, and is not translated. `recommendTier`, `recommendTierDetailed` and the `tier-signals-conflict`
+    advisory keep their names, which the owner decided.
+
+  No price changed and no model chosen changed. `recommendations.json` was written again by
+  `scripts/record-recommendations.mjs` from the build, and a script that maps the names of the file as it stood
+  (`haiku` to `small`, `sonnet` to `mid`, `opus` to `large`, and the two keys `cheapestOfTier` and
+  `cheapestOfTierIn` to their new names) produced the new file byte for byte: 11,695 bytes, the cheapest model of
+  each capability by provider, and the 273 answers (91 models at three prompts) that name a model or none, all the
+  same. `docs/assets/demo.svg` and the landing's terminal were drawn again and differ in the one word of one
+  sentence. Twenty faults were planted and each failed a test: an old name emitted by `optimize --json` alone, by
+  the web route alone, by the English advisory and by the Spanish one, returned beside `capability`, exported as an
+  alias and accepted by the lookups; `mid` read as `small`, `large` read as `mid`, `small` read as `large`,
+  `frontier` ranked level with `mid`, the advisory quoting another capability than it judged, offering the model of
+  another capability, and the lookup ignoring the capability; the cheapest `small` model repriced, Haiku 5.5
+  restated as `mid`, one recorded model changed and one recorded name changed; and the recording script leaving
+  `large` out and writing the old key. Three surfaces could not be planted in because nothing on them emits the
+  name: the MCP server, the Action and the extension.
+
 ### Added
+
+- **`/pro`: a page for Trazum Pro, which says it is in development and not open yet.** Linked from the header and
+  the footer, in the five languages the site speaks. In order: what Pro answers for an organisation (where the model
+  spend went, whether it is inside its budget, what changed when it moved, a figure an auditor can trace); the one
+  property it is built around, that no prompt text reaches its server and what travels is a receipt, made by
+  `trazum receipt` in this repository and held by `receipt-redaction.test.js`, with the label named as the one field
+  that travels as it was written; what stays free in the open tool and what Pro adds, in the words of
+  `docs/licensing.md`; the tiers, by managed spend a month and not by seat (Team €149 up to €5,000, Growth €499 up to
+  €25,000, Scale €1,499 up to €100,000, Enterprise by agreement) with the sentence that makes the share the
+  break-even; and the status, with one call to action. That is a `mailto:` link to the address `CODE_OF_CONDUCT.md`
+  publishes, the subject filled in, and a link to the repository's releases: no form, no field, no cookie, no request
+  and no dependency. The tiers and the status are one module, `apps/web/lib/pro.ts`, whose comment names Trazum Pro's
+  own `docs/pricing.md` as where the owner decided them; the page formats them and types no figure. The site gains a
+  `sitemap.xml` of its pages, which it did not have, named by `robots.txt`, and the layout's site address moves to
+  `lib/site-origin.ts` so the two read one. `pro-page.test.mjs` holds the page: the tiers parsed back out of the
+  rendered table in every language and compared with the module, and the module with the owner's figures written
+  again in the test; each share equal to its price over its ceiling; the not-open sentence and the status while
+  `PRO_OPEN` is false; no claim an open service would make; the one mailto equal to the one address the repository
+  publishes; the page in the header, the footer and the sitemap; every pair of text and ground it uses at 4.5:1 or
+  better in both themes, worked out from `globals.css`; and nothing sent. A twenty-third browser flow follows the
+  header's Pro entry from the landing, reads the four tiers written by hand, finds the one mailto, measures every
+  text's contrast on paper and then with Dark chosen, and fails on any request that leaves the origin; the documents
+  that count the flows say twenty-three. Six faults were planted and each failed a test: Growth printed at a price the
+  module does not hold, the not-open sentence removed, the status above the title removed, Pro taken out of the
+  header, a `fetch` to another host on load, and an image requested from another host with its address built from
+  parts, which the browser flow caught by the request it saw. (#793)
 
 - **Codacy and DeepSource read the repository from a configuration that is in it, and Codacy is sent the coverage.**
   The owner installed both on 2026-11-18. `.codacy.yaml` and `.deepsource.toml` leave out the two directories a

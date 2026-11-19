@@ -2,7 +2,7 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 56 commands
+## The 57 commands
 
 | Command | What it answers |
 |---|---|
@@ -10,7 +10,7 @@
 | [`trazum filter`](https://github.com/Davmunrey/Trazum/blob/main/docs/tool-output-filter.md) | Compact repeated tool-log lines before agent context, retaining the original locally. *Opt-in.* |
 | [`trazum init`](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-first-five-minutes-trazum-init) | Inspect repository prompts and available usage, then write a configuration. *Optional setup after your first report.* |
 | [`trazum optimize`](https://github.com/Davmunrey/Trazum/blob/main/README.md#cli) | What can come out of this prompt, and what is that worth a month? |
-| [`trazum check`](https://github.com/Davmunrey/Trazum/blob/main/README.md#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? *Exits 1 when either fails — this is the CI gate.* |
+| [`trazum check`](https://github.com/Davmunrey/Trazum/blob/main/README.md#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? With [`--base`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#against-the-base-branch---base), what does this change do to each prompt's cost against the base branch? *Exits 1 when a gate fails: this is the CI gate.* |
 | [`trazum baseline`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) | What does this repository's prompts cost right now? *Records it, to commit.* |
 | [`trazum diff`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#did-this-edit-make-it-worse) | What did this edit cost? |
 | [`trazum rank`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#which-prompt-to-fix-first-trazum-rank) | Of these forty prompts, which is worth an afternoon? |
@@ -40,6 +40,7 @@
 | [`trazum schema`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#building-on-the-format-trazum-conform) | Which fields must a document of this format carry? *A JSON Schema, for validators that are not Trazum.* |
 | [`trazum conform`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rollup`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
+| [`trazum weekly`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-week-written-down-trazum-weekly) | What did the week cost, what moved, and what should change first? *The bill for seven days, against the seven before, and three ranked changes, each a projection that says so. A file or stdout; the Action posts it where you name.* |
 | [`trazum proactive`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#speaking-first-trazum-proactive) | What speaks without being asked, and is it on? *Turns on the status line, a scheduled watch and the MCP server, one asked-for item at a time, and turns them off again.* |
 | [`trazum pulse`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum position`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |

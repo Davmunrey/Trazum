@@ -7,7 +7,7 @@ name: 'Trazum Check'
 # the one line a Marketplace visitor reads described a version of this action
 # that stopped being the whole story several releases ago. security.test.js
 # now derives the modes from the script and fails when one is unnamed.
-description: 'Fails the build when a prompt busts its token budget, or a usage log busts its spend budget. Says what would fit.'
+description: 'Fails the build when a prompt busts its token budget or a log its spend budget. Can post a weekly summary or a plan PR.'
 author: 'David Muñoz Rey'
 branding:
   icon: 'scissors'
@@ -40,6 +40,9 @@ inputs:
     description: 'Distinguishes comments from two runs reporting on different things in the same pull request.'
     required: false
     default: 'default'
+  max-monthly-increase-usd:
+    description: 'With target, on a pull request: fail the build when the changed prompts cost more than this many dollars a month more than on the base branch, at the volumes trazum.config.json states under "volumes". Off unless set. The base is read from the checkout with git, never fetched, so actions/checkout needs fetch-depth: 0.'
+    required: false
   suggest-fixes:
     description: 'Post the optimised prompt as a GitHub suggested change, applied with one button. Needs github-token and pull-requests write. Safe level only. A suggestion can only anchor to lines in the diff, so a prompt only partly changed by the pull request gets a notice instead.'
     required: false
@@ -69,8 +72,18 @@ inputs:
     description: 'With usage-log: profile only calls at or after this moment — a UTC day (2026-08-14) or a full ISO 8601 timestamp. Calls with no "ts" are excluded and counted out loud in the report.'
     required: false
   until:
-    description: 'With usage-log: profile only calls up to this moment; a bare date includes that whole UTC day. A window the log does not cover fails the run naming what it does.'
+    description: 'With usage-log: profile only calls up to this moment; a bare date includes that whole UTC day. A window the log does not cover fails the run naming what it does. With weekly-summary: where the week ends (default now).'
     required: false
+  weekly-summary:
+    description: 'Write the week as a summary (the bill, what moved against the week before, the three changes to make first) from usage-log, and post it where you name: "issue" opens one issue for the week, "comment" adds one comment on the standing issue named by weekly-summary-issue. Needs github-token and issues write. Empty, the default, posts nothing. Mutually exclusive with target and with every gate.'
+    required: false
+  weekly-summary-issue:
+    description: 'With weekly-summary set to comment: the number of the standing issue the summary is commented on. The only place it comments.'
+    required: false
+  plan-pull-request:
+    description: 'With usage-log: make the plan (trazum plan --edits), make its edits to the prompt files trazum.config.json maps a label to on a new branch, and open one pull request whose body is the plan. Needs github-token, contents write and pull-requests write, which only this step uses. Once per plan; never pushes to the default branch or merges. Off unless "true". Mutually exclusive with target, weekly-summary and every gate.'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -111,6 +124,14 @@ runs:
         TRAZUM_LABEL: ${{ inputs.label }}
         TRAZUM_SINCE: ${{ inputs.since }}
         TRAZUM_UNTIL: ${{ inputs.until }}
+        TRAZUM_WEEKLY_SUMMARY: ${{ inputs.weekly-summary }}
+        TRAZUM_PLAN_PULL_REQUEST: ${{ inputs.plan-pull-request }}
+        TRAZUM_MAX_MONTHLY_INCREASE_USD: ${{ inputs.max-monthly-increase-usd }}
+        # The pull request's base commit, empty on any other event. The check
+        # reads that commit's prompts from the checkout with git (#785), so on
+        # a pull request the report says what the change does to each prompt's
+        # cost against the base branch. Nothing is fetched for it.
+        TRAZUM_BASE_SHA: ${{ github.event.pull_request.base.sha }}
         TRAZUM_ACTION_PATH: ${{ github.action_path }}
       # Every optional flag is added only when it was actually given. Passing
       # `--level safe` unconditionally is what made a config file's `level` and
@@ -126,6 +147,63 @@ runs:
         set -uo pipefail
 
         target="${TRAZUM_TARGET:-$TRAZUM_FILE}"
+        # The plan's pull request is a fourth mode, exclusive like the rest,
+        # and the only one that writes to the repository (#796). It writes
+        # the plan and its Markdown here and nothing else; the step that
+        # opens the pull request is the one holding the token.
+        if [ "$TRAZUM_PLAN_PULL_REQUEST" != "false" ] && [ -n "$TRAZUM_PLAN_PULL_REQUEST" ]; then
+          if [ "$TRAZUM_PLAN_PULL_REQUEST" != "true" ]; then
+            echo "::error title=Trazum::The 'plan-pull-request' input is 'true' or 'false'. '$TRAZUM_PLAN_PULL_REQUEST' is neither."
+            echo "outcome=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$TRAZUM_USAGE_LOG" ] || [ -n "$target" ] || [ -n "$TRAZUM_WEEKLY_SUMMARY" ]; then
+            echo "::error title=Trazum::Set 'usage-log' (and not 'target' or 'weekly-summary') with 'plan-pull-request': the plan is made from a usage log."
+            echo "outcome=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$TRAZUM_MAX_USD$TRAZUM_AGAINST$TRAZUM_MAX_GROWTH_USD$TRAZUM_MAX_CACHE_LOSS_USD$TRAZUM_LABEL$TRAZUM_SINCE$TRAZUM_UNTIL$TRAZUM_MAX_MONTHLY_INCREASE_USD" ]; then
+            echo "::error title=Trazum::'plan-pull-request' proposes edits and gates nothing, over the whole log. Remove max-usd, against, max-growth-usd, max-cache-loss-usd, max-monthly-increase-usd, label, since and until, or run the gate in its own step."
+            echo "outcome=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          args=(plan "$TRAZUM_USAGE_LOG" --edits --out "$RUNNER_TEMP/trazum-plan.json" --markdown-out "$RUNNER_TEMP/trazum-report.md")
+          [ -n "$TRAZUM_CONFIG" ] && args+=(--config "$TRAZUM_CONFIG")
+          [ -n "$TRAZUM_REPORT_LOCALE" ] && args+=(--locale "$TRAZUM_REPORT_LOCALE")
+          node "$TRAZUM_ACTION_PATH/packages/cli/dist/index.js" "${args[@]}"
+          echo "outcome=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        # The weekly summary is a third mode and exclusive like the other two:
+        # it reads a log and writes a note, it gates nothing, and a run that
+        # also carried a budget would leave the reader unsure which verdict
+        # the red build was. Refused naming what was mixed.
+        if [ -n "$TRAZUM_WEEKLY_SUMMARY" ]; then
+          if [ "$TRAZUM_WEEKLY_SUMMARY" != "issue" ] && [ "$TRAZUM_WEEKLY_SUMMARY" != "comment" ]; then
+            echo "::error title=Trazum::The 'weekly-summary' input is 'issue' or 'comment', the one place the owner chose. '$TRAZUM_WEEKLY_SUMMARY' is neither."
+            echo "outcome=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$TRAZUM_USAGE_LOG" ] || [ -n "$target" ]; then
+            echo "::error title=Trazum::Set 'usage-log' (and not 'target') with 'weekly-summary': the summary is written from a usage log."
+            echo "outcome=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$TRAZUM_MAX_USD$TRAZUM_AGAINST$TRAZUM_MAX_GROWTH_USD$TRAZUM_MAX_CACHE_LOSS_USD$TRAZUM_SINCE$TRAZUM_MAX_MONTHLY_INCREASE_USD" ]; then
+            echo "::error title=Trazum::'weekly-summary' writes a note and gates nothing, and its week is the seven days before 'until'. Remove max-usd, against, max-growth-usd, max-cache-loss-usd, max-monthly-increase-usd and since, or run the gate in its own step."
+            echo "outcome=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          args=(weekly "$TRAZUM_USAGE_LOG" --out "$RUNNER_TEMP/trazum-report.md")
+          [ -n "$TRAZUM_LABEL" ] && args+=(--label "$TRAZUM_LABEL")
+          [ -n "$TRAZUM_UNTIL" ] && args+=(--until "$TRAZUM_UNTIL")
+          [ -n "$TRAZUM_CONFIG" ] && args+=(--config "$TRAZUM_CONFIG")
+          [ -n "$TRAZUM_REPORT_LOCALE" ] && args+=(--locale "$TRAZUM_REPORT_LOCALE")
+          node "$TRAZUM_ACTION_PATH/packages/cli/dist/index.js" "${args[@]}"
+          echo "outcome=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
         # Two modes, mutually exclusive: gate the tokens before the money is
         # spent (check), or gate the spend itself (profile). A run doing both
         # would fold two verdicts into one exit code, and saying which gate
@@ -142,6 +220,21 @@ runs:
         fi
         if [ -n "$TRAZUM_FILE" ] && [ -z "$TRAZUM_TARGET" ]; then
           echo "::warning title=Trazum::The 'file' input is deprecated; rename it to 'target'."
+        fi
+
+        # The monthly increase gate prices prompts against the pull request's
+        # base, so it belongs to the prompt gate and to a pull request. Asked
+        # for anywhere else it would judge nothing, and a gate that judged
+        # nothing is refused rather than passed.
+        if [ -n "$TRAZUM_MAX_MONTHLY_INCREASE_USD" ] && [ -n "$TRAZUM_USAGE_LOG" ]; then
+          echo "::error title=Trazum::'max-monthly-increase-usd' gates the prompts in 'target' against the pull request's base. It does not apply to 'usage-log'; use max-growth-usd with against for a log."
+          echo "outcome=1" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ -n "$TRAZUM_MAX_MONTHLY_INCREASE_USD" ] && [ -z "$TRAZUM_BASE_SHA" ]; then
+          echo "::error title=Trazum::'max-monthly-increase-usd' compares with the pull request's base branch, and this run is not on a pull request."
+          echo "outcome=1" >> "$GITHUB_OUTPUT"
+          exit 0
         fi
 
         if [ -n "$TRAZUM_USAGE_LOG" ]; then
@@ -161,6 +254,15 @@ runs:
           args=(check "$target")
           [ -n "$TRAZUM_MAX_TOKENS" ] && args+=(--max-tokens "$TRAZUM_MAX_TOKENS")
           [ -n "$TRAZUM_LEVEL" ] && args+=(--level "$TRAZUM_LEVEL")
+          # Compared only where the base commit is in the checkout, or where
+          # the limit asks for it. A default checkout is shallow and does not
+          # hold the base, and a run that never asked for the comparison gets
+          # no line about it; the limit, which cannot be judged without it,
+          # gets the CLI's own refusal and its fix (#785).
+          if [ -n "$TRAZUM_BASE_SHA" ] && { [ -n "$TRAZUM_MAX_MONTHLY_INCREASE_USD" ] || git cat-file -e "${TRAZUM_BASE_SHA}^{commit}" 2>/dev/null; }; then
+            args+=(--base "$TRAZUM_BASE_SHA")
+          fi
+          [ -n "$TRAZUM_MAX_MONTHLY_INCREASE_USD" ] && args+=(--max-monthly-increase-usd "$TRAZUM_MAX_MONTHLY_INCREASE_USD")
         fi
         [ -n "$TRAZUM_CONFIG" ] && args+=(--config "$TRAZUM_CONFIG")
         [ -n "$TRAZUM_REPORT_LOCALE" ] && args+=(--locale "$TRAZUM_REPORT_LOCALE")
@@ -218,15 +320,59 @@ runs:
       env:
         TRAZUM_OUTCOME: ${{ steps.check.outputs.outcome }}
         TRAZUM_USAGE_LOG: ${{ inputs.usage-log }}
+        TRAZUM_WEEKLY_SUMMARY: ${{ inputs.weekly-summary }}
+        TRAZUM_PLAN_PULL_REQUEST: ${{ inputs.plan-pull-request }}
       run: |
         if [ "${TRAZUM_OUTCOME:-1}" != "0" ]; then
-          if [ -n "$TRAZUM_USAGE_LOG" ]; then
+          if [ "$TRAZUM_PLAN_PULL_REQUEST" = "true" ]; then
+            echo "::error title=Trazum::The plan could not be made. See the log above: no pull request was opened."
+          elif [ -n "$TRAZUM_WEEKLY_SUMMARY" ]; then
+            echo "::error title=Trazum::The weekly summary could not be written. See the log above: nothing was posted."
+          elif [ -n "$TRAZUM_USAGE_LOG" ]; then
             echo "::error title=Trazum::The spend gate failed — the log is over its budget or grew past its limit, or the profile could not run. See the run summary."
           else
-            echo "::error title=Trazum::A prompt busts its token budget, or the check could not run. See the run summary."
+            echo "::error title=Trazum::A prompt busts its token budget, the monthly increase against the base is over its limit, or the check could not run. See the run summary."
           fi
           exit 1
         fi
+
+    - name: Post the weekly summary
+      shell: bash
+      # Only when the owner chose a place: 'issue' or 'comment', and nothing
+      # else is a place. Never fails the build, like the comment step: the
+      # summary is already on the job page, and the verdict above belongs to
+      # the writing of it.
+      #
+      # The token is the one the workflow gave, passed through the environment
+      # to the one script that talks to GitHub. The CLI that wrote the summary
+      # never receives it.
+      if: always() && (inputs.weekly-summary == 'issue' || inputs.weekly-summary == 'comment') && steps.check.outputs.outcome == '0'
+      env:
+        TRAZUM_GITHUB_TOKEN: ${{ inputs.github-token }}
+        TRAZUM_SUMMARY_TARGET: ${{ inputs.weekly-summary }}
+        TRAZUM_SUMMARY_ISSUE: ${{ inputs.weekly-summary-issue }}
+        TRAZUM_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        TRAZUM_BODY_PATH="$RUNNER_TEMP/trazum-report.md" \
+          node "$TRAZUM_ACTION_PATH/action/post-weekly.mjs" || true
+
+    - name: Open the plan's pull request
+      shell: bash
+      # The one step of this Action that writes to a repository (#796): a
+      # branch, a commit and a pull request, through the API. A workflow
+      # using it gives its job contents: write and pull-requests: write, and
+      # puts nothing else in that job; docs/ci.md shows the job. The token
+      # reaches this step through the environment and the CLI never sees it.
+      #
+      # Never fails the build, like the other posting steps: the plan is on
+      # the job's summary page, and the verdict above belongs to making it.
+      if: always() && inputs.plan-pull-request == 'true' && steps.check.outputs.outcome == '0'
+      env:
+        TRAZUM_GITHUB_TOKEN: ${{ inputs.github-token }}
+        TRAZUM_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        TRAZUM_PLAN_PATH="$RUNNER_TEMP/trazum-plan.json" TRAZUM_BODY_PATH="$RUNNER_TEMP/trazum-report.md" \
+          node "$TRAZUM_ACTION_PATH/action/open-plan-pr.mjs" || true
 
     - name: Suggest the optimised prompts
       shell: bash

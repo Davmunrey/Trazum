@@ -42,6 +42,198 @@ something nobody asked about.
 
 Or use the binary directly, exactly as below.
 
+### What the change does to each prompt's monthly cost
+
+On a pull request the Action also reads the base branch's prompts and puts a
+table in the same report, and so in the same comment: for each prompt the
+change touches, its tokens on the base and on the head, what it costs on
+each, and the difference. It is `trazum check <target> --base <sha>`, with
+the pull request's base commit, and it adds no second comment: the report is
+still one comment per `comment-key`, replaced on every push.
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+steps:
+  - uses: actions/checkout@<commit-sha>
+    with:
+      fetch-depth: 0          # the base commit has to be in the clone
+      persist-credentials: false
+  - uses: Davmunrey/Trazum@<commit-sha>
+    with:
+      target: prompts/
+      comment: 'true'
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+      max-monthly-increase-usd: '25'   # optional; off unless set
+```
+
+What each figure is, and what it is not:
+
+- **The base comes from the clone, never from the network.** It is read with
+  `git show`, and a base commit the clone does not have is said, with the fix
+  (`fetch-depth: 0`), rather than fetched or stood in for by the working tree.
+  `actions/checkout` fetches one commit by default, so without that line the
+  Action does not compare and the report is what it was before this
+  existed. With `max-monthly-increase-usd` set, which cannot be judged
+  without the base, it compares anyway and fails with that fix.
+- **A month needs a volume somebody stated.** It is `volumes` in
+  `trazum.config.json`, calls a month for a label that `labels` maps to the
+  prompt file, the same map `trazum plan --edits` reads:
+
+  ```json
+  {
+    "labels": { "support": "prompts/support.txt" },
+    "volumes": { "support": 30000 }
+  }
+  ```
+
+  A changed prompt with no stated volume is priced per call, and the report
+  says how many are. Several labels sending one file add up; one of them
+  without a volume leaves the file per call. A prompt marked inside a source
+  file is always per call, because a label maps a file and not a prompt in it.
+- **Input tokens at the input price, both sides at the same prices.** The
+  model is `usage.model`, or Trazum's default, and the report says which.
+  Output is left out, because a prompt edit does not set how much the model
+  writes back. Every row names its price per million input tokens and the day
+  that price was read from the provider's page: the catalogue's review date
+  for that provider, or a local overlay's own date. Both sides use the same
+  price list, so a provider repricing cannot read as a change the pull
+  request made.
+- **`max-monthly-increase-usd` is the one gate**, and it is off unless set. It
+  fails the build when the prompts with a stated volume cost more than that
+  many dollars a month more on the head than on the base, and it names how
+  many changed prompts it could not judge. Set off a pull request, or with
+  `usage-log`, it is refused; when the base cannot be read it fails, because a
+  gate that judged nothing is not a pass.
+
+Locally, against any ref the clone has:
+
+```bash
+trazum check prompts/ --base origin/main --max-monthly-increase-usd 25
+```
+
+### A weekly summary in the repository
+
+The same Action can write the week down and post it, so nobody has to remember
+to run `bill`. It reads a usage log the job can see (committed, or fetched by
+an earlier step), writes [`trazum weekly`](commands.md#the-week-written-down-trazum-weekly)'s
+summary, and posts it to the one place you name. It is off unless
+`weekly-summary` is set.
+
+```yaml
+on:
+  schedule:
+    - cron: '41 7 * * 1'
+permissions:
+  contents: read
+  issues: write
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Davmunrey/Trazum@<commit-sha>  # pin to a commit, never a tag
+        with:
+          usage-log: logs/usage/
+          weekly-summary: comment
+          weekly-summary-issue: '12'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+`weekly-summary` is the owner's choice and there are two answers. `issue` opens
+one issue for the week, titled with its dates. `comment` adds one comment for
+the week on the standing issue `weekly-summary-issue` names, which is the only
+place it comments. Any other value stops the run. The repository is always the
+one the workflow runs in: no input and nothing in the event moves it.
+
+- **A week is posted once.** The summary ends in a marker naming the week's
+  last day, and a re-run of the same week replaces its own post instead of
+  adding another; the next week gets its own. Only a post made by a bot counts
+  as its own, so an issue or comment somebody else wrote is never edited, even
+  one that quotes the marker. That recognition needs the workflow's own
+  `GITHUB_TOKEN`: with a personal access token the author is a user, and a
+  re-run of the same week would post again.
+- **It sets nothing else.** No label, assignee or milestone: those are yours.
+- **The endpoints are the four it needs**: list the repository's issues or the
+  standing issue's comments, create an issue or a comment, and edit the one it
+  created. The token is the workflow's, handed to one script and never to the
+  CLI. It needs `issues: write` and nothing more.
+- **It never fails the build for not posting.** A token too narrow, an issue
+  that is not there or an API that refuses each leave a notice, and the summary
+  is on the run's summary page either way. A summary that could not be written
+  does fail the run, since nothing was said.
+- **It is a mode of its own.** With `weekly-summary` the run takes `usage-log`
+  (and optionally `until`, `label`, `config`, `locale`) and refuses `target` and
+  every gate (`max-usd`, `against`, `max-growth-usd`, `max-cache-loss-usd`,
+  `since`): one run says one thing. Run a gate in its own step.
+
+### A plan that opens its own pull request
+
+Some of what a plan says to do is an edit Trazum can already write: a prompt
+trimmed by the `safe` rules. With `plan-pull-request: 'true'` the Action makes
+the plan with [`trazum plan --edits`](commands.md#the-plan-trazum-plan), makes
+those edits on a new branch, and opens one pull request whose body is the
+plan: each change, the measured figure it is expected against, and how
+`trazum verify` checks it. It is off unless asked for, and it is the one step
+of the Action that writes to the repository, so give it a job of its own and
+the two permissions there:
+
+```yaml
+on:
+  schedule:
+    - cron: '23 6 * * 1'
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Davmunrey/Trazum@<commit-sha>  # pin to a commit, never a tag
+        with:
+          usage-log: logs/usage/
+          plan-pull-request: 'true'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+The files come from `labels` in `trazum.config.json`, which says which prompt
+file each workload sends. Only a file git tracks is edited, never a source
+file, and only by the `safe` rules: no model writes any of it.
+
+- **The branch carries the plan's edits and nothing else.** Each new text is
+  made again from the default branch's file, which has to be the file the plan
+  was made against (by SHA-256), and has to come out as the text the plan
+  promised (by SHA-256). One file that moved on refuses the whole pull request,
+  because a body listing a change the branch does not make would not be the
+  plan. A file's mode is kept.
+- **No pull request with no change.** A plan with no edit, or one whose edits
+  are all on the default branch already, creates nothing: no branch, no commit.
+- **One pull request per plan.** The branch is `trazum/plan-` and a hash of the
+  plan's edits, so the same edits made into a plan next week are the same plan.
+  An open pull request from it is reused; a closed or merged one is the owner's
+  answer and is not opened again; a branch of that name with no pull request is
+  left alone.
+- **Never the default branch, never a merge.** The one ref it creates is the new
+  branch, once. It calls no merge endpoint, and sets no label, reviewer or
+  assignee. The repository is the one the workflow runs in and the base is its
+  default branch: no input and nothing in the event moves either.
+- **No saving is projected.** The figure each edit is held to is what the
+  workload cost in the log, measured. The file's tokens before and after are
+  the estimator's and are labelled estimated. `trazum verify plan.json
+  --against <the newer log>` says afterwards whether the edit is in the file
+  and whether the calls got shorter.
+- **It never fails the build for not opening.** A token without the two
+  permissions, a file that moved on or an API that refuses each leave a notice,
+  and the plan is on the run's summary page either way. A plan that could not
+  be made does fail the run.
+- **It is a mode of its own.** It takes `usage-log` (and optionally `config`
+  and `locale`) and refuses `target`, `weekly-summary` and every gate and
+  window: it proposes, over the whole log, and gates nothing.
+
 ## GitLab CI
 
 ```yaml

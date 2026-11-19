@@ -174,6 +174,19 @@ export function repositoryRoot(cwd: string): string | null {
 }
 
 /**
+ * Whether git tracks `repoPath` in the repository at `root`.
+ *
+ * `trazum plan --edits` writes an edit only for a tracked file: the edit is
+ * opened later as a pull request, and a pull request can only change what the
+ * repository holds. The path goes after `--`, like every path here, so a file
+ * named like an option is read as a file.
+ */
+export function isTracked(root: string, repoPath: string): boolean {
+  const out = git(['ls-files', '--error-unmatch', '--', repoPath], root);
+  return out !== null && out.trim() !== '';
+}
+
+/**
  * The path as git knows it — relative to the repository root, forward slashes —
  * or `null` when it falls outside the repository.
  */
@@ -255,6 +268,97 @@ export function runCrontab(args: readonly ['-l'] | readonly ['-'], input?: strin
   };
 }
 
+/** What a desktop notifier said: its exit status and stderr, or the error that kept it from starting. */
+export interface NotifierRun {
+  status: number | null;
+  stderr: string;
+  /** `ENOENT` when this machine has no such program. */
+  errorCode: string | null;
+}
+
+/**
+ * Runs the platform's notifier, for `trazum watch --notify`.
+ *
+ * It is here, beside the other spawns, so the invariant the security suite
+ * asserts, that child_process appears in exactly one file, stays whole. The
+ * same rules: no shell, a timeout so a notifier that hangs cannot hang the
+ * watcher, and output bounded. The command is one of three literals, and the
+ * argument list is built by `watch-notify.ts`, which hands the text over as
+ * data (arguments of a fixed script, an environment variable, or after `--`)
+ * and never splices it into anything a program would run.
+ */
+export function runNotifier(
+  command: 'osascript' | 'notify-send' | 'powershell.exe',
+  args: readonly string[],
+  env: NodeJS.ProcessEnv,
+): NotifierRun {
+  const result = spawnSync(command, [...args], {
+    shell: false,
+    encoding: 'utf8',
+    timeout: TIMEOUT_MS,
+    maxBuffer: MAX_BUFFER,
+    windowsHide: true,
+    stdio: ['ignore', 'ignore', 'pipe'],
+    env,
+  });
+  const code = result.error !== undefined && 'code' in result.error ? String((result.error as { code: unknown }).code) : null;
+  return {
+    status: result.status,
+    stderr: typeof result.stderr === 'string' ? result.stderr : '',
+    errorCode: result.error === undefined ? null : (code ?? 'ERROR'),
+  };
+}
+
+/** When one commit of a range was written and when it was committed, in epoch milliseconds. */
+export interface CommitTimes {
+  authorMs: number;
+  committerMs: number;
+}
+
+/**
+ * A revision range is one argument that git reads as a range. It is refused
+ * before it reaches the argv when it could be read as an option (a leading
+ * `-`) or carries a control character or a space, which no range needs.
+ */
+function isSafeRange(range: string): boolean {
+  if (range === '' || range.startsWith('-')) return false;
+  for (const ch of range) {
+    const code = ch.codePointAt(0) ?? 0;
+    // `trim()` removes exactly the characters a regular expression's `\s` matches.
+    if (code <= 0x1f || code === 0x7f || ch.trim() === '') return false;
+  }
+  return true;
+}
+
+/**
+ * The author and commit times of every commit in `range`, for `bill --git-range`.
+ *
+ * Times only: no author's name, no subject, no hash leaves this function, because
+ * the one thing the caller needs is when the work began and when it was
+ * committed, and anything else would be a way for a name to reach a bill.
+ * `null` when git ran and refused the range (it names nothing that exists); an
+ * empty list when the range holds no commit; a thrown `GitUnavailableError`
+ * when git could not be run at all, so the two never read as the same answer.
+ */
+export function commitTimes(range: string, options: { cwd: string; spawn?: SpawnLike }): CommitTimes[] | null {
+  if (!isSafeRange(range)) return null;
+  const outcome = runGit(
+    ['log', '--format=%at\u001f%ct', '--max-count=100000', range, '--'],
+    options.cwd,
+    options.spawn,
+  );
+  if (!outcome.ran) throw new GitUnavailableError(outcome.detail);
+  if (outcome.stdout === null) return null;
+  const times: CommitTimes[] = [];
+  for (const row of outcome.stdout.split('\n')) {
+    if (row.trim() === '') continue;
+    const [author = '', committer = ''] = row.trim().split('\u001f');
+    if (!/^\d+$/.test(author) || !/^\d+$/.test(committer)) continue;
+    times.push({ authorMs: Number(author) * 1000, committerMs: Number(committer) * 1000 });
+  }
+  return times;
+}
+
 /**
  * Commits that touched `repoPath`, newest first.
  *
@@ -320,6 +424,42 @@ export function contentAt(sha: string, repoPath: string, cwd: string): string | 
   // before it can contribute anything to one.
   if (!SHA.test(sha)) return null;
   return git(['show', `${sha}:${repoPath}`], cwd);
+}
+
+/**
+ * The full sha of the commit `ref` names in this checkout, or `null` when the
+ * checkout does not have it.
+ *
+ * `trazum check --base` (#785) reads the base branch from the clone the job
+ * already has, and never fetches: a commit that is not here is reported as
+ * not here, with what would bring it, and is never stood in for by the
+ * working tree. A ref that starts with a dash is refused before git sees it,
+ * because git would read it as an option. Unable to run git at all throws,
+ * for the reason `revisionsFor` does.
+ */
+export function commitOf(ref: string, cwd: string, spawn?: SpawnLike): string | null {
+  if (ref === '' || ref.startsWith('-')) return null;
+  const outcome = runGit(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], cwd, spawn);
+  if (!outcome.ran) throw new GitUnavailableError(outcome.detail);
+  const sha = outcome.stdout?.trim() ?? '';
+  return SHA.test(sha) ? sha : null;
+}
+
+/**
+ * Every file under `repoPath` at a commit, as paths from the repository root,
+ * or `null` when git could not answer.
+ *
+ * `repoPath` is relative to the repository root and `cwd` is that root; an
+ * empty `repoPath` means the whole tree. A file path lists that one file when
+ * it is there. NUL-separated output, so a name holding a newline is one name.
+ */
+export function filesAt(sha: string, repoPath: string, cwd: string): string[] | null {
+  if (!SHA.test(sha)) return null;
+  const args = ['ls-tree', '-r', '-z', '--name-only', '--full-tree', sha];
+  if (repoPath !== '') args.push('--', repoPath);
+  const out = git(args, cwd);
+  if (out === null) return null;
+  return out.split('\u0000').filter((name) => name !== '');
 }
 
 /**

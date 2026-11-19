@@ -110,3 +110,40 @@ export interface BrandData {
   dont: string[];
   files: BrandFile[];
 }
+
+/** One way to start the MCP server in one client, as `scripts/install-snippets.mjs` writes it. */
+export interface InstallClient {
+  id: string;
+  label: string;
+  where: string;
+  /** The path of the file it goes in, where it is one. */
+  file?: string;
+  /** The file in this repository that holds the version, where the snippet does not. */
+  pinnedBy?: string;
+  language: string;
+  /** One line to run, rather than a file's content. */
+  command: boolean;
+  code: string;
+}
+
+/** A file a release carries: its name, and its address on the release of the same version. */
+export interface ReleaseFile {
+  name: string;
+  url: string;
+}
+
+/**
+ * What `/download` is made of: the version this build is at, the files that
+ * version's release carries, the install snippets for each client and the
+ * pinned line of the GitHub Action. Written by `scripts/build-site-pages.mjs`
+ * from the same sources `docs/agents.md` is held to.
+ */
+export interface DownloadData {
+  version: string;
+  mcpPackage: string;
+  cliPackage: string;
+  clients: InstallClient[];
+  files: { vsix: ReleaseFile; mcpb: ReleaseFile; sums: ReleaseFile; sbom: ReleaseFile };
+  releaseUrl: string;
+  action: { sha: string; label: string };
+}

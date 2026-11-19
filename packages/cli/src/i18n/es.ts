@@ -39,7 +39,7 @@ ${bold('USO')}
   trazum history <dir-de-informes-guardados> [opciones]
   trazum connect <provider> [opciones]
   trazum store [--prune] [opciones]
-  trazum watch [--once | --interval 15m] [opciones]
+  trazum watch [--once | --interval 15m] [--sessions] [--notify] [opciones]
   trazum serve [--port <n> | --socket <ruta>]
   trazum diff <antes> <después> [opciones]
   trazum diff --all <dir> <dir> [opciones]
@@ -54,7 +54,9 @@ ${bold('USO')}
   trazum position <uso.jsonl>
   trazum receipt <uso.jsonl> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
-              [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
+              [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <fichero>]
+              [--git-range <rango>]
+  trazum weekly [<fichero|dir>...] [--until <cuándo>] [--label <nombre>] [--notify] [-o <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-codex <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-gemini-cli <fichero|dir> [--label <nombre>] [-o <fichero>]
@@ -278,6 +280,23 @@ ${bold('OPCIONES DE bill')}
   --by <day|week|month>       Reparte el extracto por día UTC, semana ISO (de
                               lunes a domingo) o mes. Sin él, una factura que
                               abarca dos meses o más se reparte por mes.
+  --git-range <rango>         En vez de una factura, dice qué se registró en las
+                              sesiones de Claude Code de este repositorio entre la
+                              primera hora de autor y la última de commit del
+                              rango (main..HEAD), ejecutado desde el repositorio.
+                              Solo entran en la cifra las sesiones que empezaron y
+                              terminaron dentro del periodo; las que cruzaron un
+                              extremo se nombran y cuentan aparte. Es todo lo
+                              gastado entonces en este repositorio, no el coste
+                              del cambio. No con --since, --until, --label ni salida.
+  --otlp-out <fichero>        Escribe además la factura como métricas OpenTelemetry
+                              (JSON OTLP/HTTP): por día UTC cerrado, coste, tokens
+                              y llamadas por proyecto, modelo y agente, y lo que no
+                              se pudo cobrar como métrica aparte. Cada punto de coste
+                              dice que es equivalente a API, no lo que pagó un plan.
+                              Hoy, y un día que corta la ventana --since/--until, no
+                              son puntos: el recurso dice cuáles y qué contenían.
+                              Trazum escribe el fichero; tu pipeline lo envía.
   --stamp                     Sella el recibo con la hora en que se escribió.
   -o, --out <archivo>         Escribe el recibo ahí en vez de en stdout.
 
@@ -295,6 +314,31 @@ ${bold('OPCIONES DE bill')}
   nombra como ambiguo y se deja en paz; un informe de costes de proveedor se
   remite a reconcile. La línea de cada archivo dice cuántas filas quedaron
   fuera, y el comando from-<forma> dedicado dice por qué.
+
+${bold('OPCIONES DE weekly')}
+  --until <cuándo>            Dónde termina la semana: un día UTC (2026-11-19,
+                              el día entero), una marca de tiempo, una ventana
+                              relativa o "now", el valor por defecto. La semana
+                              son los siete días anteriores, y se compara con
+                              la semana anterior a esa.
+  --label <nombre>            El proyecto al que pertenece este uso, para las
+                              formas que lo admiten.
+  --notify                    Muestra además una notificación de escritorio con
+                              una línea del resumen, la factura y su movimiento,
+                              con lo que tenga la plataforma (como watch
+                              --notify). Se dice, no es fatal, si no hay.
+  -o, --out <archivo>         Escribe el resumen ahí en vez de en stdout.
+
+  La semana en Markdown: la factura, qué se movió respecto a la semana
+  anterior y los tres cambios que conviene hacer primero. Lee lo que lee
+  bill y, sin ruta, las carpetas de sesiones de cada agente. Las dos semanas
+  son medidas, de los mismos logs y con la misma lista de precios. Los
+  cambios son proyecciones y lo dicen, cada uno junto a lo que costó su
+  carga de trabajo esta semana; trazum verify es lo que los mide después.
+  Cada importe en dólares y cada porcentaje se comprueba contra las facturas
+  de las dos semanas antes de escribir nada, y se rechaza un resumen con uno
+  que no esté ahí. No envía nada a ningún sitio: el archivo es la salida, y
+  la GitHub Action es la que lo publica.
 
 ${bold('OPCIONES DE from-openrouter')}
   --label <nombre>            El proyecto al que pertenece este uso.
@@ -768,6 +812,16 @@ ${bold('OPCIONES DE check')}
                               comprobable pasa. Los presupuestos aplican por fichero como
                               siempre; el baseline necesita el repositorio entero y se
                               omite, diciéndolo.
+  --base <ref>                Pone además precio a cada prompt cambiado en ese commit y
+                              aquí: tokens, y su coste de entrada al mes con las
+                              llamadas al mes que "volumes" indica para su label, o por
+                              llamada si no indica ninguna. Cada cifra nombra su precio
+                              y el día en que se leyó. El commit se lee de esta copia
+                              con git y nunca se descarga; si no está, se dice.
+  --max-monthly-increase-usd <usd>
+                              Con --base: falla si los prompts con volumen indicado
+                              cuestan al mes más de estos dólares por encima de la
+                              base. Desactivado salvo que se pase.
 
   Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
   así una plantilla que crece sin control rompe la build en vez de la factura.
@@ -908,6 +962,13 @@ ${bold('OPCIONES DE plan')}
   --min-usd <n>               Deja fuera las acciones que valen menos de n
                               dólares. Cuántas quedaron fuera se dice, nunca
                               en silencio.
+  --edits                     Añade una edición a cada fichero de prompt que
+                              "labels" en trazum.config.json asigna a un
+                              label: el texto de las reglas safe, guardado por
+                              hash, sin escribirse. Solo ficheros que git
+                              sigue. No se proyecta ningún ahorro.
+  --reorder                   Con --edits: mueve los bloques estables delante
+                              del primer marcador antes de recortar.
   -o, --out <fichero>         Guarda el plan como JSON fechado, el fichero al
                               que "trazum verify" lo atará después.
   --markdown-out <fichero>    Escribe además el plan como Markdown, para un
@@ -967,6 +1028,19 @@ ${bold('OPCIONES DE watch')}
                               porque las URLs acaban en logs e historiales.
   --payload <fichero>         Evalúa un payload de uso que ya tengas, en vez
                               del almacén.
+  --sessions                  Vigila las sesiones que Claude Code, Codex y
+                              Gemini CLI guardan en esta máquina, las que
+                              \`bill\` lee sin ruta, en vez del almacén. No
+                              necesita configuración. Repite \`--sessions\` en
+                              cada ejecución: lleva su propio registro de lo
+                              que ya se reportó.
+  --notify                    Muestra además una notificación de escritorio de
+                              lo que acaba de cruzar: osascript en macOS,
+                              notify-send en Linux, un aviso de PowerShell en
+                              Windows, sin instalar nada. Lleva la frase que se
+                              imprime aquí y nada más. Desactivada salvo que la
+                              pidas; si la máquina no tiene ninguna, lo dice y
+                              los demás transportes siguen.
   --json                      La vuelta como datos: cruces, abstenciones, hueco.
 
   Evalúa los gates de gasto de tu configuración (maxUsd, maxDayUsd,
@@ -1147,6 +1221,9 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     labels    { "support-rag": "prompts/soporte.txt" }: qué fichero de prompt
               manda cada label del registro de uso, para que "trazum profile"
               lea el fichero y diga por qué falla una caché que falla
+    volumes   { "support-rag": 30000 }: llamadas al mes de una label que
+              "labels" asocia, para que "check --base" ponga precio a ese
+              prompt por meses. Un prompt sin volumen va por llamada, y se dice
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } }: presupuestos en
               dólares para "trazum profile". Una etiqueta con presupuesto y sin
               llamadas se informa como no medida, nunca como aprobada
@@ -2251,6 +2328,31 @@ ${bold('EJEMPLOS')}
     windowMatchesNothing: (from, to) =>
       `Ninguna llamada cae dentro de este periodo. Lo leído cubre ${from} → ${to}. Un periodo sin nada dentro no es una factura de $0: revisa las fechas, o quita --since/--until para facturarlo todo.`,
     written: (file) => `Escrito ${file}.`,
+    rangeConflict: (flag) =>
+      `--git-range fija el periodo por sí mismo, a partir de los commits, e imprime su propio extracto: no se puede combinar con ${flag}.`,
+    rangeNoGit: () => 'no se pudo ejecutar git, del que --git-range lee las horas de los commits.',
+    rangeNoRepository: () => 'Este directorio no está dentro de un repositorio git, así que --git-range no tiene repositorio que leer.',
+    rangeBad: (range) => `git no conoce el rango "${range}". Indica uno como main..HEAD.`,
+    rangeEmpty: (range) => `El rango "${range}" no contiene ningún commit, así que no tiene periodo que sumar.`,
+    rangeHeading: (range) => `Registrado en las sesiones de este repositorio mientras se escribía ${range}`,
+    rangeWindow: (from, to, commits) =>
+      `Periodo: ${from} a ${to}, según las horas de autor y de commit de ${commits} commit(s).`,
+    rangeInside: (usd, calls, sessions) =>
+      `${usd} en ${calls.toLocaleString('es-ES')} llamada(s) valorada(s) de ${sessions.toLocaleString('es-ES')} sesión(es) que empezaron y terminaron dentro del periodo.`,
+    rangeNothingInside: () => 'Ninguna sesión de este proyecto empezó y terminó dentro del periodo.',
+    rangeStraddleHeading: (count) =>
+      `${count} sesión(es) empezaron antes del periodo o siguieron después. Contadas aparte, no en la cifra de arriba:`,
+    rangeStraddleRow: (session, from, to, insideUsd, insideCalls, outsideUsd, outsideCalls) =>
+      `  ${session}  ${from} a ${to}: ${insideUsd} (${insideCalls} llamada(s)) dentro del periodo, ${outsideUsd} (${outsideCalls} llamada(s)) fuera.`,
+    rangeNoStraddle: () => 'Ninguna sesión cruzó un extremo del periodo.',
+    rangeMeaning: () =>
+      'Esto es todo lo registrado en este repositorio durante ese periodo. No es el coste del cambio: incluye otro trabajo del mismo repositorio, y no incluye el trabajo del cambio hecho en otro sitio.',
+    rangeLeftOut: (outsideCalls, otherProjects, otherSources, undated) =>
+      `Fuera: ${outsideCalls} llamada(s) de sesiones por completo fuera del periodo, ${otherProjects} registro(s) de otros proyectos, ${otherSources} registro(s) de fuentes sin carpeta de proyecto que comparar (Codex, Gemini CLI, logs), ${undated} llamada(s) sin marca de tiempo.`,
+    rangeUnpriced: (calls) =>
+      `No está en la cifra: ${calls} llamada(s) a modelos que el catálogo no valora. Nombradas, nunca contadas como $0.`,
+    rangeNoProject: () =>
+      'Ninguna sesión leída pertenece a la carpeta de proyecto de este repositorio. Claude Code nombra esa carpeta con la ruta absoluta del repositorio, así que lee la carpeta que la contiene (trazum bill ~/.claude/projects --git-range main..HEAD) desde la raíz del repositorio. Una sesión iniciada en un subdirectorio o en un worktree está en una carpeta de otro nombre y no se reconoce.',
   },
 
   fromOpenrouter: {
@@ -2406,6 +2508,47 @@ ${bold('EJEMPLOS')}
     source: () =>
       'Medido solo desde este log, registro a registro. La posición mensual facturada por el proveedor que guarda el almacén es otra medición (la imprime «trazum store») y las dos nunca se funden en una cifra.',
     noLog: () => 'position necesita un log de uso: trazum position uso.jsonl',
+  },
+  weekly: {
+    heading: (firstDay, lastDay) => `Trazum, la semana del ${firstDay} al ${lastDay}`,
+    billHeading: () => 'La factura',
+    billTotal: (usd, calls) => `**${usd}** en ${calls} ${calls === '1' ? 'llamada' : 'llamadas'}, ${calls === '1' ? 'medida' : 'medidas'} de los logs y ${calls === '1' ? 'cobrada' : 'cobradas'} con las tarifas del propio catálogo.`,
+    noCalls: (firstDay, lastDay) =>
+      `Ninguna llamada de los logs cae entre el ${firstDay} y el ${lastDay}, así que no hay factura que declarar. Eso no es una factura de cero: o no se ejecutó nada, o lo que se ejecutó no quedó en un log de los entregados.`,
+    colModel: () => 'Modelo',
+    colCalls: () => 'Llamadas',
+    colUsd: () => 'USD',
+    moreModels: (count) => `${count} modelos más, más pequeños que estos.`,
+    unpriced: (models, calls) =>
+      `Llamadas con modelos que el catálogo no sabe cobrar: ${calls} (${models}). No están en la factura de arriba, que por tanto es un mínimo.`,
+    undated: (count) =>
+      `Llamadas sin marca de tiempo: ${count}. No se pueden situar en ninguna semana y quedan fuera, no adivinadas dentro de esta.`,
+    movedHeading: (firstDay, lastDay) => `Frente a la semana anterior (${firstDay} a ${lastDay})`,
+    noWeekBefore: () =>
+      'Ninguna llamada de los logs cae en la semana anterior, así que no hay con qué comparar. No se imprime un porcentaje de nada.',
+    moved: (delta, pct, now, before, calls) =>
+      `La factura se movió ${delta}${pct === null ? '' : ` (${pct})`} frente a la anterior: ${now} ahora, ${before} entonces en ${calls} ${calls === '1' ? 'llamada' : 'llamadas'}. Las dos son medidas.`,
+    unchanged: (now, before) => `La semana costó lo mismo que la anterior: ${now} ahora, ${before} entonces. Las dos son medidas.`,
+    moversHeading: () => 'Lo que más se movió, por modelo:',
+    mover: (model, before, now, delta) => `${model}: ${before} entonces, ${now} ahora (${delta})`,
+    changesHeading: () => 'Tres cambios para hacer primero',
+    noChanges: () =>
+      'Nada de las llamadas de esta semana da un cambio que proponer: ningún modelo más barato que encaje, ninguna llamada que pueda ir por lotes, ninguna pérdida de caché confirmada ni reintento por truncado.',
+    projected: (usd) => `${usd} de ahorro proyectado sobre las llamadas de esta semana. Proyectado, no medido: aún no ha ocurrido.`,
+    stake: (usd) => `${usd} ya gastados en este problema esta semana. Medido, no proyectado.`,
+    measuredBefore: (usd, calls) => `Medido antes del cambio: esta carga de trabajo en este modelo costó ${usd} en ${calls} ${calls === '1' ? 'llamada' : 'llamadas'} esta semana.`,
+    moreChanges: (count) => `${count} cambios más están en el plan y son más pequeños que estos.`,
+    verifyHow: () =>
+      'Cómo se comprobará cada uno: `trazum plan <log> --out plan.json` antes de cambiar nada, y después `trazum verify plan.json --against <el log más nuevo>`. Dice por cada acción si el cambio llegó, no llegó o no se puede saber, y qué hizo la factura. Hasta entonces un ahorro proyectado es una proyección.',
+    footer: () =>
+      'Escrito por `trazum weekly` a partir de logs de la máquina que lo ejecutó. No se envió nada a ningún sitio para producirlo y no se llamó a ningún modelo.',
+    strayFigures: (figures) =>
+      `No se escribió el resumen: contiene ${figures}, que no está en la factura de ninguna de las dos semanas. Una cifra que nadie encuentra en la factura no se imprime.`,
+    wrote: (path) => `Resumen semanal escrito en ${path}.`,
+    notifyUnavailable: (command) => `--notify pidió una notificación de escritorio y esta máquina no tiene ${command}, así que no se envió ninguna. El resumen se escribió igualmente.`,
+    notifyFailed: (command, why) => `--notify: ${command} la rechazó (${why}), así que no se mostró ninguna notificación. El resumen se escribió igualmente.`,
+    headline: (usd, calls, delta, pct) =>
+      `Trazum, esta semana: ${usd} en ${calls} ${calls === '1' ? 'llamada' : 'llamadas'}${delta === null ? '' : `, ${delta}${pct === null ? '' : ` (${pct})`} frente a la semana anterior`}.`,
   },
   proactive: {
     heading: () => 'Trazum, hablando primero',
@@ -2938,6 +3081,49 @@ ${bold('EJEMPLOS')}
     exactCountsCost: (files) =>
       `Contando ${files} ${files === 1 ? 'fichero' : 'ficheros'} con la API, una llamada por cada uno. Esto tarda un momento.`,
   },
+  againstBase: {
+    heading: (ref, sha) => `Frente a la base, ${ref} en ${sha}`,
+    columnTokens: () => 'Tokens, base → cabeza',
+    columnCalls: () => 'Llamadas al mes',
+    columnBase: () => 'Base',
+    columnHead: () => 'Cabeza',
+    columnPrice: () => 'Precio',
+    notStated: () => 'sin indicar',
+    perMonth: (usd) => `${usd} al mes`,
+    perCall: (usd) => `${usd} por llamada`,
+    price: (perMTok, model, provider, readOn) =>
+      `${perMTok} por millón de tokens de entrada, ${model}, precios de ${provider} leídos el ${readOn}`,
+    priceOverlay: (perMTok, model, readOn) =>
+      `${perMTok} por millón de tokens de entrada, ${model}, capa local de precios fechada el ${readOn}`,
+    promo: (until) => `precio promocional hasta el ${until}`,
+    totals: (base, head, change) =>
+      `Los prompts con volumen indicado: ${base} al mes en la base, ${head} en la cabeza (${change}).`,
+    perCallNote: (count) =>
+      `${count} ${count === 1 ? 'prompt cambiado no tiene' : 'prompts cambiados no tienen'} volumen indicado, así que su coste es solo por llamada. Para ponerle precio a un mes, asocia el fichero del prompt en "labels" e indica sus llamadas al mes en "volumes" de trazum.config.json.`,
+    inputOnly: () =>
+      'Tokens de entrada al precio de entrada, los dos lados a los mismos precios. La salida queda fuera: editar un prompt no fija cuánto escribe el modelo.',
+    modelDefault: (model) =>
+      `Con el modelo por defecto de Trazum, ${model}, porque la config no fija usage.model. Fíjalo para poner precio al modelo al que se envían los prompts.`,
+    unchanged: (count) =>
+      `${count} ${count === 1 ? 'prompt es igual' : 'prompts son iguales'} en los dos lados.`,
+    nothingChanged: () => 'Ningún prompt de aquí cambió frente a la base.',
+    gateWithin: (change, limit) => `El aumento mensual, ${change}, está dentro del límite de ${limit}.`,
+    gateBreached: (change, limit) => `El aumento mensual, ${change}, supera el límite de ${limit}.`,
+    gateNotJudged: (count) =>
+      `El límite juzga solo los prompts con volumen indicado: ${count} ${count === 1 ? 'prompt cambiado no se juzgó' : 'prompts cambiados no se juzgaron'}.`,
+    unavailable: (why, ref) =>
+      why === 'no-commit'
+        ? `La base, ${ref}, no está en esta copia, así que no se comparó nada. No se descarga nada para buscarla. En GitHub Actions, pon fetch-depth: 0 en actions/checkout.`
+        : why === 'not-a-repository'
+          ? `Esto no es un repositorio git, así que no hay base con la que comparar ${ref}.`
+          : `No se pudo ejecutar git, así que la base, ${ref}, no se leyó.`,
+    gateUnavailable: (limit) =>
+      `El límite de aumento mensual de ${limit} no juzgó nada, porque la base no se pudo leer, y una puerta que no juzga nada falla.`,
+    gateNeedsBase: () =>
+      '--max-monthly-increase-usd limita lo que un cambio añade al coste mensual frente a una base, así que necesita --base <ref>.',
+    noStdin: () =>
+      '--base lee de git el lado base de un fichero, y la entrada estándar no tiene lado base. Nombra el fichero.',
+  },
   profile: {
     noTarget: () =>
       'Apúntalo a un log de uso: trazum profile usage.jsonl: un objeto JSON por línea, cada uno con un "model" y el objeto "usage" que devolvió la API. Añade "label" (qué carga), "session" (qué conversación) y "ts" (cuándo) ya que estás: sin ellos todas las llamadas parecen iguales, y los hallazgos más grandes de este comando (el crecimiento de conversación, y si el TTL de la caché encaja con el ritmo de tus turnos) no se pueden hacer siquiera. Registrarlo son cuatro líneas en tu propio código, nunca contiene el texto del prompt, y la clave de sesión se agrupa y nunca se imprime.',
@@ -3391,7 +3577,9 @@ ${bold('EJEMPLOS')}
               ? 'Enruta y agrupa'
               : kind === 'fix-truncation'
                 ? 'Arregla los reintentos por truncado de'
-                : 'Mira la caché de';
+                : kind === 'edit-file'
+                  ? 'Edita el fichero de prompt de'
+                  : 'Mira la caché de';
       return `${verb} ${label} (${model})`;
     },
     routeTo: (model, withBatch) =>
@@ -3408,6 +3596,8 @@ ${bold('EJEMPLOS')}
           return 'supone que un max_tokens en el que quepan las respuestas elimina el par';
         case 'traffic-pattern-holds':
           return 'supone que el patrón de tráfico se mantiene: una caché que perdió dinero en este registro puede rendir con otro tráfico';
+        case 'file-is-what-label-sends':
+          return `supone que ${assumption.path} es lo que envía esta carga: trazum.config.json lo dice, el registro guarda tokens, no ficheros`;
       }
     },
     check: (command) => `compruébalo: ${command}`,
@@ -3419,6 +3609,25 @@ ${bold('EJEMPLOS')}
       'Ordenado por dinero, proyectado o ya gastado por igual. Los supuestos los respondes tú: este plan es aritmética sobre el registro, no conocimiento de tu producto.',
     wrote: (path) =>
       `Plan escrito en ${path}, con fecha. Guárdalo: una predicción que nadie apuntó es una predicción que no se le puede exigir a nadie.`,
+    editsNeedLabels: () =>
+      '--edits lee el fichero de prompt que envía cada label, y trazum.config.json no asigna ninguno: añade "labels", por ejemplo {"labels": {"soporte": "prompts/soporte.txt"}}.',
+    reorderNeedsEdits: () => '--reorder es un paso de una edición: añade --edits.',
+    editMeasured: (usd, calls, inputPerCall) =>
+      `se espera contra ${usd} en ${calls} llamadas a ${inputPerCall} tokens de entrada por llamada, medido`,
+    editChange: (path, reordered, tokensBefore, tokensAfter) =>
+      `${path}: ${reordered ? 'bloques estables movidos delante del primer marcador, y luego recortado' : 'recortado'} por las reglas safe, ${tokensBefore} → ${tokensAfter} tokens según el estimador, estimado, no medido; no se proyecta ningún ahorro`,
+    editCheck: () =>
+      'trazum verify lee el fichero, que debe tener el texto que este plan prometió, y el registro más nuevo, donde la entrada por llamada debe bajar de la cifra de arriba',
+    editSkipped: (why, label, path) =>
+      why === 'no-traffic'
+        ? `Sin edición para ${label} (${path}): el registro no tiene ninguna llamada tasada con ese label, así que no hay cifra medida contra la que esperarla.`
+        : why === 'unreadable'
+          ? `Sin edición para ${label}: no se pudo leer ${path}.`
+          : why === 'not-tracked'
+            ? `Sin edición para ${label}: git no sigue ${path}, y una edición se propone al repositorio.`
+            : why === 'source-file'
+              ? `Sin edición para ${label}: ${path} es código fuente, y una edición reescribe el fichero entero.`
+              : `Sin edición para ${label}: las reglas safe dejan ${path} como está.`,
   },
 
   serve: {
@@ -3481,6 +3690,15 @@ ${bold('EJEMPLOS')}
     webhookFailed: (status) =>
       `El webhook no se entregó (${status}). El cruce sigue en el código de salida y en la salida de arriba: que un receptor esté caído no puede ser el fallo más silencioso de la sala.`,
     watching: (minutes) => `Vigilando cada ${minutes} minutos. Ctrl-C lo para.`,
+    readingSessions: (agent, dir) => `Vigilando las sesiones de ${agent} en ${dir}`,
+    sessionsAndPayload: () =>
+      '--sessions lee las sesiones de esta máquina y --payload lee el fichero que nombras. Una vuelta tiene una sola fuente: da una de las dos.',
+    noSessionUsage: () =>
+      'Las sesiones encontradas todavía no tienen un uso al que ponerle precio. Vigilar la nada reportaría que todo está bien, así que se rechaza en vez de aprobarse.',
+    notifyUnavailable: (command) =>
+      `--notify pidió una notificación de escritorio, y esta máquina no tiene ${command}, así que no se envió ninguna. El código de salida, la salida de arriba y --webhook siguen llevando el cruce.`,
+    notifyFailed: (command, why) =>
+      `${command} no quiso mostrar la notificación (${why}), normalmente porque nadie ha iniciado sesión en un escritorio. El cruce sigue en el código de salida y en la salida de arriba.`,
   },
 
   store: {
@@ -3592,7 +3810,9 @@ ${bold('EJEMPLOS')}
               ? `Enrutar y agrupar ${label} (${model})`
               : kind === 'fix-truncation'
                 ? `Arreglar los reintentos por truncado de ${label} (${model})`
-                : `Arreglar la caché de ${label} (${model})`;
+                : kind === 'edit-file'
+                  ? `Editar el fichero de prompt de ${label} (${model})`
+                  : `Arreglar la caché de ${label} (${model})`;
       const span = first !== null && last !== null ? ` (${first} → ${last})` : '';
       return `${what} se ha planificado ${appearances} veces${span} y sigue en el plan más reciente: una decisión que nadie está revisando.`;
     },
@@ -3673,7 +3893,9 @@ ${bold('EJEMPLOS')}
               ? `Enrutar y agrupar ${label} (${model})`
               : kind === 'fix-truncation'
                 ? `Arreglar los reintentos por truncado de ${label} (${model})`
-                : `Arreglar la caché de ${label} (${model})`;
+                : kind === 'edit-file'
+                  ? `Editar el fichero de prompt de ${label} (${model})`
+                  : `Arreglar la caché de ${label} (${model})`;
       const verdict =
         outcome === 'arrived' ? 'LLEGÓ' : outcome === 'not-arrived' ? 'NO LLEGÓ' : 'NO SE PUEDE SABER';
       return `${what}: ${verdict}`;
@@ -3683,7 +3905,11 @@ ${bold('EJEMPLOS')}
         ? 'el label no lleva tráfico tasado en este registro: una carga desaparecida no está arreglada, y tampoco rota'
         : reason === 'fields-stopped'
           ? 'los campos que la detección necesita no están en este registro: "no registrado" no puede leerse como "arreglado", así que con --gate esto suspende'
-          : 'el registro guarda tokens, y los tokens no dicen con qué tarifa se facturaron: el Batch API no se puede ver desde aquí',
+          : reason === 'file-not-read'
+            ? 'el fichero no se pudo leer desde aquí, así que no se puede saber si se hizo la edición'
+            : reason === 'file-changed'
+              ? 'el fichero no tiene ni el texto del que partió el plan ni el que prometió: siguió cambiando, y con --gate esto suspende'
+              : 'el registro guarda tokens, y los tokens no dicen con qué tarifa se facturaron: el Batch API no se puede ver desde aquí',
     routeObserved: (dearestModel, onTargetUsd, onOldUsd) =>
       `el modelo más caro del label ahora es ${dearestModel} · ${onTargetUsd} en el destino, ${onOldUsd} todavía en el modelo antiguo`,
     batchUnobservable: () =>
@@ -3694,6 +3920,9 @@ ${bold('EJEMPLOS')}
       outcome === 'arrived'
         ? `la caché ahora se paga sola en esta porción (${deltaUsd} contra la factura sin caché)`
         : `la caché todavía añade ${deltaUsd} a la factura de esta porción`,
+    editObserved: (before, after) =>
+      `el fichero tiene el texto planeado; entrada por llamada ${before} → ${after} tokens, medido`,
+    editNotMade: (path) => `${path} todavía tiene el texto del que partió el plan: la edición no se hizo`,
     attribution: (callsBefore, callsAfter, outBefore, outAfter) =>
       `el mundo también se movió: llamadas ${callsBefore} → ${callsAfter}, salida/llamada ${outBefore} → ${outAfter} tokens, dicho para que el veredicto no se lea como toda la historia`,
     gateFailed: (failures, total) =>

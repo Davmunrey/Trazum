@@ -6,7 +6,9 @@ import type { WebMessages } from './i18n/types';
 import { COPY } from './landing-copy';
 import type { MarketingLocale } from './marketing-locales';
 import { BRAND_COPY, CHANGELOG_COPY, MODELS_COPY, ROADMAP_COPY } from './pages-copy';
-import { BRAND_PATH, CANONICAL, CHANGELOG_PATH, DOCS_PATH, MODELS_PATH, ROADMAP_PATH } from './site';
+import { DOWNLOAD_COPY } from './download-copy';
+import { PRO_COPY } from './pro-copy';
+import { BRAND_PATH, CANONICAL, CHANGELOG_PATH, DOCS_PATH, DOWNLOAD_PATH, MODELS_PATH, PRO_PATH, ROADMAP_PATH } from './site';
 import { SITE_COPY } from './site-copy';
 
 /**
@@ -90,6 +92,19 @@ export function brandMetadata(locale: MarketingLocale): Metadata {
   const t = BRAND_COPY[locale];
   const title = `${t.metaTitle} · Trazum`;
   return { title: { absolute: title }, ...card(title, t.metaDescription, BRAND_PATH, OG_LOCALE[locale]) };
+}
+
+export function downloadMetadata(locale: MarketingLocale): Metadata {
+  const t = DOWNLOAD_COPY[locale];
+  const title = `${t.metaTitle} · Trazum`;
+  return { title: { absolute: title }, ...card(title, t.metaDescription, DOWNLOAD_PATH, OG_LOCALE[locale]) };
+}
+
+export function proMetadata(locale: MarketingLocale): Metadata {
+  const t = PRO_COPY[locale];
+  // Absolute, and not "Trazum Pro · Trazum": the page's title names the product already.
+  const title = t.metaTitle;
+  return { title: { absolute: title }, ...card(title, t.metaDescription, PRO_PATH, OG_LOCALE[locale]) };
 }
 
 /** One release's page. English, as the changelog is: its title and description say what it is. */

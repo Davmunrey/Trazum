@@ -13,11 +13,11 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 | Read and reconcile spend | [bill](#one-door-trazum-bill) · [profile](#where-the-money-actually-went-trazum-profile) · [connect](#your-bill-without-the-export-trazum-connect) · [reconcile](#what-you-were-actually-billed-trazum-reconcile) · [import OpenTelemetry](#the-universal-cost-lens-trazum-from-otel) |
 | Plan and measure changes | [plan](#the-plan-trazum-plan) · [verify](#did-it-work-trazum-verify) · [switch](#when-does-the-switch-pay-trazum-switch) · [route](#is-the-cheaper-model-good-enough-trazum-route) · [history](#the-long-run-trazum-history) |
 | Review an agent task | [task](#task-efficiency-trazum-task): analyze repetitions, apply a reviewed policy and compare explicit outcomes; since 2.6.0 |
-| Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [proactive](#speaking-first-trazum-proactive) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
+| Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [proactive](#speaking-first-trazum-proactive) · [weekly](#the-week-written-down-trazum-weekly) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
 | Improve prompts | [use measured traffic](#the-multiplication-stops-guessing---from-log) · [reorder](#reordering-for-the-cache---reorder) · [rank](#which-prompt-to-fix-first-trazum-rank) · [prune](#which-few-shot-examples-earn-their-tokens-trazum-prune) · [evaluate](#does-the-shorter-prompt-still-work) |
 | Integrate and report | [MCP](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) · [conform](#building-on-the-format-trazum-conform) · [rollup](#more-than-one-machine-trazum-rollup) · [receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt) · [report](#the-year-from-what-was-already-written-down-trazum-report) |
 
-[All commands](../README.md#the-56-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
+[All commands](../README.md#the-57-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
 
 <details>
 <summary>All chapters on this page</summary>
@@ -37,6 +37,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 - [Keeping it: `trazum store`](#keeping-it-trazum-store)
 - [The afternoon it happened: `trazum watch`](#the-afternoon-it-happened-trazum-watch)
 - [Speaking first: `trazum proactive`](#speaking-first-trazum-proactive)
+- [The week, written down: `trazum weekly`](#the-week-written-down-trazum-weekly)
 - [Before the call is sent: `trazum serve`](#before-the-call-is-sent-trazum-serve)
 - [The counterpart: recording an outcome](#the-counterpart-recording-an-outcome)
 - [What an outcome costs](#what-an-outcome-costs)
@@ -489,6 +490,70 @@ tool could tell you.
 It does not follow symlinks, caps how deep and how wide it walks, and says so
 when a cap stopped it early.
 
+### Against the base branch: `--base`
+
+`--base <ref>` adds the question a pull request asks: what does this change do
+to each prompt's cost? The prompts under the target are read at that commit
+and here, and every one that differs, was added or was removed gets a row:
+its tokens on both sides and its input cost on both sides.
+
+```bash
+trazum check prompts --base main --max-monthly-increase-usd 100
+```
+
+Against a fixture repository whose `support` label states 30,000 calls a
+month, `fresh` 1,000, and `triage` none:
+
+```
+Against the base, main at a1a769a ────────────────────────────────────────
+  The monthly increase, +$150.50, is over the limit of $100.00.
+
+  prompts/new.txt
+    Tokens, base → head: – → 100 · Calls a month: 1,000
+    Base: – · Head: $0.5000 a month · Change: +$0.5000 a month
+    $5.00 per million input tokens, Claude Opus 5, anthropic prices read
+    2026-11-16
+
+  prompts/support.txt
+    Tokens, base → head: 1,000 → 2,000 · Calls a month: 30,000
+    Base: $150.00 a month · Head: $300.00 a month · Change: +$150.00 a month
+    $5.00 per million input tokens, Claude Opus 5, anthropic prices read
+    2026-11-16
+
+  prompts/triage.txt
+    Tokens, base → head: 400 → 200 · Calls a month: not stated
+    Base: $0.00200 a call · Head: $0.00100 a call · Change: -$0.00100 a call
+    $5.00 per million input tokens, Claude Opus 5, anthropic prices read
+    2026-11-16
+
+  The prompts with a stated volume: $150.00 a month on the base, $300.50 on
+  the head (+$150.50).
+```
+
+One row, a removed prompt, and the notes under the totals are left out of the
+quote. Four rules hold it:
+
+- **The base is read from the clone with `git show`, never fetched.** A ref
+  the clone does not have is said, and never replaced by the working tree,
+  which would compare the head with itself and call every change free. Paths
+  the directory walk would skip are skipped at the base too.
+- **A month is the calls somebody stated.** `volumes` in `trazum.config.json`
+  gives calls a month per label, and `labels` says which prompt file the label
+  sends. With no stated volume a prompt is priced per call, and the report
+  counts how many are. Nothing is assumed, not even one call.
+- **Every row names its price and the day it was read**: the input price per
+  million tokens, the model, and the provider's review date in the catalogue,
+  or a local overlay's own date. Both sides are priced at the same prices.
+  Output tokens are left out, because a prompt edit does not set them.
+- **`--max-monthly-increase-usd` is off unless given.** It fails the run when
+  the prompts with a stated volume cost more than that much more a month on
+  the head, names the changed prompts it could not judge, and fails when the
+  base could not be read: a gate that judged nothing is not a pass.
+
+`--json` carries the same comparison as `againstBase`, and `--markdown-out`
+puts its table at the top of the report, which is how the Action's pull
+request comment shows it ([CI](ci.md#what-the-change-does-to-each-prompts-monthly-cost)).
+
 `--markdown-out <file>` writes the same report as GitHub-flavoured markdown, for
 a step summary or a PR comment. `check`, `diff`, `rank`, `blame` and `profile`
 all take it, and a failure to write it is reported rather than turned into a
@@ -576,6 +641,18 @@ with nothing left to move has a route and no batch, and the plan ends by
 saying how much input and output it left out and why. A log that marks
 nothing is read as it always was, and still asks whether its calls can wait.
 
+**`--edits` adds the changes Trazum can make itself.** For each prompt file
+`labels` in `trazum.config.json` maps a workload to, it adds an `edit-file`
+action: the text the `safe` rules make of that file (with `--reorder`, stable
+blocks moved ahead of the first placeholder first), recorded by the SHA-256 of
+the file before and of the text after. Nothing is written to the file. Only a
+file git tracks gets one, never a source file, and a mapped label that gets
+none is named with the reason. An edit projects no saving: the figure it is
+expected against is what the workload cost in the log, measured, and the
+file's tokens before and after are labelled as the estimator's. The Action can
+make these edits on a branch and open the pull request
+([CI](ci.md#a-plan-that-opens-its-own-pull-request)).
+
 [The document it writes
 is documented field by field](plan-format.md), because a plan is the one
 output here meant to be committed and read back later. `-o plan.json` saves
@@ -613,6 +690,14 @@ revoked.
 promised *or became unverifiable because the team's own log dropped the
 fields* — "not recorded" must not read as "fixed". A workload that merely
 vanished fails nothing.
+
+An edit is checked in the repository as well as in the log. The file has to
+hold the text the plan promised, by SHA-256, and the workload's input tokens
+per call in the newer log have to be below the plan's measured baseline: both,
+or it did not arrive. A file still holding the text the plan was made from did
+not get the edit. A file holding anything else moved on in a way the plan did
+not write: that cannot be told, and fails `--gate`. `verify` reads the files
+from the repository it runs in.
 
 ### The long run: `trazum history`
 
@@ -763,12 +848,38 @@ catching happen at 3pm on a Tuesday:
 ```bash
 trazum watch --once                      # what a cron entry runs
 trazum watch --interval 15m              # or stay in the foreground
+trazum watch --sessions --once           # the sessions on this machine, no store
+trazum watch --sessions --once --notify  # and tell the person at the screen
 ```
 
-**It watches the store, so the store has to have something in it.** On an empty
-one it refuses rather than reporting quiet — *"watching nothing would report
-that everything is fine"* — and names `trazum connect <provider> --store` as
-what fills it. Worth knowing before the cron entry, not after it.
+**By default it watches the store, so the store has to have something in it.**
+On an empty one it refuses rather than reporting quiet — *"watching nothing
+would report that everything is fine"* — and names
+`trazum connect <provider> --store` as what fills it. Worth knowing before the
+cron entry, not after it.
+
+**`--sessions` needs no store and no setup.** It reads what `trazum bill` reads
+when you give it no path: the sessions Claude Code, Codex and Gemini CLI keep on
+this machine, in the same folders, converted by the same readers and priced
+through the same catalogue, so its total is the total `bill` prints for them.
+Each folder it reads is named. It judges the same `spend.maxUsd`,
+`spend.maxDayUsd` and `spend.maxCacheLossUsd` and says the same things, a
+measured crossing and never a projection. `--payload` names a different source
+and the two together are refused: a cycle has one. Say `--sessions` on every
+run, the cron line included: it keeps its own record of what was reported, in
+the same `.trazum/watch.json`, so what the store watch reported never quiets a
+crossing only the sessions show, and the other way round.
+
+```
+$ trazum watch --sessions --once
+Watching Claude Code's sessions in …/home/.claude/projects
+CROSSED, Total spend is $50.00 against a limit of $25.00. Measured, not
+  projected.
+CROSSED, Spend on 2026-08-03 is $30.00 against a limit of $15.00. Measured,
+  not projected.
+```
+
+The same command a second time prints `STILL OVER` for both and exits 1 again.
 
 ```
 CROSSED — Total spend is $50.00 against a limit of $25.00. Measured, not
@@ -787,14 +898,41 @@ the hour, because it does not become less over budget at midnight.
 reported does not alert twice — and it is not called fine either: it prints as
 `STILL OVER` and the run still fails. The stretch nobody was watching gets
 named once, because a watcher that resumes in silence implies coverage it did
-not have.
+not have. That holds for the sessions too: the stretch is named when the sessions
+on disk no longer reach back to where the last cycle got to (an agent prunes its
+old ones), and a crossing that happened while nothing was watching is found by
+the next cycle, because the sessions are still there, and is named by its day.
 
-Three transports, all boring: a non-zero exit code so cron mails it, a JSON
-event so any pipeline can read it, and `--webhook` for wherever your alerts
-already go. A webhook URL carrying credentials is refused (URLs end up in logs
-and shell history) and plain http is refused off loopback (an alert carries
-your spend figures). A receiver that is down is reported and swallowed — the
-crossing already went out through the other two.
+Four transports, all boring: a non-zero exit code so cron mails it, a JSON
+event so any pipeline can read it, `--webhook` for wherever your alerts already
+go, and `--notify` for the person at the machine. A webhook URL carrying
+credentials is refused (URLs end up in logs and shell history) and plain http
+is refused off loopback (an alert carries your spend figures). A receiver that
+is down is reported and swallowed — the crossing already went out through the
+others.
+
+**`--notify` is a desktop notification, through what the platform already
+has, and it is off unless you ask.** `osascript` on macOS, `notify-send` on
+Linux where there is a notification daemon, a PowerShell toast on Windows.
+Nothing is installed and no dependency is added. It fires for what is new this
+cycle and not for a crossing already reported, once per cycle, and its text is
+the sentence the terminal printed:
+
+```
+["--app-name=Trazum","--","Trazum","CROSSED, Total spend is $50.00 against a limit of $25.00. Measured, not projected.\nCROSSED, Spend on 2026-08-03 is $30.00 against a limit of $15.00. Measured, not projected."]
+```
+
+That is what the first run above handed `notify-send` (a stand-in that records
+its arguments, since the machine that produced it has no desktop); the second
+run handed it nothing. **Nothing is in it but the figures, the limit and the day
+a day gate means:** no prompt text, no file path, no project name. The program
+is started without a shell, and the text is handed to it as data and never
+spliced into a script: as arguments to a fixed AppleScript on macOS, in the
+environment of a fixed PowerShell script on Windows, and after `--` on Linux.
+A quote or a newline in a sentence is a character in the sentence. Where the
+machine has none of these, or has one and no desktop session to show it on, the
+run says so on stderr and carries on: the exit code, the output and
+`--webhook` still carry the crossing.
 
 ### Speaking first: `trazum proactive`
 
@@ -950,8 +1088,10 @@ supplies neither.** With either missing the item is `not ready`, naming
 limit. A budget is a policy: when the store holds measured spend the line
 shows the figure, and the limit is yours to choose. The cron line does not run
 `connect`, because that reads from the provider over the network; everything
-`proactive` turns on reads files already on this machine. Reading the agents'
-sessions directly instead of a store is not part of this.
+`proactive` turns on reads files already on this machine. The line it writes is
+the store watch: `trazum watch --sessions` reads the agents' sessions directly,
+and a crontab line for it is one you write yourself, as
+[running.md](running.md) shows.
 
 **MCP clients it knows**, because the repository's documents state their file:
 Claude Code's `.mcp.json` and Cursor's `.cursor/mcp.json`, in the directory it
@@ -968,6 +1108,98 @@ does.
 
 The report is one line per item: `on`, `off`, `not ready` (why), `not available`
 (why) or `could not tell` (why). `--json` is [documented](json-output.md#the-proactive-document).
+
+### The week, written down: `trazum weekly`
+
+`bill` answers when somebody asks. `weekly` is the answer to the same question
+once a week, written for somebody to read in an issue: the bill for the week,
+what moved against the week before, and the three changes worth making first.
+
+```bash
+trazum weekly                              # this machine's agent sessions, the last seven days
+trazum weekly usage.jsonl --until 2026-11-19
+trazum weekly -o ~/trazum-week.md --notify # a file, and one line on the desktop
+```
+
+The week is the seven days before `--until` (a UTC day means the whole of it,
+and the default is now), and the week before that is what it is compared with.
+The two are half-open, so a call belongs to one of them and never both. It reads
+what [`bill`](#one-door-trazum-bill) reads, with the same refusals, and prices
+both weeks with the same catalogue.
+
+*Real output of `trazum weekly usage.jsonl --until 2026-11-19` on a made-up
+log: three calls in the week of 2026-11-06 (two `classify`, one `draft`) and
+six in the week of 2026-11-13, all on Claude Sonnet 5.5. `weekly.test.js`
+runs it and holds this block to what it prints.*
+
+```markdown
+## Trazum, the week of 2026-11-13 to 2026-11-19
+
+### The bill
+
+**$12.00** over 6 calls, measured from the logs and priced with the catalogue's own rates.
+
+| Model | Calls | USD |
+| --- | ---: | ---: |
+| `claude-sonnet-5-5` | 6 | $12.00 |
+
+### Against the week before (2026-11-06 to 2026-11-12)
+
+The bill moved +$6.00 (+100.0%) against the week before: $12.00 now, $6.00 then, over 3 calls. Both are measured.
+
+What moved most, by model:
+
+- `claude-sonnet-5-5`: $6.00 then, $12.00 now (+$6.00)
+
+### Three changes to make first
+
+1. **Route and batch `classify` (`claude-sonnet-5-5`) to `Claude Haiku 5.5`, combined with batching where both apply, never summed.** $8.75 projected saving on this week's calls. Projected, not measured: it has not happened.
+   - Measured before the change: this workload on this model cost $10.00 over 5 calls this week.
+   - assumes Claude Haiku 5.5 can do this work, the log prices the move, it cannot judge the answers
+   - assumes these calls can wait for a batch window
+
+2. **Route and batch `draft` (`claude-sonnet-5-5`) to `Claude Haiku 5.5`, combined with batching where both apply, never summed.** $1.75 projected saving on this week's calls. Projected, not measured: it has not happened.
+   - Measured before the change: this workload on this model cost $2.00 over 1 call this week.
+   - assumes Claude Haiku 5.5 can do this work, the log prices the move, it cannot judge the answers
+   - assumes these calls can wait for a batch window
+
+How each will be checked: `trazum plan <log> --out plan.json` before changing anything, then `trazum verify plan.json --against <the newer log>` after. It says for each action whether the change arrived, did not arrive, or cannot be told, and what the bill did. Until then a projected saving is a projection.
+
+_Written by `trazum weekly` from logs on the machine that ran it. Nothing was sent anywhere to produce it, and no model was called._
+
+<!-- trazum-weekly:2026-11-19 -->
+```
+
+**What is measured and what is not.** The bill and the movement are two
+measured reports. The changes are `plan`'s ranked actions over the week's own
+calls, and each is called what it is: a saving not yet made is *projected, not
+measured*, printed beside what that workload and model cost this week, which is
+measured. Where `plan` finds a loss already paid (truncation retries, a cache
+that lost money) it is printed as *already spent*, measured. `trazum verify`
+is what measures a change afterwards, and the summary says how. Nothing is
+projected from one week to a month or a year.
+
+**A figure in it is a figure in the bill.** Before anything is written, every
+dollar amount and percentage in the text is read back against the two weeks'
+reports, worked out from the reports and not from the summary. One that is in
+neither stops the command: nothing is written, the exit code is 1 and the
+message names the figure. Names from the logs (workloads, models) are printed
+as code, which that check does not read and which GitHub does not turn into a
+mention.
+
+**What it leaves out, said.** A week with no call is not a bill of nothing; the
+summary says no call falls in it. A week before with no call has no comparison
+and no percentage. Calls on a model the catalogue cannot price are counted and
+left out of the bill, which is then a floor. Calls with no timestamp cannot be
+placed in a week and are counted, not guessed in.
+
+**It sends nothing and holds no credential.** Output is stdout or `-o <file>`.
+`--notify` shows one line of figures (the bill and its movement, no name and no
+path) through what the platform has, as `watch --notify` does: `osascript` on
+macOS, `notify-send` on Linux, PowerShell on Windows. Where there is none it is
+said and the file stands. Putting the summary into a repository is the
+[GitHub Action](ci.md#a-weekly-summary-in-the-repository)'s business, with its
+own token and its own list of places.
 
 ### Before the call is sent: `trazum serve`
 
@@ -3700,6 +3932,143 @@ these are its envelopes. An unpriced model shows a dash where its dollars
 would be, never `$0`, in the PDF and the HTML alike. The standard PDF fonts
 cover Latin script, every locale this tool ships; a label in another script
 arrives as question marks, visibly wrong rather than silently blank.
+
+**The bill as metrics: `--otlp-out`.** A team that charts its spend beside its
+other dashboards gets the bill as OpenTelemetry metrics, in the same file
+format `doctor --otlp-out` writes and under the same rule: **Trazum writes the
+file and sends nothing**, so shipping it is the collector's job, and there is
+no `@opentelemetry/*` dependency.
+
+```bash
+npx @trazum/cli bill --otlp-out bill-metrics.json
+curl -X POST -H 'content-type: application/json' \
+     --data-binary @bill-metrics.json "$OTLP_ENDPOINT/v1/metrics"
+```
+
+Five gauges, one point per UTC day, project, model and agent. Each point is
+that day's total, not a running one, stamped at the day's first instant and
+carrying `trazum.day` as well, so a collector that rewrites timestamps cannot
+move a figure to another day:
+
+| Metric | Value | Attributes beyond day, project, model, agent |
+| --- | --- | --- |
+| `trazum.bill.cost` | USD, `asDouble` | `trazum.cost.basis=api-equivalent` |
+| `trazum.bill.tokens` | `asInt` string | `trazum.token.type`: `input`, `cache_read`, `cache_write`, `output` |
+| `trazum.bill.calls` | `asInt` string | none |
+| `trazum.bill.unpriced.calls` | `asInt` string | none |
+| `trazum.bill.unpriced.tokens` | `asInt` string | `trazum.token.type` |
+
+- **Every cost point says what it is.** `trazum.cost.basis=api-equivalent`
+  means the tokens at the provider's list rates. On a Pro or Max plan the plan
+  is what was paid, and the payload never hands a chart a figure somebody owed.
+- **What could not be priced is its own metric,** with the model that was not
+  priced and no dollar figure, not a zero. A model the catalogue does not know
+  is in no cost point.
+- **`trazum.project` and `trazum.agent` are left off a point that has none,**
+  rather than written as an empty string. The agent is the coding agent whose
+  sessions the calls came from (`Claude Code`, `Codex`, `Gemini CLI`); a plain
+  usage log or a provider export has none.
+- **A day that is still being measured is not a point.** Today is left out of
+  every metric, and so is any day the `--since`/`--until` window cuts (a window
+  ending at 11:00 on 2 September holds half of that day, and a series that
+  mixes halves with wholes reads as a day that was cheap). The payload's
+  resource names them instead: `trazum.bill.open_days` (comma-separated),
+  `open_calls`, `open_cost_usd`, `open_tokens` and `open_unpriced_calls`, all
+  under the `trazum.bill.` prefix, and `trazum.bill.measured_at` says the instant
+  "closed" was judged against. A call with no timestamp belongs to no day and is
+  counted the same way under `trazum.bill.undated_*`. These attributes are
+  written at zero when nothing was left out, so a chart can tell "nothing open"
+  from "not recorded". The series plus those attributes add to the bill the
+  receipt prints: `bill-otlp.test.js` holds that, to the cent and by model and
+  project.
+- **The encoding is `doctor`'s:** 64-bit integers are JSON strings and money is
+  `asDouble`, through the same `otlp.ts`. A failed write is reported and does
+  not fail the bill, as for `doctor`; the success line goes to stderr.
+
+**What was recorded while a range was written: `--git-range`.** A reviewer
+asks what a pull request cost, and no transcript knows which commit a call was
+for. What can be measured honestly is narrower, and the command says so in its
+own output: the spend recorded in this repository's Claude Code sessions
+between the first and the last commit of a range.
+
+```bash
+cd my-repo
+npx @trazum/cli bill ~/.claude/projects --git-range main..HEAD
+```
+
+```
+Recorded in this repository's sessions while main..HEAD was written
+
+Span: 2026-03-02T09:00:00Z to 2026-03-02T11:30:00Z, from the author and commit times of 2 commit(s).
+$4.00 across 4 priced call(s) in 2 session(s) that began and ended inside the span.
+
+2 session(s) began before the span or went on after it. Counted apart, not in the figure above:
+  straddle-lo  2026-03-02T08:30:00Z to 2026-03-02T09:30:00Z: $0.2000 (1 call(s)) inside the span, $2.00 (1 call(s)) outside it.
+  straddle-hi  2026-03-02T11:00:00Z to 2026-03-02T12:00:00Z: $0.4000 (1 call(s)) inside the span, $2.00 (1 call(s)) outside it.
+
+This is everything recorded in this repository during that span. It is not the cost of the change: other work in the same repository is in it, and work for the change done anywhere else is not.
+Left out: 2 call(s) of sessions wholly outside the span, 1 record(s) of other projects, 0 record(s) from sources with no project folder to match (Codex, Gemini CLI, logs), 1 call(s) with no timestamp.
+```
+
+That is the output on stdout for the made-up repository and sessions of
+`bill-git-range.test.js`, whose figures are worked out by hand there: $3.00 and
+$1.00 for the two sessions inside, and for each straddling session the part
+inside and the part outside.
+
+- **The span** is read from `git log` over the range, run from the repository
+  by `packages/cli/src/git.ts`, the one module that runs a program. It starts at
+  the earliest *author* time of any commit and ends at the latest *author or
+  commit* time. Both, because they differ exactly when it matters: a commit
+  rebased onto `main` yesterday was written last week, and the work happened last
+  week. The edges are inclusive, in whole seconds as git keeps them. No author
+  name, subject or hash is read or printed. A range git does not know, or one
+  that holds no commit, is refused; a range that begins with `-` never reaches
+  git.
+- **"This repository's project"** is told without reading anything out of a
+  transcript. Claude Code keeps one folder per project and names it after the
+  project's absolute path, every character that is not a letter or a digit
+  written as `-`. That encoding cannot be undone, so it is not undone: git says
+  where the repository's root is, the same encoding is applied to that path, and
+  a record belongs to the repository when the folder it was found in has that
+  name. This is the label every record already carries under
+  `--label-from-project`, so it is also why `--git-range` is refused with
+  `--label` and `--no-label-from-project`. **Never a branch name and never a
+  working directory:** the reader drops `gitBranch` and `cwd` on purpose, and the
+  test greps the output for both. A session started in a subdirectory or in a
+  worktree sits in a folder of another name and is not matched, and a session
+  read from a single file rather than through a directory has no folder to
+  match. When nothing matches at all the command says that, rather than printing
+  $0. Run it from the repository's own root.
+- **A session is inside, outside or straddling.** Inside means its first and
+  last call both fall in the span, and only those sessions are in the figure.
+  A session that began before the span or went on after it is named, with its
+  first and last call and what each side cost, and is **not added**: half a
+  session says nothing about which half the change needed, so the reader adds
+  what they judge to belong. A session wholly outside is counted as calls left
+  out. A call that names no session is a session of one call.
+- **What it is, and is not.** The figure is *everything recorded in this
+  repository during that span*. It is not the cost of the change: other work in
+  the same repository in those hours is in it, and work for the change done on
+  another machine or in another folder is not. Nothing in the output says the
+  change caused the spend. Like every figure `bill` prints from Claude Code
+  transcripts, it is the API-equivalent price, not what a plan charged.
+- **What is left out is counted** on the last lines: calls of sessions wholly
+  outside the span, records of other projects, records from Codex, Gemini CLI
+  and logs (they have no project folder to match), and calls with no timestamp.
+  A call to a model the catalogue does not price is named, never counted as $0.
+- **It prints its own statement** and takes no period, label or output flag:
+  `--since`, `--until`, `--label`, `--no-label-from-project`, `--by`,
+  `--receipt`, `--table`, `--stamp`, `-o` and every `--*-out` are refused beside
+  it by name, because a flag quietly overridden would put another period on the
+  page than the one asked for.
+- **On a pull request.** The Action does not take `--git-range`, and that is on
+  purpose: the sessions are on the developer's machine, and a hosted runner has
+  none, so a step there would print nothing or, worse, a figure from a folder
+  that is not the author's. A runner that does hold the sessions (a self-hosted
+  one, or a job that mounts them) can print it in a step of its own:
+  `npx @trazum/cli bill "$SESSIONS" --git-range origin/main..HEAD`, with the
+  checkout deep enough to hold the range (`fetch-depth: 0`). Adding an input to
+  `action.yml` for it was left out of this change.
 
 ### What the router says: `trazum from-openrouter`
 

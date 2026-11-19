@@ -423,6 +423,96 @@ jobs:
           echo "Dry run — nothing published. Release notes present."
           echo "The npm token stored for uploads: ${TOKEN_VERDICT:-not checked}. See the step that asked, or the job summary, for what that means."
 
+  # The files a person downloads from the release page instead of from a
+  # package manager: the editor extension as a `.vsix` (Install from VSIX, in VS
+  # Code and Cursor), the MCP server as a `.mcpb` bundle (Claude Desktop), and
+  # the SHA-256 of each, with the bill of materials, in `SHA256SUMS`. Nothing
+  # here is published to a marketplace and no token for one is added.
+  #
+  # **A separate job after `release`, on purpose.** `release` is where npm
+  # serves every package (`npm actually serves every package`) and where the
+  # GitHub release is created, so by the time this job starts the packages
+  # exist and the page it attaches to exists; the order of the publish steps is
+  # not touched. The job also runs two packagers fetched by `npx` at an exact
+  # version (see `scripts/release-assets.mjs`), which are third-party code, and
+  # it keeps them out of the job that holds `NPM_TOKEN` and `id-token: write`
+  # for the same reason the MCP registry listing below is its own job. What it
+  # holds is `contents: write`, to attach files to a release, and the token
+  # reaches one step: the one that downloads the bill, sums and uploads. The
+  # steps that run the packagers have no token in their environment.
+  #
+  # This repository does not attest these files: no step here makes a build
+  # provenance attestation, so none is claimed. `SHA256SUMS` says the files
+  # are the ones this job made, to anybody who trusts the release page; it is
+  # not a signature.
+  #
+  # A manual run builds the files, prints their sums and attaches nothing, so
+  # a broken packager is found by a dry run rather than during a release.
+  assets:
+    name: Attach the downloadable files to the release
+    needs: [decide, release]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # The three workspaces the files are made from, built from this commit:
+      # the one `release` published. The extension and the bundle carry
+      # `@trazum/core`'s built files, which the lockfile names, and the
+      # pricing dataset is checked against the catalogue core was built from.
+      - name: Build the workspaces
+        run: |
+          npm run build -w @trazum/core
+          npm run build -w @trazum/mcp
+          npm run build -w trazum-vscode
+
+      # The pricing dataset is the file the site serves for this version,
+      # copied once it is byte for byte what the catalogue builds; a document
+      # that is not the catalogue stops the job here, before any upload.
+      - name: Make the .vsix, the .mcpb and the pricing dataset
+        run: node scripts/release-assets.mjs build --out /tmp/assets
+
+      - name: Checksums, from a manual run
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          node scripts/release-assets.mjs sums /tmp/assets
+          cat /tmp/assets/SHA256SUMS
+          echo "Dry run: nothing attached."
+
+      # The one step that holds the token. The bill of materials is already on
+      # the release and is downloaded so that `SHA256SUMS` covers it too; the
+      # four files named are uploaded, and `--clobber` lets a re-run of this
+      # job replace what an earlier attempt left.
+      - name: Attach them with their checksums
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          gh release download "v$version" --pattern "trazum-v$version.cdx.json" --dir /tmp/assets
+          node scripts/release-assets.mjs sums /tmp/assets
+          cat /tmp/assets/SHA256SUMS
+          gh release upload "v$version" \
+            "/tmp/assets/trazum-vscode-$version.vsix" \
+            "/tmp/assets/trazum-mcp-$version.mcpb" \
+            "/tmp/assets/trazum-pricing-$version.json" \
+            /tmp/assets/SHA256SUMS \
+            --clobber
+
   # The listing on the official MCP registry, which is a separate publish to a
   # separate service and was a manual step until it failed twice in a row.
   #
@@ -438,7 +528,7 @@ jobs:
   # nothing lists nothing.
   mcp-registry:
     name: List on the MCP registry
-    needs: [decide, release]
+    needs: [decide, release, assets]
     if: github.event_name == 'push' && needs.decide.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -489,6 +579,28 @@ jobs:
       - name: Authenticate to the MCP registry
         run: ./mcp-publisher login github-oidc
 
+      # The bundle the `assets` job attached, listed with its own digest. The
+      # committed `server.json` names the npm package only, because the digest
+      # of a file built after the release pull request merged cannot be in it;
+      # this adds the entry to the copy the publisher sends. It downloads the
+      # bundle and `SHA256SUMS` from the release and refuses, writing nothing,
+      # when the two disagree, so the listing never carries a digest the file
+      # does not have. See `scripts/mcpb-registry-entry.mjs`. This job needs
+      # `assets`, so a failed attachment holds the listing back until the job
+      # is re-run, and the version is never listed without its bundle.
+      - name: List the bundle the release carries
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./packages/mcp/server.json').version")"
+          base="https://github.com/Davmunrey/Trazum/releases/download/v$version"
+          mkdir -p /tmp/bundle
+          curl -fsSL "$base/trazum-mcp-$version.mcpb" -o "/tmp/bundle/trazum-mcp-$version.mcpb"
+          curl -fsSL "$base/SHA256SUMS" -o /tmp/bundle/SHA256SUMS
+          node scripts/mcpb-registry-entry.mjs \
+            --file "/tmp/bundle/trazum-mcp-$version.mcpb" \
+            --sums /tmp/bundle/SHA256SUMS \
+            --server packages/mcp/server.json
+
       - name: Publish the listing
         working-directory: packages/mcp
         run: |
@@ -515,6 +627,11 @@ jobs:
       # `mcp-registry-preflight.mjs` already learned this about npm and polls
       # until the answer arrives. The same lesson had not been applied one step
       # further down.
+      #
+      # **And it read one page.** The search answers 30 entries at a time and
+      # names the next page in `metadata.nextCursor`. 3.0.0 was the thirtieth
+      # version, so it was found; 3.0.1, the thirty-first, published correctly
+      # and the check failed a minute later, reading only the first page.
       - name: The registry serves what we just sent
         run: |
           set -euo pipefail
@@ -522,20 +639,30 @@ jobs:
           want="$(node -p "require('./packages/mcp/server.json').version")"
 
           for attempt in $(seq 1 12); do
-            listed="$(curl -fsSL "https://registry.modelcontextprotocol.io/v0.1/servers?search=$name" \
-              | node -e "
-                let raw = '';
-                process.stdin.on('data', (chunk) => { raw += chunk; });
-                process.stdin.on('end', () => {
-                  const [name, want] = process.argv.slice(1);
-                  const versions = (JSON.parse(raw).servers ?? [])
-                    .map((entry) => entry.server)
-                    .filter((server) => server?.name === name)
-                    .map((server) => server.version);
+            listed="$(node -e "
+                const [name, want] = process.argv.slice(1);
+                const versions = [];
+                let cursor;
+                (async () => {
+                  // Every page: the registry answers 30 entries at a time and
+                  // names the next page in metadata.nextCursor, so the version
+                  // just sent can sit past the first page.
+                  do {
+                    const url = new URL('https://registry.modelcontextprotocol.io/v0.1/servers');
+                    url.searchParams.set('search', name);
+                    if (cursor) url.searchParams.set('cursor', cursor);
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    const page = await response.json();
+                    for (const entry of page.servers ?? []) {
+                      if (entry.server?.name === name) versions.push(entry.server.version);
+                    }
+                    cursor = page.metadata?.nextCursor;
+                  } while (cursor);
                   // Every version the registry holds, so the answer cannot
                   // depend on which one the search happens to return first.
                   console.log(versions.includes(want) ? 'yes' : versions.join(',') || 'none');
-                });
+                })().catch(() => console.log('unreachable'));
               " "$name" "$want")" || listed='unreachable'
 
             if [ "$listed" = "yes" ]; then

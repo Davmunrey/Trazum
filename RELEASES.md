@@ -7,12 +7,13 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.12**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 3.0.1**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
-attestation. `trazum-vscode` is the fifth workspace and is not among them: an
-editor extension is distributed by a marketplace rather than by npm, and this
-file will say when that listing exists rather than implying it from the code.
+attestation. `trazum-vscode` is the fifth workspace and is not among them: it is not
+published to npm. It is a file on each release instead (see *What a release
+carries*, below), and no marketplace lists it: #640 stays open, and this file
+will say when a listing exists rather than implying it from the code.
 
 **Which credential authenticates those uploads is not stated here, because it
 is not established.** Provenance is signed with the job's OIDC identity however
@@ -50,7 +51,173 @@ not the eighth release.
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
+**What a release carries.** Besides its notes and its bill of materials
+(`trazum-v<version>.cdx.json`), each GitHub release carries, from the first one
+made after this was written (3.0.0 and the releases before it carry none of
+these):
+
+- `trazum-vscode-<version>.vsix`, the editor extension, installed with *Install
+  from VSIX* in VS Code and in editors built on it;
+- `trazum-mcp-<version>.mcpb`, the MCP server as a bundle Claude Desktop opens;
+- `trazum-pricing-<version>.json`, the price catalogue as an open dataset, the
+  same file the site serves at `/datasets/pricing/<version>.json`
+  ([docs/pricing-dataset.md](docs/pricing-dataset.md)), from the first release
+  made after 3.0.1;
+- `SHA256SUMS`, the SHA-256 of those files and of the bill of materials.
+
+The `assets` job of `release.yml` attaches them, after the job that publishes has
+npm serving every package and the release page exists: the order of the
+publishes is the one it always was. Nothing is uploaded to any marketplace, and
+no token for one exists. The extension is built by `@vscode/vsce@4.1.1` and the
+bundle by `@anthropic-ai/mcpb@2.1.2`, both fetched by `npx` at those versions
+(pinned in `scripts/release-assets.mjs`), and each holds `@trazum/core`'s built
+files and nothing else the lockfile does not name. The dataset is not built
+there: it is the file the release pull request committed, checked byte for byte
+against what the catalogue at the published commit builds. None of them is signed
+or attested: this workflow makes no build-provenance attestation, so none is
+claimed, and `SHA256SUMS` says that a file is the one the release lists, not who
+made it. The site's [download page](https://trazum.vercel.app/download) links
+each by the name its version gives it, and draws its commands from the same
+source as `docs/agents.md`.
+
+**Checking them.** Put the files and `SHA256SUMS` in one folder and run
+`sha256sum --check --ignore-missing SHA256SUMS` (Linux). On macOS, print a
+file's digest with `shasum -a 256 <file>` and compare it with its line. A
+manual run of the `Release` workflow builds the files and prints their sums
+without attaching anything.
+
+**The MCP registry listing** names the bundle and its digest, and only for a
+version whose bundle exists: the `mcp-registry` job waits for the `assets` job,
+downloads the bundle and `SHA256SUMS` from the release, and
+`scripts/mcpb-registry-entry.mjs` adds the entry to the copy of `server.json` it
+publishes, refusing when the file and the sums disagree. The committed
+`packages/mcp/server.json` lists the npm package alone, because the digest of a
+file built after the release pull request merged cannot be in it.
+
+**The Homebrew formula is a manual step, by decision.** `packaging/homebrew/trazum.rb`
+names one version of `@trazum/cli`, the registry's address for its tarball and
+that tarball's SHA-256. It is written, never edited, by
+`node scripts/homebrew-formula.mjs --version <version>`, which fetches the
+tarball, compares its sha512 with the one the registry publishes, and hashes it;
+`test/homebrew-formula.test.mjs` holds the file to what the script writes. The
+release workflow does not push it to the tap: that needs a token, and
+`docs/compliance/secret-rotation.md` covers none for it (#781 forbids asking for
+one). After a release, once npm serves the version:
+
+1. `node scripts/homebrew-formula.mjs --version <version>` in this repository,
+   the digest of the tarball it fetched, from `sha256sum`, added to `SERVED` in
+   `test/homebrew-formula.test.mjs`, and a pull request with both;
+2. copy `packaging/homebrew/trazum.rb` to `Formula/trazum.rb` of
+   `Davmunrey/homebrew-trazum` and push;
+3. on a Mac and on Linux, `brew install Davmunrey/trazum/trazum` and
+   `trazum --version`.
+
+The formula in this repository can be behind the manifests, because a release
+pull request bumps them before npm has a tarball to hash, and never ahead.
+
 ---
+
+## 3.0.1 — Trazum, downloaded from its own pages
+
+**Adoption, read 2026-11-19:** 3341 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 3.0.0.
+
+**Nothing in the packages changed.** This release exists so that a release
+carries the files the site now links. 3.0.0 went out before the job that
+builds them existed, and carries none of them.
+
+- **Every release now carries three more files.** `trazum-vscode-3.0.1.vsix`
+  is the editor extension, installed with *Install from VSIX*.
+  `trazum-mcp-3.0.1.mcpb` is the MCP server as a bundle Claude Desktop opens.
+  `SHA256SUMS` holds the SHA-256 of both and of the bill of materials. They
+  are not signed, and nothing here claims they are.
+- **The extension now loads.** The `.vsix` the old packaging script built held
+  8 files and left out `@trazum/core`, which the extension imports.
+- **`/download` on the site** links those files at this exact version, with
+  the CLI, the Action and an MCP snippet for each agent, in the site's five
+  languages.
+- **A Homebrew formula and a Gemini CLI extension manifest** are in the
+  repository. The tap is a step the owner takes by hand, described above.
+
+Upgrade with `npm install -g @trazum/cli@3.0.1`. Nothing you call has moved.
+
+## 3.0.0 — Trazum speaks first, and the release allowed to break
+
+**Adoption, read 2026-11-19:** 3341 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.12.
+
+**Two breaking changes, and nothing else breaks.** Both are about one word.
+
+- **`tier` is gone from a model in the pricing catalogue. Use `capability`.**
+  It was deprecated in 1.8.0. A pricing overlay that still writes `"tier"`
+  on a model is refused by name, with the replacement:
+
+  | `tier` | `capability` |
+  | --- | --- |
+  | `haiku` | `small` |
+  | `sonnet` | `mid` |
+  | `opus` | `large` |
+  | `frontier` | `frontier` |
+  | `unknown` | `unknown` |
+
+- **`recommendTier` answers `small`, `mid` or `large`.** It no longer
+  answers `haiku`, `sonnet` or `opus`, which are one provider's names for a
+  question asked about seven. The renames that come with it:
+
+  | Was | Is |
+  | --- | --- |
+  | `recommendTierDetailed(...).tier` | `.capability` |
+  | `cheapestOfTier` | `cheapestOfCapability` |
+  | `cheapestOfTierIn` | `cheapestOfCapabilityIn` |
+
+  The model-downgrade advisory names the capability in its sentence. No JSON
+  field changed. The MCP tools, the GitHub Action and the editor extension
+  never showed the name.
+
+`CHANGELOG.md` has the full migration for a JSON consumer, an MCP client and
+code. **No price changed and no recommendation changed:** every recorded answer
+is the same model it was, under the new name.
+
+**Trazum speaks first.** Everything below is off until you turn it on:
+
+- **`trazum proactive`** says what is on. **`trazum proactive on`** offers
+  Claude Code's status line with its hook, a scheduled `watch` and the MCP
+  server entries. It writes nothing without a yes for each item, and
+  `trazum proactive off` removes exactly what it added.
+- **`trazum watch --sessions`** judges your budgets against the sessions
+  Claude Code, Codex and Gemini CLI already keep, with no store to fill
+  first. **`--notify`** says a crossing on your desktop, with the figures and
+  nothing else.
+- **`trazum weekly`** writes the week down: the bill, what moved against the
+  week before, and the three changes to make first. Each change is labelled
+  projected, never measured. The GitHub Action can post it as an issue, or as
+  a comment on one standing issue, if the repository's owner names which.
+
+```bash
+npx -y @trazum/cli@3.0.0 watch --sessions --once
+npx -y @trazum/cli@3.0.0 weekly
+```
+
+**The terminal answers first.** `bill`, `profile`, `plan`, `optimize`, `check`
+and `proactive` open with their question and the figure that answers it, and
+fit the window.
+
+**`optimize` no longer stalls on a long schema.** A prompt of 80,000
+characters, half a schema of 1,778 keys and half prose, took 37.8 seconds and
+takes 0.37. The answer is the same, compared on 3,000 generated cases.
+
+**The site.** The landing tells the product as you scroll, and the
+application moved to `/app`. New pages:
+
+- **`/docs`**: the documentation;
+- **`/models`**: models and prices;
+- **the roadmap and the changelog**;
+- **`/brand`**: the brand;
+- **`/pro`**: Trazum Pro, which is in development and not open yet.
+
+**For contributors.**
+- **`npm run done`** says whether a change is done and why not.
+- **End-to-end tests** run in a browser.
+- **A linter** and **mutation testing on the core** are part of every pull request.
+- **Codacy and DeepSource** are configured from the repository, and every finding they listed was read and answered.
 
 ## 2.7.12 — A safe level that leaves a thanks, a quotation and three ordinary words alone
 

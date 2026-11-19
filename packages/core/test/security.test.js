@@ -2104,7 +2104,9 @@ describe('the packaged Action', () => {
 
     // Runs after the packages exist, and after the wait that makes the
     // registry's own verification possible.
-    assert.match(listing, /needs:\s*\[decide, release\]/, 'the listing does not wait for the release job');
+    // Also the job that attaches the bundle the listing advertises (#780):
+    // the entry names a file and its digest, and both exist only after it.
+    assert.match(listing, /needs:\s*\[decide, release, assets\]/, 'the listing does not wait for the release job and the files it lists');
 
     // Presence before order. `indexOf` answers -1 for a string that is not
     // there, and -1 is less than every real index, so an ordering assertion on
@@ -2167,6 +2169,12 @@ describe('the packaged Action', () => {
     assert.ok(
       !/\.find\(\s*\(?entry\)?\s*=>\s*entry\.server\?\.name/.test(readback),
       'the read-back takes the first listing by name, which is whichever version the search returns first',
+    );
+    // 3.0.1 published and the read-back failed anyway: the search answers 30
+    // entries a page, 3.0.1 was the thirty-first, and the step read one page.
+    assert.ok(
+      readback.includes('nextCursor'),
+      'the read-back reads only the first page of the search, so a server with more than 30 versions is never found',
     );
     assert.ok(
       /for attempt in \$\(seq/.test(readback) && readback.includes('sleep'),
@@ -2505,6 +2513,8 @@ describe('the packaged Action', () => {
     const evidence = {
       check: /token budget/,
       profile: /spend budget/,
+      weekly: /weekly summary/,
+      plan: /plan pr/,
     };
     const unnamed = modes.filter((mode) => {
       const pattern = evidence[mode];

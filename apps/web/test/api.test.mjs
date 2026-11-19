@@ -255,3 +255,20 @@ describe('the models the page is offered', () => {
     }
   });
 });
+
+describe('the capability a recommendation names', () => {
+  it('is `small`, `mid` or `large` in the advisory POST /api/optimize returns', async () => {
+    // `recommendTier` answered `haiku`, `sonnet` or `opus` until 3.0.0, and the
+    // answer reaches the page as the `detail` of the `model-downgrade` advisory.
+    // The page and any caller read it from this response.
+    const usage = { model: 'claude-opus-5', callsPerMonth: 50_000, avgOutputTokens: 300, batchEligible: false };
+    for (const locale of ['en', 'es']) {
+      const { status, body } = await post({ prompt: 'Translate this sentence into English.', usage, locale });
+      assert.equal(status, 200);
+      const downgrade = body.advisories.find((advisory) => advisory.id === 'model-downgrade');
+      assert.ok(downgrade, `${locale}: no model-downgrade advisory, so nothing was checked`);
+      assert.ok(downgrade.detail.includes('"small"'), `${locale}: the advisory does not quote "small": ${downgrade.detail}`);
+      assert.doesNotMatch(JSON.stringify(body), /\\?["“](haiku|sonnet|opus)\\?["”]/i, `${locale}: an old name is still in the response`);
+    }
+  });
+});

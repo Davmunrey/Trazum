@@ -29,6 +29,13 @@ export interface WatchState {
   lastCoveredToMs: number | null;
   /** Gate keys already alerted on, so a restart is not amnesia. */
   fired: Record<string, number>;
+  /**
+   * Written only by a watch of the sessions on this machine (`--sessions`).
+   * Absent is the store, or a saved payload, as every state written before it
+   * existed. What was reported about one source says nothing about the other's
+   * figures, so a cycle that finds the other source's mark starts over.
+   */
+  source?: 'sessions';
 }
 
 export async function readWatchState(root: string): Promise<WatchState | null> {

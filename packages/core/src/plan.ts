@@ -30,7 +30,51 @@ import { UNLABELLED, cacheEconomics } from './usage.js';
 import type { UsageProfileReport } from './usage.js';
 import type { BillLevers } from './levers.js';
 
-export type PlanActionKind = 'route' | 'batch' | 'route+batch' | 'fix-truncation' | 'fix-caching';
+export type PlanActionKind = 'route' | 'batch' | 'route+batch' | 'fix-truncation' | 'fix-caching' | 'edit-file';
+
+/**
+ * What an `edit-file` action does to the file, in the order it does it.
+ *
+ * `reorder` moves stable blocks ahead of the first placeholder
+ * (`reorderForCache`); `trim` runs the `safe` rules (`optimize`). Both are the
+ * deterministic transformations this repository already ships, and nothing
+ * else is a step: an edit a model wrote cannot be expressed here, which is
+ * the point (#796).
+ */
+export type PlanEditStep = 'reorder' | 'trim';
+
+/** Every step an edit may name, as a value, for the validator below. */
+export const PLAN_EDIT_STEPS: readonly PlanEditStep[] = ['reorder', 'trim'];
+
+/**
+ * An edit to one tracked file, recorded so it can be made again and checked.
+ *
+ * **The new text is not stored.** What is stored is the file the plan was
+ * made against (`beforeSha256`), what the steps turn it into
+ * (`afterSha256`), and what the steps were. Whoever applies the edit reads the
+ * file, checks it is the one the plan saw, runs the same steps, and checks the
+ * result is the one the plan promised. A plan file edited by hand to carry
+ * other text has nowhere to put it.
+ */
+export interface PlanEdit {
+  /** The file, relative to the repository root, forward slashes. */
+  path: string;
+  /** Applied in this order. */
+  steps: PlanEditStep[];
+  /** The rule level `trim` runs at. Only `safe` is written or accepted. */
+  level: 'safe';
+  /** Rule ids `trim` leaves off, from the configuration that made the plan. */
+  disabledRules: string[];
+  /** `reorder`'s bar: the prefix it must reach to move anything, or 0. */
+  minPrefixTokens: number;
+  /** SHA-256 of the file's text as the plan read it, lowercase hex. */
+  beforeSha256: string;
+  /** SHA-256 of the text the steps produce from it, lowercase hex. */
+  afterSha256: string;
+  /** The file's tokens before and after, by the estimator: estimated, not measured. */
+  beforeTokens: number;
+  afterTokens: number;
+}
 
 /**
  * What the log cannot confirm, as data rather than prose.
@@ -49,7 +93,12 @@ export type PlanAssumption =
   /** A max_tokens the answers fit inside removes the retry pair. */
   | { kind: 'max-tokens-fits' }
   /** The traffic pattern holds — a cache underwater on this log may pay on other traffic. */
-  | { kind: 'traffic-pattern-holds' };
+  | { kind: 'traffic-pattern-holds' }
+  /**
+   * The file is what this workload sends. The configuration says so; the log
+   * records tokens, not which file they came from.
+   */
+  | { kind: 'file-is-what-label-sends'; path: string };
 
 export interface PlanAction {
   kind: PlanActionKind;
@@ -60,7 +109,8 @@ export interface PlanAction {
    * Projected saving per the log's own period, for route/batch — or null for
    * the measured-stake actions, whose money is in `stakeUsd` instead. Never
    * both: a projection and a measurement in one field is a number that is
-   * neither.
+   * neither. An `edit-file` action carries neither: its figure is the
+   * workload's measured `detail.baseline`, which the edit is expected against.
    */
   savingUsd: number | null;
   /**
@@ -85,6 +135,8 @@ export interface PlanAction {
      * never be told from "the prediction was wrong".
      */
     baseline?: { calls: number; usd: number; inputPerCallTokens: number; outputPerCallTokens: number };
+    /** The edit, for `edit-file`. */
+    edit?: PlanEdit;
   };
 }
 
@@ -252,7 +304,49 @@ export const PLAN_ACTION_KINDS: readonly PlanActionKind[] = [
   'route+batch',
   'fix-truncation',
   'fix-caching',
+  'edit-file',
 ];
+
+const HEX64 = /^[0-9a-f]{64}$/;
+
+/**
+ * Why an `edit-file` action's edit is not one, or null when it is.
+ *
+ * Stricter than the rest of the validator, on purpose: the path here is
+ * something a later step reads and writes, so a path that climbs out of the
+ * repository, starts at the root, or names git's own directory is refused
+ * before anything can act on it.
+ */
+export function planEditProblem(raw: unknown): string | null {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return 'detail.edit is not an object';
+  const edit = raw as Record<string, unknown>;
+  const path = edit.path;
+  if (typeof path !== 'string' || path.length === 0 || path.length > 1024) return 'edit.path is not a path';
+  if (
+    path.startsWith('/') ||
+    path.includes('\\') ||
+    /^[A-Za-z]:/.test(path) ||
+    path.split('/').some((part) => part === '' || part === '.' || part === '..' || part.toLowerCase() === '.git') ||
+    /[\u0000-\u001f]/.test(path)
+  ) {
+    return 'edit.path is not a relative path inside the repository';
+  }
+  if (!Array.isArray(edit.steps) || edit.steps.length === 0 || !edit.steps.every((step) => PLAN_EDIT_STEPS.includes(step as PlanEditStep))) {
+    return `edit.steps is not a list of ${PLAN_EDIT_STEPS.join(', ')}`;
+  }
+  if (new Set(edit.steps).size !== edit.steps.length) return 'edit.steps names a step twice';
+  if (edit.level !== 'safe') return 'edit.level is not safe';
+  if (!Array.isArray(edit.disabledRules) || !edit.disabledRules.every((id) => typeof id === 'string')) {
+    return 'edit.disabledRules is not a list of rule ids';
+  }
+  if (typeof edit.minPrefixTokens !== 'number' || !Number.isFinite(edit.minPrefixTokens) || edit.minPrefixTokens < 0) {
+    return 'edit.minPrefixTokens is not a number of 0 or more';
+  }
+  if (typeof edit.beforeSha256 !== 'string' || !HEX64.test(edit.beforeSha256)) return 'edit.beforeSha256 is not a SHA-256';
+  if (typeof edit.afterSha256 !== 'string' || !HEX64.test(edit.afterSha256)) return 'edit.afterSha256 is not a SHA-256';
+  if (edit.beforeSha256 === edit.afterSha256) return 'edit changes nothing';
+  return null;
+}
 
 /** Why a file is not a plan, in a shape a caller can render in its own words. */
 export type PlanParseFailure =
@@ -322,6 +416,13 @@ export function parsePlanDocument(text: string): PlanParseResult {
         ok: false,
         why: { kind: 'action-malformed', index, because: `kind is not one of ${PLAN_ACTION_KINDS.join(', ')}` },
       };
+    }
+    // An edit is the one action something later acts on rather than reads,
+    // so its detail is checked here, once, for every surface that parses.
+    if (action.kind === 'edit-file') {
+      const detail = action.detail as Record<string, unknown> | undefined;
+      const problem = planEditProblem(typeof detail === 'object' && detail !== null ? detail.edit : undefined);
+      if (problem !== null) return { ok: false, why: { kind: 'action-malformed', index, because: problem } };
     }
   }
   return { ok: true, plan: doc as unknown as PlanDocument & { createdAt?: string } };

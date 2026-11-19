@@ -1,0 +1,472 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trazum.vercel.app/datasets/pricing/schema-1.json",
+  "title": "Trazum pricing dataset",
+  "description": "Trazum's price catalogue (packages/core/src/pricing.ts), serialised: one row per model and rate. Sources and review dates are per provider, because the catalogue records them per provider; no model has a source of its own. A rate the catalogue does not state has no row, and a model it does not price has none at all: nothing here is estimated, and no unknown is written as zero.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "dataset",
+    "format",
+    "version",
+    "currency",
+    "licence",
+    "catalogue",
+    "sourcesArePer",
+    "defaults",
+    "models",
+    "rows",
+    "changes"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "pattern": "^https://"
+    },
+    "dataset": {
+      "const": "trazum-pricing"
+    },
+    "format": {
+      "const": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "The Trazum release this document was published with."
+    },
+    "currency": {
+      "const": "USD"
+    },
+    "licence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spdx",
+        "url"
+      ],
+      "properties": {
+        "spdx": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://"
+        }
+      }
+    },
+    "catalogue": {
+      "type": "object",
+      "description": "The file this was built from, the SHA-256 of its text, and the oldest provider review date in it.",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "reviewed"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "reviewed": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      }
+    },
+    "sourcesArePer": {
+      "const": "provider",
+      "description": "Every row's sources and date are its provider's: the pages that provider's prices were read from, and the day."
+    },
+    "defaults": {
+      "type": "object",
+      "description": "The ratio the catalogue applies when a model states none: a model with no row for one of these rates takes this value. A period of a model's history with no row for a ratio takes the model's own row first.",
+      "additionalProperties": false,
+      "required": [
+        "cache-read",
+        "cache-write",
+        "cache-write-long",
+        "batch"
+      ],
+      "properties": {
+        "cache-read": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "cache-write": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "cache-write-long": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "batch": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "models": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/model"
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/row"
+      }
+    },
+    "changes": {
+      "type": "object",
+      "description": "What moved since the newest version published before this one; `since` is null for the first.",
+      "additionalProperties": false,
+      "required": [
+        "since",
+        "rows",
+        "models"
+      ],
+      "properties": {
+        "since": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rows": {
+          "$ref": "#/$defs/changeList"
+        },
+        "models": {
+          "$ref": "#/$defs/changeList"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "model": {
+      "type": "object",
+      "description": "A model as the catalogue holds it, without its prices.",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayName",
+        "provider",
+        "capability",
+        "contextWindow",
+        "cacheMinTokens"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Other ids that bill at exactly this rate."
+        },
+        "capability": {
+          "enum": [
+            "small",
+            "mid",
+            "large",
+            "frontier",
+            "unknown"
+          ]
+        },
+        "contextWindow": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "cacheMinTokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Not a price. Null when the catalogue does not know."
+        },
+        "caching": {
+          "enum": [
+            "explicit",
+            "automatic",
+            "none",
+            "unknown"
+          ]
+        },
+        "cacheTtl": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "writeMs",
+            "longerMs"
+          ],
+          "properties": {
+            "writeMs": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "longerMs": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "recommendable": {
+          "type": "boolean"
+        },
+        "retired": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "on",
+            "because"
+          ],
+          "properties": {
+            "on": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "because": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "row": {
+      "type": "object",
+      "description": "One rate of one model. Without `serviceTier`, `band`, `until`, `promo` or `geo` it is the standard rate today.",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "model",
+        "provider",
+        "rate",
+        "unit",
+        "value",
+        "sources",
+        "reviewed"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "provider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rate": {
+          "enum": [
+            "input",
+            "output",
+            "cache-read",
+            "cache-write",
+            "cache-write-long",
+            "batch",
+            "batch-cache-read",
+            "inference-geo",
+            "web-search"
+          ]
+        },
+        "unit": {
+          "enum": [
+            "usd-per-million-tokens",
+            "multiple-of-input-rate",
+            "multiple-of-standard-rates",
+            "multiple-of-batch-input-rate",
+            "multiple-of-every-rate",
+            "usd-per-thousand-searches"
+          ]
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "exclusiveMinimum": 0,
+          "description": "Never zero. Null only for a batch ratio, where it means the provider has no batch API."
+        },
+        "serviceTier": {
+          "enum": [
+            "flex",
+            "fast",
+            "ultrafast"
+          ],
+          "description": "A service tier other than the standard one, which replaces the standard rates and bands whole."
+        },
+        "band": {
+          "type": "object",
+          "description": "A conditional rate, which applies when `when` holds.",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "when"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "when": {
+              "$ref": "#/$defs/condition"
+            }
+          }
+        },
+        "until": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+          "description": "A rate of a past period: it applied to a call before this instant (exclusive) and after the previous period ended."
+        },
+        "promo": {
+          "type": "object",
+          "description": "A promotional rate, until a date (inclusive), with the date the page was last read still stating it.",
+          "additionalProperties": false,
+          "required": [
+            "until"
+          ],
+          "properties": {
+            "until": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "confirmedOn": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          }
+        },
+        "geo": {
+          "enum": [
+            "us"
+          ]
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^https://"
+          }
+        },
+        "reviewed": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        }
+      }
+    },
+    "condition": {
+      "type": "object",
+      "description": "When a band applies, as the catalogue states it: a prompt above or at least a number of input tokens, a call inside UTC hours (each hour a window starts at), or a call at a speed the response names.",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "input-tokens-above",
+            "input-tokens-at-least",
+            "utc-hours",
+            "speed"
+          ]
+        },
+        "tokens": {
+          "type": "integer",
+          "exclusiveMinimum": 0
+        },
+        "hours": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 23
+          }
+        },
+        "weekdaysOnly": {
+          "type": "boolean"
+        },
+        "speed": {
+          "enum": [
+            "fast"
+          ]
+        }
+      }
+    },
+    "changeList": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "added",
+        "removed",
+        "changed"
+      ],
+      "properties": {
+        "added": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "removed": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "changed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "fields"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "object",
+                "description": "Each field that differs, with its value before (`from`) and after (`to`); a side is absent when the field was."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

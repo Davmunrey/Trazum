@@ -455,6 +455,7 @@ const INVOCATION = {
   'from-openai': ['openai-usage.json', '--label', 'billing', '-o', 'c7.jsonl'],
   'from-openrouter': ['openrouter-activity.json', '--label', 'billing', '-o', 'c8.jsonl'],
   bill: ['openrouter-activity.json', '-o', 'b1.json'],
+  weekly: ['usage.jsonl', '-o', 'w1.md'],
   reconcile: ['a-receipt.json', '--against', 'anthropic-cost.json', '-o', 'r1.json'],
   'from-helicone': ['helicone.json', '-o', 'c4.jsonl'],
   'from-langsmith': ['langsmith.json', '-o', 'c5.jsonl'],

@@ -137,17 +137,20 @@ line in either report, fails `bill-image.test.js` or `demo-image.test.js` until
 the picture is redrawn**, and the README restates figures from both, so the same
 tests then fail until its prose agrees.
 
-And one that produces something to hand to a marketplace:
+And two that produce what a release carries (the files, not a listing):
 
 ```bash
-npm run package:vscode     # builds the editor extension and writes a .vsix
+npm run package:vscode     # builds the editor extension and writes a .vsix into apps/vscode
+npm run package:release    # the .vsix, the MCP .mcpb and the pricing dataset, into release-assets/ (build first)
 ```
 
-`vsce` is fetched by `npx` for that one run rather than installed. It exists to
-produce a zip on demand, and a repository does not need a tool in its tree to
-find out whether its own manifest is valid — `apps/vscode/test/packaging.test.js`
-checks the rules the packager enforces, so the manifest cannot drift between
-releases without a test saying so.
+`vsce` and `mcpb` are fetched by `npx` for that one run, at the exact versions
+`scripts/release-assets.mjs` names, rather than installed. They exist to produce
+a zip on demand, and a repository does not need a tool in its tree to find out
+whether its own manifest is valid — `apps/vscode/test/packaging.test.js` checks
+the rules the packager enforces, so the manifest cannot drift between releases
+without a test saying so. A bump of either version is a change to that file, and
+`test/release-assets.test.mjs` refuses a tag, a range or no version.
 
 **Run `draw:architecture` after adding or removing a published package.** The
 picture on the front page is generated from the workspace globs and from the
@@ -201,6 +204,13 @@ string exists but not that it is right.
 `PRICING_LAST_REVIEWED` in the same commit, and cite where the numbers came from
 in the commit message. Pricing changes ship as patch releases — see
 [VERSIONING.md](VERSIONING.md).
+
+A provider's date in `PROVIDER_REVIEWED` and its pages in `PROVIDER_SOURCES`
+move together: the pages are the ones the comment above the date says were
+read that day, and `provider-sources.test.js` fails on one it does not name.
+Every row of the published [pricing dataset](docs/pricing-dataset.md) carries
+both. That dataset is written by the release, not by the pull request that
+changes a price: the next release's document lists the change.
 
 A price can change which model Trazum recommends, and a test holds the
 answers: `packages/core/test/fixtures/recommendations.json` records the
@@ -324,9 +334,11 @@ The web app's own tests read modules and rendered components. `scripts/e2e.mjs`
 opens the built page in a real browser and does what a visitor does: pastes a
 log and reads the bill to the cent, optimises and compares a prompt, loads a
 recorded run, changes the theme and the language, and reaches the tabs on a
-phone, follows the landing into the dashboard, and scrolls the landing's
-story from top to bottom and back.
-[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-three flows,
+phone, follows the landing into the dashboard, scrolls the landing's
+story from top to bottom and back, reads the Pro page without it sending
+anything off the site, and reads the Download page against the release it names
+and the same way.
+[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-five flows,
 what they do not check, and the lines that install the browser driver outside
 the workspace.
 

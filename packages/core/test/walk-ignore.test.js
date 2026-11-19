@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
-import { parseConfig, walkPrompts } from '../dist/node.js';
+import { parseConfig, walkIncludes, walkPrompts } from '../dist/node.js';
 
 /**
  * Saying which files are prompts, when the extension cannot.
@@ -118,5 +118,41 @@ describe('the config carries it', () => {
     // An empty array and "not configured" would read the same downstream; the
     // walker takes `undefined` to mean "no filtering" and that has to survive.
     assert.equal(load('{}').ignore, undefined);
+  });
+});
+
+/**
+ * `walkIncludes` answers, path by path, what `walkPrompts` answers by reading
+ * the disk. `check --base` (#785) lists the base branch's files from git and
+ * keeps the ones the walk would keep, so the two disagreeing reads as a
+ * prompt the pull request deleted, or one it never saw. Held to one tree
+ * that has every rule in it: a dot directory, a skipped directory, an
+ * ignored tree, an ignored file, a foreign extension and the depth limit.
+ */
+describe('walkIncludes agrees with walkPrompts', () => {
+  it('keeps exactly the files the walk lists', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'trazum-includes-'));
+    const files = [
+      'prompts/system.txt',
+      'prompts/.drafts/hidden.txt',
+      '.config/prompt.txt',
+      'node_modules/pkg/prompt.txt',
+      'prompts/dist/built.txt',
+      'test/fixtures/sample.txt',
+      'prompts/skip.txt',
+      'prompts/notes.md',
+      'prompts/image.png',
+      'a/b/c/deep.txt',
+      'a/b/c/d/too-deep.txt',
+    ];
+    for (const file of files) {
+      await mkdir(join(root, ...file.split('/').slice(0, -1)), { recursive: true });
+      await writeFile(join(root, ...file.split('/')), 'text\n');
+    }
+    const options = { extensions: ['.txt', '.md'], ignore: ['**/test/**', 'prompts/skip.txt'], maxDepth: 3 };
+    const { files: walked } = await walkPrompts(root, options);
+    const included = files.filter((file) => walkIncludes(file, options)).sort();
+    assert.deepEqual(included, walked);
+    assert.deepEqual(walked, ['a/b/c/deep.txt', 'prompts/notes.md', 'prompts/system.txt']);
   });
 });

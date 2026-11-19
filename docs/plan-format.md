@@ -38,16 +38,42 @@ half of each is neither.
 
 | Field | What it holds |
 | --- | --- |
-| `kind` | `route`, `batch`, `route+batch`, `fix-truncation` or `fix-caching`. |
+| `kind` | `route`, `batch`, `route+batch`, `fix-truncation`, `fix-caching` or `edit-file`. |
 | `label` | The workload. The unlabelled bucket carries a sentinel, rendered as "unlabelled" and never printed raw. |
 | `model` | The model those calls go to now. |
 | `savingUsd` | The projection, for route and batch kinds — or null. |
-| `stakeUsd` | The measured money, for the fix kinds — or null. Never both: a projection and a measurement in one field is a number that is neither. |
+| `stakeUsd` | The measured money, for the fix kinds — or null. Never both: a projection and a measurement in one field is a number that is neither. An `edit-file` action has neither: its figure is `detail.baseline`, measured. |
 | `assumes` | What the log cannot confirm, typed rather than as prose — `{kind: 'model-capability', model}`, `{kind: 'batch-window'}`, and so on. Each is a question for a human, and the rendering surface writes it in the reader's language. |
 | `check` | A Trazum command that would settle the assumption, when one can. Null when none can. |
 | `detail.routeTo` | Where a routing action moves the calls. |
 | `detail.measured` | The measured pieces behind a stake, so the figure can be reproduced. |
 | `detail.baseline` | **The slice as it was when the plan was made** — calls, dollars, input and output tokens per call. Without this a plan is a prediction with no record of the world it was made in, and "the saving did not arrive" could never be told from "the traffic tripled". |
+| `detail.edit` | For `edit-file` only, and required there: the edit, below. |
+
+## An edit
+
+`trazum plan --edits` writes an `edit-file` action for each prompt file
+`labels` in `trazum.config.json` maps a workload to, when the `safe` rules
+change it. It is the one action something later acts on rather than reads:
+the Action's pull-request step makes it on a branch
+([CI](ci.md#a-plan-that-opens-its-own-pull-request)). So **the new text is not
+in the document.** What is there is enough to make the same edit again and
+to refuse any other:
+
+| Field | What it holds |
+| --- | --- |
+| `path` | The file, relative to the repository root, with forward slashes. Refused when it is absolute, climbs with `..`, has an empty or `.` segment, a backslash, a control character, or names `.git`. |
+| `steps` | `reorder`, `trim`, or both in that order. `reorder` moves stable blocks ahead of the first placeholder; `trim` runs the `safe` rules. Nothing else is a step. |
+| `level` | `safe`. No other level is written or accepted. |
+| `disabledRules` | Rule ids `trim` leaves off, from the configuration's `disable`. |
+| `minPrefixTokens` | The prefix `reorder` has to reach to move anything: the model's cacheable minimum, or 0. |
+| `beforeSha256` | SHA-256 of the file's text as the plan read it. |
+| `afterSha256` | SHA-256 of the text the steps make of it. Never the same as `beforeSha256`. |
+| `beforeTokens`, `afterTokens` | The file's tokens before and after, **by the estimator**: estimated, not measured, and no saving is projected from them. |
+
+The assumption it carries is `{kind: 'file-is-what-label-sends', path}`: the
+configuration says this file is what the workload sends, and the log records
+tokens, not files.
 
 ## The five ways a file is refused
 
@@ -60,11 +86,13 @@ refusal has to be rendered in a browser and localised in a terminal.
 | `not-an-object` | It parses to an array, a string or a number. |
 | `wrong-schema-version` | `schemaVersion` is missing or is not `1`. The value found is reported. |
 | `actions-not-a-list` | There is no `actions` array. |
-| `action-malformed` | One action is missing `label`, `model`, or carries a `kind` nobody wrote. The **position** and the reason are both reported: a plan can hold a dozen actions and only one be wrong. |
+| `action-malformed` | One action is missing `label`, `model`, or carries a `kind` nobody wrote, or an `edit-file` action's `detail.edit` is missing or breaks a rule above. The **position** and the reason are both reported: a plan can hold a dozen actions and only one be wrong. |
 
 The check is deliberately shallow past the three fields verification actually
-reads. A document format that rejects its own past is one nobody commits, so a
-plan carrying fields from a newer release still verifies.
+reads, and the edit an `edit-file` action carries. A document format that
+rejects its own past is one nobody commits, so a plan carrying fields from a
+newer release still verifies, and a plan written before `edit-file` existed
+reads exactly as it did.
 
 **A plan with no actions is a valid plan.** A bill already on the cheapest model
 of its family, with no batch API to reach for and nothing measurable being paid
@@ -79,8 +107,16 @@ trazum verify plan.json --against ./logs --gate    # exits 1 on a broken promise
 ```
 
 Three outcomes, never two: **arrived**, **did not arrive**, and **cannot tell**
-— the last with its own three reasons kept apart, because a workload that
-stopped being logged is not a workload that stopped costing money.
+— the last with its reasons kept apart, because a workload that stopped being
+logged is not a workload that stopped costing money.
+
+An edit is checked in the file and in the log. It arrived when the file holds
+the text the plan promised and the workload's input tokens per call fell below
+the baseline; it did not when the file still holds the text the plan was made
+from, or the calls are no shorter. `file-changed` (the file holds something
+else, or is gone) cannot be told and fails `--gate`; `file-not-read` (a
+browser tab, or anything else that cannot read the repository) cannot be told
+and fails nothing.
 
 `--gate` fails on a broken promise and on `fields-stopped` only. A team that
 degraded its own log must not pass on the strength of the silence; a workload

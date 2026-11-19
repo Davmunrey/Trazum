@@ -54,6 +54,17 @@ npx @trazum/cli bill ./usage-export.jsonl
 [Supported inputs](docs/usage-logs.md) ·
 [Try sample data in your browser](https://trazum.vercel.app/app?tab=playground)
 
+### Install it another way
+
+Everything below is on the **[download page](https://trazum.vercel.app/download)**,
+with the commands copyable and each pinned to an exact version: the CLI with
+`npm install -g` or the Homebrew tap, the MCP server for Claude Code, Claude
+Desktop (as a `.mcpb` bundle or JSON), Cursor, VS Code, Codex and Gemini CLI, the
+editor extension as a `.vsix` for *Install from VSIX*, the pinned GitHub Action,
+and the `SHA256SUMS` of what each release carries. No account and no store: each
+file is an asset of this repository's own release, and the same table is in
+[docs/agents.md](docs/agents.md#install-the-mcp-server-in-a-client).
+
 ## Why the number holds up
 
 - **Published rates, checked against the provider every week.** A scheduled
@@ -220,7 +231,7 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
     ┌────────────┬─────────────┼─────────────┬─────────────┐
  @trazum/cli  @trazum/mcp  trazum-vscode  @trazum/web    action/
- 56 commands   MCP server    the editor      Next.js    comments on
+ 57 commands   MCP server    the editor      Next.js    comments on
               for your agents  status bar               pull requests
 
               @trazum/tokenizer-openai   optional: exact counts for OpenAI
@@ -317,8 +328,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 56 commands — [the table
-above](#the-56-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 57 commands — [the table
+above](#the-57-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -336,8 +347,9 @@ from the exit codes it is supposed to relay.
 <a id="the-52-commands"></a>
 <a id="the-53-commands"></a>
 <a id="the-55-commands"></a>
+<a id="the-56-commands"></a>
 
-## The 56 commands
+## The 57 commands
 
 | Command | What it answers |
 |---|---|
@@ -345,7 +357,7 @@ from the exit codes it is supposed to relay.
 | [`trazum filter`](docs/tool-output-filter.md) | Compact repeated tool-log lines before agent context, retaining the original locally. *Opt-in.* |
 | [`trazum init`](#the-first-five-minutes-trazum-init) | Inspect repository prompts and available usage, then write a configuration. *Optional setup after your first report.* |
 | [`trazum optimize`](#cli) | What can come out of this prompt, and what is that worth a month? |
-| [`trazum check`](#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? *Exits 1 when either fails — this is the CI gate.* |
+| [`trazum check`](#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? With [`--base`](docs/commands.md#against-the-base-branch---base), what does this change do to each prompt's cost against the base branch? *Exits 1 when a gate fails: this is the CI gate.* |
 | [`trazum baseline`](docs/commands.md#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) | What does this repository's prompts cost right now? *Records it, to commit.* |
 | [`trazum diff`](docs/commands.md#did-this-edit-make-it-worse) | What did this edit cost? |
 | [`trazum rank`](docs/commands.md#which-prompt-to-fix-first-trazum-rank) | Of these forty prompts, which is worth an afternoon? |
@@ -375,6 +387,7 @@ from the exit codes it is supposed to relay.
 | [`trazum schema`](docs/commands.md#building-on-the-format-trazum-conform) | Which fields must a document of this format carry? *A JSON Schema, for validators that are not Trazum.* |
 | [`trazum conform`](docs/commands.md#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rollup`](docs/commands.md#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
+| [`trazum weekly`](docs/commands.md#the-week-written-down-trazum-weekly) | What did the week cost, what moved, and what should change first? *The bill for seven days, against the seven before, and three ranked changes, each a projection that says so. A file or stdout; the Action posts it where you name.* |
 | [`trazum proactive`](docs/commands.md#speaking-first-trazum-proactive) | What speaks without being asked, and is it on? *Turns on the status line, a scheduled watch and the MCP server, one asked-for item at a time, and turns them off again.* |
 | [`trazum pulse`](docs/commands.md#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum position`](docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
