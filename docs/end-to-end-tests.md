@@ -13,8 +13,8 @@ page.
 
 ## What is checked
 
-Twenty-four flows, each from an empty browser. Most drive the application at
-`/app`, where it has lived since the landing took `/`; eleven start on the
+Twenty-five flows, each from an empty browser. Most drive the application at
+`/app`, where it has lived since the landing took `/`; twelve start on the
 landing:
 
 | Flow | What the page must show |
@@ -33,6 +33,7 @@ landing:
 | Models | from the landing, the Models entry to `/models`, the count of every model, one provider chosen so that only its rows are left, a text filter that keeps `deepseek-v4-pro` and drops `deepseek-flash`, the sentence for a filter nothing matches, nothing written to the address, `gemini-2.5-pro` drawn with the Retired tab and marked retired, and no request made by the page while it was filtered |
 | Brand | from the footer, the Brand entry to `/brand`, the wordmark shown for a light ground and for a dark one, eight files offered and each fetched with the kind of file its name says, the canvas shown as `#f6f4ec` on paper and `#1c211b` on the dark ground, a copy of `#f6f4ec` confirmed, and no request made by the page when it was copied |
 | Pro | from the landing, the Pro entry to `/pro`, the status above the title and the section that says it is not open, the four tiers as Trazum Pro's `docs/pricing.md` decided them (`€149 a month`, `Up to €5,000`, `2.98%` and the rest), one `mailto:` link to the address `CODE_OF_CONDUCT.md` publishes with the subject filled in, no form or field, every text at its WCAG contrast on paper and again with Dark chosen in the header, no request to another origin from the landing on, and no cookie |
+| Download | from the landing, the Download entry to `/download`, the version the page says it is for (the manifest's), the five sections in order, the CLI at that exact version three ways (`npx`, `npm install -g`, the Homebrew tap), the eight MCP clients in order with the Claude Code, Codex, Cursor, VS Code and Gemini CLI snippets parsed and held to `@trazum/mcp@<version>`, the four files linked by one scheme (`releases/download/v<version>/trazum-vscode-<version>.vsix` and the rest, never `releases/latest`), the Action's pinned line, the checksum command, no store named anywhere, no form or field, every text at its WCAG contrast on paper and with Dark chosen, no sideways scroll on a phone, no request to another origin and no cookie |
 | Tour | all ten steps: the bill, the optimiser and the comparison each run their sample, and the terminal types and runs each of its three commands once |
 | Landing, the story | scrolled from top to bottom a percent at a time: the bill's total, the gate's verdict, the trimming's token counts, what never leaves on the screen and what leaves beside the closed machine each come into view, in that order; the lid's computed rotation is closed (below -95°) at the end, open again halfway back and at the top; no control inside the pinned stage; the last call to action takes focus and leads to `/app` |
 | Landing, the fallback | the same story with `CSS.supports` saying no to scroll-driven animation, so the script writes the progress (`data-story="script"`) |
@@ -120,7 +121,7 @@ and one times and read it at each stop, and the one that measures where the
 output stands stops eight times, then nine times across each change of plate
 at two sizes. The Pro flow, added after them, took 1,854 ms on its own on
 2026-11-19, against a local production build on a machine another job was
-sharing.
+sharing. The Download flow's time is in CHANGELOG.md, under the entry that added it.
 
 ## Adding a flow
 

@@ -56,7 +56,7 @@
   },
   {
     "title": "Where people meet Trazum",
-    "description": "The editor extension on the VS Code Marketplace, the playground as a Hugging Face Space, the hosted web app measured for how fast it loads, off unless its operator asks, and a page that says what Trazum Pro is and that it is not open yet.",
+    "description": "The editor extension on the VS Code Marketplace, the playground as a Hugging Face Space, the hosted web app measured for how fast it loads, off unless its operator asks, a page that says what Trazum Pro is and that it is not open yet, and a download page at /download for the files each release carries.",
     "issues": [640, 646, 723, 774, 780, 781, 793]
   },
   {

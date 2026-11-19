@@ -2104,7 +2104,9 @@ describe('the packaged Action', () => {
 
     // Runs after the packages exist, and after the wait that makes the
     // registry's own verification possible.
-    assert.match(listing, /needs:\s*\[decide, release\]/, 'the listing does not wait for the release job');
+    // Also the job that attaches the bundle the listing advertises (#780):
+    // the entry names a file and its digest, and both exist only after it.
+    assert.match(listing, /needs:\s*\[decide, release, assets\]/, 'the listing does not wait for the release job and the files it lists');
 
     // Presence before order. `indexOf` answers -1 for a string that is not
     // there, and -1 is less than every real index, so an ordering assertion on

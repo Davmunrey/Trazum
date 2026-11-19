@@ -19,7 +19,7 @@
     "build": "npm run build -w @trazum/core && npm run build -w @trazum/cli && npm run build -w @trazum/mcp && npm run build -w @trazum/tokenizer-openai && npm run build -w trazum-vscode",
     "test": "npm run test -w @trazum/core && npm run test -w @trazum/cli && npm run test -w @trazum/mcp && npm run test -w @trazum/tokenizer-openai && npm run test -w trazum-vscode && npm run test -w @trazum/web && npm run test:action && npm run test:agents && npm run test:release",
     "test:agents": "node --test test/agent-workflow.test.mjs test/task-stress.test.mjs test/privacy-probe.test.mjs test/e2e.test.mjs",
-    "test:release": "node --test test/sbom.test.mjs",
+    "test:release": "node --test test/sbom.test.mjs test/release-assets.test.mjs test/install-snippets.test.mjs test/homebrew-formula.test.mjs",
     "test:mutation": "node --test test/mutation-parser.test.mjs",
     "mutate": "node scripts/mutate.mjs",
     "e2e": "node scripts/e2e.mjs",
@@ -43,7 +43,8 @@
     "check:models": "node scripts/check-model-availability.mjs",
     "measure:safety": "node scripts/measure-rule-safety.mjs",
     "draw:icon": "node scripts/draw-icon.mjs",
-    "package:vscode": "npm run build -w trazum-vscode && cd apps/vscode && npx --yes @vscode/vsce package --no-dependencies"
+    "package:vscode": "npm run build -w trazum-vscode && node scripts/release-assets.mjs vsix --out apps/vscode",
+    "package:release": "node scripts/release-assets.mjs build"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.4"

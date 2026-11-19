@@ -10,4 +10,13 @@ tsconfig.json
 **/*.map
 **/*.ts
 !dist/**/*.js
+
+# The one package the extension imports at run time. `scripts/release-assets.mjs`
+# lays it out under node_modules from the lockfile's own closure (built files
+# only, no sources and no maps), and nothing else in node_modules ships: the
+# first .vsix this repository built, in 1.86.0, left it out and would have
+# failed to start for want of it.
 node_modules/**
+!node_modules/@trazum/core/package.json
+!node_modules/@trazum/core/LICENSE
+!node_modules/@trazum/core/dist/**/*.js

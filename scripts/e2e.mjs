@@ -31,9 +31,48 @@
  * No screenshots are compared and nothing is retried. A flow that fails says
  * which step it was waiting for and what the page showed instead.
  */
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+/**
+ * Every text on the page against the ground it sits on: 4.5:1, or 3:1 for text
+ * 24px and larger or bold at 18.66px and larger (WCAG 2, 1.4.3). The words that
+ * fall short, with their ratio, or the empty string. Read the same way for every
+ * page whose flow asks.
+ */
+const unreadableText = (page) =>
+  page.evaluate(() => {
+    const channels = (value) => (value.match(/[\d.]+/g) ?? []).map(Number);
+    const luminance = ([r, g, b]) => {
+      const f = (channel) => {
+        const c = channel / 255;
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const ground = (element) => {
+      for (let at = element; at !== null; at = at.parentElement) {
+        const value = channels(getComputedStyle(at).backgroundColor);
+        if (value.length === 3 || (value.length === 4 && value[3] === 1)) return value.slice(0, 3);
+      }
+      return channels(getComputedStyle(document.body).backgroundColor).slice(0, 3);
+    };
+    const found = [];
+    for (const element of document.querySelectorAll('main *')) {
+      const own = [...element.childNodes].some((node) => node.nodeType === 3 && node.textContent.trim() !== '');
+      const box = element.getBoundingClientRect();
+      if (!own || box.width <= 1 || box.height <= 1) continue;
+      const style = getComputedStyle(element);
+      const size = Number.parseFloat(style.fontSize);
+      const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+      const [a, b] = [luminance(channels(style.color)), luminance(ground(element))].sort((x, y) => y - x);
+      const ratio = (a + 0.05) / (b + 0.05);
+      if (ratio < (large ? 3 : 4.5)) found.push(`${element.textContent.trim().slice(0, 40)} ${ratio.toFixed(2)}:1`);
+    }
+    return found.join(' | ');
+  });
 
 /** What a visitor on a laptop and on a phone sees the page at. */
 const DESKTOP = { width: 1280, height: 900 };
@@ -666,41 +705,125 @@ export const FLOWS = [
         theme and then the dark one: 4.5:1, or 3:1 for text 24px and larger
         or bold at 18.66px and larger (WCAG 2, 1.4.3).
       */
-      const unreadable = () =>
-        page.evaluate(() => {
-          const channels = (value) => (value.match(/[\d.]+/g) ?? []).map(Number);
-          const luminance = ([r, g, b]) => {
-            const f = (channel) => {
-              const c = channel / 255;
-              return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-            };
-            return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-          };
-          const ground = (element) => {
-            for (let at = element; at !== null; at = at.parentElement) {
-              const value = channels(getComputedStyle(at).backgroundColor);
-              if (value.length === 3 || (value.length === 4 && value[3] === 1)) return value.slice(0, 3);
-            }
-            return channels(getComputedStyle(document.body).backgroundColor).slice(0, 3);
-          };
-          const found = [];
-          for (const element of document.querySelectorAll('main *')) {
-            const own = [...element.childNodes].some((node) => node.nodeType === 3 && node.textContent.trim() !== '');
-            const box = element.getBoundingClientRect();
-            if (!own || box.width <= 1 || box.height <= 1) continue;
-            const style = getComputedStyle(element);
-            const size = Number.parseFloat(style.fontSize);
-            const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
-            const [a, b] = [luminance(channels(style.color)), luminance(ground(element))].sort((x, y) => y - x);
-            const ratio = (a + 0.05) / (b + 0.05);
-            if (ratio < (large ? 3 : 4.5)) found.push(`${element.textContent.trim().slice(0, 40)} ${ratio.toFixed(2)}:1`);
-          }
-          return found.join(' | ');
-        });
+      const unreadable = () => unreadableText(page);
       is(await unreadable(), '', 'text below its contrast on paper');
       await page.locator('[data-site-header]').getByRole('button', { name: 'Dark', exact: true }).first().click();
       await page.locator('html[data-theme="dark"]').waitFor({ state: 'attached' });
       is(await unreadable(), '', 'text below its contrast on the dark canvas');
+
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForLoadState('networkidle');
+      is(requested.filter((url) => !url.startsWith(`${origin}/`) && !url.startsWith('data:')).join(' '), '', 'the requests that left the site');
+      is(await page.evaluate(() => document.cookie), '', 'the cookies the page can read');
+    },
+  },
+  {
+    name: 'download: from the landing, follow Download, read each section against the release it names, and send nothing off the site',
+    covers: [],
+    async run({ page, open, see, is }) {
+      // Every request from the first one: none may leave the site.
+      const requested = [];
+      page.on('request', (request) => requested.push(request.url()));
+      // The version the repository is at, read from its own manifest and not from the page: the page is what is checked.
+      const version = JSON.parse(readFileSync(join(fileURLToPath(new URL('..', import.meta.url)), 'package.json'), 'utf8')).version;
+      await open('/');
+      const origin = new URL(page.url()).origin;
+      await page.locator('[data-site-header]').getByRole('link', { name: 'Download', exact: true }).click();
+      await page.waitForURL((url) => url.pathname === '/download');
+      await page.locator('html[data-started="true"]').waitFor({ state: 'attached' });
+      await see(page.getByRole('heading', { level: 1, name: 'Download Trazum' }), 'the Download page');
+      is(await page.locator('[data-download-version]').evaluate((element) => element.textContent), `This page is for version ${version}.`, 'the version the page says it is for');
+
+      // The five sections, in order.
+      is(
+        await page.locator('[data-download-section]').evaluateAll((sections) => sections.map((section) => section.getAttribute('data-download-section')).join(',')),
+        'cli,mcp,extension,action,checksums',
+        'the sections, in order',
+      );
+
+      // The command line: three ways, each at the exact version, and the tap.
+      const commands = await page.locator('[data-cli] [data-command] code').evaluateAll((codes) => codes.map((code) => code.textContent.replace(/^\$\s*/, '').trim()));
+      is(
+        JSON.stringify(commands),
+        JSON.stringify([`npx @trazum/cli@${version} bill`, `npm install -g @trazum/cli@${version}`, 'brew install Davmunrey/trazum/trazum']),
+        'the command line section',
+      );
+
+      // The MCP server: each client once, and every snippet that starts it names the package at the exact version.
+      is(
+        await page.locator('[data-client]').evaluateAll((items) => items.map((item) => item.getAttribute('data-client')).join(',')),
+        'claude-code,claude-desktop-bundle,claude-desktop-json,cursor,vscode,codex-command,codex-toml,gemini-cli',
+        'the clients, in order',
+      );
+      const pinned = `@trazum/mcp@${version}`;
+      is(
+        await page.locator('[data-client="claude-code"] [data-command] code').evaluate((code) => code.textContent.replace(/^\$\s*/, '').trim()),
+        `claude mcp add trazum -- npx -y ${pinned}`,
+        'the Claude Code line',
+      );
+      is(
+        await page.locator('[data-client="codex-command"] [data-command] code').evaluate((code) => code.textContent.replace(/^\$\s*/, '').trim()),
+        `codex mcp add trazum -- npx -y ${pinned}`,
+        'the Codex line',
+      );
+      is(
+        await page.locator('[data-client="codex-toml"] [data-snippet] code').textContent(),
+        `[mcp_servers.trazum]\ncommand = "npx"\nargs = ["-y", "${pinned}"]`,
+        'the Codex TOML',
+      );
+      const cursor = JSON.parse(await page.locator('[data-client="cursor"] [data-snippet] code').textContent());
+      is(JSON.stringify(cursor.mcpServers.trazum.args), JSON.stringify(['-y', pinned]), 'the Cursor arguments');
+      const vscode = JSON.parse(await page.locator('[data-client="vscode"] [data-snippet] code').textContent());
+      is(JSON.stringify(vscode.servers.trazum), JSON.stringify({ type: 'stdio', command: 'npx', args: ['-y', pinned] }), 'the VS Code entry');
+      is(
+        await page.locator('[data-client="gemini-cli"] [data-command] code').evaluate((code) => code.textContent.replace(/^\$\s*/, '').trim()),
+        'gemini extensions install https://github.com/Davmunrey/Trazum',
+        'the Gemini CLI line',
+      );
+
+      // The files: one release, one scheme. The extension, the bundle, the sums and the bill of materials.
+      const release = `https://github.com/Davmunrey/Trazum/releases/download/v${version}`;
+      const files = await page.locator('a[data-download-file]').evaluateAll((links) => links.map((link) => [link.getAttribute('data-download-file'), link.getAttribute('href')]));
+      is(
+        JSON.stringify(files),
+        JSON.stringify([
+          ['mcpb', `${release}/trazum-mcp-${version}.mcpb`],
+          ['vsix', `${release}/trazum-vscode-${version}.vsix`],
+          ['sums', `${release}/SHA256SUMS`],
+          ['sbom', `${release}/trazum-v${version}.cdx.json`],
+        ]),
+        'the files the page links, and where',
+      );
+      is(await page.locator('a[href*="releases/latest"]').count(), 0, 'links through a movable address');
+      is(
+        await page.locator('[data-download-section="extension"] [data-command] code').evaluate((code) => code.textContent.replace(/^\$\s*/, '').trim()),
+        `code --install-extension trazum-vscode-${version}.vsix`,
+        'the terminal line for the extension',
+      );
+
+      // The Action: one pinned commit, as the setup guide writes it.
+      const action = await page.locator('[data-snippet="action"] code').textContent();
+      is(/^- uses: Davmunrey\/Trazum@[0-9a-f]{40} {2}# \d+\.\d+\.\d+$/.test(action), true, `the Action line (${action})`);
+
+      // Checksums, and that they are not a signature.
+      await see(page.locator('[data-download-sums-note]'), 'what a checksum does not show');
+      await see(page.locator('[data-download-section="checksums"]').getByText('sha256sum --check --ignore-missing SHA256SUMS'), 'the command that checks the files');
+
+      // No listing is claimed: no store is named anywhere on the page.
+      const text = await page.locator('main').textContent();
+      is(/marketplace|open ?vsx|homebrew-core|app store/i.test(text), false, 'a store named on the page');
+      is(await page.locator('form, input, textarea, iframe').count(), 0, 'forms, fields and frames on the page');
+
+      // Every text at its contrast, on paper and then on the dark canvas.
+      const unreadable = () => unreadableText(page);
+      is(await unreadable(), '', 'text below its contrast on paper');
+      await page.locator('[data-site-header]').getByRole('button', { name: 'Dark', exact: true }).first().click();
+      await page.locator('html[data-theme="dark"]').waitFor({ state: 'attached' });
+      is(await unreadable(), '', 'text below its contrast on the dark canvas');
+
+      // It fits a phone without scrolling sideways.
+      await page.setViewportSize(PHONE);
+      is(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'the page scrolls sideways on a phone');
 
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
       await page.waitForLoadState('networkidle');
