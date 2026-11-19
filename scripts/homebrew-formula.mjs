@@ -134,7 +134,7 @@ export function formulaFromTarball({ version, bytes }) {
  */
 export function registryDocumentUrl(name) {
   if (!/^@trazum\/[a-z0-9][a-z0-9._-]*$/.test(name)) throw new Error(`not a package of this project: ${JSON.stringify(name)}`);
-  const url = new URL(`/${name.replace('/', '%2f')}`, REGISTRY);
+  const url = new URL(`/${name.replaceAll('/', '%2f')}`, REGISTRY);
   if (url.origin !== REGISTRY) throw new Error(`${name} would be read from ${url.origin}, not ${REGISTRY}`);
   return url;
 }
