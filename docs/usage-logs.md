@@ -222,7 +222,9 @@ and Trazum reads a flat record as readily as a nested one:
 ```
 
 Trazum writes OTLP as well: `trazum doctor --otlp-out metrics.json` produces
-OTLP/HTTP JSON for your pipeline to send. Trazum writes the file; it never
+OTLP/HTTP JSON for your pipeline to send, and `trazum bill --otlp-out
+bill-metrics.json` does the same for the bill, per closed day (see
+[`bill`](commands.md#one-door-trazum-bill)). Trazum writes the file; it never
 sends anything anywhere.
 
 ## Batch API results

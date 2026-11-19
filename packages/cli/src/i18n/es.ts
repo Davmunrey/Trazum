@@ -54,7 +54,7 @@ ${bold('USO')}
   trazum position <uso.jsonl>
   trazum receipt <uso.jsonl> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
-              [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
+              [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <fichero>]
   trazum weekly [<fichero|dir>...] [--until <cuándo>] [--label <nombre>] [--notify] [-o <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-codex <fichero|dir> [--label <nombre>] [-o <fichero>]
@@ -279,6 +279,14 @@ ${bold('OPCIONES DE bill')}
   --by <day|week|month>       Reparte el extracto por día UTC, semana ISO (de
                               lunes a domingo) o mes. Sin él, una factura que
                               abarca dos meses o más se reparte por mes.
+  --otlp-out <fichero>        Escribe además la factura como métricas OpenTelemetry
+                              (JSON OTLP/HTTP): por día UTC cerrado, coste, tokens
+                              y llamadas por proyecto, modelo y agente, y lo que no
+                              se pudo cobrar como métrica aparte. Cada punto de coste
+                              dice que es equivalente a API, no lo que pagó un plan.
+                              Hoy, y un día que corta la ventana --since/--until, no
+                              son puntos: el recurso dice cuáles y qué contenían.
+                              Trazum escribe el fichero; tu pipeline lo envía.
   --stamp                     Sella el recibo con la hora en que se escribió.
   -o, --out <archivo>         Escribe el recibo ahí en vez de en stdout.
 

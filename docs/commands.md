@@ -3869,6 +3869,58 @@ would be, never `$0`, in the PDF and the HTML alike. The standard PDF fonts
 cover Latin script, every locale this tool ships; a label in another script
 arrives as question marks, visibly wrong rather than silently blank.
 
+**The bill as metrics: `--otlp-out`.** A team that charts its spend beside its
+other dashboards gets the bill as OpenTelemetry metrics, in the same file
+format `doctor --otlp-out` writes and under the same rule: **Trazum writes the
+file and sends nothing**, so shipping it is the collector's job, and there is
+no `@opentelemetry/*` dependency.
+
+```bash
+npx @trazum/cli bill --otlp-out bill-metrics.json
+curl -X POST -H 'content-type: application/json' \
+     --data-binary @bill-metrics.json "$OTLP_ENDPOINT/v1/metrics"
+```
+
+Five gauges, one point per UTC day, project, model and agent. Each point is
+that day's total, not a running one, stamped at the day's first instant and
+carrying `trazum.day` as well, so a collector that rewrites timestamps cannot
+move a figure to another day:
+
+| Metric | Value | Attributes beyond day, project, model, agent |
+| --- | --- | --- |
+| `trazum.bill.cost` | USD, `asDouble` | `trazum.cost.basis=api-equivalent` |
+| `trazum.bill.tokens` | `asInt` string | `trazum.token.type`: `input`, `cache_read`, `cache_write`, `output` |
+| `trazum.bill.calls` | `asInt` string | none |
+| `trazum.bill.unpriced.calls` | `asInt` string | none |
+| `trazum.bill.unpriced.tokens` | `asInt` string | `trazum.token.type` |
+
+- **Every cost point says what it is.** `trazum.cost.basis=api-equivalent`
+  means the tokens at the provider's list rates. On a Pro or Max plan the plan
+  is what was paid, and the payload never hands a chart a figure somebody owed.
+- **What could not be priced is its own metric,** with the model that was not
+  priced and no dollar figure, not a zero. A model the catalogue does not know
+  is in no cost point.
+- **`trazum.project` and `trazum.agent` are left off a point that has none,**
+  rather than written as an empty string. The agent is the coding agent whose
+  sessions the calls came from (`Claude Code`, `Codex`, `Gemini CLI`); a plain
+  usage log or a provider export has none.
+- **A day that is still being measured is not a point.** Today is left out of
+  every metric, and so is any day the `--since`/`--until` window cuts (a window
+  ending at 11:00 on 2 September holds half of that day, and a series that
+  mixes halves with wholes reads as a day that was cheap). The payload's
+  resource names them instead: `trazum.bill.open_days` (comma-separated),
+  `open_calls`, `open_cost_usd`, `open_tokens` and `open_unpriced_calls`, all
+  under the `trazum.bill.` prefix, and `trazum.bill.measured_at` says the instant
+  "closed" was judged against. A call with no timestamp belongs to no day and is
+  counted the same way under `trazum.bill.undated_*`. These attributes are
+  written at zero when nothing was left out, so a chart can tell "nothing open"
+  from "not recorded". The series plus those attributes add to the bill the
+  receipt prints: `bill-otlp.test.js` holds that, to the cent and by model and
+  project.
+- **The encoding is `doctor`'s:** 64-bit integers are JSON strings and money is
+  `asDouble`, through the same `otlp.ts`. A failed write is reported and does
+  not fail the bill, as for `doctor`; the success line goes to stderr.
+
 ### What the router says: `trazum from-openrouter`
 
 OpenRouter is the one provider Trazum already prices from a live catalogue:
