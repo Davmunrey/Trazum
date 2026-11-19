@@ -128,7 +128,7 @@ export function formulaFromTarball({ version, bytes }) {
 
 /** When npm published `name@version`, from the package document's `time` map. */
 async function publishTime(name, version) {
-  const response = await fetch(`${REGISTRY}/${name.replace('/', '%2f')}`);
+  const response = await fetch(`${REGISTRY}/${name.replaceAll('/', '%2f')}`);
   if (!response.ok) throw new Error(`npm has no ${name} (${response.status})`);
   return (await response.json()).time?.[version];
 }
