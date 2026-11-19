@@ -50,6 +50,7 @@ export function assetNames(version) {
     mcpb: `trazum-mcp-${version}.mcpb`,
     sums: 'SHA256SUMS',
     sbom: `trazum-v${version}.cdx.json`,
+    pricing: `trazum-pricing-${version}.json`,
   };
 }
 

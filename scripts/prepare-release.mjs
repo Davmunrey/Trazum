@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Prepare a release in one step: every version that moves in lockstep, the
- * changelog heading, and the Action pin.
+ * changelog heading, the pricing dataset and the Action pin.
  *
  *   node scripts/prepare-release.mjs 2.7.0            # write
  *   node scripts/prepare-release.mjs 2.7.0 --dry-run  # say what would change, change nothing
@@ -36,16 +36,19 @@
  * review (numbers only the providers' own pages can settle).
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { replaceBlock } from './install-snippets.mjs';
 import { npmTokenStanding, recordedNpmTokenExpiry } from './npm-token-expiry.mjs';
+import { datasetFiles, loadCatalogue } from './pricing-dataset.mjs';
 
 // PREPARE_RELEASE_ROOT points the script at a copy of the repository: the tests
 // run it there for real, so a write that moves the wrong thing is caught.
 const ROOT = process.env.PREPARE_RELEASE_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), '..');
+// The catalogue is always this checkout's, as built: a copy holds no build.
+const CATALOGUE_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const pinOnly = args.includes('--pin-only');
@@ -165,6 +168,24 @@ if (!pinOnly) {
 
   // The first line a stranger reads in the release notes names the version on npm.
   replace('RELEASES.md', `**All four packages are on npm at ${current}**`, `**All four packages are on npm at ${next}**`, 1);
+
+  /*
+    The pricing dataset the release publishes (#784): the catalogue as built,
+    under the new version, with what changed since the last published one,
+    and the changelog and schema beside it. From the built core, so a build
+    older than the source is a document CI's test refuses; and never over a
+    version already published with something else.
+  */
+  let catalogue;
+  try {
+    catalogue = await loadCatalogue(CATALOGUE_ROOT);
+  } catch (error) {
+    throw new Error(`${error instanceof Error ? error.message : String(error)}: the pricing dataset of ${next} is written from it.`);
+  }
+  for (const [path, text] of Object.entries(datasetFiles(catalogue, { version: next, root: ROOT }))) {
+    edits.set(path, text);
+    touched.push(`${path} (the pricing dataset, written by scripts/pricing-dataset.mjs)`);
+  }
 }
 
 /*
@@ -207,7 +228,12 @@ if (newest === undefined) {
 }
 
 for (const line of touched) console.error(`${dryRun ? 'would change' : 'changed'} ${line}`);
-if (!dryRun) for (const [path, text] of edits) writeFileSync(join(ROOT, path), text, 'utf8');
+if (!dryRun) {
+  for (const [path, text] of edits) {
+    mkdirSync(dirname(join(ROOT, path)), { recursive: true });
+    writeFileSync(join(ROOT, path), text, 'utf8');
+  }
+}
 
 if (!pinOnly) {
   console.error(`

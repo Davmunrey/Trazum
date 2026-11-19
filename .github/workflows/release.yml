@@ -470,14 +470,18 @@ jobs:
 
       # The three workspaces the files are made from, built from this commit:
       # the one `release` published. The extension and the bundle carry
-      # `@trazum/core`'s built files, which the lockfile names.
+      # `@trazum/core`'s built files, which the lockfile names, and the
+      # pricing dataset is checked against the catalogue core was built from.
       - name: Build the workspaces
         run: |
           npm run build -w @trazum/core
           npm run build -w @trazum/mcp
           npm run build -w trazum-vscode
 
-      - name: Make the .vsix and the .mcpb
+      # The pricing dataset is the file the site serves for this version,
+      # copied once it is byte for byte what the catalogue builds; a document
+      # that is not the catalogue stops the job here, before any upload.
+      - name: Make the .vsix, the .mcpb and the pricing dataset
         run: node scripts/release-assets.mjs build --out /tmp/assets
 
       - name: Checksums, from a manual run
@@ -490,7 +494,7 @@ jobs:
 
       # The one step that holds the token. The bill of materials is already on
       # the release and is downloaded so that `SHA256SUMS` covers it too; the
-      # three files named are uploaded, and `--clobber` lets a re-run of this
+      # four files named are uploaded, and `--clobber` lets a re-run of this
       # job replace what an earlier attempt left.
       - name: Attach them with their checksums
         if: github.event_name == 'push'
@@ -505,6 +509,7 @@ jobs:
           gh release upload "v$version" \
             "/tmp/assets/trazum-vscode-$version.vsix" \
             "/tmp/assets/trazum-mcp-$version.mcpb" \
+            "/tmp/assets/trazum-pricing-$version.json" \
             /tmp/assets/SHA256SUMS \
             --clobber
 

@@ -127,6 +127,15 @@ const HOSTS = {
   // `/wiki/<Page>` and a repository-relative path is broken there. It is a
   // destination this repository writes into text, never a request it makes.
   'https://raw.githubusercontent.com': 'documentation link',
+  // The pages each provider's prices were read from, in `PROVIDER_SOURCES`
+  // (packages/core/src/pricing.ts) and on every row of the pricing dataset
+  // (#784). Written for a reader to open; nothing in this repository fetches
+  // them: the dataset is built from the catalogue with no network.
+  'https://aistudio.google.com': 'documentation link',
+  'https://platform.kimi.ai': 'documentation link',
+  'https://api-docs.deepseek.com': 'documentation link',
+  'https://docs.x.ai': 'documentation link',
+  'https://mistral.ai': 'documentation link',
 
   'https://api.example': 'example',
   'https://api.github.test': 'example',

@@ -256,6 +256,7 @@ describe('the names a release carries are built from its version, one way', () =
       mcpb: 'trazum-mcp-2.7.12.mcpb',
       sums: 'SHA256SUMS',
       sbom: 'trazum-v2.7.12.cdx.json',
+      pricing: 'trazum-pricing-2.7.12.json',
     });
   });
 
@@ -316,6 +317,13 @@ describe('the release workflow', () => {
     assert.match(assets, /release-assets\.mjs build/);
   });
 
+  it('builds the pricing dataset from the commit it publishes, with core built in the same job before it (#784)', () => {
+    const built = assets.indexOf('npm run build -w @trazum/core');
+    const made = assets.indexOf('release-assets.mjs build');
+    assert.ok(built !== -1 && built < made, 'the dataset would be checked against a core this job did not build');
+    assert.match(read('scripts/release-assets.mjs'), /command === 'pricing' \|\| command === 'build'/, '`build` does not make the dataset');
+  });
+
   it('and not in the job that publishes: no packager, no bundle, no upload there', () => {
     for (const forbidden of ['release-assets', '.vsix', '.mcpb', 'vsce', 'mcpb', 'gh release upload', 'SHA256SUMS']) {
       assert.ok(!release.includes(forbidden), `the release job mentions ${forbidden}, so a packager can run before npm serves the packages`);
@@ -340,9 +348,9 @@ describe('the release workflow', () => {
     assert.doesNotMatch(building, /GH_TOKEN|github\.token|secrets/);
   });
 
-  it('attaches the two files and the sums, naming each, and builds the sums before the upload', () => {
+  it('attaches the three files and the sums, naming each, and builds the sums before the upload', () => {
     const upload = assets.slice(assets.indexOf('gh release upload'));
-    for (const name of ['trazum-vscode-$version.vsix', 'trazum-mcp-$version.mcpb', '/tmp/assets/SHA256SUMS']) assert.ok(upload.includes(name), `${name} is not uploaded`);
+    for (const name of ['trazum-vscode-$version.vsix', 'trazum-mcp-$version.mcpb', 'trazum-pricing-$version.json', '/tmp/assets/SHA256SUMS']) assert.ok(upload.includes(name), `${name} is not uploaded`);
     assert.ok(assets.indexOf('release-assets.mjs sums', assets.indexOf('Attach them')) < assets.indexOf('gh release upload'), 'the sums are written after the upload');
     assert.match(assets, /gh release download "v\$version" --pattern "trazum-v\$version\.cdx\.json"/, 'the bill of materials is not in the sums');
   });

@@ -87,6 +87,7 @@ In the order somebody actually meets them:
 | [The plan document](plan-format.md) | The one output meant to be kept, committed and diffed |
 | [JSON output](json-output.md) | Every machine-readable document, field by field |
 | [The format](format.md) | What another tool must do to emit or read this format |
+| [The pricing dataset](pricing-dataset.md) | The price catalogue as JSON with every release: each row's page and date, and what it refuses |
 
 ## I am extending it
 

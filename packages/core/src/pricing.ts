@@ -213,6 +213,39 @@ export const PRICING_LAST_REVIEWED: string = Object.values(PROVIDER_REVIEWED).re
   (oldest, date) => (date < oldest ? date : oldest),
 );
 
+/**
+ * The pages each provider's prices were read from on its `PROVIDER_REVIEWED`
+ * date, copied from the comment above that date and from nowhere else.
+ *
+ * Per provider, because that is how the catalogue records a review: a date
+ * per provider, and the pages read that day in prose above it. No model has
+ * a source of its own here, and none is implied. Kept as data so that the
+ * published dataset (`scripts/pricing-dataset.mjs`, #784) can put a page
+ * beside the date on every row without reading prose. Where the comment
+ * names an address that has since moved, this holds the one read on the
+ * date: Google's prices were read at aistudio.google.com on 2026-11-16, and
+ * Mistral's on 2026-11-05 at its inference page and three model cards, not
+ * at the `mistral.ai/pricing` that review began from in August.
+ *
+ * Moves with the date: a re-read that reads another page changes both.
+ * `provider-sources.test.js` fails on a provider without pages and on a page
+ * the comment above its date does not name.
+ */
+export const PROVIDER_SOURCES: Readonly<Record<string, readonly string[]>> = Object.freeze({
+  anthropic: Object.freeze(['https://platform.claude.com/docs/en/about-claude/pricing']),
+  openai: Object.freeze(['https://developers.openai.com/api/docs/pricing']),
+  google: Object.freeze(['https://aistudio.google.com/docs/pricing']),
+  moonshot: Object.freeze(['https://platform.kimi.ai/docs/pricing/chat']),
+  deepseek: Object.freeze(['https://api-docs.deepseek.com/quick_start/pricing']),
+  xai: Object.freeze(['https://docs.x.ai/developers/models']),
+  mistral: Object.freeze([
+    'https://mistral.ai/cloud/inference/',
+    'https://mistral.ai/news/mistral-3/',
+    'https://mistral.ai/news/mistral-small-4/',
+    'https://mistral.ai/news/vibe-remote-agents-mistral-medium-3-5/',
+  ]),
+});
+
 /** Cost multipliers relative to the input price. */
 /**
  * The defaults, which are Anthropic's numbers.
