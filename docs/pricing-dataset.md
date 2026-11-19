@@ -127,6 +127,11 @@ Models a provider lists and the catalogue leaves unpriced on purpose are
 named, with their reasons, in `DELIBERATELY_UNPRICED` in
 `scripts/price-drift.mjs` and on the site's `/models` page. They are not rows.
 
+Google, DeepSeek, Moonshot, xAI and Mistral, which `price-drift.mjs` does not
+read, are compared weekly with LiteLLM's public model list by `scripts/price-crosscheck.mjs`. LiteLLM is a
+signal to re-read a provider's page, not a source: no row here, and no figure in
+the catalogue, comes from it.
+
 ## Versions and changes
 
 `scripts/prepare-release.mjs` writes the next version's document with the rest

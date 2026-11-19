@@ -108,8 +108,9 @@ criterion nor on this list fails `done.test.js`, so somebody decides:
 
 - *Install dependencies*: the loop checks the tree you have, with what is
   installed in it.
-- *Freshness (fails only on the weekly schedule)* and *Price drift against the
-  providers' pages (fails only on the weekly schedule)*: they report on every
+- *Freshness (fails only on the weekly schedule)*, *Price drift against the
+  providers' pages (fails only on the weekly schedule)* and *Cross-check against
+  LiteLLM's model list (fails only on the weekly schedule)*: they report on every
   run and fail only on the weekly one, so a change cannot fail them.
 
 **Some things only CI can say**, and a `Done` here does not say them: CodeQL,

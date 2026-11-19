@@ -84,6 +84,20 @@ jobs:
         run: |
           if [ "$EVENT" = "schedule" ]; then node scripts/price-drift.mjs; else node scripts/price-drift.mjs --report; fi
 
+      # Google, DeepSeek, Moonshot, xAI and Mistral publish no page the step
+      # above can read. LiteLLM's public model list is a signal for them: a
+      # model it lists that the catalogue does not price, or a rate that
+      # differs, names the provider page to re-read, with the date it was last
+      # read. A signal, not a source: nothing is copied, and the script never
+      # writes a price. Printed in this step's log on every run, a failure only
+      # on the weekly schedule and only for a differing rate or a file it could
+      # not read (a missing model is reported, not a failure).
+      - name: Cross-check against LiteLLM's model list (fails only on the weekly schedule)
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "schedule" ]; then node scripts/price-crosscheck.mjs; else node scripts/price-crosscheck.mjs --report; fi
+
       # Named for what it runs. `npm test` at the root covers core, CLI, web and
       # the Action, and has for a while — a step labelled "Core and CLI tests"
       # invites somebody reading a green build to think the other two are

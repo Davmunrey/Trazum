@@ -460,6 +460,13 @@
     },
     {
       "pattern": "Semgrep_rules_lgpl_javascript_ssrf_rule-node-ssrf",
+      "file": "scripts/price-crosscheck.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "fetchList is given LITELLM_URL, this script's own constant, run on a schedule by CI; no value from outside reaches it."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_ssrf_rule-node-ssrf",
       "file": "scripts/price-drift.mjs",
       "count": 1,
       "reason": "FalsePositive",
