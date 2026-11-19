@@ -493,6 +493,27 @@ the wrong release.
 other order leaves a window where installing the CLI fails on a dependency that
 does not exist yet.
 
+## The files a release carries
+
+Besides the packages, a release carries `trazum-vscode-<version>.vsix`,
+`trazum-mcp-<version>.mcpb` and `SHA256SUMS` (#640, #780). They are built by
+the `assets` job of `release.yml`, which needs the job that publishes, so it
+starts after `npm actually serves every package` and after the GitHub release
+exists; the publish order is not touched. The job holds `contents: write` and
+no npm credential, no `id-token` and no environment, because it runs two
+packagers fetched by `npx` at an exact version (`scripts/release-assets.mjs`
+names them). A manual run of the workflow makes the files and prints their sums
+and attaches nothing: do that from a release pull request's branch to know the
+packagers still work before the merge.
+
+If the job fails after the release exists, re-run it: the upload replaces what an
+earlier attempt left. The MCP registry listing waits for it and adds the bundle
+to what it publishes (below), so a failed attachment holds the listing back until
+it is re-run, and a version is never listed with a bundle that is not there.
+
+The Homebrew formula is not part of the workflow. See "The Homebrew formula is a
+manual step" in `RELEASES.md`.
+
 ## Listing on the MCP registry
 
 Separate from npm, and automated since 1.80.2. The official MCP registry hosts

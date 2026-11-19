@@ -54,6 +54,17 @@ npx @trazum/cli bill ./usage-export.jsonl
 [Supported inputs](docs/usage-logs.md) ·
 [Try sample data in your browser](https://trazum.vercel.app/app?tab=playground)
 
+### Install it another way
+
+Everything below is on the **[download page](https://trazum.vercel.app/download)**,
+with the commands copyable and each pinned to an exact version: the CLI with
+`npm install -g` or the Homebrew tap, the MCP server for Claude Code, Claude
+Desktop (as a `.mcpb` bundle or JSON), Cursor, VS Code, Codex and Gemini CLI, the
+editor extension as a `.vsix` for *Install from VSIX*, the pinned GitHub Action,
+and the `SHA256SUMS` of what each release carries. No account and no store: each
+file is an asset of this repository's own release, and the same table is in
+[docs/agents.md](docs/agents.md#install-the-mcp-server-in-a-client).
+
 ## Why the number holds up
 
 - **Published rates, checked against the provider every week.** A scheduled

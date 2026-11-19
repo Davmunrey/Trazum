@@ -40,6 +40,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { replaceBlock } from './install-snippets.mjs';
 import { npmTokenStanding, recordedNpmTokenExpiry } from './npm-token-expiry.mjs';
 
 // PREPARE_RELEASE_ROOT points the script at a copy of the repository: the tests
@@ -113,6 +114,11 @@ if (!pinOnly) {
   }
   replace('packages/mcp/server.json', version(current), version(next), 2);
   replace('packages/mcp/src/index.ts', `version: '${current}'`, `version: '${next}'`, 1);
+  // The Gemini CLI extension starts the server at the version the release publishes, and the install table in docs/agents.md says the same.
+  replace('gemini-extension.json', version(current), version(next), 1);
+  replace('gemini-extension.json', `@trazum/mcp@${current}`, `@trazum/mcp@${next}`, 1);
+  edits.set('docs/agents.md', replaceBlock(edits.get('docs/agents.md') ?? read('docs/agents.md'), { name: '@trazum/mcp', version: next }));
+  touched.push('docs/agents.md (the install table, written by scripts/install-snippets.mjs)');
   /*
     The lockfile is edited as JSON, entry by entry, never as text. A text
     replacement also moves any third-party package that happens to share the
@@ -209,6 +215,7 @@ ${dryRun ? 'Dry run: nothing written.' : `Prepared ${current} -> ${next}.`} Stil
   - RELEASES.md: a "## ${next}" section (the "on npm at" line has moved)
   - ROADMAP.md and HISTORY.md: what shipped, moved from Next (ROADMAP.md) to Released (HISTORY.md)
   - Prices: re-read any provider whose review is older than 45 days (node scripts/freshness.mjs)
+  - packaging/homebrew/trazum.rb: once npm serves the version, node scripts/homebrew-formula.mjs --version ${next}; it cannot be prepared before there is a tarball to hash (RELEASES.md)
   - node scripts/build-wiki.mjs && node scripts/build-plugin-skill.mjs, then npm run verify${token.status === 'ok' ? '' : `
   - ${token.text}`}`);
 }

@@ -143,8 +143,18 @@ describe('the packaging command exists and says what it does', () => {
     assert.match(command, /npm run build -w trazum-vscode/, 'packaging a stale dist ships yesterday');
   });
 
-  it('takes vsce on demand rather than as a dependency of this repository', () => {
-    assert.match(scripts['package:vscode'], /npx/, 'vsce should not be installed to check a manifest');
+  it('takes vsce on demand, at an exact version, rather than as a dependency of this repository', () => {
+    /*
+      The command hands the work to `scripts/release-assets.mjs`, which lays out
+      the extension with the package it imports at run time and runs `vsce`
+      through `npx`. The first .vsix this repository built, with
+      `--no-dependencies` and an ignore file that excluded `node_modules`, held
+      eight files and not `@trazum/core`, which `dist/extension.js` imports.
+    */
+    assert.match(scripts['package:vscode'], /node scripts\/release-assets\.mjs vsix/, 'the command no longer goes through the release script');
+    const packager = readFileSync(join(repoRoot, 'scripts', 'release-assets.mjs'), 'utf8');
+    assert.match(packager, /vsce: '@vscode\/vsce@\d+\.\d+\.\d+'/, 'vsce is not pinned to an exact version');
+    assert.match(packager, /npx\('--yes'|\['--yes', tool/, 'vsce should not be installed to check a manifest');
     const own = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'));
     for (const block of ['dependencies', 'devDependencies']) {
       assert.ok(!(own[block] ?? {})['@vscode/vsce'], 'vsce is in the tree after all');

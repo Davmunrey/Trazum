@@ -10,7 +10,7 @@
  *
  * Only what exists today is linked. The documentation (`/docs`), the models
  * and their prices (`/models`), Trazum Pro (`/pro`, which says it is not open
- * yet), the roadmap, the changelog and the brand page (`/brand`) are pages of
+ * yet), the downloads (`/download`), the roadmap, the changelog and the brand page (`/brand`) are pages of
  * this site. The brand page is in the footer and not
  * the header: it is for somebody who needs an asset or a rule, and they have
  * looked for it where a project keeps its papers.
@@ -30,6 +30,8 @@ export const CHANGELOG_PATH = '/changelog';
 export const BRAND_PATH = '/brand';
 /** Trazum Pro: what it is, what it would cost, and that it is not open yet. */
 export const PRO_PATH = '/pro';
+/** What to download and how to install it: the CLI, the MCP server, the editor extension, the Action, and the checksums. */
+export const DOWNLOAD_PATH = '/download';
 /** The changelog's own file, which each release page links as its source. */
 export const CHANGELOG_URL = `${GITHUB_URL}/blob/main/CHANGELOG.md`;
 export const SECURITY_URL = `${GITHUB_URL}/blob/main/SECURITY.md`;
@@ -49,6 +51,7 @@ export type SiteLinkId =
   | 'docs'
   | 'models'
   | 'pro'
+  | 'download'
   | 'roadmap'
   | 'github'
   | 'npm'
@@ -70,6 +73,7 @@ export const SITE_LINKS: Readonly<Record<SiteLinkId, SiteLink>> = {
   docs: { id: 'docs', href: DOCS_PATH, external: false },
   models: { id: 'models', href: MODELS_PATH, external: false },
   pro: { id: 'pro', href: PRO_PATH, external: false },
+  download: { id: 'download', href: DOWNLOAD_PATH, external: false },
   roadmap: { id: 'roadmap', href: ROADMAP_PATH, external: false },
   github: { id: 'github', href: GITHUB_URL, external: true },
   npm: { id: 'npm', href: NPM_URL, external: true },
@@ -84,7 +88,7 @@ export const SITE_LINKS: Readonly<Record<SiteLinkId, SiteLink>> = {
  * the phone menu and the footer's first group. The dashboard and GitHub are
  * not entries: the header draws them as its two buttons.
  */
-export const HEADER_ENTRIES: readonly SiteLinkId[] = ['playground', 'docs', 'models', 'pro'];
+export const HEADER_ENTRIES: readonly SiteLinkId[] = ['playground', 'docs', 'models', 'download', 'pro'];
 
 export type FooterGroupId = 'product' | 'project';
 
@@ -99,7 +103,7 @@ export const FOOTER_GROUPS: readonly { id: FooterGroupId; links: readonly SiteLi
  * of the site that has an address of its own. A page added to the site is
  * added here, and `pro-page.test.mjs` checks the sitemap is drawn from this.
  */
-export const SITEMAP_PATHS: readonly string[] = [HOME_PATH, DASHBOARD_PATH, DOCS_PATH, MODELS_PATH, PRO_PATH, ROADMAP_PATH, CHANGELOG_PATH, BRAND_PATH];
+export const SITEMAP_PATHS: readonly string[] = [HOME_PATH, DASHBOARD_PATH, DOCS_PATH, MODELS_PATH, DOWNLOAD_PATH, PRO_PATH, ROADMAP_PATH, CHANGELOG_PATH, BRAND_PATH];
 
 /** The public pages, each with its canonical path. */
 export const PUBLIC_PAGES = ['landing', 'dashboard'] as const;

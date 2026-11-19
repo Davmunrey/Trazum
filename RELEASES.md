@@ -10,9 +10,10 @@ something embarrassing, it says what it was.
 **All four packages are on npm at 3.0.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
-attestation. `trazum-vscode` is the fifth workspace and is not among them: an
-editor extension is distributed by a marketplace rather than by npm, and this
-file will say when that listing exists rather than implying it from the code.
+attestation. `trazum-vscode` is the fifth workspace and is not among them: it is not
+published to npm. It is a file on each release instead (see *What a release
+carries*, below), and no marketplace lists it: #640 stays open, and this file
+will say when a listing exists rather than implying it from the code.
 
 **Which credential authenticates those uploads is not stated here, because it
 is not established.** Provenance is signed with the job's OIDC identity however
@@ -49,6 +50,64 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+**What a release carries.** Besides its notes and its bill of materials
+(`trazum-v<version>.cdx.json`), each GitHub release carries, from the first one
+made after this was written (3.0.0 and the releases before it carry none of
+these):
+
+- `trazum-vscode-<version>.vsix`, the editor extension, installed with *Install
+  from VSIX* in VS Code and in editors built on it;
+- `trazum-mcp-<version>.mcpb`, the MCP server as a bundle Claude Desktop opens;
+- `SHA256SUMS`, the SHA-256 of those two and of the bill of materials.
+
+The `assets` job of `release.yml` attaches them, after the job that publishes has
+npm serving every package and the release page exists: the order of the
+publishes is the one it always was. Nothing is uploaded to any marketplace, and
+no token for one exists. The extension is built by `@vscode/vsce@4.1.1` and the
+bundle by `@anthropic-ai/mcpb@2.1.2`, both fetched by `npx` at those versions
+(pinned in `scripts/release-assets.mjs`), and each holds `@trazum/core`'s built
+files and nothing else the lockfile does not name. None of the three is signed
+or attested: this workflow makes no build-provenance attestation, so none is
+claimed, and `SHA256SUMS` says that a file is the one the release lists, not who
+made it. The site's [download page](https://trazum.vercel.app/download) links
+each by the name its version gives it, and draws its commands from the same
+source as `docs/agents.md`.
+
+**Checking them.** Put the files and `SHA256SUMS` in one folder and run
+`sha256sum --check --ignore-missing SHA256SUMS` (Linux). On macOS, print a
+file's digest with `shasum -a 256 <file>` and compare it with its line. A
+manual run of the `Release` workflow builds the two files and prints their sums
+without attaching anything.
+
+**The MCP registry listing** names the bundle and its digest, and only for a
+version whose bundle exists: the `mcp-registry` job waits for the `assets` job,
+downloads the bundle and `SHA256SUMS` from the release, and
+`scripts/mcpb-registry-entry.mjs` adds the entry to the copy of `server.json` it
+publishes, refusing when the file and the sums disagree. The committed
+`packages/mcp/server.json` lists the npm package alone, because the digest of a
+file built after the release pull request merged cannot be in it.
+
+**The Homebrew formula is a manual step, by decision.** `packaging/homebrew/trazum.rb`
+names one version of `@trazum/cli`, the registry's address for its tarball and
+that tarball's SHA-256. It is written, never edited, by
+`node scripts/homebrew-formula.mjs --version <version>`, which fetches the
+tarball, compares its sha512 with the one the registry publishes, and hashes it;
+`test/homebrew-formula.test.mjs` holds the file to what the script writes. The
+release workflow does not push it to the tap: that needs a token, and
+`docs/compliance/secret-rotation.md` covers none for it (#781 forbids asking for
+one). After a release, once npm serves the version:
+
+1. `node scripts/homebrew-formula.mjs --version <version>` in this repository,
+   the digest of the tarball it fetched, from `sha256sum`, added to `SERVED` in
+   `test/homebrew-formula.test.mjs`, and a pull request with both;
+2. copy `packaging/homebrew/trazum.rb` to `Formula/trazum.rb` of
+   `Davmunrey/homebrew-trazum` and push;
+3. on a Mac and on Linux, `brew install Davmunrey/trazum/trazum` and
+   `trazum --version`.
+
+The formula in this repository can be behind the manifests, because a release
+pull request bumps them before npm has a tarball to hash, and never ahead.
 
 ---
 

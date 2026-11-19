@@ -22,6 +22,102 @@ Start with the [setup instructions](setup.md). For MCP, inspect `tools/list`
 on the running server before using a tool. Local development may include
 tools not yet available in an older npm release.
 
+## Install the MCP server in a client
+
+Every line below starts `@trazum/mcp` at the exact version the repository is
+at, and none asks for a marketplace account. The table and the snippets under
+it are written by `node scripts/install-snippets.mjs --write` from the version
+in `packages/mcp/package.json`, and `packages/core/test/install-snippets.test.js`
+holds each of them to that package name and that version. The same records
+draw the MCP section of the site's [download page](https://trazum.vercel.app/download).
+
+The server answers when a client asks it. It does not sit in front of the
+client's model calls, and it cannot see a request the client never sent it.
+
+<!-- install-table:begin -->
+
+| Client | Where | What to run or paste |
+|---|---|---|
+| Claude Code | a terminal | `claude mcp add trazum -- npx -y @trazum/mcp@3.0.0` |
+| Claude Desktop, one-click bundle | download the file, then open it with Claude Desktop | the address under "Claude Desktop, one-click bundle" below |
+| Claude Desktop, JSON | claude_desktop_config.json | the snippet under "Claude Desktop, JSON" below |
+| Cursor | .cursor/mcp.json | the snippet under "Cursor" below |
+| VS Code | .vscode/mcp.json | the snippet under "VS Code" below |
+| Codex, command | a terminal | `codex mcp add trazum -- npx -y @trazum/mcp@3.0.0` |
+| Codex, TOML | ~/.codex/config.toml | the snippet under "Codex, TOML" below |
+| Gemini CLI | a terminal; the version is the one gemini-extension.json names | `gemini extensions install https://github.com/Davmunrey/Trazum` |
+
+### Claude Desktop, one-click bundle
+
+Where: download the file, then open it with Claude Desktop.
+
+```text
+https://github.com/Davmunrey/Trazum/releases/download/v3.0.0/trazum-mcp-3.0.0.mcpb
+```
+
+### Claude Desktop, JSON
+
+Where: claude_desktop_config.json.
+
+```json
+{
+  "mcpServers": {
+    "trazum": {
+      "command": "npx",
+      "args": ["-y", "@trazum/mcp@3.0.0"]
+    }
+  }
+}
+```
+
+### Cursor
+
+Where: .cursor/mcp.json.
+
+```json
+{
+  "mcpServers": {
+    "trazum": {
+      "command": "npx",
+      "args": ["-y", "@trazum/mcp@3.0.0"]
+    }
+  }
+}
+```
+
+### VS Code
+
+Where: .vscode/mcp.json.
+
+```json
+{
+  "servers": {
+    "trazum": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@trazum/mcp@3.0.0"]
+    }
+  }
+}
+```
+
+### Codex, TOML
+
+Where: ~/.codex/config.toml.
+
+```toml
+[mcp_servers.trazum]
+command = "npx"
+args = ["-y", "@trazum/mcp@3.0.0"]
+```
+
+<!-- install-table:end -->
+
+The Gemini CLI line installs `gemini-extension.json` from the repository's
+default branch, and that file names the server's version. The `.mcpb` bundle
+is attached to each release after npm serves the packages; if the address
+above is not there yet, the release page lists what the release carries.
+
 ## Native import versus generic access
 
 The [capabilities endpoint](api.md#start-and-discover) reports native import
