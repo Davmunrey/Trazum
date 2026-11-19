@@ -886,6 +886,14 @@ export interface CliMessages {
     sources(read: number, seen: number): string;
     /** An unpriced slug with a slash is OpenRouter's, and --pricing-live prices it. */
     pricingLiveHint(count: number): string;
+    /** `--send` without `--receipt`: refused, naming both. */
+    sendNeedsReceipt(): string;
+    /** The URL or the key `--send` would use is one the receipt will not be sent with. Names the variable, never its value. */
+    badSendTarget(reason: 'invalid-url' | 'credentials-in-url' | 'insecure-scheme' | 'bad-key', keyVariable: string): string;
+    /** The endpoint answered 2xx. `where` is the host only: a path or query can carry a secret. */
+    sendDelivered(where: string, status: string): string;
+    /** The receipt is written here and was not delivered; `status` is null when no answer arrived. */
+    sendFailed(where: string, status: string | null): string;
     /** Prefixed ids whose part after the slash the catalogue prices under its own name. */
     prefixedKnown(ids: string): string;
     /** Claude Code transcripts are priced at API list rates; on a plan, that is not what was paid. */

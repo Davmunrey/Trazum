@@ -295,6 +295,7 @@ import {
   writeWatchState,
 } from './watch-run.js';
 import { notificationFor, sendNotification } from './watch-notify.js';
+import { RECEIPT_KEY_ENV, checkReceiptTarget, sendReceipt } from './receipt-send.js';
 import { LOCALE_ENV_VARS, detectLocale, getCliMessages } from './i18n/index.js';
 import {
   MAX_SUMMARY_CHARS,
@@ -385,6 +386,8 @@ const VALUE_FLAGS = new Set([
   'keep',
   'interval',
   'webhook',
+  // `bill --receipt --send`: where the receipt is posted. The key is never a flag.
+  'send',
   'port',
   'socket',
   // `route` takes a path here, and the flag is deliberately not `--prompt`:
@@ -897,7 +900,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'git-range', 'since', 'until', 'by'],
+  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'send', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'git-range', 'since', 'until', 'by'],
   weekly: ['label', 'label-from-project', 'out', 'o', 'until', 'notify', 'pricing', 'pricing-live'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
@@ -4027,7 +4030,7 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
  * would put a different period on the page than the one asked for.
  */
 async function billGitRange(args: Args, range: string, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
-  for (const flag of ['since', 'until', 'label', 'by', 'out', 'receipt', 'table', 'stamp', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out']) {
+  for (const flag of ['since', 'until', 'label', 'by', 'out', 'receipt', 'send', 'table', 'stamp', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out']) {
     if (args.flags.has(flag)) throw new Error(t.bill.rangeConflict(`--${flag}`));
   }
   if (!boolFlag(args, 'label-from-project', true)) throw new Error(t.bill.rangeConflict('--no-label-from-project'));
@@ -4082,7 +4085,21 @@ async function billGitRange(args: Args, range: string, pricing: PricingCatalogue
   if (gathered.claudeCodeFiles > 0) console.error(t.bill.apiEquivalent());
 }
 
+/** `bill --send` could not deliver the receipt. 1 stays what every other failure exits with. */
+const BILL_SEND_FAILED = 3;
+
 async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  /* `--send` posts the receipt, so it is refused without the flag that asks
+     for the receipt, and its URL and key are judged before any file is read:
+     a send that would be refused must not follow a bill that took a minute. */
+  const sendRaw = stringFlag(args, 'send');
+  let sendTarget: { url: URL; key: string | undefined } | null = null;
+  if (sendRaw !== undefined) {
+    if (!boolFlag(args, 'receipt')) throw new Error(t.bill.sendNeedsReceipt());
+    const checked = checkReceiptTarget(sendRaw);
+    if (!checked.ok) throw new Error(t.bill.badSendTarget(checked.reason, RECEIPT_KEY_ENV));
+    sendTarget = { url: checked.url, key: checked.key };
+  }
   /* Refused before any file is read: a bad shape found after the receipt
      printed would end a run that looked finished with an error. */
   const csvShape = csvShapeOf(args, t);
@@ -4156,6 +4173,23 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
     console.error(t.bill.written(out));
   } else if (!statement) {
     console.log(json);
+  }
+  /*
+    The send comes after the receipt is written, so a refusal or an error
+    leaves the file (or stdout) as it was, and the same `json` is what goes:
+    the bytes of this run's receipt with the newline `--out` ends on, and no
+    log line, path or prompt, which `sendReceipt` is not given.
+  */
+  if (sendTarget !== null) {
+    const sent = await sendReceipt(sendTarget.url, sendTarget.key, `${json}\n`);
+    const where = sendTarget.url.host;
+    if (sent.ok) {
+      console.error(t.bill.sendDelivered(where, String(sent.status)));
+    } else {
+      console.error(c.yellow(t.bill.sendFailed(where, sent.status === null ? null : String(sent.status))));
+      if (sent.detail !== '') console.error(sent.detail);
+      process.exitCode = BILL_SEND_FAILED;
+    }
   }
   console.error(t.bill.sources(sources, fileCount));
   printReceiptSummary(document, t);
