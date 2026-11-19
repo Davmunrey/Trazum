@@ -33,6 +33,7 @@ const SURFACES = {
   'packages/cli/src/connect.ts': 'trazum connect',
   'packages/cli/src/index.ts': '--pricing-live',
   'packages/cli/src/watch-run.ts': 'trazum watch --webhook',
+  'packages/cli/src/receipt-send.ts': 'trazum bill --receipt --send',
   'packages/cli/src/gateway-server.ts': 'trazum gateway',
   'packages/core/src/gcp-auth.ts': 'Vertex AI',
   'packages/core/src/llm.ts': 'TRAZUM_LLM_',

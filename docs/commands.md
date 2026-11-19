@@ -3985,6 +3985,43 @@ move a figure to another day:
   `asDouble`, through the same `otlp.ts`. A failed write is reported and does
   not fail the bill, as for `doctor`; the success line goes to stderr.
 
+**The receipt, sent to your own endpoint: `--receipt --send <url>`.** One flag
+posts the receipt the run writes to an HTTPS endpoint you name, for an
+organisation that collects its teams' bills in one place.
+
+```bash
+export TRAZUM_RECEIPT_KEY=...   # optional; sent as a bearer header, read from the environment only
+npx @trazum/cli bill --receipt --send https://collector.example.com/receipts -o receipt.json
+```
+
+- **What is sent.** One `POST` with `content-type: application/json` whose body
+  is the bytes `--receipt` writes (the document `trazum receipt` defines in
+  [The receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt), with its closing newline), and
+  an `authorization: Bearer <key>` header when `TRAZUM_RECEIPT_KEY` is set.
+- **Where.** The URL you gave, and nowhere else. The receipt holds counts,
+  models, labels and dollar figures; it has no field that can hold prompt
+  text, and the send is handed the receipt and no log line, path or prompt.
+  Nothing else leaves, and the run makes this one request: no retry, no
+  second attempt and nothing left running afterwards.
+- **The key.** Read from `TRAZUM_RECEIPT_KEY`, never from a flag, and never
+  printed: it is taken out of anything echoed back, an endpoint's response
+  body included. A key holding a space, a control character or a non-ASCII
+  byte is refused without showing it. With no key set, no `authorization`
+  header is sent.
+- **The URL.** The same checks as `watch --webhook`, from the same code:
+  https, except on loopback (`localhost`, `127.0.0.1`, `::1`), where plain http
+  is allowed; no credentials in the URL; and a redirect is refused rather than
+  followed, so the receipt cannot be handed on to a host you did not name. A
+  URL that fails is refused before any log is read. The terminal line names the
+  host and not the path or query, which can hold a secret.
+- **`--send` needs `--receipt`.** On its own it is refused, by name, before
+  anything is read. It sends the receipt that run writes and no other document.
+- **When it does not arrive.** The receipt is written first, to the file or to
+  stdout as usual, so a refusal or an error loses nothing. The run then exits
+  `3` (`1` stays what every other failure exits with), and stderr carries the
+  status and what the endpoint answered, at most 2,000 characters of its
+  body, or the error when no answer came. The request headers are not printed.
+  The timeout is 10 seconds.
 **What was recorded while a range was written: `--git-range`.** A reviewer
 asks what a pull request cost, and no transcript knows which commit a call was
 for. What can be measured honestly is narrower, and the command says so in its
@@ -4058,8 +4095,8 @@ inside and the part outside.
   A call to a model the catalogue does not price is named, never counted as $0.
 - **It prints its own statement** and takes no period, label or output flag:
   `--since`, `--until`, `--label`, `--no-label-from-project`, `--by`,
-  `--receipt`, `--table`, `--stamp`, `-o` and every `--*-out` are refused beside
-  it by name, because a flag quietly overridden would put another period on the
+  `--receipt`, `--send`, `--table`, `--stamp`, `-o` and every `--*-out` are refused
+  beside it by name, because a flag quietly overridden would put another period on the
   page than the one asked for.
 - **On a pull request.** The Action does not take `--git-range`, and that is on
   purpose: the sessions are on the developer's machine, and a hosted runner has

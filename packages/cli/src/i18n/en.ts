@@ -2282,6 +2282,21 @@ ${bold('EXAMPLES')}
       `${path}: a provider's cost report, which is a bill rather than usage. Set it beside a receipt with trazum reconcile.`,
     nothingRead: () => 'Nothing here was a usage source this tool reads, so there is nothing to bill.',
     sources: (read, seen) => `${read} of ${seen} file(s) read as usage.`,
+    sendNeedsReceipt: () =>
+      '--send posts the receipt, so it needs --receipt: bill --receipt --send <url>. Nothing else is ever sent.',
+    badSendTarget: (reason, keyVariable) =>
+      reason === 'credentials-in-url'
+        ? '--send: that URL carries credentials. URLs end up in logs, shell history and error messages, so it is refused. The key goes in the environment variable ' + keyVariable + ', and is sent as a bearer header.'
+        : reason === 'insecure-scheme'
+          ? '--send: the URL must be https, except on loopback. A receipt carries your spend figures, and sending them in the clear across a network is a leak you did not ask for.'
+          : reason === 'bad-key'
+            ? `--send: ${keyVariable} holds spaces, control characters or non-ASCII bytes, which cannot be sent as a bearer token. Its value is not shown.`
+            : '--send: that is not a URL this tool can parse.',
+    sendDelivered: (where, status) => `Sent the receipt to ${where} (HTTP ${status}). Nothing else was sent.`,
+    sendFailed: (where, status) =>
+      status === null
+        ? `The receipt was not delivered to ${where}. It is written here as usual; this run exits 3 because the send failed. The error is below, without the request headers.`
+        : `${where} answered HTTP ${status}, so the receipt was not delivered. It is written here as usual; this run exits 3 because the send failed. The response body is below, without the request headers.`,
     pricingLiveHint: (count) =>
       `${count} unpriced model id(s) carry a provider prefix, the way OpenRouter and LiteLLM name models, and the bundled catalogue does not carry those. Run again with --pricing-live to price OpenRouter's slugs from its own list.`,
     apiEquivalent: () =>

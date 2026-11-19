@@ -2319,6 +2319,21 @@ ${bold('EJEMPLOS')}
       `${path}: un informe de costes de proveedor, que es una factura y no uso. Ponlo junto a un recibo con trazum reconcile.`,
     nothingRead: () => 'Nada de esto era una fuente de uso que esta herramienta lea, así que no hay nada que facturar.',
     sources: (read, seen) => `${read} de ${seen} archivo(s) leído(s) como uso.`,
+    sendNeedsReceipt: () =>
+      '--send envía el recibo, así que necesita --receipt: bill --receipt --send <url>. No se envía nada más.',
+    badSendTarget: (reason, keyVariable) =>
+      reason === 'credentials-in-url'
+        ? '--send: esa URL lleva credenciales. Las URL acaban en registros, en el historial del shell y en mensajes de error, así que se rechaza. La clave va en la variable de entorno ' + keyVariable + ', y se envía como cabecera bearer.'
+        : reason === 'insecure-scheme'
+          ? '--send: la URL debe ser https, salvo en loopback. Un recibo lleva tus cifras de gasto, y enviarlas en claro por una red es una fuga que no pediste.'
+          : reason === 'bad-key'
+            ? `--send: ${keyVariable} contiene espacios, caracteres de control o bytes no ASCII, que no pueden enviarse como token bearer. Su valor no se muestra.`
+            : '--send: eso no es una URL que esta herramienta pueda interpretar.',
+    sendDelivered: (where, status) => `Recibo enviado a ${where} (HTTP ${status}). No se envió nada más.`,
+    sendFailed: (where, status) =>
+      status === null
+        ? `El recibo no llegó a ${where}. Queda escrito aquí como siempre; esta ejecución sale con 3 porque el envío falló. El error va debajo, sin las cabeceras de la petición.`
+        : `${where} respondió HTTP ${status}, así que el recibo no se entregó. Queda escrito aquí como siempre; esta ejecución sale con 3 porque el envío falló. El cuerpo de la respuesta va debajo, sin las cabeceras de la petición.`,
     pricingLiveHint: (count) =>
       `${count} id(s) de modelo sin precio llevan prefijo de proveedor, como nombran los modelos OpenRouter y LiteLLM, y el catálogo incluido no los trae. Vuelve a ejecutar con --pricing-live para cobrar los slugs de OpenRouter desde su propia lista.`,
     apiEquivalent: () =>
