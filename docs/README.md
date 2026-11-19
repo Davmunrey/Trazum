@@ -11,7 +11,7 @@ from the steps needed to use the tool.
 | Import Gemini CLI sessions | [Gemini CLI sessions](gemini-cli.md) | Read from the recorder's own source; reasoning billed as output |
 | Compare an agent task before and after a change | [Task efficiency](task-efficiency.md#dashboard) | Local dashboard workflow; CLI/MCP commands since 2.6.0 |
 | Set a budget | [CI gates](ci.md) | [Gateway](gateway.md), [scheduled checks](running.md) |
-| Build an integration | [Agents and harnesses](agents.md) or [Setup](setup.md) | [Local HTTP API](api.md), [JSON output](json-output.md) |
+| Build an integration | [Agents and harnesses](agents.md) or [Setup](setup.md) | [Local HTTP API](api.md), [JSON output](json-output.md), [building on the JSON](building-on-the-json.md) |
 | Change Trazum | [Contributing](../CONTRIBUTING.md) | [Rules](authoring-rules.md), [releases](releasing.md) |
 
 ## I am deciding whether to use this
@@ -86,6 +86,7 @@ In the order somebody actually meets them:
 | [Deploying on N0](deploy-n0.md) | The web app as a hosted app, and how an update travels — pin the SHA, preview before promote |
 | [The plan document](plan-format.md) | The one output meant to be kept, committed and diffed |
 | [JSON output](json-output.md) | Every machine-readable document, field by field |
+| [Building on the JSON](building-on-the-json.md) | Each command's contract, what is versioned and held by tests, what is stable, and that nothing uploads usage |
 | [The format](format.md) | What another tool must do to emit or read this format |
 | [The pricing dataset](pricing-dataset.md) | The price catalogue as JSON with every release: each row's page and date, and what it refuses |
 
