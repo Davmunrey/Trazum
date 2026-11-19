@@ -502,7 +502,7 @@ function trimToExample(block: string): string {
  * them — so fenced regions are removed before matching.
  */
 function xmlExamples(prompt: string): string[] {
-  const outsideFences = prompt.replace(/^([ \t]{0,3})(`{3,}|~{3,})[\s\S]*?^\1\2[ \t]*$/gm, '');
+  const outsideFences = prompt.replace(/^([ \t]{0,3})(?=(`{3,}|~{3,}))\2[\s\S]*?^\1\2[ \t]*$/gm, '');
   const tag = /<example(?:\s[^>]*)?>([\s\S]*?)<\/example>/gi;
   return [...outsideFences.matchAll(tag)].map(([, body]) => (body ?? '').trim()).filter(Boolean);
 }
@@ -612,7 +612,7 @@ export interface RestatedFormat {
 /** Fenced blocks, with their info string. */
 function fencedBlocks(prompt: string): Array<{ lang: string; body: string }> {
   const blocks: Array<{ lang: string; body: string }> = [];
-  const fence = /^([ \t]{0,3})(`{3,}|~{3,})([^\n]*)\n([\s\S]*?)^\1\2[ \t]*$/gm;
+  const fence = /^([ \t]{0,3})(?=(`{3,}|~{3,}))\2([^\n]*)\n([\s\S]*?)^\1\2[ \t]*$/gm;
   let match: RegExpExecArray | null;
   while ((match = fence.exec(prompt)) !== null) {
     blocks.push({ lang: (match[3] ?? '').trim().toLowerCase(), body: match[4] ?? '' });
@@ -997,7 +997,7 @@ const CUE_WINDOW = 240;
 /** Fenced blocks with their offset, needed to read what precedes them. */
 function fencedBlocksAt(prompt: string): Array<{ lang: string; body: string; at: number; raw: string }> {
   const blocks: Array<{ lang: string; body: string; at: number; raw: string }> = [];
-  const fence = /^([ \t]{0,3})(`{3,}|~{3,})([^\n]*)\n([\s\S]*?)^\1\2[ \t]*$/gm;
+  const fence = /^([ \t]{0,3})(?=(`{3,}|~{3,}))\2([^\n]*)\n([\s\S]*?)^\1\2[ \t]*$/gm;
   let match: RegExpExecArray | null;
   while ((match = fence.exec(prompt)) !== null) {
     blocks.push({

@@ -45,6 +45,7 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **A line of backticks no longer takes quadratic time to optimise.** (#814) The three code-fence patterns in `structure.ts` opened with `` `{3,} ``, and on a line with no newline after it the engine gave the run back one backtick at a time: 11.6 s at 100,000 backticks, and one anonymous `POST /api/optimize` at the 400,000-character cap held the web app for 187 s. The opening run is now atomic (a lookahead and a backreference), so it is never given back, and the same 200,000-backtick input takes well under a second. `security.test.js` gains a backtick run and a tilde run with no newline; with the old pattern planted back, the backtick fixture took 48 s and failed.
 - **A web session no longer starts with `package-lock.json` changed.** The session-start hook installed with
   `npm install`, which rewrote the lockfile in the layout of the container's npm; npm 10.9 dropped 48 `libc` lines a
   newer npm had written. It now runs `npm ci`, which installs the lockfile as it is. (#788)

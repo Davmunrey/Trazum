@@ -1361,6 +1361,16 @@ describe('ReDoS resistance', () => {
     ['field prefix, unterminated whitespace run', `Output${' '.repeat(200_000)}`],
     ['many unterminated label lines', `${`input${' '.repeat(2_000)}\n`.repeat(100)}`],
     ['fence prefix, unterminated', `${' '.repeat(100_000)}\`\`\``],
+
+    // A fence that never ends its own line. The opening run `{3,} took every
+    // backtick, the next token failed, and the engine gave the run back one
+    // backtick at a time, rescanning the line each time: 11.6s at 100,000
+    // backticks, and one anonymous 400 KB request held the web app's event
+    // loop for 187s. The unclosed fence above has a newline after its three
+    // backticks, which is why it never caught this. The opening run is now
+    // atomic (a lookahead and a backreference), so it is never given back.
+    ['backtick run, no newline', '`'.repeat(200_000)],
+    ['tilde run, no newline', '~'.repeat(200_000)],
   ];
 
   for (const [name, input] of pathological) {
