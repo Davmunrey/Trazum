@@ -4,7 +4,19 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
-import { EXACT, FORMULA_PATH, ROOT, formula, formulaFromTarball, readFormula, sha256Of, tarballUrl } from '../scripts/homebrew-formula.mjs';
+import {
+  EXACT,
+  FORMULA_PATH,
+  MIN_RELEASE_AGE_MS,
+  ROOT,
+  formula,
+  formulaFromTarball,
+  readFormula,
+  registryDocumentUrl,
+  sha256Of,
+  tarballUrl,
+  tooYoung,
+} from '../scripts/homebrew-formula.mjs';
 
 /**
  * The Homebrew formula (#781) is generated from a tarball and held to it.
@@ -116,6 +128,50 @@ describe('the formula in this repository', () => {
     } catch (error) {
       if (error.code === 'ENOENT') return context.skip('no ruby on this machine');
       throw error;
+    }
+  });
+});
+
+describe("the formula waits for npm's packages to be a day old", () => {
+  /*
+    On 2026-11-19 `brew install davmunrey/trazum/trazum` failed on a Mac with
+    "No matching version found for @trazum/core@3.0.1 with a date before ...":
+    Homebrew's std_npm_args pass --min-release-age=1, and the tap had moved to a
+    version npm had published seven hours earlier. The script now refuses until
+    every package the install resolves from npm is a day old.
+  */
+  const cli = { name: '@trazum/cli', version: '3.0.1', time: '2026-11-19T11:01:10.518Z' };
+  const core = { name: '@trazum/core', version: '3.0.1', time: '2026-11-19T11:01:56.703Z' };
+
+  it('is a day, as Homebrew passes it', () => {
+    assert.equal(MIN_RELEASE_AGE_MS, 86_400_000);
+  });
+
+  it('refuses while the youngest package is under a day old, naming it and the moment it may', () => {
+    const refusal = tooYoung([cli, core], Date.parse('2026-11-19T18:28:47Z'));
+    assert.match(refusal, /@trazum\/core@3\.0\.1 was published at 2026-11-19T11:01:56\.703Z/);
+    assert.match(refusal, /cannot install before 2026-11-20T11:01:56\.703Z/);
+  });
+
+  it('refuses one millisecond before the day is up, and allows it at the mark', () => {
+    const mark = Date.parse(core.time) + MIN_RELEASE_AGE_MS;
+    assert.notEqual(tooYoung([cli, core], mark - 1), null);
+    assert.equal(tooYoung([cli, core], mark), null);
+  });
+
+  it('refuses a package npm gives no time for, rather than guessing its age', () => {
+    assert.match(tooYoung([cli, { ...core, time: undefined }], Date.parse('2027-01-01T00:00:00Z')), /no publish time for @trazum\/core@3\.0\.1/);
+  });
+});
+
+describe("the registry document a package's age is read from", () => {
+  it('is the scoped name, escaped, on the registry itself', () => {
+    assert.equal(registryDocumentUrl('@trazum/core').href, 'https://registry.npmjs.org/@trazum%2fcore');
+  });
+
+  it('refuses a name that is not one of this project, or that could leave the registry', () => {
+    for (const name of ['left-pad', '@evil/core', '@trazum/../x', '@trazum/core/../../x', '//evil.example/x', '@trazum/', '@trazum/Core']) {
+      assert.throws(() => registryDocumentUrl(name), /not a package of this project/, name);
     }
   });
 });
