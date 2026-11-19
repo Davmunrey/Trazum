@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -83,7 +83,8 @@ const tree = (dir) =>
     .filter((entry) => entry.isFile())
     .map((entry) => {
       const file = join(entry.parentPath, entry.name);
-      return `${file} ${statSync(file).size} ${createHash('sha256').update(readFileSync(file)).digest('hex')}`;
+      const bytes = readFileSync(file);
+      return `${file} ${bytes.length} ${createHash('sha256').update(bytes).digest('hex')}`;
     })
     .sort();
 
