@@ -34,8 +34,8 @@ jobs:
     # Fork pull requests get a read-only token; the guide stays quiet there.
     if: github.event_name == 'workflow_run' || github.event.pull_request.head.repo.full_name == github.repository
     env:
-      PR_GUIDE_COMMIT: 9251f8ce3370f6aafb2fcaa0316160466d664f18
-      PR_GUIDE_SHA256: 20ecca2bc2f80c33289caa4e74dd01cef195be01f99caf25aa85a56688f7396b
+      PR_GUIDE_COMMIT: 79390c8d569cc38b8fa2f20f95eead9061da512c
+      PR_GUIDE_SHA256: 6c2434d21965cd081cae7e9ecce9a70484c6b73b0cad0bc09138c66b7290b852
     steps:
       # A guide that cannot run must not turn a pull request red, so neither
       # step can fail the job; a digest mismatch stops the script from running.

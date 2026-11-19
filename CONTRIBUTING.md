@@ -326,7 +326,7 @@ log and reads the bill to the cent, optimises and compares a prompt, loads a
 recorded run, changes the theme and the language, and reaches the tabs on a
 phone, follows the landing into the dashboard, and scrolls the landing's
 story from top to bottom and back.
-[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-two flows,
+[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-three flows,
 what they do not check, and the lines that install the browser driver outside
 the workspace.
 
@@ -622,7 +622,11 @@ whose paths are in [`.codacy.yaml`](.codacy.yaml), and DeepSource, whose
 analyzers are in [`.deepsource.toml`](.deepsource.toml). The same rule holds
 for both. Neither is a required check, neither writes to the repository, and a
 finding of theirs that is wrong is not quieted by changing code that was
-right: the first reading of Codacy's, group by group, is in #767.
+right: the first reading of Codacy's, group by group, is in #767. What is
+switched off in Codacy, and every finding dismissed there with its reason,
+is in [`.github/codacy.json`](.github/codacy.json); `npm run codacy` says
+which open finding it does not account for, and a new one is read before it
+is answered ([docs/coverage.md](docs/coverage.md#codacy)).
 
 **An agent.** A coding agent working in a checkout has the same questions as a
 skill, [`.claude/skills/trazum-review/SKILL.md`](.claude/skills/trazum-review/SKILL.md).

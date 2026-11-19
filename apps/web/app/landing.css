@@ -81,6 +81,14 @@
 .story-world {
   /* The still laptop's size; the story redefines it from the stage. */
   --sw: min(600px, calc(100vw - 64px));
+  /*
+   * The terminal's type size, here rather than on `.term`: the story's
+   * keyframes on `.term` read the line height from it, and a custom property
+   * an element sets for its own keyframes costs every frame its animation is
+   * live (measured for #770: 32 tasks over 50 ms scrolling below the story at
+   * 4x CPU throttle with it on `.term`, none with it here).
+   */
+  --tf: min(15px, calc((100vw - 72px) / (var(--cols) * 0.61)));
   --L: calc(var(--sw) / 0.94);
   --sh: calc(var(--sw) / 1.6);
   --bt: calc(var(--L) * 0.035);
@@ -97,7 +105,7 @@
   .story-world { padding: 72px 32px 96px; }
 }
 @media (min-width: 1024px) {
-  .story-world { padding: 96px 48px 120px; gap: 72px; }
+  .story-world { padding: 96px 48px 120px; gap: 72px; --tf: min(15px, calc((58vw - 120px) / (var(--cols) * 0.61))); }
 }
 
 .term-box {
@@ -157,7 +165,6 @@
 
 /* The terminal, still: each scene's output whole, on the terminal's ground. */
 .term {
-  --tf: min(15px, calc((100vw - 72px) / (var(--cols) * 0.61)));
   margin: 0;
   min-width: 0;
   padding: 20px 18px;
@@ -170,9 +177,6 @@
   white-space: pre;
   overflow: hidden;
   font-variant-ligatures: none;
-}
-@media (min-width: 1024px) {
-  .term { --tf: min(15px, calc((58vw - 120px) / (var(--cols) * 0.61))); }
 }
 .tl {
   display: block;
@@ -346,7 +350,8 @@
   top: 100%;
 }
 
-.story-marker {
+.story-marker,
+.term-cut {
   display: none;
 }
 
@@ -415,13 +420,29 @@
     --aside-y: -4cqh;
     /* Closed, the machine is a third of its open height: it rises to the middle. */
     --close-y: 9cqh;
-    /* Where the terminal's lines are, and how big. */
-    --tb-left: 36cqw;
-    --tb-top: calc((100cqh - var(--shownH)) / 2 + var(--shownH) * 0.08);
-    --tb-w: 60cqw;
-    --tb-h: calc(var(--shownH) * 0.86);
-    --tf: min(19px, calc(var(--tb-w) / (var(--cols) * 0.61)));
+    /*
+     * Where the terminal's lines are (#770). The free part of the window is
+     * what the scene's plate leaves: beside it on a wide screen, under it on
+     * a tall one. Across, its middle is `--free-cx`; down, it runs from the
+     * showing scene's top (`--ft-<scene>`) to `--fb`, and the motion moves
+     * from one scene's top to the next's as the plates swap. The column of
+     * lines is centred on it, across and down, so a short output stands in
+     * the middle and a long one has the same room above as below, cut at the
+     * top. On a wide screen the plate is beside the column and every scene's
+     * free part is the same. The type is the still page's (`--tf`); the
+     * motion scrolls and centres by a line's height in it (`--lh`).
+     */
     --lh: calc(var(--tf) * 1.5);
+    --cap-r: calc(3.5cqw + min(29cqw, 460px));
+    --free-cx: calc((var(--cap-r) + 100cqw) / 2);
+    --tb-w: 60cqw;
+    --tb-left: calc(var(--free-cx) - var(--tb-w) / 2);
+    --tb-top: calc((100cqh - var(--shownH)) / 2 + var(--shownH) * 0.08);
+    --tb-h: calc((50cqh - var(--tb-top)) * 2);
+    --ft-bill: var(--tb-top);
+    --ft-check: var(--tb-top);
+    --ft-trim: var(--tb-top);
+    --fb: calc(var(--tb-top) + var(--tb-h));
     /* At rest the column sits in the middle of the screen; inside, it moves aside for the words. */
     --rest-x: calc(50cqw - var(--tb-w) / 2 - var(--tb-left));
     /* The words' plates are centred on their own height beside the device. */
@@ -441,9 +462,22 @@
       --aside-x: 0px;
       --aside-y: 0px;
       --close-y: 0px;
-      --tb-left: 4cqw;
+      /*
+       * On a tall screen the free part is under the scene's plate, which is
+       * as tall as its own words, and above the marker. `Story.tsx` measures
+       * each plate's foot (`--free-t-<scene>`) and the marker's top, or the
+       * scene's name over it (`--free-b`), when the stage or a plate changes
+       * size, never while scrolling. The column keeps 16 px from each, and
+       * its box reaches from under the shortest plate to over the marker.
+       */
+      --free-cx: 50cqw;
       --tb-w: 92cqw;
-      --tb-h: calc(100cqh - var(--tb-top) - 9cqh);
+      --ft-bill: calc(var(--free-t-bill, 40cqh) + 16px);
+      --ft-check: calc(var(--free-t-check, 40cqh) + 16px);
+      --ft-trim: calc(var(--free-t-trim, 40cqh) + 16px);
+      --fb: calc(var(--free-b, 94cqh) - 16px);
+      --tb-top: min(var(--ft-bill), var(--ft-check), var(--ft-trim));
+      --tb-h: calc(var(--fb) - var(--tb-top));
       --rest-x: 0px;
       --words-y: 0px;
     }
@@ -489,7 +523,23 @@
     display: block;
   }
 
+  /* The cut at the free part's top: the terminal's ground over the column, under the plates (`st-term-cut`). */
+  :root[data-motion='scroll'] .term-cut {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100cqw;
+    height: 100cqh;
+    z-index: 1;
+    background: var(--term-bg);
+  }
+
   :root[data-motion='scroll'] .term {
+    /* As wide as its widest line, in the middle of the free part. */
+    width: calc(var(--cols) * 1ch);
+    max-width: 100%;
+    margin-inline: auto;
     padding: 0;
     border: 0;
     background: transparent;
@@ -538,11 +588,14 @@
   }
   @media (max-aspect-ratio: 1/1) {
     :root[data-motion='scroll'] .scene-cap {
-      left: 4cqw;
-      right: 4cqw;
+      /* The page's own gutter at the least: 4cqw is 15.6 px at 390 wide. */
+      left: max(16px, 4cqw);
+      right: max(16px, 4cqw);
       top: 3cqh;
       width: auto;
       padding: 14px 16px;
+      /* A plate fades in and out where it stands, so the column under it is never under a plate still sliding into place. */
+      --words-rise: 0px;
     }
     :root[data-motion='scroll'] .scene-cap .scene-title {
       margin-top: 6px;

@@ -13,8 +13,8 @@ page.
 
 ## What is checked
 
-Twenty-two flows, each from an empty browser. Most drive the application at
-`/app`, where it has lived since the landing took `/`; nine start on the
+Twenty-three flows, each from an empty browser. Most drive the application at
+`/app`, where it has lived since the landing took `/`; ten start on the
 landing:
 
 | Flow | What the page must show |
@@ -36,6 +36,7 @@ landing:
 | Landing, the story | scrolled from top to bottom a percent at a time: the bill's total, the gate's verdict, the trimming's token counts, what never leaves on the screen and what leaves beside the closed machine each come into view, in that order; the lid's computed rotation is closed (below -95°) at the end, open again halfway back and at the top; no control inside the pinned stage; the last call to action takes focus and leads to `/app` |
 | Landing, the fallback | the same story with `CSS.supports` saying no to scroll-driven animation, so the script writes the progress (`data-story="script"`) |
 | Landing, on a phone | the menu opens above the story, the page never scrolls sideways at five points of it, and the story plays in order |
+| Landing, the output in the middle | at 1440x900 and at 390x844, after each run of output in the bill, the gate's check, its status and the trimming: the printed lines, blank ones included, centred down the free part of the window (beside the scene's plate on a wide screen, between the showing scene's own plate and the marker on a phone) and the column centred across it, within 3 px; each plate as tall as its own words; and at 390x844 and 768x1024, every half percent across each change of plate, the output at least 15 px from the foot of any plate that is up and from the marker (#770) |
 | Landing, reduced motion | no story mode, every scene's text on the page in reading order, every line of output fully shown, the laptop open and still |
 | Appearance, the public site | on a dark system with nothing chosen the landing is light and its control says Light, `/app` is dark, and Dark chosen in the header holds after a reload |
 | Appearance | dark applied at once and still there after a reload |
@@ -109,12 +110,14 @@ of a tenth.
 
 A step of the `Build and tests` job, after the web app is built and the
 privacy probe has run, on a server of its own. It is part of the required
-check, so a pull request that breaks a flow cannot merge. All twenty-two took
-67 seconds by the times the runner printed, against a local production build
-on a machine three other jobs were sharing, on 2026-11-18. The tour is eleven
-of them, because it waits for a hand that types. The five flows of the
-landing are 22: the three that play the story each scroll the page a hundred
-and one times and read it at each stop.
+check, so a pull request that breaks a flow cannot merge. All twenty-three
+took 56 seconds by the times the runner printed, against a local production
+build on a machine another job was sharing, on 2026-11-18 (#770). The tour is
+nine of them, because it waits for a hand that types. The six flows of the
+landing are 23: the three that play the story each scroll the page a hundred
+and one times and read it at each stop, and the one that measures where the
+output stands stops eight times, then nine times across each change of plate
+at two sizes.
 
 ## Adding a flow
 

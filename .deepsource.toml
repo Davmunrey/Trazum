@@ -9,13 +9,15 @@
 version = 1
 
 # Where the tests are, so that a rule meant for shipped code is not applied to
-# a fixture: every package keeps them in a directory named `test`.
+# a fixture: every package keeps them in a directory named `test`. Codacy
+# leaves the same two patterns out altogether (.codacy.yaml); DeepSource is
+# told they are tests instead, which is what this file can say.
 test_patterns = [
   "test/**",
   "**/test/**",
 ]
 
-# The same two paths .codacy.yaml leaves out, for the same reason: both are
+# The two generated paths .codacy.yaml leaves out, for the same reason: both are
 # written by a script from a source that is read anyway. A test holds the two
 # lists to each other.
 exclude_patterns = [

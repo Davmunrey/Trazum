@@ -782,19 +782,7 @@ export function findRestatedFormat(prompt: string, count: TokenCounter): Restate
   const prose = analysableText(prompt);
   const proseSentences = sentences(prose);
 
-  const restatedKeys = new Set<string>();
-  const guiltySentences = new Set<number>();
-
-  proseSentences.forEach((sentence, index) => {
-    for (const key of keys) {
-      // Word boundary that also survives snake_case and kebab-case names.
-      const pattern = new RegExp(`(?<![\\p{L}\\p{N}_-])${escapeRegExp(key)}(?![\\p{L}\\p{N}_-])`, 'iu');
-      if (pattern.test(sentence)) {
-        restatedKeys.add(key);
-        guiltySentences.add(index);
-      }
-    }
-  });
+  const { restatedKeys, guiltySentences } = keysInSentences(keys, proseSentences);
 
   if (restatedKeys.size < RESTATED_KEY_MINIMUM) return null;
 
@@ -809,6 +797,157 @@ export function findRestatedFormat(prompt: string, count: TokenCounter): Restate
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Which keys the prose names, and in which sentences: a key counts where it
+ * stands with no letter, digit, `_` or `-` on either side, compared without
+ * case. The pattern that says so exactly is `keyPattern`.
+ *
+ * **It used to ask that pattern of every sentence for every key, building it
+ * anew each time**, and that is the square of the text: a prompt of 40,000
+ * characters, half a schema of 1,778 keys and half prose, made `optimize`
+ * take 6.8 seconds, and one of 80,000 characters took 38, measured on
+ * 2026-11-18 (#772). The HTTP API accepts 400,000.
+ *
+ * So the prose is read once. It is cut where a key can start or end: a run of
+ * the characters the boundary looks at, or one other character. A key is cut
+ * the same way, and both are folded so that what the pattern calls equal is
+ * equal here. Every key is then looked for in one pass over the pieces, the
+ * way a dictionary of words is looked for in a text (Aho and Corasick, 1975),
+ * and a place where one is found is confirmed by the key's own pattern,
+ * anchored there. The pattern still decides; this only finds where to ask it.
+ *
+ * The answer is the one the old loop gave, in its order: `restated-format-scaling.test.js`
+ * holds the two side by side, and holds the fold to the engine's own
+ * case-insensitive comparison over every cased character.
+ */
+export function keysInSentences(
+  keys: readonly string[],
+  sentences: readonly string[],
+): { restatedKeys: Set<string>; guiltySentences: Set<number> } {
+  const restatedKeys = new Set<string>();
+  const guiltySentences = new Set<number>();
+  if (keys.length === 0 || sentences.length === 0) return { restatedKeys, guiltySentences };
+
+  const patterns = keys.map((key) => keyPattern(key, 'iuy'));
+  const seen = new Map<string, { fold: string; run: boolean }>();
+  const lengths: number[] = [];
+  const root: KeyNode = { next: new Map(), fail: null, ends: [], link: null };
+  keys.forEach((key, index) => {
+    const pieces = keyPieces(key, seen);
+    lengths.push(pieces.length);
+    let node = root;
+    for (const { piece } of pieces) {
+      let child = node.next.get(piece);
+      if (child === undefined) {
+        child = { next: new Map(), fail: root, ends: [], link: null };
+        node.next.set(piece, child);
+      }
+      node = child;
+    }
+    node.ends.push(index);
+  });
+  const queue = [...root.next.values()];
+  for (let head = 0; head < queue.length; head++) {
+    const node = queue[head]!;
+    for (const [piece, child] of node.next) {
+      let fail = node.fail!;
+      while (fail !== root && !fail.next.has(piece)) fail = fail.fail!;
+      child.fail = node === root ? root : (fail.next.get(piece) ?? root);
+      child.link = child.fail.ends.length > 0 ? child.fail : child.fail.link;
+      queue.push(child);
+    }
+  }
+
+  sentences.forEach((sentence, index) => {
+    const pieces = keyPieces(sentence, seen);
+    const found = new Set<number>();
+    let node = root;
+    pieces.forEach(({ piece }, at) => {
+      while (node !== root && !node.next.has(piece)) node = node.fail!;
+      node = node.next.get(piece) ?? root;
+      for (let end: KeyNode | null = node.ends.length > 0 ? node : node.link; end !== null; end = end.link) {
+        for (const key of end.ends) {
+          if (found.has(key)) continue;
+          const first = at - lengths[key]! + 1;
+          // The pattern's own boundary, read off the pieces: a run of key
+          // characters is never cut, so one on either side is a letter there.
+          if (pieces[first - 1]?.run === true || pieces[at + 1]?.run === true) continue;
+          const pattern = patterns[key]!;
+          pattern.lastIndex = pieces[first]!.at;
+          if (pattern.test(sentence)) found.add(key);
+        }
+      }
+    });
+    if (found.size === 0) return;
+    guiltySentences.add(index);
+    for (const key of [...found].sort((a, b) => a - b)) restatedKeys.add(keys[key]!);
+  });
+  return { restatedKeys, guiltySentences };
+}
+
+/** A key, named in prose: not inside a longer name, and in any case. */
+export function keyPattern(key: string, flags = 'iu'): RegExp {
+  // Word boundary that also survives snake_case and kebab-case names.
+  return new RegExp(`(?<![\\p{L}\\p{N}_-])${escapeRegExp(key)}(?![\\p{L}\\p{N}_-])`, flags);
+}
+
+interface KeyNode {
+  next: Map<string, KeyNode>;
+  fail: KeyNode | null;
+  /** The keys that end here, by index. */
+  ends: number[];
+  /** The nearest node down the fail chain where a key ends. */
+  link: KeyNode | null;
+}
+
+/** What `keyPattern`'s boundary reads as part of a name, under the same flags. */
+const KEY_CHAR = /^[\p{L}\p{N}_-]$/iu;
+
+/**
+ * Code points the engine compares as equal without case and that a lower- or
+ * upper-casing does not bring together. Found by comparing `foldKeyChar` with
+ * the engine over every code point on Node 22; `restated-format-scaling.test.js` repeats
+ * that comparison over the cased ones on whatever runs the tests. A pair the
+ * engine does not join costs nothing: the key's own pattern confirms a match.
+ */
+const FOLD_TOGETHER: Readonly<Record<string, string>> = {
+  'ΐ': 'ΐ',
+  'ΰ': 'ΰ',
+  'ﬆ': 'ﬅ',
+};
+
+/**
+ * One code point as `keyPieces` compares it: lowered, raised and lowered
+ * again, each step taken only when it gives one code point back.
+ */
+export function foldKeyChar(char: string): string {
+  let fold = char;
+  for (const change of [(text: string) => text.toLowerCase(), (text: string) => text.toUpperCase(), (text: string) => text.toLowerCase()]) {
+    const next = change(fold);
+    if ([...next].length === 1) fold = next;
+  }
+  return FOLD_TOGETHER[fold] ?? fold;
+}
+
+/** A text cut where a key can start or end: each run of name characters, and each other character, folded, with where it starts. */
+function keyPieces(text: string, seen: Map<string, { fold: string; run: boolean }>): Array<{ piece: string; at: number; run: boolean }> {
+  const pieces: Array<{ piece: string; at: number; run: boolean }> = [];
+  let at = 0;
+  for (const char of text) {
+    let known = seen.get(char);
+    if (known === undefined) {
+      known = { fold: foldKeyChar(char), run: KEY_CHAR.test(char) };
+      seen.set(char, known);
+    }
+    const { fold, run } = known;
+    const last = pieces[pieces.length - 1];
+    if (run && last !== undefined && last.run) last.piece += fold;
+    else pieces.push({ piece: fold, at, run });
+    at += char.length;
+  }
+  return pieces;
 }
 
 // --------------------------------------------------------------------------
