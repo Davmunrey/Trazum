@@ -16,7 +16,7 @@ subscription or API billing.
 
 ## Users
 
-Working assumption inferred from the existing product: developers and teams investigating model usage logs, comparing prompts, and operating AI workloads. The rebrand does not introduce a new customer segment or paid service.
+Working assumption inferred from the existing product: developers and teams investigating model usage logs, comparing prompts, and operating AI workloads. The rebrand does not introduce a new customer segment or paid service. Trazum Pro, a paid product for organisations built on the open CLI's receipts, is developed in a separate private repository; the site's `/pro` page says what it is, publishes its prices and says it is not open yet (#793). Nothing in this repository is paid.
 
 ## Capabilities and constraints
 

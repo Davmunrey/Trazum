@@ -58,6 +58,32 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **`/pro`: a page for Trazum Pro, which says it is in development and not open yet.** Linked from the header and
+  the footer, in the five languages the site speaks. In order: what Pro answers for an organisation (where the model
+  spend went, whether it is inside its budget, what changed when it moved, a figure an auditor can trace); the one
+  property it is built around, that no prompt text reaches its server and what travels is a receipt, made by
+  `trazum receipt` in this repository and held by `receipt-redaction.test.js`, with the label named as the one field
+  that travels as it was written; what stays free in the open tool and what Pro adds, in the words of
+  `docs/licensing.md`; the tiers, by managed spend a month and not by seat (Team €149 up to €5,000, Growth €499 up to
+  €25,000, Scale €1,499 up to €100,000, Enterprise by agreement) with the sentence that makes the share the
+  break-even; and the status, with one call to action. That is a `mailto:` link to the address `CODE_OF_CONDUCT.md`
+  publishes, the subject filled in, and a link to the repository's releases: no form, no field, no cookie, no request
+  and no dependency. The tiers and the status are one module, `apps/web/lib/pro.ts`, whose comment names Trazum Pro's
+  own `docs/pricing.md` as where the owner decided them; the page formats them and types no figure. The site gains a
+  `sitemap.xml` of its pages, which it did not have, named by `robots.txt`, and the layout's site address moves to
+  `lib/site-origin.ts` so the two read one. `pro-page.test.mjs` holds the page: the tiers parsed back out of the
+  rendered table in every language and compared with the module, and the module with the owner's figures written
+  again in the test; each share equal to its price over its ceiling; the not-open sentence and the status while
+  `PRO_OPEN` is false; no claim an open service would make; the one mailto equal to the one address the repository
+  publishes; the page in the header, the footer and the sitemap; every pair of text and ground it uses at 4.5:1 or
+  better in both themes, worked out from `globals.css`; and nothing sent. A twenty-third browser flow follows the
+  header's Pro entry from the landing, reads the four tiers written by hand, finds the one mailto, measures every
+  text's contrast on paper and then with Dark chosen, and fails on any request that leaves the origin; the documents
+  that count the flows say twenty-three. Six faults were planted and each failed a test: Growth printed at a price the
+  module does not hold, the not-open sentence removed, the status above the title removed, Pro taken out of the
+  header, a `fetch` to another host on load, and an image requested from another host with its address built from
+  parts, which the browser flow caught by the request it saw. (#793)
+
 - **Codacy and DeepSource read the repository from a configuration that is in it, and Codacy is sent the coverage.**
   The owner installed both on 2026-11-18. `.codacy.yaml` and `.deepsource.toml` leave out the two directories a
   script writes (`wiki/`, `plugin/skills/`), so a finding is reported once and against the file a person edits, and

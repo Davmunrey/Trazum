@@ -617,6 +617,98 @@ export const FLOWS = [
     },
   },
   {
+    name: 'pro: from the landing, follow Pro, read the tiers and that it is not open, find the one mailto, and send nothing off the site',
+    covers: [],
+    async run({ page, open, see, is }) {
+      // Every request from the first one: none may leave the site.
+      const requested = [];
+      page.on('request', (request) => requested.push(request.url()));
+      await open('/');
+      const origin = new URL(page.url()).origin;
+      await page.locator('[data-site-header]').getByRole('link', { name: 'Pro', exact: true }).click();
+      await page.waitForURL((url) => url.pathname === '/pro');
+      await page.locator('html[data-started="true"]').waitFor({ state: 'attached' });
+      await see(page.getByRole('heading', { level: 1, name: 'Trazum Pro' }), 'the Pro page');
+      await see(page.getByText('In development. Not open yet.', { exact: true }), 'the status above the title');
+      await see(page.getByRole('heading', { level: 2, name: 'Not open yet' }), 'the section that says it is not open');
+
+      /*
+        The tiers, as Trazum Pro's docs/pricing.md decided them, written here
+        by hand: Team €149 a month up to €5,000 of managed spend, Growth €499
+        up to €25,000, Scale €1,499 up to €100,000, Enterprise by agreement
+        above that. The share is the price over the ceiling: 149 / 5,000 is
+        2.98%, 499 / 25,000 is 1.996%, stated as 2.00%, and 1,499 / 100,000
+        is 1.499%, stated as 1.50%.
+      */
+      const rows = await page.locator('[data-tier]').evaluateAll((trs) =>
+        trs.map((tr) => [tr.getAttribute('data-tier'), ...[...tr.querySelectorAll('th, td')].map((cell) => cell.textContent.trim())]),
+      );
+      is(
+        JSON.stringify(rows),
+        JSON.stringify([
+          ['team', 'Team', '€149 a month', 'Up to €5,000', '2.98%'],
+          ['growth', 'Growth', '€499 a month', 'Up to €25,000', '2.00%'],
+          ['scale', 'Scale', '€1,499 a month', 'Up to €100,000', '1.50%'],
+          ['enterprise', 'Enterprise', 'By agreement', 'Above €100,000', 'By agreement'],
+        ]),
+        'the tiers',
+      );
+
+      // One way to say you want it: a message to the address CODE_OF_CONDUCT.md publishes, the subject filled in.
+      const cta = page.getByRole('link', { name: 'Tell me when it opens' });
+      await see(cta, 'the call to action');
+      is(await cta.getAttribute('href'), 'mailto:davidmunozrey@protonmail.com?subject=Trazum%20Pro%3A%20tell%20me%20when%20it%20opens', 'where the call to action goes');
+      is(await page.locator('a[href^="mailto:"]').count(), 1, 'how many mailto links the page has');
+      is(await page.locator('form, input, textarea, iframe').count(), 0, 'forms, fields and frames on the page');
+
+      /*
+        Every text on the page against the ground it sits on, in the light
+        theme and then the dark one: 4.5:1, or 3:1 for text 24px and larger
+        or bold at 18.66px and larger (WCAG 2, 1.4.3).
+      */
+      const unreadable = () =>
+        page.evaluate(() => {
+          const channels = (value) => (value.match(/[\d.]+/g) ?? []).map(Number);
+          const luminance = ([r, g, b]) => {
+            const f = (channel) => {
+              const c = channel / 255;
+              return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+            };
+            return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+          };
+          const ground = (element) => {
+            for (let at = element; at !== null; at = at.parentElement) {
+              const value = channels(getComputedStyle(at).backgroundColor);
+              if (value.length === 3 || (value.length === 4 && value[3] === 1)) return value.slice(0, 3);
+            }
+            return channels(getComputedStyle(document.body).backgroundColor).slice(0, 3);
+          };
+          const found = [];
+          for (const element of document.querySelectorAll('main *')) {
+            const own = [...element.childNodes].some((node) => node.nodeType === 3 && node.textContent.trim() !== '');
+            const box = element.getBoundingClientRect();
+            if (!own || box.width <= 1 || box.height <= 1) continue;
+            const style = getComputedStyle(element);
+            const size = Number.parseFloat(style.fontSize);
+            const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+            const [a, b] = [luminance(channels(style.color)), luminance(ground(element))].sort((x, y) => y - x);
+            const ratio = (a + 0.05) / (b + 0.05);
+            if (ratio < (large ? 3 : 4.5)) found.push(`${element.textContent.trim().slice(0, 40)} ${ratio.toFixed(2)}:1`);
+          }
+          return found.join(' | ');
+        });
+      is(await unreadable(), '', 'text below its contrast on paper');
+      await page.locator('[data-site-header]').getByRole('button', { name: 'Dark', exact: true }).first().click();
+      await page.locator('html[data-theme="dark"]').waitFor({ state: 'attached' });
+      is(await unreadable(), '', 'text below its contrast on the dark canvas');
+
+      await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await page.waitForLoadState('networkidle');
+      is(requested.filter((url) => !url.startsWith(`${origin}/`) && !url.startsWith('data:')).join(' '), '', 'the requests that left the site');
+      is(await page.evaluate(() => document.cookie), '', 'the cookies the page can read');
+    },
+  },
+  {
     name: 'tour: each page it visits runs its own demo, once',
     covers: [],
     async run({ page, open, see, is }) {
