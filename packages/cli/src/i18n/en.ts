@@ -68,7 +68,7 @@ ${bold('USAGE')}
   trazum receipt <usage.jsonl> [--stamp] [--since <when>] [--until <when>] [-o <file>]
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
               [--since <when>] [--until <when>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <file>]
-              [--git-range <range>]
+              [--agent <name>] [--timezone <zone>] [--git-range <range>]
   trazum weekly [<file|dir>...] [--until <when>] [--label <name>] [--notify] [-o <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-codex <file|dir> [--label <name>] [-o <file>]
@@ -248,6 +248,14 @@ ${bold('OPTIONS FOR bill')}
   --by <day|week|month>       Split the statement by UTC day, ISO week (Monday
                               to Sunday) or month. Without it, a bill spanning
                               two months or more is split by month.
+  --timezone <zone>           Cut those days, and a bare --since/--until day, in
+                              this IANA zone (Europe/Madrid) instead of UTC. The
+                              statement says which. Not with --otlp-out,
+                              --markdown-out, --html-out, --pdf-out or a
+                              --csv-shape other than slice: they cut days in UTC.
+  --agent <name>              Bill only one coding agent's records: claude-code,
+                              codex or gemini-cli. A plain log or a provider
+                              export belongs to no agent and is left out, counted.
   --git-range <range>         Instead of a bill, say what was recorded in this
                               repository's Claude Code sessions between the
                               earliest author time and the latest commit time of
@@ -2257,6 +2265,18 @@ ${bold('EXAMPLES')}
       `${usd} from ${calls} call(s) with no timestamp is in the total and in no ${unit}.`,
     periodHint: (since, until, unit) => `One ${unit} on its own: --since ${since} --until ${until}.`,
     badBy: (value) => `--by takes day, week or month, not "${value}".`,
+    badAgent: (value, known) => `--agent does not know "${value}". The agents it names are ${known}.`,
+    agentNoRecords: (name, known) =>
+      `--agent ${name} found no record of that agent among what was read. The agents it names are ${known}; a plain log or a provider export belongs to none of them.`,
+    agentOnly: (name, kept, leftOut) =>
+      `--agent: only ${name}'s ${kept} record(s) are billed; ${leftOut} record(s) of other agents or sources are left out.`,
+    badTimezone: (value) => `--timezone does not know "${value}". Name an IANA time zone such as Europe/Madrid or America/New_York.`,
+    timezoneConflict: (flag) =>
+      `--timezone cuts the statement's days in that zone, and ${flag} cuts its days in UTC, so the two would print days that disagree. Leave one of them off.`,
+    zoneLine: (zone) => `Days are cut in ${zone}, not UTC: a bare --since/--until day is a day there, and so is every row above.`,
+    periodHintZone: (zone) => `Add --timezone ${zone} to bill it on the same days.`,
+    zoneReceiptNote: (zone) =>
+      `--timezone ${zone}: the receipt holds instants and no day, so the zone only decides what a bare --since/--until day means.`,
     colCalls: () => 'calls',
     colShare: () => 'share',
     moreRows: (count) => `… and ${count} more`,

@@ -1,0 +1,18 @@
+
+Your bill ────────────────────────────────────────────────────────────────
+  $3.50 across 3 priced call(s)
+
+  model              calls    USD  share
+  claude-sonnet-5-5      3  $3.50  ██████████  100.0%
+
+  month    calls    USD  share
+  2026-11      3  $3.50  ██████████  100.0%
+  One month on its own: --since 2026-11-01 --until 2026-11-30.
+
+  This log covers 2026-11-18 → 2026-11-22 (4.0 days): stated, never
+  extrapolated. Scale it to a month yourself, now that you know what it
+  covers.
+
+  The receipt as data: --receipt, or -o receipt.json. The document for
+  whoever pays: --pdf-out bill.pdf.
+

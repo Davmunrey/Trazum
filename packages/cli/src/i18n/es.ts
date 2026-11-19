@@ -55,7 +55,7 @@ ${bold('USO')}
   trazum receipt <uso.jsonl> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
               [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <fichero>]
-              [--git-range <rango>]
+              [--agent <nombre>] [--timezone <zona>] [--git-range <rango>]
   trazum weekly [<fichero|dir>...] [--until <cuándo>] [--label <nombre>] [--notify] [-o <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-codex <fichero|dir> [--label <nombre>] [-o <fichero>]
@@ -280,6 +280,15 @@ ${bold('OPCIONES DE bill')}
   --by <day|week|month>       Reparte el extracto por día UTC, semana ISO (de
                               lunes a domingo) o mes. Sin él, una factura que
                               abarca dos meses o más se reparte por mes.
+  --timezone <zona>           Corta esos días, y un día suelto de --since/--until,
+                              en esta zona IANA (Europe/Madrid) en vez de UTC. El
+                              extracto dice cuál. No con --otlp-out,
+                              --markdown-out, --html-out, --pdf-out ni un
+                              --csv-shape distinto de slice: cortan los días en UTC.
+  --agent <nombre>            Factura solo los registros de un agente de código:
+                              claude-code, codex o gemini-cli. Un log suelto o una
+                              exportación de proveedor no pertenece a ningún agente
+                              y queda fuera, contado.
   --git-range <rango>         En vez de una factura, dice qué se registró en las
                               sesiones de Claude Code de este repositorio entre la
                               primera hora de autor y la última de commit del
@@ -2294,6 +2303,18 @@ ${bold('EJEMPLOS')}
     periodHint: (since, until, unit) =>
       `${unit === 'day' ? 'Un día' : unit === 'week' ? 'Una semana' : 'Un mes'} por separado: --since ${since} --until ${until}.`,
     badBy: (value) => `--by admite day, week o month, no "${value}".`,
+    badAgent: (value, known) => `--agent no conoce "${value}". Los agentes que nombra son ${known}.`,
+    agentNoRecords: (name, known) =>
+      `--agent ${name} no encontró ningún registro de ese agente entre lo leído. Los agentes que nombra son ${known}; un log suelto o una exportación de proveedor no pertenece a ninguno.`,
+    agentOnly: (name, kept, leftOut) =>
+      `--agent: solo se factura ${kept} registro(s) de ${name}; ${leftOut} registro(s) de otros agentes u orígenes quedan fuera.`,
+    badTimezone: (value) => `--timezone no conoce "${value}". Indica una zona horaria IANA como Europe/Madrid o America/New_York.`,
+    timezoneConflict: (flag) =>
+      `--timezone corta los días del extracto en esa zona y ${flag} corta los suyos en UTC, así que los dos imprimirían días que no coinciden. Quita uno de los dos.`,
+    zoneLine: (zone) => `Los días se cortan en ${zone}, no en UTC: un día suelto de --since/--until es un día de esa zona, y también cada fila de arriba.`,
+    periodHintZone: (zone) => `Añade --timezone ${zone} para facturarlo con los mismos días.`,
+    zoneReceiptNote: (zone) =>
+      `--timezone ${zone}: el recibo guarda instantes y ningún día, así que la zona solo decide qué significa un día suelto de --since/--until.`,
     colCalls: () => 'llamadas',
     colShare: () => 'parte',
     moreRows: (count) => `… y ${count} más`,

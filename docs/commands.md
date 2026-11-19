@@ -3917,6 +3917,61 @@ week and month sums are `spendByPeriod` in `@trazum/core`, the same function
 `spendByMonth` is, so a call at 23:59 UTC is in the same day, week and month on
 every surface.
 
+**`--timezone <zone>` cuts the days in a zone, not in UTC** (#826). Every day,
+week and month `bill` prints is a UTC one unless asked: the same log answers
+the same way in every office. A person who bills by their own calendar names
+their zone, by IANA name, and the platform's own `Intl.DateTimeFormat` supplies
+the rules, so the flag adds no dependency and no table of offsets:
+
+```bash
+npx @trazum/cli bill ~/.claude/projects --by day --timezone Europe/Madrid
+```
+
+A call at 23:30 UTC on 18 November is on 19 November in Madrid, and a call at
+23:30 UTC on a Sunday is in the next ISO week there. What the zone decides:
+
+- **The rows of `--by day`, `--by week` and `--by month`**, and the automatic
+  month table, and the first and last day of the span line. The statement says
+  `Days are cut in <zone>, not UTC`, and the hint that bills the newest period
+  on its own says to add `--timezone`.
+- **What a bare `--since` or `--until` day means.** `--since 2026-11-19`
+  starts at the first instant of that day in the zone and `--until 2026-11-19`
+  ends at the first instant of the next, so a day that is 23 or 25 hours long
+  because the clocks changed is billed whole. A full timestamp (`...Z`) and a
+  relative window (`30d`, `24h`) name an instant already and are read as they
+  were. The window an empty-period refusal names is in the zone too.
+- **Nothing else.** The receipt holds instants and no day, so `--timezone`
+  with `--receipt` or `-o` combines, and changes the receipt only through
+  which calls a bare `--since`/`--until` day holds. It says so on stderr. Its
+  JSON gains no field, so [json-output.md](json-output.md) has nothing new to
+  contract.
+
+**Where it is refused.** `--otlp-out`, `--markdown-out`, `--html-out`,
+`--pdf-out` and `--csv-out` with a `--csv-shape` of `day`, `hour` or
+`model-day` cut their days in UTC, and one statement in Madrid's days beside a
+file in UTC's would print two answers to "what did the 19th cost". They are
+refused by name, with the flag, rather than printed with a lie; leave one of
+the two off. `--git-range` takes its period from the commits and is refused
+with it. A name the platform does not know (`--timezone Nowhere/City`) is
+refused by name before any file is read. `--timezone UTC` is the default, with
+the line that says so added.
+
+**`--agent <name>` bills one coding agent's records** (#826). `bill` already
+tells the agents apart by the folder or shape a record came from, and names
+them the same way in the By agent table and in the OTLP `trazum.agent`
+attribute: `claude-code` (Claude Code), `codex` (Codex) and `gemini-cli`
+(Gemini CLI). `--agent codex` keeps the Codex records and nothing else, in the
+statement, the receipt, the side files and the OTLP file alike; the name the
+bill prints (`--agent "Gemini CLI"`) is accepted in any case. A plain usage log
+or a provider export belongs to no agent and is left out, and stderr says how
+many records were: a narrower bill never passes for the whole one. A Codex
+receipt keeps its `importEvidence`, and the receipt of another agent does not
+carry it. An agent it does not know is refused by name, listing the three; a
+known agent with no record among what was read is refused too, rather than
+billed at $0. The flag combines with `--timezone`, `--since`, `--until`,
+`--by`, `--receipt`, `--send` and every output file, and is refused with
+`--git-range`, which reads Claude Code's records of one project by itself.
+
 **The bill for somebody else.** The receipt on stdout is for a machine. The
 person who signs the bill off reads an attachment, so `bill` writes the same
 four files `trazum profile` does, from the report it just priced:

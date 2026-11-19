@@ -273,6 +273,7 @@ import {
 } from './git.js';
 import type { Revision } from './git.js';
 import { billRange, projectLabelOfRoot, windowOf } from './bill-range.js';
+import { canonicalZone, dayInZone, groupByDayInZone, nextDay, startOfDayInZone } from './zone.js';
 import { currentFileDigests, planEditsFor } from './plan-edits.js';
 import { baseGateFails, priceAgainstBase, readBothSides, volumeFor } from './base-cost.js';
 import type { BaseCostReport } from './base-cost.js';
@@ -426,6 +427,9 @@ const VALUE_FLAGS = new Set([
   'until',
   // `bill --by day|week|month`: the calendar unit the statement is split by.
   'by',
+  // `bill --agent <name>`: keep one coding agent. `bill --timezone <zone>`: cut days there (#826).
+  'agent',
+  'timezone',
   'export',
   'limit',
   'locale',
@@ -900,7 +904,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'send', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'git-range', 'since', 'until', 'by'],
+  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'send', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'git-range', 'since', 'until', 'by', 'agent', 'timezone'],
   weekly: ['label', 'label-from-project', 'out', 'o', 'until', 'notify', 'pricing', 'pricing-live'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
@@ -3484,10 +3488,11 @@ async function commandReconcile(args: Args, t: CliMessages): Promise<void> {
 function billingPeriod(
   args: Args,
   t: CliMessages,
+  zone?: string,
 ): { sinceMs?: number; untilMs?: number; relative: boolean; words?: { since: string; until: string } } {
   const now = Date.now();
-  const since = parseWhen(args, 'since', false, t, now);
-  const until = parseWhen(args, 'until', true, t, now);
+  const since = parseWhen(args, 'since', false, t, now, zone);
+  const until = parseWhen(args, 'until', true, t, now, zone);
   if (since.ms !== undefined && until.ms !== undefined && since.ms >= until.ms) {
     throw new Error(t.profile.sinceAfterUntil());
   }
@@ -3511,13 +3516,17 @@ function refuseEmptyPeriod(
   period: ReturnType<typeof billingPeriod>,
   pricing: PricingCatalogue,
   t: CliMessages,
+  zone?: string,
 ): void {
   if (period.words === undefined || report.total.calls > 0 || report.unpriced.calls > 0) return;
   const whole = profileUsage(text, { catalogue: pricing });
   if (whole.total.calls === 0 && whole.unpriced.calls === 0) return;
   if (whole.span === null) throw new Error(t.profile.windowNeedsClock());
   throw new Error(
-    `${t.bill.windowMatchesNothing(dayOf(whole.span.fromMs), dayOf(whole.span.toMs))}${period.relative ? ` ${t.profile.windowRelativeEmpty()}` : ''}`,
+    `${t.bill.windowMatchesNothing(
+      zone === undefined ? dayOf(whole.span.fromMs) : dayInZone(whole.span.fromMs, zone),
+      zone === undefined ? dayOf(whole.span.toMs) : dayInZone(whole.span.toMs, zone),
+    )}${period.relative ? ` ${t.profile.windowRelativeEmpty()}` : ''}`,
   );
 }
 
@@ -4030,7 +4039,7 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
  * would put a different period on the page than the one asked for.
  */
 async function billGitRange(args: Args, range: string, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
-  for (const flag of ['since', 'until', 'label', 'by', 'out', 'receipt', 'send', 'table', 'stamp', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out']) {
+  for (const flag of ['since', 'until', 'label', 'by', 'agent', 'timezone', 'out', 'receipt', 'send', 'table', 'stamp', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out']) {
     if (args.flags.has(flag)) throw new Error(t.bill.rangeConflict(`--${flag}`));
   }
   if (!boolFlag(args, 'label-from-project', true)) throw new Error(t.bill.rangeConflict('--no-label-from-project'));
@@ -4085,6 +4094,66 @@ async function billGitRange(args: Args, range: string, pricing: PricingCatalogue
   if (gathered.claudeCodeFiles > 0) console.error(t.bill.apiEquivalent());
 }
 
+/** The ids `--agent` takes: the ones `bill` names each agent's records by. */
+const agentIds = (): AgentId[] => Object.keys(AGENT_NAMES) as AgentId[];
+
+/**
+ * `bill --agent <name>`, checked: an id (`claude-code`) or the name the bill
+ * prints (`Claude Code`), in any case. An agent it does not know is refused by
+ * name, with the ones it does, never read as "no records".
+ */
+function agentFlagOf(args: Args, t: CliMessages): AgentId | undefined {
+  const raw = stringFlag(args, 'agent');
+  if (raw === undefined) return undefined;
+  const wanted = raw.trim().toLowerCase();
+  const found = agentIds().find((id) => id === wanted || AGENT_NAMES[id].toLowerCase() === wanted);
+  if (found === undefined) throw new Error(t.bill.badAgent(raw, agentIds().join(', ')));
+  return found;
+}
+
+/**
+ * `bill --timezone <zone>`, checked, and refused beside the outputs that cut
+ * their days in UTC: those would print days that are not the ones the flag
+ * asked for. The receipt and the statement are not among them. The receipt
+ * holds instants and no day; the statement is the one that is cut.
+ */
+function zoneFlagOf(args: Args, t: CliMessages, csvShape: ProfileCsvShape): string | undefined {
+  const raw = stringFlag(args, 'timezone');
+  if (raw === undefined) return undefined;
+  const zone = canonicalZone(raw);
+  if (zone === null) throw new Error(t.bill.badTimezone(raw));
+  for (const flag of ['otlp-out', 'markdown-out', 'html-out', 'pdf-out']) {
+    if (args.flags.has(flag)) throw new Error(t.bill.timezoneConflict(`--${flag}`));
+  }
+  if (args.flags.has('csv-out') && csvShape !== 'slice') throw new Error(t.bill.timezoneConflict(`--csv-out --csv-shape ${csvShape}`));
+  return zone;
+}
+
+/**
+ * The priced, dated calls of a bill by day in `zone`: each day's records priced
+ * through the same profile, window and catalogue as the whole, so the days add
+ * up to what the UTC days would have.
+ */
+function zonedSpendByDay(
+  lines: readonly string[],
+  zone: string,
+  pricing: PricingCatalogue,
+  period: ReturnType<typeof billingPeriod>,
+): UsageProfileReport['spendByDay'] {
+  const rows: UsageProfileReport['spendByDay'] = [];
+  for (const [day, own] of [...groupByDayInZone(lines, zone)].sort(([a], [b]) => (a < b ? -1 : 1))) {
+    const part = profileUsage(own.join('\n'), {
+      catalogue: pricing,
+      ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+      ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+    });
+    const calls = part.spendByDay.reduce((sum, d) => sum + d.calls, 0);
+    const usd = part.spendByDay.reduce((sum, d) => sum + d.usd, 0);
+    if (calls > 0) rows.push({ day, calls, usd, topLabel: null, topLabelUsd: 0, byModel: [] });
+  }
+  return rows;
+}
+
 /** `bill --send` could not deliver the receipt. 1 stays what every other failure exits with. */
 const BILL_SEND_FAILED = 3;
 
@@ -4103,17 +4172,35 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
   /* Refused before any file is read: a bad shape found after the receipt
      printed would end a run that looked finished with an error. */
   const csvShape = csvShapeOf(args, t);
+  /* `--agent` and `--timezone` are judged here too, for the same reason (#826). */
+  const agent = agentFlagOf(args, t);
+  const zone = zoneFlagOf(args, t, csvShape);
   /* "What did this month cost" is the question a Claude Code folder of a
      year's sessions answers worst without a period. */
-  const period = billingPeriod(args, t);
+  const period = billingPeriod(args, t, zone);
   const byFlag = stringFlag(args, 'by');
   if (byFlag !== undefined && byFlag !== 'day' && byFlag !== 'week' && byFlag !== 'month') {
     throw new Error(t.bill.badBy(byFlag));
   }
   const by = byFlag as BillPeriodUnit | undefined;
 
-  const { lines, sources, fileCount, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, otherLines, labelledByProject } =
-    await gatherUsageLines(args, t);
+  const gathered = await gatherUsageLines(args, t);
+  const { sources, fileCount, claudeCodeFiles, geminiCliFiles, codexEvidence, labelledByProject } = gathered;
+  /*
+    `--agent` keeps one coding agent's records, the ones `bill` already tells
+    apart by the folder or shape they were read from, and nothing else: a plain
+    log or a provider export belongs to no agent and is left out, counted. What
+    is left out is said on stderr, so a narrower bill never passes for a whole one.
+  */
+  const only = agent === undefined ? null : (gathered.agentLines.get(agent) ?? []);
+  if (agent !== undefined && only !== null) {
+    if (only.length === 0) throw new Error(t.bill.agentNoRecords(AGENT_NAMES[agent], agentIds().join(', ')));
+    console.error(t.bill.agentOnly(AGENT_NAMES[agent], only.length, gathered.lines.length - only.length));
+  }
+  const lines = only ?? gathered.lines;
+  const agentLines = agent === undefined || only === null ? gathered.agentLines : new Map<AgentId, string[]>([[agent, only]]);
+  const otherLines = only === null ? gathered.otherLines : [];
+  const codexFiles = agent === undefined || agent === 'codex' ? gathered.codexFiles : 0;
 
   const text = lines.join('\n');
   const report = profileUsage(text, {
@@ -4121,7 +4208,7 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
     ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
     ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
   });
-  refuseEmptyPeriod(text, report, period, pricing, t);
+  refuseEmptyPeriod(text, report, period, pricing, t, zone);
   const document = receiptFrom(report, pricing, boolFlag(args, 'stamp') ? { emittedAt: new Date() } : {});
   const billDocument = codexFiles === 0 ? document : {
     ...document,
@@ -4212,7 +4299,10 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
     .filter((row) => row.calls > 0)
     .sort((a, b) => b.usd - a.usd);
   if (statement) {
-    printBillStatement(report, labelledByProject > 0, t, period.words, agentSessions, byAgent.length > 1 ? byAgent : [], by);
+    const zoned = zone === undefined ? undefined : zonedSpendByDay(lines, zone, pricing, period);
+    printBillStatement(report, labelledByProject > 0, t, period.words, agentSessions, byAgent.length > 1 ? byAgent : [], by, zone, zoned);
+  } else if (zone !== undefined) {
+    console.error(t.bill.zoneReceiptNote(zone));
   }
   await writeBillSideFiles(args, report, pricing, csvShape, t, period.words, agentSessions);
 
@@ -4377,8 +4467,12 @@ function printBillStatement(
   apiEquivalent = false,
   byAgent: { name: string; calls: number; usd: number }[] = [],
   by?: BillPeriodUnit,
+  zone?: string,
+  zoned?: UsageProfileReport['spendByDay'],
 ): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  /* The day an instant falls on: UTC, or the zone `--timezone` named (#826). */
+  const dayAt = (ms: number): string => (zone === undefined ? dayOf(ms) : dayInZone(ms, zone));
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const total = report.total.totalUsd;
   const LIMIT = 12;
@@ -4439,7 +4533,7 @@ function printBillStatement(
     there are more than a screen holds: a month of days, twelve weeks.
   */
   const unit = by ?? 'month';
-  const { periods, undated } = spendByPeriod(report, unit);
+  const { periods, undated } = spendByPeriod(zoned === undefined ? report : { spendByDay: zoned, total: report.total }, unit);
   if (periods.length >= (by === undefined ? 2 : 1)) {
     const keep = unit === 'day' ? 31 : LIMIT;
     const shown: Cell[][] = periods.slice(-keep).map(({ period, calls, usd }) => [period, n(calls), formatUsd(usd), ...shareCells(usd)]);
@@ -4456,13 +4550,16 @@ function printBillStatement(
     }
     const newest = periods[periods.length - 1]!;
     draw.text(unit === 'month' ? t.bill.monthHint(newest.firstDay, newest.lastDay) : t.bill.periodHint(newest.firstDay, newest.lastDay, unit), { tone: 'dim' });
+    if (zone !== undefined) draw.text(t.bill.periodHintZone(zone), { tone: 'dim' });
   }
 
   // What qualifies the total: when the calls fell, and what it is not.
   draw.blank();
   if (report.span !== null) {
-    draw.text(t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs)), { tone: 'dim' });
+    draw.text(t.profile.spanLine(dayAt(report.span.fromMs), dayAt(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs)), { tone: 'dim' });
   }
+  // Which calendar the days above are on, said whenever it is not UTC.
+  if (zone !== undefined) draw.text(t.bill.zoneLine(zone), { tone: 'dim' });
   // The period asked for, as typed: the span above is when the calls in it fell.
   if (window !== undefined) draw.text(t.profile.windowLine(window.since, window.until), { tone: 'dim' });
   /*
@@ -8387,6 +8484,7 @@ function parseWhen(
   endOfDay: boolean,
   t: CliMessages,
   now: number,
+  zone?: string,
 ): { ms: number | undefined; relative: boolean } {
   const value = stringFlag(args, flag);
   if (value === undefined) return { ms: undefined, relative: false };
@@ -8402,6 +8500,10 @@ function parseWhen(
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     const midnight = Date.parse(`${value}T00:00:00Z`);
     if (Number.isFinite(midnight)) {
+      /* A bare day is a day of the zone asked for, `--timezone`, and of UTC otherwise (#826). */
+      if (zone !== undefined) {
+        return { ms: startOfDayInZone(endOfDay ? nextDay(value) : value, zone), relative: false };
+      }
       return { ms: endOfDay ? midnight + 86_400_000 : midnight, relative: false };
     }
   }

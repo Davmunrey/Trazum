@@ -859,6 +859,22 @@ export interface CliMessages {
     periodsUndated(calls: number, usd: string, unit: 'day' | 'week' | 'month'): string;
     periodHint(since: string, until: string, unit: 'day' | 'week' | 'month'): string;
     badBy(value: string): string;
+    /** `--agent` named an agent `bill` does not know: refused by name, with the ones it does. */
+    badAgent(value: string, known: string): string;
+    /** `--agent` named a known agent whose records were not among what was read. */
+    agentNoRecords(name: string, known: string): string;
+    /** What `--agent` kept, and how many records of other agents or sources were left out. */
+    agentOnly(name: string, kept: number, leftOut: number): string;
+    /** `--timezone` named a zone the platform does not know: refused by name. */
+    badTimezone(value: string): string;
+    /** `--timezone` cannot be combined with an output that cuts its days in UTC. */
+    timezoneConflict(flag: string): string;
+    /** The statement's own note: which calendar the days are on. */
+    zoneLine(zone: string): string;
+    /** The sentence that names the zone beside a `--since`/`--until` hint. */
+    periodHintZone(zone: string): string;
+    /** On a receipt there is no day to cut: what `--timezone` did decide. */
+    zoneReceiptNote(zone: string): string;
     colCalls(): string;
     colShare(): string;
     moreRows(count: number): string;
