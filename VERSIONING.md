@@ -9,8 +9,8 @@ than left to be inferred from the tags.
 
 **Major** is the only one that carries risk, and it means exactly what semver
 says: something in [the public API](#what-counts-as-public-api) changed shape,
-disappeared, or started throwing. Nothing inside 2.x does that, and nothing
-inside 1.x did.
+disappeared, or started throwing. Nothing inside 3.x does that, and nothing
+inside 2.x or 1.x did.
 
 **Minor** closes an arc. Work here is planned in arcs of about ten releases
 with a single thesis — `docs/plan-1.41-1.50.md` was *the loop is complete and
@@ -26,7 +26,7 @@ own right, until the arc's last chapter lands as 1.51.0.
 
 **Under strict semver a patch adds nothing, and here it does.** A patch release
 of Trazum can add a command, a flag, a document format or a rule. Somebody
-pinning `~2.7.0` expecting only bug fixes will receive features.
+pinning `~3.0.0` expecting only bug fixes will receive features.
 
 It cannot break them — the freeze below is unchanged and is the promise
 that actually matters — but "you get more than you expected" is a real
@@ -38,9 +38,9 @@ and patch are *both* additions-only, so the distinction between them was never
 load-bearing for safety. It was carrying nothing. It now carries where you are
 in the story, which is the more useful thing for it to say.
 
-**Pin `^2.0.0`** if you want everything non-breaking, which is the intended
+**Pin `^3.0.0`** if you want everything non-breaking, which is the intended
 range and behaves identically under either scheme. Pin an exact version if you
-want to choose your upgrades. A tilde range such as `~2.7.0` does not mean
+want to choose your upgrades. A tilde range such as `~3.0.0` does not mean
 here what it means elsewhere, and this paragraph exists so nobody finds that
 out the hard way.
 
@@ -56,8 +56,17 @@ retrospect; only what the next ones are called.
 
 **The public API is frozen.** A breaking change waits for the next major.
 Nothing in the list below changes shape, disappears, or starts throwing where
-it used to return, inside the 2.x line. The same sentence held for the whole
-of 1.x.
+it used to return, inside the 3.x line. The same sentence held for the whole
+of 2.x and of 1.x.
+
+### What 3.0.0 broke
+
+3.0.0 is the first major that removed anything, and it removed two things,
+both about one word. `tier` left a model in the pricing catalogue for
+`capability` (#764), and `recommendTier` answers `small`, `mid` or `large`,
+with the lookups renamed to match (#798). Its changelog entry has a Removed
+section with the migration for a JSON consumer, an MCP client and code. No
+price and no recommendation changed.
 
 ### What 2.0.0 was
 
@@ -73,7 +82,7 @@ purpose in 2.4.0, which added commands. An addition is not a break, so the
 promise above was not touched by it.
 
 That is a promise about *the surface*, not a promise to stop working on it.
-Things that will still change in any 2.x release, minor or patch, and are not
+Things that will still change in any 3.x release, minor or patch, and are not
 breaking:
 
 - **New** exports, options, commands, flags, rules and advisories. An addition

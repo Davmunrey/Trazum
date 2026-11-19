@@ -160,7 +160,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - id: week
         run: echo "since=$(date -u -d '7 days ago' +%F)" >> "$GITHUB_OUTPUT"
-      - uses: Davmunrey/Trazum@ef6489389d1ed85adffd519eefdc289b6f391ff5  # 2.7.11
+      - uses: Davmunrey/Trazum@23f8d07c0e3f19e799b5e4bdfcd82fcd2ca2818c  # 2.7.12
         with:
           usage-log: logs/           # a directory is read in name order as one bill
           since: ${{ steps.week.outputs.since }}
