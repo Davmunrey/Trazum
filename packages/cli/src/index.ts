@@ -261,6 +261,8 @@ import type {
 } from '@trazum/core/node';
 
 import {
+  GitUnavailableError,
+  commitTimes,
   contentAt,
   gitAvailable,
   namesByRevision,
@@ -270,6 +272,7 @@ import {
   runSelf,
 } from './git.js';
 import type { Revision } from './git.js';
+import { billRange, projectLabelOfRoot, windowOf } from './bill-range.js';
 import { currentFileDigests, planEditsFor } from './plan-edits.js';
 import { baseGateFails, priceAgainstBase, readBothSides, volumeFor } from './base-cost.js';
 import type { BaseCostReport } from './base-cost.js';
@@ -428,6 +431,8 @@ const VALUE_FLAGS = new Set([
   'html-out',
   'pdf-out',
   'otlp-out',
+  // `bill --git-range <range>`: the commits whose span the statement sums.
+  'git-range',
   'pricing',
   'prompt',
   'out',
@@ -892,7 +897,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'since', 'until', 'by'],
+  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'git-range', 'since', 'until', 'by'],
   weekly: ['label', 'label-from-project', 'out', 'o', 'until', 'notify', 'pricing', 'pricing-live'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
@@ -3639,6 +3644,9 @@ async function readUsageLogOnly(file: string, t: CliMessages, billPath: string =
  * a bill rather than usage, and pointed at `reconcile`.
  */
 async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  /* A range of commits asks a different question and prints its own statement (#777). */
+  const gitRange = stringFlag(args, 'git-range');
+  if (gitRange !== undefined) return billGitRange(args, gitRange, pricing, t);
   /*
     The statement answers first (#758). What was read, file by file, is a
     note on the answer, and on a terminal it printed above it: five lines of
@@ -4007,6 +4015,71 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
 
   if (sources === 0) throw new Error(t.bill.nothingRead());
   return { lines, sources, fileCount: files.length, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, otherLines, labelledByProject };
+}
+
+/**
+ * `trazum bill --git-range <range>` (#777): what was recorded in this
+ * repository's Claude Code sessions between the first and the last commit of
+ * the range. The reasoning, and what the figure is not, is in `bill-range.ts`.
+ *
+ * Every flag that would set the period, the project or a file to write is
+ * refused rather than ignored: a `--since` quietly overridden by the commits
+ * would put a different period on the page than the one asked for.
+ */
+async function billGitRange(args: Args, range: string, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  for (const flag of ['since', 'until', 'label', 'by', 'out', 'receipt', 'table', 'stamp', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out']) {
+    if (args.flags.has(flag)) throw new Error(t.bill.rangeConflict(`--${flag}`));
+  }
+  if (!boolFlag(args, 'label-from-project', true)) throw new Error(t.bill.rangeConflict('--no-label-from-project'));
+
+  const cwd = process.cwd();
+  if (!gitAvailable(cwd)) throw new Error(t.bill.rangeNoGit());
+  const root = repositoryRoot(cwd);
+  if (root === null) throw new Error(t.bill.rangeNoRepository());
+  let times;
+  try {
+    times = commitTimes(range, { cwd: root });
+  } catch (error) {
+    if (error instanceof GitUnavailableError) throw new Error(t.bill.rangeNoGit());
+    throw error;
+  }
+  if (times === null) throw new Error(t.bill.rangeBad(range));
+  const window = windowOf(times);
+  if (window === null) throw new Error(t.bill.rangeEmpty(range));
+
+  const gathered = await gatherUsageLines(args, t);
+  const claudeCodeLines = gathered.agentLines.get('claude-code') ?? [];
+  const otherSources =
+    (gathered.agentLines.get('codex')?.length ?? 0) + (gathered.agentLines.get('gemini-cli')?.length ?? 0) + gathered.otherLines.length;
+  const project = projectLabelOfRoot(root);
+  const answer = billRange({ claudeCodeLines, otherSources, project, window, catalogue: pricing });
+  if (answer.projectRecords === 0) throw new Error(t.bill.rangeNoProject());
+
+  const at = (ms: number): string => new Date(ms).toISOString().replace('.000Z', 'Z');
+  const out: string[] = [
+    '',
+    t.bill.rangeHeading(range),
+    '',
+    t.bill.rangeWindow(at(window.fromMs), at(window.toMs), window.commits),
+    answer.inside.sessions > 0
+      ? t.bill.rangeInside(formatUsd(answer.inside.usd), answer.inside.calls, answer.inside.sessions)
+      : t.bill.rangeNothingInside(),
+  ];
+  if (answer.straddling.length > 0) {
+    out.push('', t.bill.rangeStraddleHeading(answer.straddling.length));
+    for (const s of answer.straddling) {
+      out.push(t.bill.rangeStraddleRow(s.session, at(s.firstMs), at(s.lastMs), formatUsd(s.insideUsd), s.insideCalls, formatUsd(s.outsideUsd), s.outsideCalls));
+    }
+  } else {
+    out.push('', t.bill.rangeNoStraddle());
+  }
+  out.push('', t.bill.rangeMeaning());
+  const left = answer.leftOut;
+  out.push(t.bill.rangeLeftOut(answer.outsideCalls, left.otherProjects, left.otherSources, left.undated));
+  if (answer.inside.unpricedCalls > 0) out.push(t.bill.rangeUnpriced(answer.inside.unpricedCalls));
+  out.push('');
+  console.log(out.join('\n'));
+  if (gathered.claudeCodeFiles > 0) console.error(t.bill.apiEquivalent());
 }
 
 async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {

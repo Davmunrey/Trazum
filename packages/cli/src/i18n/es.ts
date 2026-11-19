@@ -55,6 +55,7 @@ ${bold('USO')}
   trazum receipt <uso.jsonl> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
               [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <fichero>]
+              [--git-range <rango>]
   trazum weekly [<fichero|dir>...] [--until <cuándo>] [--label <nombre>] [--notify] [-o <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-codex <fichero|dir> [--label <nombre>] [-o <fichero>]
@@ -279,6 +280,15 @@ ${bold('OPCIONES DE bill')}
   --by <day|week|month>       Reparte el extracto por día UTC, semana ISO (de
                               lunes a domingo) o mes. Sin él, una factura que
                               abarca dos meses o más se reparte por mes.
+  --git-range <rango>         En vez de una factura, dice qué se registró en las
+                              sesiones de Claude Code de este repositorio entre la
+                              primera hora de autor y la última de commit del
+                              rango (main..HEAD), ejecutado desde el repositorio.
+                              Solo entran en la cifra las sesiones que empezaron y
+                              terminaron dentro del periodo; las que cruzaron un
+                              extremo se nombran y cuentan aparte. Es todo lo
+                              gastado entonces en este repositorio, no el coste
+                              del cambio. No con --since, --until, --label ni salida.
   --otlp-out <fichero>        Escribe además la factura como métricas OpenTelemetry
                               (JSON OTLP/HTTP): por día UTC cerrado, coste, tokens
                               y llamadas por proyecto, modelo y agente, y lo que no
@@ -2318,6 +2328,31 @@ ${bold('EJEMPLOS')}
     windowMatchesNothing: (from, to) =>
       `Ninguna llamada cae dentro de este periodo. Lo leído cubre ${from} → ${to}. Un periodo sin nada dentro no es una factura de $0: revisa las fechas, o quita --since/--until para facturarlo todo.`,
     written: (file) => `Escrito ${file}.`,
+    rangeConflict: (flag) =>
+      `--git-range fija el periodo por sí mismo, a partir de los commits, e imprime su propio extracto: no se puede combinar con ${flag}.`,
+    rangeNoGit: () => 'no se pudo ejecutar git, del que --git-range lee las horas de los commits.',
+    rangeNoRepository: () => 'Este directorio no está dentro de un repositorio git, así que --git-range no tiene repositorio que leer.',
+    rangeBad: (range) => `git no conoce el rango "${range}". Indica uno como main..HEAD.`,
+    rangeEmpty: (range) => `El rango "${range}" no contiene ningún commit, así que no tiene periodo que sumar.`,
+    rangeHeading: (range) => `Registrado en las sesiones de este repositorio mientras se escribía ${range}`,
+    rangeWindow: (from, to, commits) =>
+      `Periodo: ${from} a ${to}, según las horas de autor y de commit de ${commits} commit(s).`,
+    rangeInside: (usd, calls, sessions) =>
+      `${usd} en ${calls.toLocaleString('es-ES')} llamada(s) valorada(s) de ${sessions.toLocaleString('es-ES')} sesión(es) que empezaron y terminaron dentro del periodo.`,
+    rangeNothingInside: () => 'Ninguna sesión de este proyecto empezó y terminó dentro del periodo.',
+    rangeStraddleHeading: (count) =>
+      `${count} sesión(es) empezaron antes del periodo o siguieron después. Contadas aparte, no en la cifra de arriba:`,
+    rangeStraddleRow: (session, from, to, insideUsd, insideCalls, outsideUsd, outsideCalls) =>
+      `  ${session}  ${from} a ${to}: ${insideUsd} (${insideCalls} llamada(s)) dentro del periodo, ${outsideUsd} (${outsideCalls} llamada(s)) fuera.`,
+    rangeNoStraddle: () => 'Ninguna sesión cruzó un extremo del periodo.',
+    rangeMeaning: () =>
+      'Esto es todo lo registrado en este repositorio durante ese periodo. No es el coste del cambio: incluye otro trabajo del mismo repositorio, y no incluye el trabajo del cambio hecho en otro sitio.',
+    rangeLeftOut: (outsideCalls, otherProjects, otherSources, undated) =>
+      `Fuera: ${outsideCalls} llamada(s) de sesiones por completo fuera del periodo, ${otherProjects} registro(s) de otros proyectos, ${otherSources} registro(s) de fuentes sin carpeta de proyecto que comparar (Codex, Gemini CLI, logs), ${undated} llamada(s) sin marca de tiempo.`,
+    rangeUnpriced: (calls) =>
+      `No está en la cifra: ${calls} llamada(s) a modelos que el catálogo no valora. Nombradas, nunca contadas como $0.`,
+    rangeNoProject: () =>
+      'Ninguna sesión leída pertenece a la carpeta de proyecto de este repositorio. Claude Code nombra esa carpeta con la ruta absoluta del repositorio, así que lee la carpeta que la contiene (trazum bill ~/.claude/projects --git-range main..HEAD) desde la raíz del repositorio. Una sesión iniciada en un subdirectorio o en un worktree está en una carpeta de otro nombre y no se reconoce.',
   },
 
   fromOpenrouter: {
