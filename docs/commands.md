@@ -13,11 +13,11 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 | Read and reconcile spend | [bill](#one-door-trazum-bill) · [profile](#where-the-money-actually-went-trazum-profile) · [connect](#your-bill-without-the-export-trazum-connect) · [reconcile](#what-you-were-actually-billed-trazum-reconcile) · [import OpenTelemetry](#the-universal-cost-lens-trazum-from-otel) |
 | Plan and measure changes | [plan](#the-plan-trazum-plan) · [verify](#did-it-work-trazum-verify) · [switch](#when-does-the-switch-pay-trazum-switch) · [route](#is-the-cheaper-model-good-enough-trazum-route) · [history](#the-long-run-trazum-history) |
 | Review an agent task | [task](#task-efficiency-trazum-task): analyze repetitions, apply a reviewed policy and compare explicit outcomes; since 2.6.0 |
-| Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [proactive](#speaking-first-trazum-proactive) · [weekly](#the-week-written-down-trazum-weekly) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
+| Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [proactive](#speaking-first-trazum-proactive) · [session-guard](#a-spend-limit-for-a-session-trazum-session-guard) · [weekly](#the-week-written-down-trazum-weekly) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
 | Improve prompts | [use measured traffic](#the-multiplication-stops-guessing---from-log) · [reorder](#reordering-for-the-cache---reorder) · [rank](#which-prompt-to-fix-first-trazum-rank) · [prune](#which-few-shot-examples-earn-their-tokens-trazum-prune) · [evaluate](#does-the-shorter-prompt-still-work) |
 | Integrate and report | [MCP](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) · [conform](#building-on-the-format-trazum-conform) · [rollup](#more-than-one-machine-trazum-rollup) · [receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt) · [report](#the-year-from-what-was-already-written-down-trazum-report) |
 
-[All commands](../README.md#the-57-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
+[All commands](../README.md#the-58-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
 
 <details>
 <summary>All chapters on this page</summary>
@@ -37,6 +37,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 - [Keeping it: `trazum store`](#keeping-it-trazum-store)
 - [The afternoon it happened: `trazum watch`](#the-afternoon-it-happened-trazum-watch)
 - [Speaking first: `trazum proactive`](#speaking-first-trazum-proactive)
+- [A spend limit for a session: `trazum session-guard`](#a-spend-limit-for-a-session-trazum-session-guard)
 - [The week, written down: `trazum weekly`](#the-week-written-down-trazum-weekly)
 - [Before the call is sent: `trazum serve`](#before-the-call-is-sent-trazum-serve)
 - [The counterpart: recording an outcome](#the-counterpart-recording-an-outcome)
@@ -1108,6 +1109,135 @@ does.
 
 The report is one line per item: `on`, `off`, `not ready` (why), `not available`
 (why) or `could not tell` (why). `--json` is [documented](json-output.md#the-proactive-document).
+
+### A spend limit for a session: `trazum session-guard`
+
+A Claude Code hook that **warns once, then stops**, at two dollar figures you
+choose. It reads the running session's own transcript, prices it at the bundled
+catalogue, and compares the total with your two numbers.
+
+```bash
+trazum session-guard install --warn 5 --stop 15 --on-cannot-tell fail-open
+trazum session-guard status        # is it in ~/.claude/settings.json, and at which figures
+trazum session-guard uninstall     # remove exactly what install added
+```
+
+**Every figure is API-equivalent cost**: the session's usage priced at the
+provider's list API prices, on the date the catalogue was reviewed. It is not what
+you were charged, and on a subscription plan it is not a bill at all. The
+warning and the stop both say so.
+
+**Nothing has a default.** `--warn`, `--stop` and `--on-cannot-tell` are all
+required, on `install` and on the hook itself, and leaving one out is refused
+by name. They are money and a failure policy: a guard that picked them would
+have decided for you. `--warn` has to be below `--stop`, and both have to be
+amounts greater than zero.
+
+| The session has cost | The hook does |
+|---|---|
+| less than `--warn` | nothing: no output, exit code 0 |
+| `--warn` or more, less than `--stop` | says so **once per session**: `{"systemMessage": "..."}` on standard output, exit code 0 |
+| `--stop` or more | stops: the reason on standard error, exit code 2, **every time** |
+| cannot be told | what `--on-cannot-tell` says, below |
+
+"At" is inclusive: a session at exactly the stop figure is stopped. A session
+that was warned and then reaches the stop is stopped; the warning is not a
+licence.
+
+**What is a stop, in Claude Code's own terms.** The hook is written to two
+events, `UserPromptSubmit` and `PreToolUse`, and both can block. From Claude
+Code's hooks page (https://code.claude.com/docs/en/hooks, read on 2026-11-19):
+exit code 2 blocks the action, so "a `PreToolUse` hook blocks the tool call, for
+example, and a `UserPromptSubmit` hook rejects the prompt", with standard error as the
+reason; exit 0 with no output is no decision; and `systemMessage` in JSON at exit 0 is
+the "warning message shown to the user". The warning is never plain text on
+standard output, because plain text from a `UserPromptSubmit` hook is added to
+what the model reads. `UserPromptSubmit` stops the next prompt and `PreToolUse`
+stops a long turn between its tool calls. The hook cannot interrupt a single
+model response already under way.
+
+**When the cost cannot be told.** An unreadable or missing transcript, input
+that is not what Claude Code sends, and a model the catalogue has no price for
+all mean the cost cannot be told. `--on-cannot-tell` has the meaning it has on
+[`trazum gateway`](#in-the-path-of-the-call-trazum-gateway): `fail-open` lets the
+work go on and says once per session that it could not tell, and `fail-closed`
+stops the work and says why. Neither ever counts the missing cost as $0. When
+only some calls are on an unpriced model, the calls that were priced count as
+far as they go: if they alone reach `--stop`, that is a stop, and the message says
+"at least". A transcript with no calls in it yet is a session that has cost
+nothing, and is silent.
+
+**Where it writes.** `install` goes through the same code as
+[`trazum proactive`](#speaking-first-trazum-proactive), so the same rules hold.
+It edits `~/.claude/settings.json` and `~/.trazum/proactive.json` and nothing else. It shows
+the file and every line first and writes only after a yes (not a terminal and no
+`--yes` means a dry run). It keeps one `.trazum-backup` of a settings file you
+already had, refuses a symbolic link, a file that is not valid JSON and a
+file that changed while it ran, and it adds its entry beside the hooks you have
+without touching them. Its hook is recognised by being exactly the command it
+wrote, so a hook of yours that mentions `session-guard` is never taken for its own.
+`uninstall` removes that command and the empty containers `install` made, and
+leaves the rest. Running `install` again with other figures rewrites its own
+line, not a second one. It is not available on Windows, because the hook is a
+shell command, and it needs the CLI installed where it stays (`npm install -g @trazum/cli`,
+or `TRAZUM_BIN`), for the reason [`proactive`](#speaking-first-trazum-proactive) gives.
+
+**What it remembers.** "The warning was given" is one empty file per session in the
+directory the [status line](../plugin/README.md#the-status-line-which-costs-nothing)
+already uses, `TRAZUM_STATUSLINE_CACHE` or `$TMPDIR/trazum-statusline`, named
+`guard-<hash of the session id>.warned`. Clear the directory and the warning is given
+again. The session id is hashed, not used as a path.
+
+**What it reads.** The session's transcript, and the transcripts of its
+subagents in the folder beside it, converted as
+[`from-claude-code`](#the-agents-own-bill-trazum-from-claude-code) converts them, and nothing else: it
+loads no `trazum.config.json` and takes no `--pricing` or `--pricing-live`, so a
+broken config in the directory a session runs in cannot decide whether a limit
+holds. Nothing leaves the machine.
+
+**What it costs to run.** The hook reads the whole transcript each time it runs, which is
+before every prompt and every tool call. How long that takes grows with the session. It
+has not been measured for this hook. The status line avoids the same cost by reading a
+cache that a `Stop` hook writes once per turn, and this guard cannot, because a
+limit has to read the transcript as it stands now.
+
+```
+$ trazum session-guard install --warn 5 --stop 15 --on-cannot-tell fail-open --dry-run
+session guard: would write
+    ~/.claude/settings.json
+      + {
+      +   "hooks": {
+      +     "UserPromptSubmit": [
+      +       {
+      +         "hooks": [
+      +           {
+      +             "type": "command",
+      +             "command": "'…/node' '…/packages/cli/dist/index.js' session-guard check --warn 5 --stop 15 --on-cannot-tell fail-open"
+      +           }
+      +         ]
+      +       }
+      +     ],
+      +     "PreToolUse": [
+      +       {
+      +         "matcher": "*",
+      +         "hooks": [
+      +           {
+      +             "type": "command",
+      +             "command": "'…/node' '…/packages/cli/dist/index.js' session-guard check --warn 5 --stop 15 --on-cannot-tell fail-open"
+      +           }
+      +         ]
+      +       }
+      +     ]
+      +   }
+      + }
+Dry run: nothing was written.
+```
+
+*Real output, in a made-up home with an empty `~/.claude`, with the two absolute
+paths shortened to `…`.* The tests build their own home and transcripts and
+never touch `~/.claude/settings.json`: `packages/cli/test/session-guard.test.js`.
+The money in them is worked out by hand from the catalogue's output price for
+Claude Opus 5, $25 per million tokens: a call that outputs 100,000 tokens is $2.50.
 
 ### The week, written down: `trazum weekly`
 

@@ -134,6 +134,8 @@ const OUT_OF_SCOPE = {
   bench: 'runs a measurement rather than reading a path',
   /* It reads the person's home directory and crontab, which a test must not: `proactive.test.js` runs it on a made-up home. It has no network code at all. */
   proactive: 'reads the home directory and the crontab; held on a made-up home by proactive.test.js',
+  /* It reads Claude Code's settings file in the home directory and a session transcript, which a test must not do unasked: `session-guard.test.js` runs it on a made-up home. It has no network code at all, and refuses --pricing-live. */
+  'session-guard': 'reads the home directory and a session transcript; held on a made-up home by session-guard.test.js',
 };
 
 /** A workspace with something real for every command to read. */

@@ -204,7 +204,7 @@ export function shown(ctx: Ctx, path: string): string {
 // --------------------------------------------------------------------------
 
 export interface Change {
-  item: Item | 'manifest';
+  item: Item | 'manifest' | 'session-guard';
   /** An absolute path, or `CRONTAB`. */
   target: string;
   /** What the caller read: `null` when the file was not there. */
@@ -356,7 +356,7 @@ async function writeBackup(ctx: Ctx, path: string, text: string, mode: number): 
 }
 
 /** A directory this command made, removed once it is empty. Never anything else. */
-async function removeEmptyDir(ctx: Ctx, dir: string): Promise<void> {
+export async function removeEmptyDir(ctx: Ctx, dir: string): Promise<void> {
   const p = pathsFor(ctx);
   if (dir !== p.scriptDir && dir !== p.stateDir) return;
   await rmdir(dir).catch(() => undefined);
@@ -382,8 +382,8 @@ export function serialise(value: unknown, format: Format): string {
   return (format.eol === '\r\n' ? text.replace(/\n/g, '\r\n') : text) + (format.final ? format.eol : '');
 }
 
-type Obj = Record<string, unknown>;
-const isObject = (value: unknown): value is Obj =>
+export type Obj = Record<string, unknown>;
+export const isObject = (value: unknown): value is Obj =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 export type JsonRead =
@@ -522,11 +522,13 @@ export interface Manifest {
    */
   statusline?: { createdFile: boolean; created: string[]; script?: string };
   mcp?: Record<string, { createdFile: boolean; createdKey: boolean }>;
+  /** What `session-guard install` created in the settings file, so `uninstall` leaves what was the person's. */
+  guard?: { createdFile: boolean; created: string[] };
 }
 
-const emptyManifest = (): Manifest => ({ v: 1 });
+export const emptyManifest = (): Manifest => ({ v: 1 });
 
-function manifestFrom(value: Obj): Manifest {
+export function manifestFrom(value: Obj): Manifest {
   const out = emptyManifest();
   const s = value.statusline;
   if (isObject(s)) {
@@ -534,6 +536,13 @@ function manifestFrom(value: Obj): Manifest {
       createdFile: s.createdFile === true,
       created: Array.isArray(s.created) ? s.created.filter((x): x is string => typeof x === 'string') : [],
       ...(typeof s.script === 'string' ? { script: s.script } : {}),
+    };
+  }
+  const g = value.guard;
+  if (isObject(g)) {
+    out.guard = {
+      createdFile: g.createdFile === true,
+      created: Array.isArray(g.created) ? g.created.filter((x): x is string => typeof x === 'string') : [],
     };
   }
   if (isObject(value.mcp)) {
@@ -547,14 +556,14 @@ function manifestFrom(value: Obj): Manifest {
 
 const digest = (text: string): string => createHash('sha256').update(text).digest('hex');
 
-const manifestEmpty = (m: Manifest): boolean =>
-  m.statusline === undefined && (m.mcp === undefined || Object.keys(m.mcp).length === 0);
+export const manifestEmpty = (m: Manifest): boolean =>
+  m.statusline === undefined && m.guard === undefined && (m.mcp === undefined || Object.keys(m.mcp).length === 0);
 
 // --------------------------------------------------------------------------
 // The CLI this will keep running
 // --------------------------------------------------------------------------
 
-const q = (text: string): string => `'${text}'`;
+export const q = (text: string): string => `'${text}'`;
 
 /** A path that can sit inside single quotes, in a shell string and in a crontab. */
 export function quotable(path: string): boolean {
@@ -861,10 +870,10 @@ const inspected = (s: ItemStatus, install: Plan | null = null, uninstall: Plan |
   uninstall,
 });
 
-const NEW_FORMAT: Format = { indent: '  ', eol: '\n', final: true };
+export const NEW_FORMAT: Format = { indent: '  ', eol: '\n', final: true };
 
-function jsonChange(
-  item: Item,
+export function jsonChange(
+  item: Item | 'session-guard',
   target: string,
   read: JsonRead,
   next: Obj | null,
@@ -1242,7 +1251,7 @@ export interface RunOptions {
   decide: (item: Item, changes: Change[]) => boolean | Promise<boolean>;
 }
 
-function failure(ctx: Ctx, error: unknown): Finding {
+export function failure(ctx: Ctx, error: unknown): Finding {
   if (error instanceof RefusedWrite) {
     return {
       code: `write.${error.reason}` as ProactiveCode,

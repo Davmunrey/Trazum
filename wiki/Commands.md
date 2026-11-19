@@ -2,7 +2,7 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 57 commands
+## The 58 commands
 
 | Command | What it answers |
 |---|---|
@@ -42,6 +42,7 @@
 | [`trazum rollup`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
 | [`trazum weekly`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-week-written-down-trazum-weekly) | What did the week cost, what moved, and what should change first? *The bill for seven days, against the seven before, and three ranked changes, each a projection that says so. A file or stdout; the Action posts it where you name.* |
 | [`trazum proactive`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#speaking-first-trazum-proactive) | What speaks without being asked, and is it on? *Turns on the status line, a scheduled watch and the MCP server, one asked-for item at a time, and turns them off again.* |
+| [`trazum session-guard`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#a-spend-limit-for-a-session-trazum-session-guard) | Will a Claude Code session stop at a dollar figure I set? *A hook that warns once and then stops, at two thresholds with no defaults, in API-equivalent cost. Reads only the session's transcript.* |
 | [`trazum pulse`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum position`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
 | [`trazum receipt`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#a-figure-that-still-answers-elsewhere-trazum-receipt) | What did this cost, in a form that still answers when read somewhere else? *Counts, and the money split so it can be added up rather than believed. No prompt text, no answers, no paths: there is no field for them.* |
