@@ -39,7 +39,7 @@ ${bold('USO')}
   trazum history <dir-de-informes-guardados> [opciones]
   trazum connect <provider> [opciones]
   trazum store [--prune] [opciones]
-  trazum watch [--once | --interval 15m] [opciones]
+  trazum watch [--once | --interval 15m] [--sessions] [--notify] [opciones]
   trazum serve [--port <n> | --socket <ruta>]
   trazum diff <antes> <después> [opciones]
   trazum diff --all <dir> <dir> [opciones]
@@ -967,6 +967,19 @@ ${bold('OPCIONES DE watch')}
                               porque las URLs acaban en logs e historiales.
   --payload <fichero>         Evalúa un payload de uso que ya tengas, en vez
                               del almacén.
+  --sessions                  Vigila las sesiones que Claude Code, Codex y
+                              Gemini CLI guardan en esta máquina, las que
+                              \`bill\` lee sin ruta, en vez del almacén. No
+                              necesita configuración. Repite \`--sessions\` en
+                              cada ejecución: lleva su propio registro de lo
+                              que ya se reportó.
+  --notify                    Muestra además una notificación de escritorio de
+                              lo que acaba de cruzar: osascript en macOS,
+                              notify-send en Linux, un aviso de PowerShell en
+                              Windows, sin instalar nada. Lleva la frase que se
+                              imprime aquí y nada más. Desactivada salvo que la
+                              pidas; si la máquina no tiene ninguna, lo dice y
+                              los demás transportes siguen.
   --json                      La vuelta como datos: cruces, abstenciones, hueco.
 
   Evalúa los gates de gasto de tu configuración (maxUsd, maxDayUsd,
@@ -3481,6 +3494,15 @@ ${bold('EJEMPLOS')}
     webhookFailed: (status) =>
       `El webhook no se entregó (${status}). El cruce sigue en el código de salida y en la salida de arriba: que un receptor esté caído no puede ser el fallo más silencioso de la sala.`,
     watching: (minutes) => `Vigilando cada ${minutes} minutos. Ctrl-C lo para.`,
+    readingSessions: (agent, dir) => `Vigilando las sesiones de ${agent} en ${dir}`,
+    sessionsAndPayload: () =>
+      '--sessions lee las sesiones de esta máquina y --payload lee el fichero que nombras. Una vuelta tiene una sola fuente: da una de las dos.',
+    noSessionUsage: () =>
+      'Las sesiones encontradas todavía no tienen un uso al que ponerle precio. Vigilar la nada reportaría que todo está bien, así que se rechaza en vez de aprobarse.',
+    notifyUnavailable: (command) =>
+      `--notify pidió una notificación de escritorio, y esta máquina no tiene ${command}, así que no se envió ninguna. El código de salida, la salida de arriba y --webhook siguen llevando el cruce.`,
+    notifyFailed: (command, why) =>
+      `${command} no quiso mostrar la notificación (${why}), normalmente porque nadie ha iniciado sesión en un escritorio. El cruce sigue en el código de salida y en la salida de arriba.`,
   },
 
   store: {

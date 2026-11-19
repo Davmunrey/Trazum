@@ -17,7 +17,7 @@ answer runs out.
 | --- | --- | --- |
 | Measurements arriving on their own | `trazum connect <provider>`, idempotent over overlapping windows | The scheduler |
 | A crossing judged the afternoon it happens | `trazum watch --once`, whose state file survives a restart | The scheduler |
-| An alert reaching a person | A non-zero exit code, `--json` on stdout, `--webhook <url>` | The inbox, the channel, the URL |
+| An alert reaching a person | A non-zero exit code, `--json` on stdout, `--webhook <url>`, and `--notify` for a desktop notification | The inbox, the channel, the URL |
 | Knowing the scheduler itself stopped | `trazum pulse --max-stale-hours <n>` | Somewhere that already runs on a schedule — your CI |
 
 **These CLI schedules require no Trazum account or hosted control plane.**
@@ -45,6 +45,23 @@ Its state file (`.trazum/watch.json`) is what makes a restart honest. Without
 it a resumed watcher re-alerts on yesterday's crossing — noise nobody reads —
 and implies it was watching the whole time, which is a claim it cannot make.
 With it, the crossing stays quiet and the unwatched stretch gets named once.
+
+**With no store at all**, `trazum watch --sessions --once` judges the sessions
+Claude Code, Codex and Gemini CLI keep on this machine, the ones `trazum bill`
+reads, against the same budgets. Nothing is pulled and nothing is kept but that
+state file, which records the sessions' crossings apart from the store's. A
+crontab line for it is yours to write (`proactive on` writes the store's):
+
+```
+17 * * * * cd /srv/app && trazum watch --sessions --once --notify
+```
+
+`--notify` shows a desktop notification for what is new, through `osascript`,
+`notify-send` or a PowerShell toast, whichever the machine has. A cron job has
+no desktop session on Linux unless you hand it one (`DISPLAY` or
+`DBUS_SESSION_BUS_ADDRESS`), and when the notifier cannot show it the run says
+so and the exit code still carries the crossing. See
+[the command reference](commands.md#the-afternoon-it-happened-trazum-watch).
 
 **3. Keep.** `trazum store --prune --keep <n>` bounds the file a year of this
 produces. Nothing here needs the raw logs, which is what the privacy story

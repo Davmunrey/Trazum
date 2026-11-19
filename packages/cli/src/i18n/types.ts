@@ -2124,6 +2124,16 @@ export interface CliMessages {
     allWithin(gates: string): string;
     webhookFailed(status: string): string;
     watching(minutes: string): string;
+    /** `--sessions` names each folder it reads, so nothing is read silently. */
+    readingSessions(agent: string, dir: string): string;
+    /** `--sessions` and `--payload` name two sources, and a cycle has one. */
+    sessionsAndPayload(): string;
+    /** Sessions were found and none of them holds usage a price can be put on. */
+    noSessionUsage(): string;
+    /** `--notify` on a platform with no notifier: said, and the other transports carry on. */
+    notifyUnavailable(command: string): string;
+    /** The notifier is there and refused, usually because nobody is at a desktop. */
+    notifyFailed(command: string, why: string): string;
   };
 
   /**
