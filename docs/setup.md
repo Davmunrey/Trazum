@@ -567,6 +567,73 @@ Vercel runs more than one instance, so if you enable sign-in there, set
 in memory and a browser is signed in against one and signed out against the
 next.
 
+#### Staging and production
+
+How this repository's own deployment, the Vercel project `trazum`, goes live.
+A copy of it can do the same.
+
+| Stage | What it is | How it gets there |
+| --- | --- | --- |
+| Preview | A build of a pull request, at its own address | Vercel's Git integration, on every push to a pull request |
+| Staging | A production build of main that does not serve the production domains | Vercel's Git integration, on every merge to main |
+| Production | The build the production domains serve | A person runs `Promote the web app` and approves it |
+
+**Staging is a staged production deployment.** On the Vercel project,
+*Settings, Environments, Production, Branch Tracking*, "Auto-assign Custom
+Production Domains" is off. Every merge to main is then built as a production
+deployment that waits, at its own generated address, for a promotion; Vercel
+calls it *Staged* ([Promoting Deployments](https://vercel.com/docs/deployments/promoting-a-deployment),
+read 2026-11-19). Open it from the deployment list, or from the Vercel status
+on the commit in main. It uses the production environment variables, so what
+is checked there is what production will run, and it reads the same services
+and data production does ([Environments](https://vercel.com/docs/deployments/environments),
+"Verifying a production build before promotion", read 2026-11-19).
+
+**Why this and not a custom environment.** A custom environment named
+`staging` (Pro and Enterprise) tracks a branch of its own with its own
+variables and domain, so it would need a staging branch next to main, and
+promoting from it rebuilds with the production variables. A staged
+production deployment is promoted without a rebuild: the bytes looked at on
+staging are the bytes that go live. It works with the Git integration as it
+is, on any plan. The cost is the one above: staging is not separated from
+production's data. When it has to be, a custom environment is the next step,
+and this table changes with it.
+
+**Promoting.** Actions, `Promote the web app`, *Run workflow* from main, with
+`promote` and the staged deployment's id (`dpl_...`) or its `*.vercel.app`
+address. The job waits for a reviewer on the `production` environment, then
+`scripts/promote-web.mjs` reads the deployment and refuses it unless it is a
+ready, staged production build of this project. A preview is refused because
+Vercel would rebuild it with production variables, a build nobody looked at;
+one that has served production is refused because Vercel promotes a
+deployment once. Then it asks Vercel to promote and waits until Vercel says
+the job succeeded. In the dashboard the same is the deployment's menu,
+*Promote*.
+
+**Rolling back.** The fastest way is the dashboard: the project's production
+deployment, *Instant Rollback*, which puts the domains back on an earlier
+production build without a rebuild ([Instant Rollback](https://vercel.com/docs/instant-rollback),
+read 2026-11-19). On Hobby only the previous production deployment is
+eligible; on Pro, any that served production. The workflow does the same
+with `rollback` and the earlier deployment's id or address, behind the same
+approval.
+
+**After a rollback, check the toggle.** Vercel turns off automatic assignment
+of the production domains after a rollback, which staging already has off.
+The next promotion turns it back **on** (the same page, "Undo a rollback"),
+and from then on every merge to main goes straight to production. The
+workflow says so when it promotes after a rollback; turn "Auto-assign Custom
+Production Domains" off again, as above.
+
+**What holds it.** `.github/environments.json` states the `production`
+environment: a reviewer, main only, and the secrets `VERCEL_TOKEN` and
+`VERCEL_PROJECT_ID` (with `VERCEL_TEAM_ID` when the project belongs to a
+team), which are stored there and nowhere in this repository.
+`npm run environments` compares GitHub with the file. `web-promotion.test.js`
+holds the workflow to the approval and to main, and the script to what it
+refuses. Whether "Auto-assign Custom Production Domains" is off is a setting
+on Vercel that nothing here can read; it is checked by looking.
+
 ### Library
 
 ```ts

@@ -11,6 +11,7 @@ import { RULES } from '../dist/index.js';
 
 import { SPAWN_ENV } from '../../cli/test/env.mjs';
 import { sectionOf } from '../../../test-utils/section.mjs';
+import { baseOf, channelOf, recordedVersion } from '../../../scripts/npm-channel.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
@@ -642,8 +643,17 @@ describe('the record agrees with itself', () => {
     // section, or it does neither.
     const newest = releasedInChangelog[0];
     assert.ok(newest, 'the changelog has no released version at all');
+    // A `next` prerelease is cut on a branch and keeps the record of the
+    // release on latest (scripts/npm-channel.mjs): its manifests lead up to a
+    // version the changelog has not released yet.
+    const version = manifestOf('.').version;
+    if (channelOf(version) === 'next') {
+      assert.equal(recordedVersion(version), newest, 'a next tree reads another record than the changelog\'s newest release');
+      assert.ok(compareVersions(baseOf(version), newest) > 0, `${version} leads up to ${baseOf(version)}, which is not after the released ${newest}`);
+      return;
+    }
     assert.equal(
-      manifestOf('.').version,
+      version,
       newest,
       'the manifests and the changelog disagree about what the last release was',
     );
@@ -1147,7 +1157,7 @@ describe('a release cannot ship without notes', () => {
   it('the version in the manifests has a section', () => {
     // The check that matters: a version can be tagged only once somebody has
     // said, in prose, what is in it.
-    const version = manifestOf('.').version;
+    const version = recordedVersion(manifestOf('.').version);
     assert.ok(
       sections.includes(version),
       `RELEASES.md has no "## ${version}" section — write the notes before tagging`,
@@ -1171,7 +1181,7 @@ describe('a release cannot ship without notes', () => {
      * the point is that the file was *touched with intent*, not that it has
      * a particular shape.
      */
-    const version = manifestOf('.').version;
+    const version = recordedVersion(manifestOf('.').version);
     // Line comparison rather than a regex built from data — a version string
     // is trusted here, but CodeQL is right that escaping only the dots is the
     // habit that goes wrong the day the input is not.
@@ -1346,7 +1356,7 @@ describe('a release cannot ship without notes', () => {
      * the registry. Anyone reading `main` at X can install X. The two numbers
      * are the same number, or the file is lying.
      */
-    const version = manifestOf('.').version;
+    const version = recordedVersion(manifestOf('.').version);
     /*
      * The count is captured rather than written into the pattern. It read
      * `All three packages` for a hundred and four releases, so a fourth package
@@ -1379,7 +1389,7 @@ describe('a release cannot ship without notes', () => {
     // a new `Unreleased` above it. Anything else means the file drifted from
     // what is actually installable.
     const newest = sections[0];
-    const version = manifestOf('.').version;
+    const version = recordedVersion(manifestOf('.').version);
     assert.ok(
       newest === 'Unreleased' || newest === version,
       `the newest section is "${newest}", which is neither Unreleased nor ${version}`,
@@ -1430,7 +1440,7 @@ describe('a release cannot ship without notes', () => {
   it('the extractor returns that section and nothing after it', () => {
     // The workflow pipes this into `gh release create`. A bug that swallows the
     // next section publishes one release under another release's notes.
-    const version = manifestOf('.').version;
+    const version = recordedVersion(manifestOf('.').version);
     const result = spawnSync(process.execPath, [join(repoRoot, 'scripts/release-notes.mjs'), version], {
       encoding: 'utf8',
     });

@@ -11,6 +11,15 @@ name: Release
 # tags the merge commit, and creates the GitHub release, with no further human
 # step. A pushed tag still works and is the manual override; every other push
 # to main is skipped by the decide job in seconds.
+#
+# Two channels. A release (`X.Y.Z`) publishes to npm's `latest`, which every
+# `npm install` resolves. A next prerelease (`X.Y.Z-next.N`) is committed on a
+# branch, tagged `vX.Y.Z-next.N`, and publishes to `next` only: the same gate,
+# the same `verify`, every upload with `--tag next`, and none of what a
+# release on `latest` adds (no GitHub release, no files, no MCP listing).
+# `scripts/npm-channel.mjs` decides which, once, in `decide`; a prerelease on
+# main and a tag that does not name the manifests' version are refused there.
+# `npm-channel.test.js` holds every place below that reads the answer.
 on:
   push:
     tags: ['v*.*.*']
@@ -45,6 +54,7 @@ jobs:
       contents: read
     outputs:
       publish: ${{ steps.versions.outputs.publish }}
+      channel: ${{ steps.channel.outputs.channel }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -53,6 +63,14 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 22
+
+      # Which dist-tag this run publishes to, latest or next, on every run: the
+      # uploads take it as `--tag`, so a run with no answer must not reach
+      # them. It refuses a prerelease on main and a tag that does not name
+      # the manifests' version, which fails this job and so the release.
+      - name: Which npm channel?
+        id: channel
+        run: node scripts/npm-channel.mjs
 
       # The same preflight the release job runs before uploading, used here as
       # the routing decision. Dependency-free, so no install is needed. On a
@@ -67,8 +85,9 @@ jobs:
     name: Publish to npm
     needs: decide
     # Tags and dry runs always proceed; a push to main proceeds only when the
-    # manifests name a version the registry does not have.
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || needs.decide.outputs.publish == 'true'
+    # manifests name a version the registry does not have. And only on one of
+    # the two channels: an empty answer would be an upload with an empty --tag.
+    if: (needs.decide.outputs.channel == 'latest' || needs.decide.outputs.channel == 'next') && (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || needs.decide.outputs.publish == 'true')
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -237,6 +256,9 @@ jobs:
           # with the job's OIDC identity, which is independent of how the
           # upload authenticates. Evidence in docs/releasing.md, step 3.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # latest or next, from decide. Without --tag, npm moves latest to
+          # whatever it uploads, a prerelease included.
+          NPM_DIST_TAG: ${{ needs.decide.outputs.channel }}
         # Published from the package directory, not `-w @trazum/core` from the
         # root. With `-w`, npm builds the tarball with the README inside it (pack
         # --dry-run confirms it) but leaves the `readme` field of the version
@@ -246,7 +268,7 @@ jobs:
         # metadata. Provenance is unaffected: it is signed from the job's OIDC
         # identity and the Actions environment, not the cwd.
         working-directory: packages/core
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --tag "$NPM_DIST_TAG"
 
       # Second, and only if the first succeeded. @trazum/cli depends on
       # @trazum/core at an exact version, so publishing the CLI first would leave
@@ -256,10 +278,11 @@ jobs:
         env:
           # Same fallback as core's step, documented there.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_DIST_TAG: ${{ needs.decide.outputs.channel }}
         # From the package directory, so the README reaches the metadata — see
         # the note on core's step.
         working-directory: packages/cli
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --tag "$NPM_DIST_TAG"
 
       # Third, for the same reason the CLI is second: @trazum/mcp pins
       # @trazum/core at an exact version too, so publishing it before core exists
@@ -269,10 +292,11 @@ jobs:
         env:
           # Same fallback as core's step, documented there.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_DIST_TAG: ${{ needs.decide.outputs.channel }}
         # From the package directory, so the README reaches the metadata — see
         # the note on core's step.
         working-directory: packages/mcp
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --tag "$NPM_DIST_TAG"
 
       # Last, and the only one here that does not depend on @trazum/core at all:
       # it wraps a third-party tokenizer and is imported by nothing in this
@@ -289,10 +313,11 @@ jobs:
         env:
           # Same fallback as core's step, documented there.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_DIST_TAG: ${{ needs.decide.outputs.channel }}
         # From the package directory, so the README reaches the metadata — see
         # the note on core's step.
         working-directory: packages/tokenizer-openai
-        run: npm publish --provenance --access public
+        run: npm publish --provenance --access public --tag "$NPM_DIST_TAG"
 
       # A release is not the moment `npm publish` returns. It is the moment a
       # stranger typing `npm install` gets what RELEASES.md says they will, and
@@ -304,6 +329,9 @@ jobs:
       # package it cannot fetch.
       - name: npm actually serves every package
         if: github.event_name == 'push' && steps.versions.outputs.publish == 'true'
+        env:
+          # On next it waits for the next tag, and fails at once if latest moved.
+          NPM_DIST_TAG: ${{ needs.decide.outputs.channel }}
         run: node scripts/npm-serves.mjs
 
       # npm reports a write you are not authorised for as `404 Not Found`, which
@@ -347,8 +375,10 @@ jobs:
       # release whose notes were never written fails here rather than shipping
       # with a blank page. `publish.test.js` refuses the same thing earlier, at
       # the point of commit; this is the backstop for a tag pushed by hand.
+      # A release on latest only: a next has no notes in RELEASES.md, and a
+      # GitHub release would be marked the newest one.
       - name: Publish the GitHub release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && needs.decide.outputs.channel == 'latest'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -385,7 +415,7 @@ jobs:
       # retrigger this workflow, and a tag that already exists (a re-run) is
       # left as it is.
       - name: Publish the GitHub release and the tag (from main)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.versions.outputs.publish == 'true'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.versions.outputs.publish == 'true' && needs.decide.outputs.channel == 'latest'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -418,9 +448,10 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         env:
           TOKEN_VERDICT: ${{ steps.token.outputs.token }}
+          CHANNEL: ${{ needs.decide.outputs.channel }}
         run: |
-          node scripts/release-notes.mjs "$(node -p "require('./package.json').version")" > /dev/null
-          echo "Dry run — nothing published. Release notes present."
+          if [ "$CHANNEL" = "latest" ]; then node scripts/release-notes.mjs "$(node -p "require('./package.json').version")" > /dev/null; fi
+          echo "Dry run: nothing published. Release notes present, or not needed on next. A tag would publish to: $CHANNEL."
           echo "The npm token stored for uploads: ${TOKEN_VERDICT:-not checked}. See the step that asked, or the job summary, for what that means."
 
   # The files a person downloads from the release page instead of from a
@@ -451,7 +482,8 @@ jobs:
   assets:
     name: Attach the downloadable files to the release
     needs: [decide, release]
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # A release on latest: a next has no GitHub release to attach to.
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && needs.decide.outputs.channel == 'latest'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -529,7 +561,8 @@ jobs:
   mcp-registry:
     name: List on the MCP registry
     needs: [decide, release, assets]
-    if: github.event_name == 'push' && needs.decide.outputs.publish == 'true'
+    # Never for a next: the registry would list the prerelease as the server's newest version.
+    if: github.event_name == 'push' && needs.decide.outputs.publish == 'true' && needs.decide.outputs.channel == 'latest'
     runs-on: ubuntu-latest
     permissions:
       contents: read

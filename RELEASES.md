@@ -15,6 +15,15 @@ published to npm. It is a file on each release instead (see *What a release
 carries*, below), and no marketplace lists it: #640 stays open, and this file
 will say when a listing exists rather than implying it from the code.
 
+**A `next` prerelease is not a release, and is not listed here.** A version
+like `3.1.0-next.1` goes to npm's `next` tag, for whoever wants to try what is
+coming (`npm install @trazum/cli@next`), and never to `latest`, which is what
+the line above names and what `npm install @trazum/cli` gives you. A next gets
+no section in this file, no GitHub release and no MCP registry listing; the
+release it leads up to gets all three. On 2026-11-19 npm's dist-tags for
+`@trazum/cli` and `@trazum/core` named `latest` only: no next has been
+published. How one is cut is in `docs/releasing.md`, "A next prerelease".
+
 **Which credential authenticates those uploads is not stated here, because it
 is not established.** Provenance is signed with the job's OIDC identity however
 the upload authenticates, so the attestation answers a different question. The

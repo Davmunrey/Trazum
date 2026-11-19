@@ -48,15 +48,28 @@
  * against the commit, before anything is uploaded, which is the only moment it
  * can still be changed.
  *
+ * ## And on the `next` channel, that `latest` did not move
+ *
+ * A `next` prerelease is published with `--tag next` (`npm-channel.mjs`), so
+ * the tag waited for is `next`, and `latest` must not name the prerelease. If
+ * it does, every stranger's install has just become a test build, and waiting
+ * will not change that: the job fails at once and says how to put `latest`
+ * back. A version waited for under a tag that is not its channel is refused
+ * before anything is asked, so a stable release can never be checked against
+ * `next` and pass.
+ *
  * Usage: node scripts/npm-serves.mjs
  *
  * Environment:
+ *   NPM_DIST_TAG            the tag the release published under: latest (default) or next
  *   NPM_SERVES_TIMEOUT_MS   how long to keep asking (default 600000)
  *   NPM_SERVES_INTERVAL_MS  how long to wait between asks (default 15000)
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { CHANNELS, channelOf } from './npm-channel.mjs';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -83,8 +96,8 @@ export function publishablePackages(root = repoRoot) {
     .map((manifest) => ({ name: manifest.name, version: manifest.version }));
 }
 
-/** What the registry currently calls `latest` for one package, or `null`. */
-export async function servedVersion(name, fetchImpl = fetch) {
+/** What the registry currently calls `tag` (`latest` unless said) for one package, or `null`. */
+export async function servedVersion(name, fetchImpl = fetch, tag = 'latest') {
   /*
    * The dist-tags endpoint rather than the packument. It is small, it is the
    * value `npm install` resolves, and it is not the document that stays cached
@@ -94,7 +107,7 @@ export async function servedVersion(name, fetchImpl = fetch) {
   const response = await fetchImpl(url, { headers: { 'cache-control': 'no-cache' } });
   if (!response.ok) return null;
   const tags = await response.json();
-  return typeof tags.latest === 'string' ? tags.latest : null;
+  return typeof tags[tag] === 'string' ? tags[tag] : null;
 }
 
 /** Where the registry serves one version's tarball: the address an install fetches. */
@@ -117,12 +130,38 @@ export async function tarballServed(name, version, fetchImpl = fetch) {
  * when nothing does: the dist-tag first, because a tarball nobody is pointed
  * at is not the release, and then the tarball it points at.
  */
-export async function waitingFor(name, version, fetchImpl = fetch) {
-  const served = await servedVersion(name, fetchImpl).catch(() => null);
-  if (served !== version) return `is served at ${served ?? 'nothing'}, waiting for ${version}`;
+export async function waitingFor(name, version, fetchImpl = fetch, tag = 'latest') {
+  const served = await servedVersion(name, fetchImpl, tag).catch(() => null);
+  if (served !== version) return `is served at ${served ?? 'nothing'}, waiting for ${version} on ${tag}`;
   const there = await tarballServed(name, version, fetchImpl).catch(() => false);
-  if (!there) return `is latest at ${version}, and its tarball cannot be downloaded yet`;
+  if (!there) return `is ${tag} at ${version}, and its tarball cannot be downloaded yet`;
   return null;
+}
+
+/**
+ * Whether a prerelease reached `latest`: true when the registry's `latest`
+ * names `version`. Asked only on the `next` channel. An unreachable registry
+ * is not evidence either way, so it answers false and the wait above, which
+ * needs the registry too, is what fails.
+ */
+export async function latestMovedTo(name, version, fetchImpl = fetch) {
+  const latest = await servedVersion(name, fetchImpl, 'latest').catch(() => null);
+  return latest === version;
+}
+
+/**
+ * The tag to wait for, from `NPM_DIST_TAG`, checked against every package's
+ * version: a stable version under `next`, or a prerelease under `latest`, is
+ * the mistake this whole channel exists to prevent, and it is refused here
+ * rather than waited for.
+ */
+export function tagFor(packages, requested = 'latest') {
+  if (!CHANNELS.includes(requested)) throw new Error(`NPM_DIST_TAG is ${JSON.stringify(requested)}; it is one of ${CHANNELS.join(', ')}`);
+  for (const pkg of packages) {
+    const channel = channelOf(pkg.version);
+    if (channel !== requested) throw new Error(`${pkg.name}@${pkg.version} belongs on ${channel}, and this run says it published to ${requested}`);
+  }
+  return requested;
 }
 
 /**
@@ -144,17 +183,31 @@ async function main() {
     console.error('::error::no publishable packages found — has the workspace layout moved?');
     process.exit(1);
   }
+  let tag;
+  try {
+    tag = tagFor(wanted, process.env.NPM_DIST_TAG || 'latest');
+  } catch (error) {
+    console.error(`::error::${error.message}`);
+    process.exit(1);
+  }
 
   const deadline = Date.now() + timeoutMs;
   const pending = new Map(wanted.map((pkg) => [pkg.name, pkg.version]));
   /** Why each package is still pending, as of the last time it was asked. */
   const why = new Map();
 
-  console.log(`Waiting for npm to serve ${wanted.map((p) => `${p.name}@${p.version}`).join(', ')}`);
+  console.log(`Waiting for npm to serve ${wanted.map((p) => `${p.name}@${p.version}`).join(', ')} on ${tag}`);
 
   while (pending.size > 0) {
     for (const [name, version] of [...pending]) {
-      const reason = await waitingFor(name, version);
+      const reason = await waitingFor(name, version, fetch, tag);
+      if (reason === null && tag === 'next' && (await latestMovedTo(name, version))) {
+        console.error(
+          `::error::${name}@${version} is a next prerelease and npm serves it as latest. Every install now gets it.` +
+            ` Put latest back on the version RELEASES.md says is on npm: npm dist-tag add ${name}@<that version> latest`,
+        );
+        process.exit(1);
+      }
       if (reason === null) {
         console.log(`  ${name} is served at ${version}, tarball and all`);
         pending.delete(name);

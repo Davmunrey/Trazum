@@ -678,6 +678,9 @@ An approval with nothing in it is not one.
   two differ, a pull request that touches the file gets that in its log, and
   the `Repository settings` workflow fails every Monday they do.
   [SECURITY.md](SECURITY.md), "Needs an admin to switch on", has the rest.
+  The GitHub Environments that publish to npm and promote the web app are held
+  the same way: `.github/environments.json`, `npm run environments`, and
+  `npm run environments -- apply --yes` by an admin.
 
 ## Measuring the token band
 

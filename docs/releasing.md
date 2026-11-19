@@ -102,6 +102,20 @@ also where a required reviewer goes if you ever want publishing to need a second
 pair of eyes — the environment gate runs before the job starts, so an approval
 there blocks the publish rather than interrupting it halfway.
 
+**Since 2026-11-19 the environment is stated in the repository, with a
+required reviewer.** `.github/environments.json` holds `release` beside
+`staging` and `production` (the web app's), each with its reviewers, the
+branches and tags that may use it, and the names of its secrets, never their
+values. `npm run environments` compares GitHub with the file, and
+`npm run environments -- apply --yes`, run by an admin with their own `gh`,
+makes GitHub match it; the weekly `Repository settings` run compares and never
+writes, the way it does for the branch ruleset. `release` admits any branch on
+purpose: a dry run from a release pull request's branch is how the token is
+checked before the merge (below), and that run needs the environment too. With
+a reviewer on it, every run of the `Publish to npm` job waits for an approval,
+the dry runs included, and `decide` does not, so an ordinary merge to main
+queues behind nothing.
+
 ### 3. Configure this repository as a trusted publisher — **the token is what publishes**
 
 **Read this first.** On 2026-08-29 the merges of the 1.85.0 and 1.86.0 release
@@ -497,6 +511,67 @@ the wrong release.
 other order leaves a window where installing the CLI fails on a dependency that
 does not exist yet.
 
+## A next prerelease
+
+A `next` is a build of what is coming, on npm, for whoever asks for it:
+`npm install @trazum/cli@next`. It never moves `latest`, which is what
+`npm install @trazum/cli` resolves, and it changes nothing on the record:
+no section in `RELEASES.md`, no heading in `CHANGELOG.md`, no pricing dataset,
+no GitHub release, no files, no MCP registry listing.
+
+Its version is `MAJOR.MINOR.PATCH-next.N`, leading up to the release it
+previews: `3.1.0-next.1`, then `3.1.0-next.2`, then `3.1.0` itself through the
+ordinary release pull request. No other prerelease word is published.
+`scripts/npm-channel.mjs` decides the channel from the version and refuses
+anything else.
+
+```bash
+git fetch origin
+git switch -c next/3.1.0-next.1 origin/main
+npm run build
+node scripts/prepare-release.mjs 3.1.0-next.1   # the versions only
+npm run verify
+git commit -as -m "3.1.0-next.1"
+git tag v3.1.0-next.1
+git push origin v3.1.0-next.1                   # the tag, not the branch
+```
+
+`prepare-release.mjs` with a `-next.N` version moves the versions that move in
+lockstep (the manifests, each `@trazum/core` pin, the lockfile, `server.json`,
+the MCP handshake, the plugin manifest and the Gemini extension) and nothing
+else. The documents keep naming the release on `latest`, and the tests that
+hold a document to "the current version" read that release on a next's tree
+(`recordedVersion` in `npm-channel.mjs`), so the tree passes the same `verify`
+a release does.
+
+The tag starts the same Release workflow as a release, and goes through the
+same gate: the approval on `release`, the tag and the manifests agreeing, the
+whole `verify`, `verify:packages`, the version preflight. Then each package is
+uploaded with `--tag next`, and *npm actually serves every package* waits for
+`next` to name the version and fails at once if `latest` does. The GitHub
+release, the files and the listing are skipped.
+
+**Never merge the branch.** Main's manifests name the release on `latest`, and
+a merge to main publishes whatever version main names. A prerelease version on
+main is refused by `npm-channel.mjs` before the job that holds the token
+starts, so a merged next fails loudly rather than publishing, and the fix is to
+revert the merge. The branch can be deleted once the tag is pushed: the tag
+holds the commit.
+
+What holds it, in `npm-channel.test.js`: the table of versions and channels; a
+prerelease refused on main; a tag refused when it does not name the manifests'
+version, in both directions; every `npm publish` in `release.yml` passing
+`--tag "$NPM_DIST_TAG"` from `decide`; the wait for npm reading the same tag;
+and the GitHub release, the `assets` job and the `mcp-registry` job gated on
+`latest`.
+
+**If `latest` moved anyway**, the job says so and names the command. Put
+`latest` back on the version `RELEASES.md` says is on npm, for each package:
+
+```bash
+npm dist-tag add @trazum/cli@<the version RELEASES.md names> latest
+```
+
 ## The files a release carries
 
 Besides the packages, a release carries `trazum-vscode-<version>.vsix`,
@@ -762,6 +837,9 @@ Run the workflow from the Actions tab. `workflow_dispatch` is **dry-run only** �
 every publish step is gated on a tag, so a manual run does the install, the
 `verify`, the `npm pack --dry-run` and the bill of materials, and stops. A publish reachable without a
 tag would be a release with no version to check against.
+
+A dry run also says which channel a tag of that tree would publish to,
+`latest` or `next`, in *Which npm channel?* and on its last line.
 
 Two of its first steps are about credentials and are worth a dry run on their
 own: *Can this workflow authenticate to npm?* (the trusted publisher) and *Is

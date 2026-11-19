@@ -68,7 +68,8 @@ describe('the release check knows what this repository publishes', () => {
      */
     const packages = publishablePackages();
     for (const entry of packages) {
-      assert.match(entry.version, /^\d+\.\d+\.\d+$/, `${entry.name} has no version to wait for`);
+      // A release, or a next prerelease (scripts/npm-channel.mjs): the two shapes that publish.
+      assert.match(entry.version, /^\d+\.\d+\.\d+(?:-next\.\d+)?$/, `${entry.name} has no version to wait for`);
     }
   });
 
@@ -231,7 +232,7 @@ describe('a version is served when its tarball is, not when its name is', () => 
   it('is what the wait loop uses, and the failure names which half is missing', () => {
     const source = readFileSync(new URL('../../../scripts/npm-serves.mjs', import.meta.url), 'utf8');
     const main = source.slice(source.indexOf('async function main()'));
-    assert.match(main, /await waitingFor\(name, version\)/);
+    assert.match(main, /await waitingFor\(name, version, fetch, tag\)/);
     assert.doesNotMatch(main, /await servedVersion\(/, 'the loop still decides on the dist-tag alone');
     assert.match(main, /\$\{why\.get\(name\)\}/);
   });

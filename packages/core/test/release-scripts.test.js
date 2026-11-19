@@ -7,6 +7,7 @@ import { describe, it } from 'node:test';
 
 import { SPAWN_ENV } from '../../cli/test/env.mjs';
 import { CREDENTIALS_FILE, WARN_DAYS, npmTokenStanding, recordedNpmTokenExpiry } from '../../../scripts/npm-token-expiry.mjs';
+import { baseOf, recordedVersion } from '../../../scripts/npm-channel.mjs';
 
 /**
  * The two scripts that keep a release from being cut with something left
@@ -26,7 +27,10 @@ const ROOT = new URL('../../../', import.meta.url).pathname;
 const script = (name, ...args) =>
   spawnSync(process.execPath, [join(ROOT, 'scripts', name), ...args], { cwd: ROOT, env: SPAWN_ENV, encoding: 'utf8', timeout: 60000 });
 const current = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
-const [major, minor, patch] = current.split('.').map(Number);
+// On a `next` tree the manifests name the prerelease and the record names the
+// release on latest (scripts/npm-channel.mjs); the release after either is a patch on the base.
+const recordedRelease = recordedVersion(current);
+const [major, minor, patch] = baseOf(current).split('.').map(Number);
 const nextPatch = `${major}.${minor}.${patch + 1}`;
 
 describe('prepare-release', () => {
@@ -56,7 +60,7 @@ describe('prepare-release', () => {
       'plugin/.claude-plugin/plugin.json',
     ];
     const dataset = 'apps/web/public/datasets/pricing';
-    const files = [...manifests, 'packages/mcp/server.json', 'packages/mcp/src/index.ts', 'gemini-extension.json', 'docs/agents.md', 'package-lock.json', 'CHANGELOG.md', 'RELEASES.md', `${dataset}/${current}.json`];
+    const files = [...manifests, 'packages/mcp/server.json', 'packages/mcp/src/index.ts', 'gemini-extension.json', 'docs/agents.md', 'package-lock.json', 'CHANGELOG.md', 'RELEASES.md', `${dataset}/${recordedRelease}.json`];
     const dir = mkdtempSync(join(tmpdir(), 'trazum-release-'));
     try {
       for (const path of files) {
@@ -105,10 +109,10 @@ describe('prepare-release', () => {
       // #784: the dataset of the new version, compared with the one published before it, and the old one untouched.
       const written = JSON.parse(readFileSync(join(dir, dataset, `${nextPatch}.json`), 'utf8'));
       assert.equal(written.version, nextPatch);
-      assert.equal(written.changes.since, current, 'the new document is not compared with the last published one');
-      assert.equal(readFileSync(join(dir, dataset, `${current}.json`), 'utf8'), readFileSync(join(ROOT, dataset, `${current}.json`), 'utf8'), 'a published version was rewritten');
+      assert.equal(written.changes.since, recordedRelease, 'the new document is not compared with the last published one');
+      assert.equal(readFileSync(join(dir, dataset, `${recordedRelease}.json`), 'utf8'), readFileSync(join(ROOT, dataset, `${recordedRelease}.json`), 'utf8'), 'a published version was rewritten');
       const datasets = JSON.parse(readFileSync(join(dir, dataset, 'changelog.json'), 'utf8'));
-      assert.deepEqual(datasets.versions.map((entry) => entry.version), [nextPatch, current]);
+      assert.deepEqual(datasets.versions.map((entry) => entry.version), [nextPatch, recordedRelease]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -184,6 +188,35 @@ describe('prepare-release', () => {
     assert.equal(fine.status, 0, fine.stderr);
     assert.equal(fine.version, nextPatch);
     assert.doesNotMatch(fine.stderr, /npm token/);
+  });
+
+  it('prepares a next prerelease by moving the lockstep versions and leaving the record alone', () => {
+    // A next is published from its tag and never merged (docs/releasing.md, "A next prerelease"),
+    // so the changelog, the release notes, the install table and the pricing dataset keep the release on latest.
+    const next = `${major}.${minor + 1}.0-next.1`;
+    const result = script('prepare-release.mjs', next, '--dry-run');
+    assert.equal(result.status, 0, result.stderr);
+    for (const path of [
+      'package.json', 'packages/core/package.json', 'packages/cli/package.json', 'packages/mcp/package.json',
+      'packages/tokenizer-openai/package.json', 'apps/web/package.json', 'apps/vscode/package.json',
+      'packages/mcp/server.json', 'packages/mcp/src/index.ts', 'plugin/.claude-plugin/plugin.json',
+      'gemini-extension.json', 'package-lock.json',
+    ]) {
+      assert.ok(result.stderr.includes(`would change ${path} (`), `${path} would be left behind`);
+    }
+    for (const path of ['CHANGELOG.md', 'RELEASES.md', 'docs/agents.md', 'apps/web/public/datasets/pricing/']) {
+      assert.ok(!result.stderr.includes(`would change ${path}`), `a next would change ${path}`);
+    }
+    assert.doesNotMatch(result.stderr, /Action pin ->/);
+    assert.match(result.stderr, /A next is published from its tag and never merged/);
+
+    // A prerelease of a version already released is not newer, and no other prerelease word is a version.
+    const behind = script('prepare-release.mjs', `${recordedRelease}-next.1`, '--dry-run');
+    assert.equal(behind.status, 1);
+    assert.match(behind.stderr, /is not newer than the current/);
+    const rc = script('prepare-release.mjs', `${major}.${minor + 1}.0-rc.1`, '--dry-run');
+    assert.equal(rc.status, 1);
+    assert.match(rc.stderr, /is not a version/);
   });
 
   it('refuses a version that is not newer, and one that is not a version', () => {
