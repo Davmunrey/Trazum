@@ -102,13 +102,19 @@ tarball, compares its sha512 with the one the registry publishes, and hashes it;
 `test/homebrew-formula.test.mjs` holds the file to what the script writes. The
 release workflow does not push it to the tap: that needs a token, and
 `docs/compliance/secret-rotation.md` covers none for it (#781 forbids asking for
-one). After a release, once npm serves the version:
+one). After a release, once npm serves the version **and every package it
+installs is a day old**:
 
 1. `node scripts/homebrew-formula.mjs --version <version>` in this repository,
    the digest of the tarball it fetched, from `sha256sum`, added to `SERVED` in
    `test/homebrew-formula.test.mjs`, and a pull request with both;
 2. copy `packaging/homebrew/trazum.rb` to `Formula/trazum.rb` of
    `Davmunrey/homebrew-trazum` and push;
+
+   The script refuses before the day is up and names the moment it may run:
+   Homebrew installs with `npm --min-release-age=1`, and a formula that names a
+   version npm published hours ago fails on every Mac with `ETARGET` until the
+   day has passed, as 3.0.1 did on 2026-11-19.
 3. on a Mac and on Linux, `brew install Davmunrey/trazum/trazum` and
    `trazum --version`.
 
