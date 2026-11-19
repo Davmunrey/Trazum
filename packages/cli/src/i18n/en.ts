@@ -781,6 +781,16 @@ ${bold('OPTIONS FOR check')}
                               loud; a list with nothing checkable passes. Budgets apply
                               per file as always; the baseline needs the whole repository
                               and is skipped, and says so.
+  --base <ref>                Also price each changed prompt on that commit and here:
+                              tokens, and its input cost a month at the calls a month
+                              "volumes" states for its label, or a call when none is
+                              stated. Each figure names its price and the day that
+                              price was read. The commit is read from this clone with
+                              git and never fetched; one that is not here is said.
+  --max-monthly-increase-usd <usd>
+                              With --base: fail when the prompts with a stated volume
+                              cost more than this many dollars a month more than on
+                              the base. Off unless given.
 
   Built for CI: exits with code 1 when the prompt busts the budget, so a
   template that grows unchecked breaks the build instead of the bill.
@@ -1153,6 +1163,9 @@ ${bold('CONFIG FILE')}
     labels    { "support-rag": "prompts/support.txt" }: which prompt file each
               usage-log label sends, so "trazum profile" can read the file and
               say why a failing cache fails
+    volumes   { "support-rag": 30000 }: calls a month for a label "labels"
+              maps, so "check --base" can price that prompt a month at a
+              time. A prompt with none is priced per call, and said
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } }: money budgets for
               "trazum profile", in dollars. A budgeted label with no calls in
               the log is reported as not measured, never as a pass
@@ -2996,6 +3009,47 @@ ${bold('EXAMPLES')}
       'The baseline gate is skipped under --files-from: it compares the whole repository against the committed record, and a partial list would read as removals. Budgets are checked per file as always; run "trazum check ." for the baseline.',
     exactCountsCost: (files) =>
       `Counting ${files} ${files === 1 ? 'file' : 'files'} through the API, one call each. This takes a moment.`,
+  },
+  againstBase: {
+    heading: (ref, sha) => `Against the base, ${ref} at ${sha}`,
+    columnTokens: () => 'Tokens, base → head',
+    columnCalls: () => 'Calls a month',
+    columnBase: () => 'Base',
+    columnHead: () => 'Head',
+    columnPrice: () => 'Price',
+    notStated: () => 'not stated',
+    perMonth: (usd) => `${usd} a month`,
+    perCall: (usd) => `${usd} a call`,
+    price: (perMTok, model, provider, readOn) =>
+      `${perMTok} per million input tokens, ${model}, ${provider} prices read ${readOn}`,
+    priceOverlay: (perMTok, model, readOn) =>
+      `${perMTok} per million input tokens, ${model}, local price overlay dated ${readOn}`,
+    promo: (until) => `promotional price until ${until}`,
+    totals: (base, head, change) =>
+      `The prompts with a stated volume: ${base} a month on the base, ${head} on the head (${change}).`,
+    perCallNote: (count) =>
+      `${count} changed ${count === 1 ? 'prompt has' : 'prompts have'} no stated volume, so ${count === 1 ? 'its cost is' : 'their cost is'} per call only. To price a month, map the prompt file under "labels" and state its calls a month under "volumes" in trazum.config.json.`,
+    inputOnly: () =>
+      'Input tokens at the input price, both sides at the same prices. Output is left out: a prompt edit does not set how much the model writes back.',
+    modelDefault: (model) =>
+      `Priced on Trazum's default model, ${model}, because the config sets no usage.model. Set it to price the model the prompts are sent to.`,
+    unchanged: (count) => `${count} ${count === 1 ? 'prompt is' : 'prompts are'} the same on both sides.`,
+    nothingChanged: () => 'No prompt here changed against the base.',
+    gateWithin: (change, limit) => `The monthly increase, ${change}, is within the limit of ${limit}.`,
+    gateBreached: (change, limit) => `The monthly increase, ${change}, is over the limit of ${limit}.`,
+    gateNotJudged: (count) =>
+      `The limit judges the prompts with a stated volume only: ${count} changed ${count === 1 ? 'prompt was' : 'prompts were'} not judged.`,
+    unavailable: (why, ref) =>
+      why === 'no-commit'
+        ? `The base, ${ref}, is not in this checkout, so nothing was compared. Nothing is fetched to find it. On GitHub Actions, give actions/checkout fetch-depth: 0.`
+        : why === 'not-a-repository'
+          ? `This is not a git repository, so there is no base to compare ${ref} with.`
+          : `git could not be run, so the base, ${ref}, was not read.`,
+    gateUnavailable: (limit) =>
+      `The monthly increase limit of ${limit} judged nothing, because the base could not be read, and a gate that judged nothing fails.`,
+    gateNeedsBase: () =>
+      '--max-monthly-increase-usd limits what a change adds to the monthly cost against a base, so it needs --base <ref>.',
+    noStdin: () => '--base reads the base side of a file from git, and standard input has no base side. Name the file.',
   },
   profile: {
     noTarget: () =>

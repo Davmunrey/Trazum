@@ -147,3 +147,36 @@ export async function walkPrompts(root: string, options: WalkOptions = {}): Prom
   files.sort();
   return { files, truncated };
 }
+
+/**
+ * Whether `walkPrompts` would list this path, without reading a directory.
+ *
+ * `trazum check --base` (#785) lists the base branch's files from git, not
+ * from the disk, and has to keep exactly the ones the walk would have kept
+ * at the head: a file the walk skips at the head and this kept at the base
+ * would read as a prompt the pull request deleted. So the walk's rules are
+ * stated a second time here, beside the walk, and `walk-ignore.test.js`
+ * holds the two to the same answer over one tree.
+ *
+ * `relPath` is relative to the walk root, with `/` separators. The cap on
+ * the number of files is the walk's business and is not judged here.
+ */
+export function walkIncludes(relPath: string, options: WalkOptions = {}): boolean {
+  const extensions = (options.extensions ?? DEFAULT_EXTENSIONS).map((value) => value.toLowerCase());
+  const maxDepth = options.maxDepth ?? MAX_WALK_DEPTH;
+  const ignore = options.ignore ?? [];
+  const excluded = (path: string): boolean =>
+    ignore.some((pattern) => matchGlob(pattern, path) || matchGlob(pattern, `${path}/`));
+
+  const segments = relPath.split('/');
+  const name = segments[segments.length - 1] ?? '';
+  if (segments.some((segment) => segment === '' || segment.startsWith('.'))) return false;
+  const directories = segments.slice(0, -1);
+  if (directories.length > maxDepth) return false;
+  for (let i = 0; i < directories.length; i++) {
+    if (SKIPPED_DIRECTORIES.has(directories[i]!)) return false;
+    if (excluded(directories.slice(0, i + 1).join('/'))) return false;
+  }
+  if (!extensions.includes(extname(name).toLowerCase())) return false;
+  return !excluded(relPath);
+}

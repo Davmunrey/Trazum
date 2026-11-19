@@ -377,6 +377,42 @@ export function contentAt(sha: string, repoPath: string, cwd: string): string | 
 }
 
 /**
+ * The full sha of the commit `ref` names in this checkout, or `null` when the
+ * checkout does not have it.
+ *
+ * `trazum check --base` (#785) reads the base branch from the clone the job
+ * already has, and never fetches: a commit that is not here is reported as
+ * not here, with what would bring it, and is never stood in for by the
+ * working tree. A ref that starts with a dash is refused before git sees it,
+ * because git would read it as an option. Unable to run git at all throws,
+ * for the reason `revisionsFor` does.
+ */
+export function commitOf(ref: string, cwd: string, spawn?: SpawnLike): string | null {
+  if (ref === '' || ref.startsWith('-')) return null;
+  const outcome = runGit(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], cwd, spawn);
+  if (!outcome.ran) throw new GitUnavailableError(outcome.detail);
+  const sha = outcome.stdout?.trim() ?? '';
+  return SHA.test(sha) ? sha : null;
+}
+
+/**
+ * Every file under `repoPath` at a commit, as paths from the repository root,
+ * or `null` when git could not answer.
+ *
+ * `repoPath` is relative to the repository root and `cwd` is that root; an
+ * empty `repoPath` means the whole tree. A file path lists that one file when
+ * it is there. NUL-separated output, so a name holding a newline is one name.
+ */
+export function filesAt(sha: string, repoPath: string, cwd: string): string[] | null {
+  if (!SHA.test(sha)) return null;
+  const args = ['ls-tree', '-r', '-z', '--name-only', '--full-tree', sha];
+  if (repoPath !== '') args.push('--', repoPath);
+  const out = git(args, cwd);
+  if (out === null) return null;
+  return out.split('\u0000').filter((name) => name !== '');
+}
+
+/**
  * The name the file had at each commit, keyed by sha.
  *
  * One `git log` rather than one per revision, and it replaces a version that

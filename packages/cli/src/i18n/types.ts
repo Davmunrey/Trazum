@@ -1345,6 +1345,43 @@ export interface CliMessages {
   };
 
   /**
+   * `check --base` (#785): each changed prompt's cost on the base branch and
+   * on the head. One section for the terminal and the Markdown report, so
+   * the two say the same thing about the same figures.
+   */
+  againstBase: {
+    /** `ref` as given, `sha` its short commit. */
+    heading(ref: string, sha: string): string;
+    columnTokens(): string;
+    columnCalls(): string;
+    columnBase(): string;
+    columnHead(): string;
+    columnPrice(): string;
+    notStated(): string;
+    perMonth(usd: string): string;
+    perCall(usd: string): string;
+    /** Every figure's price, and who said so on which day. */
+    price(perMTok: string, model: string, provider: string, readOn: string): string;
+    priceOverlay(perMTok: string, model: string, readOn: string): string;
+    promo(until: string): string;
+    totals(base: string, head: string, change: string): string;
+    perCallNote(count: number): string;
+    inputOnly(): string;
+    modelDefault(model: string): string;
+    unchanged(count: number): string;
+    nothingChanged(): string;
+    gateWithin(change: string, limit: string): string;
+    gateBreached(change: string, limit: string): string;
+    gateNotJudged(count: number): string;
+    unavailable(why: 'no-git' | 'not-a-repository' | 'no-commit', ref: string): string;
+    gateUnavailable(limit: string): string;
+    /** `--max-monthly-increase-usd` compares with a base, so it needs one. */
+    gateNeedsBase(): string;
+    /** Standard input has no base side to read. */
+    noStdin(): string;
+  };
+
+  /**
    * The cost baseline: recording one, and reporting drift from it.
    *
    * Separate from `check` because it answers a different question — "did this

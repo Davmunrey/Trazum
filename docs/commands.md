@@ -490,6 +490,70 @@ tool could tell you.
 It does not follow symlinks, caps how deep and how wide it walks, and says so
 when a cap stopped it early.
 
+### Against the base branch: `--base`
+
+`--base <ref>` adds the question a pull request asks: what does this change do
+to each prompt's cost? The prompts under the target are read at that commit
+and here, and every one that differs, was added or was removed gets a row:
+its tokens on both sides and its input cost on both sides.
+
+```bash
+trazum check prompts --base main --max-monthly-increase-usd 100
+```
+
+Against a fixture repository whose `support` label states 30,000 calls a
+month, `fresh` 1,000, and `triage` none:
+
+```
+Against the base, main at a1a769a ────────────────────────────────────────
+  The monthly increase, +$150.50, is over the limit of $100.00.
+
+  prompts/new.txt
+    Tokens, base → head: – → 100 · Calls a month: 1,000
+    Base: – · Head: $0.5000 a month · Change: +$0.5000 a month
+    $5.00 per million input tokens, Claude Opus 5, anthropic prices read
+    2026-11-16
+
+  prompts/support.txt
+    Tokens, base → head: 1,000 → 2,000 · Calls a month: 30,000
+    Base: $150.00 a month · Head: $300.00 a month · Change: +$150.00 a month
+    $5.00 per million input tokens, Claude Opus 5, anthropic prices read
+    2026-11-16
+
+  prompts/triage.txt
+    Tokens, base → head: 400 → 200 · Calls a month: not stated
+    Base: $0.00200 a call · Head: $0.00100 a call · Change: -$0.00100 a call
+    $5.00 per million input tokens, Claude Opus 5, anthropic prices read
+    2026-11-16
+
+  The prompts with a stated volume: $150.00 a month on the base, $300.50 on
+  the head (+$150.50).
+```
+
+One row, a removed prompt, and the notes under the totals are left out of the
+quote. Four rules hold it:
+
+- **The base is read from the clone with `git show`, never fetched.** A ref
+  the clone does not have is said, and never replaced by the working tree,
+  which would compare the head with itself and call every change free. Paths
+  the directory walk would skip are skipped at the base too.
+- **A month is the calls somebody stated.** `volumes` in `trazum.config.json`
+  gives calls a month per label, and `labels` says which prompt file the label
+  sends. With no stated volume a prompt is priced per call, and the report
+  counts how many are. Nothing is assumed, not even one call.
+- **Every row names its price and the day it was read**: the input price per
+  million tokens, the model, and the provider's review date in the catalogue,
+  or a local overlay's own date. Both sides are priced at the same prices.
+  Output tokens are left out, because a prompt edit does not set them.
+- **`--max-monthly-increase-usd` is off unless given.** It fails the run when
+  the prompts with a stated volume cost more than that much more a month on
+  the head, names the changed prompts it could not judge, and fails when the
+  base could not be read: a gate that judged nothing is not a pass.
+
+`--json` carries the same comparison as `againstBase`, and `--markdown-out`
+puts its table at the top of the report, which is how the Action's pull
+request comment shows it ([CI](ci.md#what-the-change-does-to-each-prompts-monthly-cost)).
+
 `--markdown-out <file>` writes the same report as GitHub-flavoured markdown, for
 a step summary or a PR comment. `check`, `diff`, `rank`, `blame` and `profile`
 all take it, and a failure to write it is reported rather than turned into a

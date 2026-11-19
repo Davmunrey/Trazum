@@ -151,6 +151,7 @@ import {
   positionAt,
   positionReport,
   PRICING_LAST_REVIEWED,
+  modelFrom,
   reviewedForModels,
   PROVIDER_REVIEWED,
   STALE_PRICING_DAYS,
@@ -270,6 +271,8 @@ import {
 } from './git.js';
 import type { Revision } from './git.js';
 import { currentFileDigests, planEditsFor } from './plan-edits.js';
+import { baseGateFails, priceAgainstBase, readBothSides, volumeFor } from './base-cost.js';
+import type { BaseCostReport } from './base-cost.js';
 import type { EditSkip } from './plan-edits.js';
 import { fetchProviderUsage, findCredential } from './connect.js';
 import { STORE_DIR, appendRecords, readStore, rewriteStore } from './store-fs.js';
@@ -292,6 +295,9 @@ import { notificationFor, sendNotification } from './watch-notify.js';
 import { LOCALE_ENV_VARS, detectLocale, getCliMessages } from './i18n/index.js';
 import {
   MAX_SUMMARY_CHARS,
+  baseChangeText,
+  basePriceText,
+  baseSideText,
   fitWithin,
   renderBlameMarkdown,
   renderCheckMarkdown,
@@ -396,6 +402,9 @@ const VALUE_FLAGS = new Set([
   'max-usd',
   'max-growth-usd',
   'max-cache-loss-usd',
+  // `check --base <ref>` and its gate (#785).
+  'base',
+  'max-monthly-increase-usd',
   'max-stale-hours',
   'measure',
   'workload',
@@ -852,7 +861,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
     'tokens-only', 'cost', 'prompt', 'suggest', 'apply-suggestions',
     'cache-suggestions', 'from-log', 'label', 'all-labels',
   ],
-  check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline', 'files-from'],
+  check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline', 'files-from', 'base', 'max-monthly-increase-usd'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
   profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'html-out', 'pdf-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source', 'allow-empty'],
   plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live', 'edits', 'reorder'],
@@ -7816,6 +7825,25 @@ async function commandCheck(
   // A flag beats the config, as everywhere else. -1 means "not given".
   const flagBudget = numberFlag(args, 'max-tokens', -1, t);
 
+  /*
+    `--base <ref>` (#785): each changed prompt's cost on that commit and
+    here. Its gate needs it, and standard input has no base side; both are
+    refused before anything is read.
+  */
+  const baseRef = stringFlag(args, 'base');
+  const maxIncrease = args.flags.has('max-monthly-increase-usd')
+    ? numberFlag(args, 'max-monthly-increase-usd', 0, t)
+    : null;
+  if (maxIncrease !== null && baseRef === undefined) throw new Error(t.againstBase.gateNeedsBase());
+  const compare = async (
+    kind: 'file' | 'directory' | 'list',
+    on: string,
+    listed?: readonly string[],
+  ): Promise<BaseCostReport | null> =>
+    baseRef === undefined
+      ? null
+      : againstBase(baseRef, kind, on, listed, maxIncrease, config, counter, pricing);
+
   /**
    * `--files-from -` reads a file list from stdin — the shape
    * `git diff --name-only` already produces — so a pre-commit hook is one
@@ -7831,18 +7859,22 @@ async function commandCheck(
       .split('\n')
       .map((line) => line.trim())
       .filter((line) => line !== '');
-    await checkDirectory('.', args, flagBudget, config, counter, level, t, locale, pricing, listed);
+    const base = await compare('list', '.', listed);
+    await checkDirectory('.', args, flagBudget, config, counter, level, t, locale, pricing, listed, base);
     return;
   }
 
   const asDirectory = target !== undefined && target !== '-' ? await isDirectory(target) : false;
 
   if (asDirectory) {
-    await checkDirectory(target!, args, flagBudget, config, counter, level, t, locale, pricing);
+    const base = await compare('directory', target!);
+    await checkDirectory(target!, args, flagBudget, config, counter, level, t, locale, pricing, undefined, base);
     return;
   }
 
+  if (baseRef !== undefined && (target === undefined || target === '-')) throw new Error(t.againstBase.noStdin());
   const prompt = await readInput(target, t, maxInputFlag(args, t));
+  const base = target === undefined ? null : await compare('file', target);
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
   // A single file falls back to the config budget for its own path, so
@@ -7866,6 +7898,7 @@ async function commandCheck(
       t,
       locale,
       pricing,
+      base,
     );
     return;
   }
@@ -7891,6 +7924,7 @@ async function commandCheck(
       tokenSource: counter.source,
       band: bandFor(prompt),
       truncated: false,
+      ...(base === null ? {} : { againstBase: base }),
       t,
     }),
   );
@@ -7906,6 +7940,7 @@ async function commandCheck(
         optimizedTokens: verdict.optimizedTokens,
         wouldFitOptimized:
           verdict.optimizedTokens !== null ? verdict.optimizedTokens <= maxTokens : null,
+        ...(base === null ? {} : { againstBase: base }),
       }),
     );
   } else if (ok) {
@@ -7924,8 +7959,106 @@ async function commandCheck(
     }
     draw.print((line) => console.error(line));
   }
+  if (base !== null && !boolFlag(args, 'json')) printAgainstBase(base, t);
 
   if (!ok) process.exitCode = 1;
+  if (base !== null && baseGateFails(base)) process.exitCode = 1;
+}
+
+/**
+ * Reads both sides and prices them: the CLI's half of `check --base` (#785).
+ *
+ * The model is the one `usage.model` names, or Trazum's default, and the
+ * report says which. The volume comes from `volumes` through `labels`, and
+ * from nowhere else.
+ */
+async function againstBase(
+  ref: string,
+  kind: 'file' | 'directory' | 'list',
+  target: string,
+  listed: readonly string[] | undefined,
+  maxIncreaseUsd: number | null,
+  config: TrazumConfig,
+  counter: Counter,
+  pricing: PricingCatalogue,
+): Promise<BaseCostReport> {
+  const read = await readBothSides({
+    ref,
+    target,
+    kind,
+    ...(listed === undefined ? {} : { listed }),
+    extensions: config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS],
+    ignore: config.ignore ?? [],
+  });
+  if (read.status === 'unavailable') {
+    return {
+      status: 'unavailable',
+      ref,
+      why: read.why,
+      gate: maxIncreaseUsd === null ? null : { maxIncreaseUsd },
+    };
+  }
+  const configured = config.usage?.model;
+  return priceAgainstBase({
+    ref,
+    sha: read.sha,
+    pairs: read.pairs,
+    count: (text) => counter.count(text),
+    model: modelFrom(pricing, configured ?? DEFAULT_USAGE.model),
+    modelFrom: configured === undefined ? 'default' : 'config',
+    pricing,
+    volumeOf: (pair) => volumeFor(pair, config.labels ?? {}, config.volumes ?? {}),
+    maxIncreaseUsd,
+  });
+}
+
+/** The base comparison in the terminal: the same figures as the Markdown, one prompt a row. */
+function printAgainstBase(report: BaseCostReport, t: CliMessages): void {
+  const ab = t.againstBase;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const draw = new Report();
+  draw.blank();
+  if (report.status === 'unavailable') {
+    draw.note('caution', ab.unavailable(report.why, report.ref));
+    if (report.gate !== null) draw.text(ab.gateUnavailable(formatUsd(report.gate.maxIncreaseUsd)), { tone: 'error' });
+    draw.print();
+    return;
+  }
+  draw.heading(ab.heading(report.ref, report.sha.slice(0, 7)));
+  if (report.gate !== null) {
+    const change = formatSignedUsd(report.totals?.changeUsd ?? 0);
+    const limit = formatUsd(report.gate.maxIncreaseUsd);
+    draw.text(report.gate.breached ? ab.gateBreached(change, limit) : ab.gateWithin(change, limit), {
+      tone: report.gate.breached ? 'error' : 'good',
+    });
+  }
+  if (report.rows.length === 0) draw.text(ab.nothingChanged());
+  for (const row of report.rows) {
+    const tokens = `${row.base === null ? '–' : n(row.base.tokens)} → ${row.head === null ? '–' : n(row.head.tokens)}`;
+    draw.blank();
+    draw.text(row.id, { tone: 'bold' });
+    draw.text(
+      `${ab.columnTokens()}: ${tokens} · ${ab.columnCalls()}: ${row.callsPerMonth === null ? ab.notStated() : n(row.callsPerMonth)}`,
+      { indent: '    ' },
+    );
+    draw.text(
+      `${ab.columnBase()}: ${baseSideText(row.base, t)} · ${ab.columnHead()}: ${baseSideText(row.head, t)} · ${t.markdown.columnChange()}: ${baseChangeText(row, t)}`,
+      { indent: '    ' },
+    );
+    draw.text(basePriceText(row, report.price, t), { indent: '    ', tone: 'dim' });
+  }
+  if (report.totals !== null) {
+    draw.blank().text(
+      ab.totals(formatUsd(report.totals.baseUsd), formatUsd(report.totals.headUsd), formatSignedUsd(report.totals.changeUsd)),
+    );
+  }
+  draw.blank();
+  if (report.gate !== null && report.perCallOnly > 0) draw.text(ab.gateNotJudged(report.perCallOnly), { tone: 'dim' });
+  if (report.perCallOnly > 0) draw.text(ab.perCallNote(report.perCallOnly), { tone: 'dim' });
+  if (report.unchanged > 0) draw.text(ab.unchanged(report.unchanged), { tone: 'dim' });
+  if (report.modelFrom === 'default') draw.text(ab.modelDefault(report.price.displayName), { tone: 'dim' });
+  draw.text(ab.inputOnly(), { tone: 'dim' });
+  draw.print();
 }
 
 async function isDirectory(path: string): Promise<boolean> {
@@ -8016,6 +8149,7 @@ async function checkEmbedded(
   t: CliMessages,
   locale: Locale,
   pricing: PricingCatalogue,
+  base: BaseCostReport | null = null,
 ): Promise<void> {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
@@ -8042,6 +8176,7 @@ async function checkEmbedded(
       tokenSource: counter.source,
       band,
       truncated: false,
+      ...(base === null ? {} : { againstBase: base }),
       t,
     }),
   );
@@ -8060,12 +8195,13 @@ async function checkEmbedded(
             ok: !isOverBudget(v),
           })),
           declined: extraction.declined,
+          ...(base === null ? {} : { againstBase: base }),
         },
         null,
         2,
       ),
     );
-    if (!ok) process.exitCode = 1;
+    if (!ok || (base !== null && baseGateFails(base))) process.exitCode = 1;
     return;
   }
 
@@ -8090,7 +8226,8 @@ async function checkEmbedded(
   }
 
   console.log();
-  if (!ok) process.exitCode = 1;
+  if (base !== null) printAgainstBase(base, t);
+  if (!ok || (base !== null && baseGateFails(base))) process.exitCode = 1;
 }
 
 /**
@@ -13234,6 +13371,7 @@ async function checkDirectory(
   locale: Locale,
   pricing: PricingCatalogue,
   only?: readonly string[],
+  base: BaseCostReport | null = null,
 ): Promise<void> {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
@@ -13353,6 +13491,7 @@ async function checkDirectory(
             path: baselineOutcome.path,
           }
         : undefined,
+      ...(base === null ? {} : { againstBase: base }),
       t,
     }),
   );
@@ -13378,12 +13517,14 @@ async function checkDirectory(
                 ? v.optimizedTokens <= v.maxTokens
                 : null,
           })),
+          ...(base === null ? {} : { againstBase: base }),
         },
         null,
         2,
       ),
     );
     if (failures.length > 0 || declined.length > 0) process.exitCode = 1;
+    if (base !== null && baseGateFails(base)) process.exitCode = 1;
     return;
   }
 
@@ -13473,9 +13614,12 @@ async function checkDirectory(
       t,
     );
   }
+  if (base !== null) printAgainstBase(base, t);
   console.log();
 
   if (bad) process.exitCode = 1;
+  // A fourth verdict about the same run, and as independent as the others.
+  if (base !== null && baseGateFails(base)) process.exitCode = 1;
 }
 
 /** Joins two path fragments for display and glob matching, always with `/`. */

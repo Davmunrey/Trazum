@@ -59,5 +59,5 @@ export type { PricingCatalogue } from './pricing.js';
 export { detectHost } from './host.js';
 export type { HostEnvironment } from './host.js';
 
-export { MAX_WALK_DEPTH, MAX_WALK_FILES, walkPrompts } from './walk.js';
+export { MAX_WALK_DEPTH, MAX_WALK_FILES, walkIncludes, walkPrompts } from './walk.js';
 export type { WalkOptions, WalkResult } from './walk.js';

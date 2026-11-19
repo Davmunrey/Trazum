@@ -42,6 +42,77 @@ something nobody asked about.
 
 Or use the binary directly, exactly as below.
 
+### What the change does to each prompt's monthly cost
+
+On a pull request the Action also reads the base branch's prompts and puts a
+table in the same report, and so in the same comment: for each prompt the
+change touches, its tokens on the base and on the head, what it costs on
+each, and the difference. It is `trazum check <target> --base <sha>`, with
+the pull request's base commit, and it adds no second comment: the report is
+still one comment per `comment-key`, replaced on every push.
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+steps:
+  - uses: actions/checkout@<commit-sha>
+    with:
+      fetch-depth: 0          # the base commit has to be in the clone
+      persist-credentials: false
+  - uses: Davmunrey/Trazum@<commit-sha>
+    with:
+      target: prompts/
+      comment: 'true'
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+      max-monthly-increase-usd: '25'   # optional; off unless set
+```
+
+What each figure is, and what it is not:
+
+- **The base comes from the clone, never from the network.** It is read with
+  `git show`, and a base commit the clone does not have is said, with the fix
+  (`fetch-depth: 0`), rather than fetched or stood in for by the working tree.
+  `actions/checkout` fetches one commit by default, so without that line the
+  Action does not compare and the report is what it was before this
+  existed. With `max-monthly-increase-usd` set, which cannot be judged
+  without the base, it compares anyway and fails with that fix.
+- **A month needs a volume somebody stated.** It is `volumes` in
+  `trazum.config.json`, calls a month for a label that `labels` maps to the
+  prompt file, the same map `trazum plan --edits` reads:
+
+  ```json
+  {
+    "labels": { "support": "prompts/support.txt" },
+    "volumes": { "support": 30000 }
+  }
+  ```
+
+  A changed prompt with no stated volume is priced per call, and the report
+  says how many are. Several labels sending one file add up; one of them
+  without a volume leaves the file per call. A prompt marked inside a source
+  file is always per call, because a label maps a file and not a prompt in it.
+- **Input tokens at the input price, both sides at the same prices.** The
+  model is `usage.model`, or Trazum's default, and the report says which.
+  Output is left out, because a prompt edit does not set how much the model
+  writes back. Every row names its price per million input tokens and the day
+  that price was read from the provider's page: the catalogue's review date
+  for that provider, or a local overlay's own date. Both sides use the same
+  price list, so a provider repricing cannot read as a change the pull
+  request made.
+- **`max-monthly-increase-usd` is the one gate**, and it is off unless set. It
+  fails the build when the prompts with a stated volume cost more than that
+  many dollars a month more on the head than on the base, and it names how
+  many changed prompts it could not judge. Set off a pull request, or with
+  `usage-log`, it is refused; when the base cannot be read it fails, because a
+  gate that judged nothing is not a pass.
+
+Locally, against any ref the clone has:
+
+```bash
+trazum check prompts/ --base origin/main --max-monthly-increase-usd 25
+```
+
 ### A weekly summary in the repository
 
 The same Action can write the week down and post it, so nobody has to remember

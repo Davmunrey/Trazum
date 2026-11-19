@@ -1,5 +1,6 @@
 import type { CliMessages } from './i18n/index.js';
 import type { Revision } from './git.js';
+import type { BaseCostPrice, BaseCostReport, BaseCostRow, PricedSide } from './base-cost.js';
 import type {
   BaselineBreach,
   BaselineComparison,
@@ -181,7 +182,122 @@ export interface CheckMarkdownInput {
   truncated: boolean;
   /** Absent when no baseline governed the run. */
   baseline?: BaselineMarkdown;
+  /** Absent unless the run was given `--base`. */
+  againstBase?: BaseCostReport;
   t: CliMessages;
+}
+
+/** A price per million tokens as the catalogue holds it, never rounded. */
+export function perMTokText(value: number): string {
+  return Number(value.toFixed(2)) === value ? `$${value.toFixed(2)}` : `$${value}`;
+}
+
+/**
+ * The price a row was computed at, with its source and the day it was read.
+ *
+ * In every row rather than once under the table, because a row is what gets
+ * quoted: a figure lifted out of a comment carries its price and its date
+ * with it, or it carries a number nobody can check.
+ */
+export function basePriceText(row: BaseCostRow, price: BaseCostPrice, t: CliMessages): string {
+  const rates = [row.base?.inputPerMTok, row.head?.inputPerMTok].filter((r): r is number => r !== undefined);
+  const shown =
+    rates.length === 2 && rates[0] !== rates[1]
+      ? `${perMTokText(rates[0]!)} → ${perMTokText(rates[1]!)}`
+      : perMTokText(rates[0] ?? 0);
+  const text = price.overlaid
+    ? t.againstBase.priceOverlay(shown, price.displayName, price.readOn)
+    : t.againstBase.price(shown, price.displayName, price.provider ?? price.model, price.readOn);
+  return price.promoUntil === null ? text : `${text}; ${t.againstBase.promo(price.promoUntil)}`;
+}
+
+/** One side's cost, a month when the volume was stated and a call when it was not. */
+export function baseSideText(side: PricedSide | null, t: CliMessages): string {
+  if (side === null) return '–';
+  return side.monthlyUsd === null
+    ? t.againstBase.perCall(formatUsd(side.perCallUsd))
+    : t.againstBase.perMonth(formatUsd(side.monthlyUsd));
+}
+
+export function baseChangeText(row: BaseCostRow, t: CliMessages): string {
+  return row.monthlyChangeUsd === null
+    ? t.againstBase.perCall(formatSignedUsd(row.perCallChangeUsd))
+    : t.againstBase.perMonth(formatSignedUsd(row.monthlyChangeUsd));
+}
+
+/**
+ * The base comparison (#785): what this change does to each prompt's cost
+ * against the base branch. It leads the check report, above the budgets,
+ * for the reason the baseline block does: it is what the pull request is
+ * proposing.
+ */
+export function baseCostBlock(report: BaseCostReport, t: CliMessages): string[] {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const ab = t.againstBase;
+  const lines: string[] = [];
+
+  if (report.status === 'unavailable') {
+    lines.push('> [!WARNING]');
+    lines.push(`> ${ab.unavailable(report.why, mdCell(report.ref))}`);
+    lines.push('');
+    if (report.gate !== null) {
+      lines.push('> [!CAUTION]');
+      lines.push(`> **${ab.gateUnavailable(formatUsd(report.gate.maxIncreaseUsd))}**`);
+      lines.push('');
+    }
+    return lines;
+  }
+
+  lines.push(`#### ${ab.heading(mdCell(report.ref), mdCell(report.sha.slice(0, 7)))}`);
+  lines.push('');
+
+  if (report.gate !== null) {
+    const change = formatSignedUsd(report.totals?.changeUsd ?? 0);
+    const limit = formatUsd(report.gate.maxIncreaseUsd);
+    if (report.gate.breached) {
+      lines.push('> [!CAUTION]');
+      lines.push(`> **${ab.gateBreached(change, limit)}**`);
+    } else {
+      lines.push(`**${ab.gateWithin(change, limit)}**`);
+    }
+    lines.push('');
+  }
+
+  if (report.rows.length === 0) {
+    lines.push(ab.nothingChanged());
+    lines.push('');
+  } else {
+    lines.push(
+      `| | ${t.markdown.columnFile()} | ${ab.columnTokens()} | ${ab.columnCalls()} | ${ab.columnBase()} | ${ab.columnHead()} | ${t.markdown.columnChange()} | ${ab.columnPrice()} |`,
+    );
+    lines.push('|:--:|---|--:|--:|--:|--:|--:|---|');
+    for (const row of report.rows) {
+      const mark =
+        row.base === null ? '🆕' : row.head === null ? '🗑️' : row.perCallChangeUsd > 0 ? '📈' : row.perCallChangeUsd < 0 ? '📉' : '·';
+      const tokens = `${row.base === null ? '–' : n(row.base.tokens)} → ${row.head === null ? '–' : n(row.head.tokens)}`;
+      const calls = row.callsPerMonth === null ? ab.notStated() : n(row.callsPerMonth);
+      lines.push(
+        `| ${mark} | ${mdCell(row.id)} | ${tokens} | ${calls} | ${baseSideText(row.base, t)} | ${baseSideText(row.head, t)} | ${baseChangeText(row, t)} | ${mdTextCell(basePriceText(row, report.price, t))} |`,
+      );
+    }
+    lines.push('');
+  }
+
+  if (report.totals !== null) {
+    lines.push(
+      `**${ab.totals(formatUsd(report.totals.baseUsd), formatUsd(report.totals.headUsd), formatSignedUsd(report.totals.changeUsd))}**`,
+    );
+    lines.push('');
+  }
+  const notes: string[] = [];
+  if (report.gate !== null && report.perCallOnly > 0) notes.push(ab.gateNotJudged(report.perCallOnly));
+  if (report.perCallOnly > 0) notes.push(ab.perCallNote(report.perCallOnly));
+  if (report.unchanged > 0) notes.push(ab.unchanged(report.unchanged));
+  if (report.modelFrom === 'default') notes.push(ab.modelDefault(mdText(report.price.displayName)));
+  notes.push(ab.inputOnly());
+  for (const note of notes) lines.push(`- ${note}`);
+  lines.push('');
+  return lines;
 }
 
 const overBudget = (v: MarkdownFileVerdict): boolean =>
@@ -302,6 +418,7 @@ export function renderCheckMarkdown(input: CheckMarkdownInput): string {
    * "did this branch make the repository more expensive" is what the pull request
    * is actually proposing, so it goes above the table rather than under it.
    */
+  if (input.againstBase) lines.push(...baseCostBlock(input.againstBase, t));
   if (input.baseline) lines.push(...baselineBlock(input.baseline, t));
 
   lines.push(

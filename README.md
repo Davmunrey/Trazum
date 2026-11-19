@@ -357,7 +357,7 @@ from the exit codes it is supposed to relay.
 | [`trazum filter`](docs/tool-output-filter.md) | Compact repeated tool-log lines before agent context, retaining the original locally. *Opt-in.* |
 | [`trazum init`](#the-first-five-minutes-trazum-init) | Inspect repository prompts and available usage, then write a configuration. *Optional setup after your first report.* |
 | [`trazum optimize`](#cli) | What can come out of this prompt, and what is that worth a month? |
-| [`trazum check`](#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? *Exits 1 when either fails — this is the CI gate.* |
+| [`trazum check`](#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? With [`--base`](docs/commands.md#against-the-base-branch---base), what does this change do to each prompt's cost against the base branch? *Exits 1 when a gate fails: this is the CI gate.* |
 | [`trazum baseline`](docs/commands.md#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) | What does this repository's prompts cost right now? *Records it, to commit.* |
 | [`trazum diff`](docs/commands.md#did-this-edit-make-it-worse) | What did this edit cost? |
 | [`trazum rank`](docs/commands.md#which-prompt-to-fix-first-trazum-rank) | Of these forty prompts, which is worth an afternoon? |
