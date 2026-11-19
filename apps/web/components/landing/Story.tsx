@@ -1,56 +1,88 @@
 'use client';
 
-import { type CSSProperties, useEffect, useRef } from 'react';
+import { ArrowRight } from 'lucide-react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 
-import type { LandingCopy } from '../../lib/landing-copy';
-import { TERMINAL, TERMINAL_COLUMNS, type TerminalRun } from '../../lib/landing-terminal';
+import { DESK_COMMANDS, DESK_COMMAND_NAMES, type DeskCommand, type LandingCopy, MORE_LINKS } from '../../lib/landing-copy';
+import { RECEIPT, TERMINAL, TERMINAL_COLUMNS, type TerminalBlock, type TerminalRun } from '../../lib/landing-terminal';
 import { storyMotion } from '../../lib/story-motion';
-import { SCENES, SCENE_OF, timeLines, type SceneId, type TimedBlock } from '../../lib/story-timeline';
+import { STORY_BLOCK } from '../../lib/story-timeline';
 
 /**
- * The landing's story: a laptop, the CLI at work on its screen, and a lid
- * that closes over what never leaves the machine.
+ * The landing's desk: one laptop on a desk, and around it one object per
+ * thing Trazum does. Pressing an object shows that command's output on the
+ * laptop's screen and says, on a plate beside it, what it does and what it
+ * does not do. The receipt prints out of the laptop's side; the lid closes
+ * over what never leaves the machine.
  *
- * ## How scroll drives it
+ * There is one laptop on the page, and this is it. The story told by scrolling
+ * is how it arrives: the desk comes up, the laptop lands on it, the objects
+ * arrive around it, `bill` runs on its screen and the receipt prints. When the
+ * stage lets go the same laptop stays, and the desk is the visitor's.
  *
- * Each element that moves (`data-mv`) names its own keyframes, which
- * `lib/story-motion.ts` writes from the timeline and this component puts in a
- * `<style>`: `transform`, `opacity` and `clip-path`, over the whole story.
- * Where the browser has scroll-driven animations, the stylesheet runs them
- * on the section's view timeline and no script runs while the visitor
- * scrolls. Where it has not, `useStoryProgress` below holds them paused and
- * sets each one's current time to the scroll position: one read and a batch
- * of writes per animation frame, from a passive listener attached only while
- * the section is on screen. Either way the scroll is the only clock, so
- * scrolling back plays the story back.
+ * ## How scroll drives the arrival
  *
- * ## What it is without motion
+ * Each element that moves with the scroll (`data-mv`) names its own keyframes,
+ * which `lib/story-motion.ts` writes from the timeline and this component puts
+ * in a `<style>`: `transform`, `opacity` and `clip-path`, over the whole story.
+ * Where the browser has scroll-driven animations, the stylesheet runs them on
+ * the section's view timeline and no script runs while the visitor scrolls.
+ * Where it has not, `useStoryProgress` holds them paused and sets each one's
+ * current time to the scroll position: one read and a batch of writes per
+ * animation frame, from a passive listener attached only while the section is
+ * on screen. Either way the scroll is the only clock, so scrolling back plays
+ * the arrival back.
  *
- * The bootstrap in the layout sets `data-motion="scroll"` before the first
- * paint, unless the reader asked for reduced motion. Without it (no
- * JavaScript, reduced motion) none of the story's rules apply: the scenes are
- * ordinary content in reading order, each with its terminal output in full,
- * and the laptop is drawn once, still, with what never leaves on its screen.
+ * ## What a press does
+ *
+ * A press is the visitor's, so what it sets off may run on a clock, briefly:
+ * the output appears a line at a time and the lid swings shut, both by the
+ * stylesheet, from the attributes this component sets (`data-active`,
+ * `data-closed`, `data-used`). Nothing moves on its own. Once the visitor has
+ * pressed anything, or put focus inside the desk, the arrival is over: every
+ * scroll keyframe gives way to the desk as it rests, so a control is never
+ * reached half-arrived.
+ *
+ * ## What it is without JavaScript
+ *
+ * The layout's bootstrap marks the page `data-desk` before the first paint
+ * whenever a script runs, and `data-motion="scroll"` unless the reader asked
+ * for reduced motion. Without the first, none of the desk's rules apply: every
+ * command's output is on the screen one after another, then what never
+ * leaves, then the receipt, then every plate, in reading order, and the
+ * objects, which would do nothing, are not drawn. With reduced motion the desk
+ * works and nothing on it moves: a press shows its output at once.
  *
  * ## What is on the screen
  *
  * `lib/landing-terminal.ts`, written by `scripts/draw-landing-terminal.mjs`
- * from what the built CLI prints. The text is in the DOM once and does not
- * change as it "types": a clip shows it a character at a time, so it can be
- * selected, and a screen reader reads each line once.
+ * from what the built CLI prints, and the receipt from the receipt it writes.
+ * The text is in the DOM once and does not change as it "types": a clip or an
+ * opacity shows it, so it can be selected, and a screen reader reads each line
+ * once.
  */
 
 type Vars = CSSProperties & Record<`--${string}`, string | number>;
+type ObjectId = DeskCommand | 'lid';
 
-const TIMED = timeLines(TERMINAL);
 /** The keyframes, written once per page load from the timeline and the transcript. */
 const MOTION = storyMotion(TERMINAL);
 
 /** An element's own keyframes, by name. */
 const moves = (name: string): CSSProperties => ({ animationName: name });
 
+/** The output each object shows, in the order the desk lays them out. */
+const BLOCKS_OF = Object.fromEntries(DESK_COMMANDS.map((id) => [id, TERMINAL.filter((block) => block.cap === id)])) as Record<
+  DeskCommand,
+  TerminalBlock[]
+>;
+
+/** The longest a press's output takes to appear, a line at a time, and the most each line waits. */
+const TYPE_MS = 700;
+const LINE_MS = 22;
+
 /** The story's position, as each moving element's paused animation, where the browser cannot drive it from CSS. */
-function useStoryProgress(ref: React.RefObject<HTMLDivElement | null>) {
+function useStoryProgress(ref: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
     const element = ref.current;
     const root = document.documentElement;
@@ -95,57 +127,17 @@ function useStoryProgress(ref: React.RefObject<HTMLDivElement | null>) {
   }, [ref]);
 }
 
-/**
- * The free part of the window on a tall screen, where the terminal's column is centred (#770): under the plate of
- * the scene that is showing, at that plate's own height, and above the marker. CSS cannot read one box's height into
- * another's place, so this measures each plate's foot and the marker's top when the stage or a plate changes size
- * (a resize, the face arriving), never while scrolling, and writes them on the stage; the motion crosses from one
- * scene's free part to the next's as the plates swap. A wide screen does not read them: there the plate stands
- * beside the column.
- */
-function useFreeArea(ref: React.RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
-    const element = ref.current;
-    if (element === null || document.documentElement.dataset.motion !== 'scroll' || typeof ResizeObserver === 'undefined') return;
-    const world = element.querySelector<HTMLElement>('.story-world');
-    const marker = element.querySelector<HTMLElement>('.story-marker');
-    const plates = [...element.querySelectorAll<HTMLElement>('.scene-cap')];
-    if (world === null || marker === null || plates.length === 0) return;
-    const written = new Map<string, string>();
-    const write = (name: string, value: number) => {
-      const text = `${Math.round(value * 100) / 100}px`;
-      if (written.get(name) === text) return;
-      written.set(name, text);
-      world.style.setProperty(name, text);
-    };
-    const measure = () => {
-      // Under each scene's plate, at its own height: the free part of that scene starts at the plate's foot.
-      for (const plate of plates) {
-        const scene = plate.closest<HTMLElement>('[data-scene]')?.dataset.scene;
-        if (scene) write(`--free-t-${scene}`, plate.offsetTop + plate.offsetHeight);
-      }
-      // The foot: the marker, or the scene's name standing over it, whichever is higher.
-      // A name is placed on the marker (its offset parent), from inside the marker's border.
-      const names = [...marker.querySelectorAll<HTMLElement>('.mk-label')].map((name) => marker.offsetTop + marker.clientTop + name.offsetTop);
-      write('--free-b', Math.min(marker.offsetTop, ...names));
-    };
-    const observer = new ResizeObserver(measure);
-    observer.observe(world);
-    for (const plate of plates) observer.observe(plate);
-    measure();
-    return () => observer.disconnect();
-  }, [ref]);
-}
-
 function runClass(style: string): string {
   return [...style].map((letter) => `t-${letter}`).join(' ');
 }
 
-function Runs({ runs, bar }: { runs: readonly TerminalRun[]; bar: string }) {
+const isRuled = (runs: readonly TerminalRun[]) => runs.length > 0 && /^─+$/.test(runs.at(-1)?.[0] ?? '');
+
+function Runs({ runs, bar }: { runs: readonly TerminalRun[]; bar: string | null }) {
   return (
     <>
       {runs.map(([text, style], index) =>
-        style.includes('a') && /^█+$/.test(text) ? (
+        bar !== null && style.includes('a') && /^█+$/.test(text) ? (
           // The share bar: the same characters, filled by the story.
           // biome-ignore lint/suspicious/noArrayIndexKey: the transcript is a constant written by a script: its runs and lines never move, and an empty line or a repeated run has no identity of its own but its place
           <span key={index} className={`t-bar ${runClass(style)}`} data-mv="" style={moves(bar)}>
@@ -162,44 +154,46 @@ function Runs({ runs, bar }: { runs: readonly TerminalRun[]; bar: string }) {
   );
 }
 
-function Transcript({ scene, timed }: { scene: Exclude<SceneId, 'never'>; timed: readonly TimedBlock[] }) {
+/** One object's output: each command it runs, its prompt, and the lines it printed. The story's command moves with the scroll. */
+function Transcript({ blocks }: { blocks: readonly TerminalBlock[] }) {
+  const story = blocks.some((block) => block.id === STORY_BLOCK);
+  const count = blocks.reduce((sum, block) => sum + block.command.split('\n').length + block.lines.length, 0);
+  const style: Vars = { '--step': `${Math.min(LINE_MS, TYPE_MS / Math.max(1, count))}ms`, ...(story ? moves('st-print') : {}) };
+  let at = 0;
   return (
-    <pre className="term" data-mv="" style={moves(`st-term-${scene}`)}>
-      {timed.map(({ block, lines }) => {
-        const index = TIMED.findIndex((entry) => entry.block === block);
+    <pre className="term" {...(story ? { 'data-mv': '' } : {})} style={style}>
+      {blocks.map((block) => {
+        const scrolled = block.id === STORY_BLOCK;
         return [
-          <span key={`${block.id}-command`} className="tl tl-command">
-            <span aria-hidden="true" className="t-prompt">
-              ${' '}
+          ...block.command.split('\n').map((line, j) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: a command's lines are a constant written by a script: they never move, and a line has no identity of its own but its place
+            <span key={`${block.id}-command-${j}`} className="tl tl-command" style={{ '--i': at++ } as Vars}>
+              {j === 0 && (
+                <span aria-hidden="true" className="t-prompt">
+                  ${' '}
+                </span>
+              )}
+              {scrolled ? (
+                <>
+                  <span className="t-typed" data-mv="" style={moves('st-type')}>
+                    {line}
+                  </span>
+                  <span aria-hidden="true" className="t-cursor" data-mv="" style={moves('st-cursor')} />
+                </>
+              ) : (
+                <span className="t-typed">{line}</span>
+              )}
             </span>
-            <span className="t-typed" data-mv="" style={moves(`st-type-${index}`)}>
-              {block.command}
-            </span>
-            <span aria-hidden="true" className="t-cursor" data-mv="" style={moves(`st-cursor-${index}`)} />
-          </span>,
-          ...lines.map((_, j) => (
+          )),
+          ...block.lines.map((runs, j) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: the transcript is a constant written by a script: its runs and lines never move, and an empty line or a repeated run has no identity of its own but its place
-            <span key={`${block.id}-${j}`} className="tl">
-              <Runs runs={block.lines[j] ?? []} bar={`st-bar-${index}-${j}`} />
+            <span key={`${block.id}-${j}`} className={isRuled(runs) ? 'tl tl-rule' : 'tl'} style={{ '--i': at++ } as Vars}>
+              <Runs runs={runs} bar={scrolled ? `st-bar-${j}` : null} />
             </span>
           )),
         ];
       })}
     </pre>
-  );
-}
-
-function Caption({ id, number, kicker, title, children }: { id: SceneId; number: string; kicker: string; title: string; children: React.ReactNode }) {
-  return (
-    <div className="scene-cap" data-mv="" style={moves(`st-words-${id}`)}>
-      <p className="scene-kicker">
-        <span aria-hidden="true">{number}</span> {kicker}
-      </p>
-      <h2 id={`scene-${id}`} className="scene-title">
-        {title}
-      </h2>
-      {children}
-    </div>
   );
 }
 
@@ -231,30 +225,36 @@ function Deck() {
   );
 }
 
-function Laptop({ t }: { t: LandingCopy }) {
+/** The one laptop: the screen shows the pressed object's output, or, under the closing lid, what never leaves. */
+function Laptop({ t, active, closed, used, run }: { t: LandingCopy; active: DeskCommand; closed: boolean; used: boolean; run: number }) {
   return (
     <div className="lt-device">
       <div className="lt-deck">
         <Deck />
-        <div aria-hidden="true" className="lt-deck-shade" data-mv="" style={moves('st-shade')} />
+        <div aria-hidden="true" className="lt-deck-shade" />
       </div>
-      <div className="lt-lid" data-mv="" style={moves('st-lid')}>
+      <div className="lt-lid">
         <div className="lt-face lt-front">
-          <div className="lt-screen">
-            <div className="lt-never">
-              <p className="lt-never-label" data-mv="" style={moves('st-never-label')}>
-                {t.neverLabel}
-              </p>
+          <section className="lt-screen" aria-label={t.desk.screen} aria-live="polite">
+            <div className="screen-out" tabIndex={used ? 0 : -1}>
+              {DESK_COMMANDS.map((id) => (
+                <div key={id === active ? `${id}-${run}` : id} className="cap-out" data-cap={id} aria-labelledby={`desk-plate-${id}`} role="group" hidden={id !== active || closed}>
+                  <Transcript blocks={BLOCKS_OF[id]} />
+                </div>
+              ))}
+            </div>
+            <div className="lt-never" hidden={!closed}>
+              <p className="lt-never-label">{t.neverLabel}</p>
               <ul>
                 {t.neverItems.map((item, index) => (
-                  <li key={item} data-mv="" style={moves(`st-never-${index}`)}>
+                  <li key={item} style={{ '--i': index } as Vars}>
                     {item}
                   </li>
                 ))}
               </ul>
             </div>
-            <div aria-hidden="true" className="lt-screen-off" data-mv="" style={moves('st-screen-off')} />
-          </div>
+            <div aria-hidden="true" className="lt-screen-off" />
+          </section>
         </div>
         <div aria-hidden="true" className="lt-face lt-back">
           <span>Trazum</span>
@@ -264,87 +264,259 @@ function Laptop({ t }: { t: LandingCopy }) {
   );
 }
 
-export function Story({ t }: { t: LandingCopy }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useStoryProgress(ref);
-  useFreeArea(ref);
-
-  const scene = (id: Exclude<SceneId, 'never'>) => TIMED.filter(({ block }) => SCENE_OF[block.id] === id);
-  // The terminal's widest line, for the type size that fits it.
-  const world: Vars = { '--cols': TERMINAL_COLUMNS };
-  const labels: Record<SceneId, string> = {
-    bill: t.billKicker,
-    check: t.more.ci.title,
-    trim: t.more.trim.title,
-    never: t.neverTitle,
-  };
-
+/** The paper receipt: `bill --receipt` on the same files, each line with the date its rate was read. */
+function Receipt({ t }: { t: LandingCopy }) {
+  const r = t.desk.receipt;
   return (
-    <div ref={ref} className="story" data-story-root="">
-      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: keyframes written in this repository from the timeline and the CLI's transcript; nothing a visitor sends reaches them, and style-src allows inline styles */}
-      <style dangerouslySetInnerHTML={{ __html: MOTION }} />
-      <div className="story-stage">
-        <div className="story-world" style={world}>
-          <div className="story-layer" data-mv="" style={moves('st-layer')}>
-            <div className="term-box">
-              <section className="scene" data-scene="bill" aria-labelledby="scene-bill">
-                <Caption id="bill" number="01" kicker={t.billKicker} title={t.billTitle}>
-                  <p className="scene-body">{t.heroLede}</p>
-                  <p className="scene-note">{t.billCaveat}</p>
-                </Caption>
-                <Transcript scene="bill" timed={scene('bill')} />
-              </section>
-              <section className="scene" data-scene="check" aria-labelledby="scene-check">
-                <Caption id="check" number="02" kicker={t.moreTitle} title={t.more.ci.title}>
-                  <p className="scene-body">{t.more.ci.body}</p>
-                </Caption>
-                <Transcript scene="check" timed={scene('check')} />
-              </section>
-              <section className="scene" data-scene="trim" aria-labelledby="scene-trim">
-                <Caption id="trim" number="03" kicker={t.moreTitle} title={t.more.trim.title}>
-                  <p className="scene-body">{t.more.trim.body}</p>
-                </Caption>
-                <Transcript scene="trim" timed={scene('trim')} />
-              </section>
-            </div>
-            <div aria-hidden="true" className="term-cut" data-mv="" style={moves('st-term-cut')} />
-          </div>
-
-          <section className="story-never" data-mv="" style={moves('st-words-never')} data-scene="never" aria-labelledby="scene-never">
-            <p className="scene-kicker">
-              <span aria-hidden="true">04</span> {t.neverLabel}
-            </p>
-            <h2 id="scene-never" className="scene-title story-never-title">
-              {t.neverTitle}
-            </h2>
-            <p className="scene-body">{t.neverLede}</p>
-          </section>
-
-          <div className="story-camera" data-mv="" style={moves('st-camera')}>
-            <div className="story-3d">
-              <Laptop t={t} />
-            </div>
-            <p className="story-leaves" data-mv="" style={moves('st-leaves')} data-leaves="">
-              <span className="story-leaves-label">{t.leavesLabel}</span>
-              <span className="story-leaves-text">{t.leaves}</span>
-            </p>
-          </div>
-
-          <ol aria-hidden="true" className="story-marker">
-            {SCENES.map((item, index) => (
-              <li key={item.id}>
-                <span className="mk-n">{String(index + 1).padStart(2, '0')}</span>
-                <span className="mk-bar">
-                  <span className="mk-fill" data-mv="" style={moves(`st-mark-${item.id}`)} />
+    <div className="receipt-slot" data-mv="" style={moves('st-receipt')}>
+      <div className="receipt">
+        <div aria-hidden="true" className="receipt-cast" />
+        <div className="receipt-paper">
+          <p className="receipt-mark">Trazum</p>
+          <p className="receipt-meta">
+            {r.heading} · {RECEIPT.source}
+          </p>
+          <p className="receipt-meta">
+            {`${RECEIPT.from} → ${RECEIPT.to}`} · {r.calls(RECEIPT.calls)}
+          </p>
+          <ul className="receipt-lines">
+            {RECEIPT.lines.map((line) => (
+              <li key={`${line.label}-${line.model}`}>
+                <span className="receipt-row">
+                  <span>{line.model}</span>
+                  <span className="receipt-usd">{line.usd}</span>
                 </span>
-                <span className="mk-label" data-mv="" style={moves(`st-label-${item.id}`)}>
-                  {labels[item.id]}
+                <span className="receipt-src">
+                  {r.calls(line.calls)} · {r.rateRead(line.reviewedOn)}
                 </span>
               </li>
             ))}
-          </ol>
+          </ul>
+          <p className="receipt-total">
+            <span>{r.total}</span>
+            <span className="receipt-figure">{RECEIPT.total}</span>
+          </p>
+          <p className="receipt-caveat">{t.billCaveat}</p>
         </div>
+        <div aria-hidden="true" className="receipt-curl" />
       </div>
     </div>
+  );
+}
+
+/** Each object, drawn on a 40 by 40 grid in ink, on paper, with the acid as a fill. */
+function Icon({ id }: { id: ObjectId }) {
+  const shapes: Record<ObjectId, React.ReactElement> = {
+    bill: (
+      <>
+        <path className="ic-paper" d="M10 4h20v31l-3.3-2.5-3.4 2.5-3.3-2.5-3.3 2.5-3.4-2.5L10 35z" />
+        <path d="M14 11h12M14 16h12M14 21h8" />
+        <rect className="ic-acid" x="19" y="25" width="8" height="5" />
+      </>
+    ),
+    check: (
+      <>
+        <rect className="ic-paper" x="5" y="12" width="5" height="24" />
+        <path className="ic-acid" d="M10 15h26v7H10z" />
+        <path d="M16 15l5 7M24 15l5 7M32 15l4 6" />
+      </>
+    ),
+    guard: (
+      <>
+        <rect className="ic-paper" x="9" y="4" width="22" height="32" />
+        <rect className="ic-ink" x="15" y="10" width="10" height="20" />
+        <rect className="ic-acid" x="17" y="12" width="6" height="8" />
+      </>
+    ),
+    clock: (
+      <>
+        <circle className="ic-paper" cx="20" cy="20" r="15" />
+        <path d="M20 10v10l7 5" />
+        <circle className="ic-acid" cx="20" cy="20" r="2.5" />
+      </>
+    ),
+    optimize: (
+      <>
+        <path className="ic-acid" d="M8 32l3-8 17-17 5 5-17 17z" />
+        <path d="M11 24l5 5M4 36h13" />
+      </>
+    ),
+    models: (
+      <>
+        <rect className="ic-paper" x="5" y="8" width="30" height="27" />
+        <rect className="ic-acid" x="5" y="8" width="30" height="7" />
+        <path d="M12 4v7M28 4v7M13 25l4 4 9-9" />
+      </>
+    ),
+    lid: (
+      <>
+        <path className="ic-paper" d="M4 28h32l-4 6H8z" />
+        <path className="ic-ink" d="M8 10h24v16H8z" />
+        <rect className="ic-acid" x="12" y="14" width="16" height="2" />
+      </>
+    ),
+  };
+  return (
+    <svg className="obj-icon" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+      {shapes[id]}
+    </svg>
+  );
+}
+
+/** The plate beside the laptop: the pressed object's command, what it does in a sentence, and what it does not do. */
+function Plate({
+  id,
+  eyebrow,
+  title,
+  body,
+  listLabel,
+  list,
+  link,
+  shown,
+}: {
+  id: ObjectId;
+  eyebrow: string;
+  title: string;
+  body: string;
+  listLabel: string;
+  list: readonly string[];
+  link?: { href: string; label: string };
+  shown: boolean;
+}) {
+  return (
+    <section className="plate" data-plate={id} aria-labelledby={`desk-plate-${id}`} hidden={!shown}>
+      <p className="plate-eyebrow">{eyebrow}</p>
+      <h3 id={`desk-plate-${id}`} className="plate-title">
+        {title}
+      </h3>
+      <p className="plate-body">{body}</p>
+      <p className="plate-not">{listLabel}</p>
+      <ul className="plate-list">
+        {list.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      {link && (
+        <a href={link.href} className="plate-link">
+          {link.label}
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </a>
+      )}
+    </section>
+  );
+}
+
+export function Story({ t }: { t: LandingCopy }) {
+  const ref = useRef<HTMLElement>(null);
+  useStoryProgress(ref);
+  const [active, setActive] = useState<DeskCommand>('bill');
+  const [closed, setClosed] = useState(false);
+  const [used, setUsed] = useState(false);
+  const [run, setRun] = useState(0);
+
+  const press = (id: ObjectId) => {
+    setUsed(true);
+    if (id === 'lid') {
+      // Open again, it shows the last command it showed.
+      setClosed((was) => !was);
+      return;
+    }
+    setClosed(false);
+    setActive(id);
+    setRun((count) => count + 1);
+  };
+
+  const objects: { id: ObjectId; name: string; hint: string }[] = [
+    ...DESK_COMMANDS.map((id) => ({ id, name: t.desk.caps[id].object, hint: DESK_COMMAND_NAMES[id] })),
+    { id: 'lid', name: t.desk.lid, hint: t.neverLabel },
+  ];
+  const links: Partial<Record<DeskCommand, { href: string; label: string }>> = {
+    check: { href: MORE_LINKS.ci.href, label: t.more.ci.link },
+    optimize: { href: MORE_LINKS.trim.href, label: t.more.trim.link },
+  };
+  const world: Vars = { '--cols': TERMINAL_COLUMNS };
+
+  return (
+    <section
+      ref={ref}
+      className="story"
+      aria-labelledby="desk-title"
+      data-story-root=""
+      data-active={active}
+      {...(closed ? { 'data-closed': '' } : {})}
+      {...(used ? { 'data-used': '' } : {})}
+    >
+      {/* biome-ignore lint/security/noDangerouslySetInnerHtml: keyframes written in this repository from the timeline and the CLI's transcript; nothing a visitor sends reaches them, and style-src allows inline styles */}
+      <style dangerouslySetInnerHTML={{ __html: MOTION }} />
+      <div className="story-stage">
+        <div className="desk" style={world}>
+          <div aria-hidden="true" className="desk-plane" data-mv="" style={moves('st-desk')}>
+            <div className="desk-top" />
+            <div className="desk-edge" />
+          </div>
+
+          {/* The bill's total, set huge on the far plane behind the laptop, which stands in front of it. The receipt and the screen say it in words. */}
+          <p aria-hidden="true" className="desk-figure" data-mv="" style={moves('st-figure')}>
+            {RECEIPT.total}
+          </p>
+
+          <header className="desk-head" data-mv="" style={moves('st-head')}>
+            <p className="desk-kicker">{t.desk.kicker}</p>
+            <h2 id="desk-title" className="desk-title">
+              {t.desk.title}
+            </h2>
+            <p className="desk-sub">{t.desk.sub}</p>
+          </header>
+
+          <div className="desk-scene">
+            <div className="desk-laptop" data-mv="" style={moves('st-laptop')}>
+              <div className="story-3d">
+                <Laptop t={t} active={active} closed={closed} used={used} run={run} />
+              </div>
+            </div>
+            <Receipt t={t} />
+          </div>
+
+          <div className="desk-plate" data-mv="" style={moves('st-plate')}>
+            {DESK_COMMANDS.map((id) => (
+              <Plate
+                key={id}
+                id={id}
+                eyebrow={DESK_COMMAND_NAMES[id]}
+                title={t.desk.caps[id].title}
+                body={t.desk.caps[id].body}
+                listLabel={t.desk.notLabel}
+                list={t.desk.caps[id].not}
+                link={links[id]}
+                shown={!closed && id === active}
+              />
+            ))}
+            <Plate id="lid" eyebrow={t.neverLabel} title={t.neverTitle} body={t.neverLede} listLabel={t.leavesLabel} list={[t.leaves]} shown={closed} />
+          </div>
+
+          <div className="desk-objects" role="group" aria-label={t.desk.objects}>
+            <div className="desk-row">
+              {objects.map((object, index) => (
+                <div key={object.id} className="obj-slot" data-mv="" style={moves(`st-obj-${index}`)}>
+                  <button
+                    type="button"
+                    className="obj"
+                    data-obj={object.id}
+                    aria-pressed={object.id === 'lid' ? closed : !closed && object.id === active}
+                    onClick={() => press(object.id)}
+                  >
+                    <Icon id={object.id} />
+                    <span className="obj-words">
+                      <span className="obj-name">{object.name}</span>
+                      <span className="obj-hint">{object.hint}</span>
+                    </span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }

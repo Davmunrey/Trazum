@@ -1,28 +1,41 @@
 /*
- * The landing's story: a laptop, the CLI at work on its screen, and a lid
- * that closes. DESIGN.md, "Landing: the story told by scrolling", is the rule;
- * `components/landing/Story.tsx` says how the pieces fit.
+ * The landing's desk: one laptop on a desk, one object per capability around
+ * it, and the arrival told by scrolling. DESIGN.md, "Landing: the desk", is
+ * the rule; `components/landing/Story.tsx` says how the pieces fit.
  *
- * Read this file in two halves.
+ * Read this file in three parts.
  *
- * 1. The still page, first and unconditional. It is what a reader gets with
- *    reduced motion, without JavaScript, and in the first frame: every scene
- *    in reading order, every line of output in full, the laptop drawn once
- *    with what never leaves on its screen. Nothing in it is hidden.
+ * 1. The still page, first and unconditional. It is what a reader gets
+ *    without JavaScript: every command's output on the laptop's screen one
+ *    after another, then what never leaves, the receipt, and every plate, in
+ *    reading order. Nothing in it is hidden and nothing moves.
  *
- * 2. The story, only under `:root[data-motion='scroll']` (set before paint by
- *    the layout's bootstrap, never under reduced motion) and only for a reader
- *    with `prefers-reduced-motion: no-preference`. It places things; it does
- *    not move them. What moves is keyframes of `transform`, `opacity` and
- *    `clip-path` that `lib/story-motion.ts` writes from the timeline, on the
- *    section's scroll timeline: no width, height, top or left changes with
- *    scroll, and nothing in this file changes with scroll at all.
+ * 2. The desk, under `:root[data-desk]` (set before paint by the layout's
+ *    bootstrap whenever a script runs, reduced motion included). The laptop
+ *    stands on a desk drawn in perspective, the objects lie in front of it,
+ *    the plate stands beside it, and a press changes what the screen shows.
+ *    The only things here that run on a clock are what a press sets off, and
+ *    only for a reader with `prefers-reduced-motion: no-preference`: the lines
+ *    of an output appearing, the lid swinging shut, the receipt going back.
  *
- * Colours: the page's tokens for paper and type, so the explicit Dark theme
- * follows; the device drawn in the light tokens on either theme, and its
- * screen in the dark terminal tokens, as the Playground and the README's
- * terminal pictures are. Every value is one `globals.css` and
- * `scripts/brand.mjs` already name.
+ * 3. The arrival, only under `:root[data-motion='scroll']` (never under
+ *    reduced motion) and only for a reader with
+ *    `prefers-reduced-motion: no-preference`. It pins the stage and places
+ *    things; it does not move them. What moves is keyframes of `transform`,
+ *    `opacity` and `clip-path` that `lib/story-motion.ts` writes from the
+ *    timeline, on the section's scroll timeline: no width, height, top or left
+ *    changes with scroll, and nothing in this file changes with scroll at all.
+ *
+ * Depth: one light, from the top left, for the whole page. Every shadow falls
+ * down and to the right, hard, with no blur: the laptop's, the receipt's on
+ * the desk, each object's, the desk's own front edge. Thickness is a side face
+ * in the darker paper tone (`--layer-hover`), never a gradient.
+ *
+ * Colours: the page's tokens for paper, type, the desk and the objects, so
+ * the explicit Dark theme follows; the laptop and the paper receipt drawn in
+ * the light tokens on either theme, and the screen in the dark terminal
+ * tokens, as the Playground and the README's terminal pictures are. Every
+ * value is one `globals.css` and `scripts/brand.mjs` already name.
  */
 
 /*
@@ -46,12 +59,28 @@
 }
 #landing-title {
   font-family: 'Space Grotesk Variable', 'Trazum Grotesk Fallback', sans-serif;
+  /* Depth, restrained: the headline's own thickness, a hard offset in the side-face tone, down and to the right. */
+  text-shadow: 0.035em 0.035em 0 var(--layer-hover);
+}
+
+/* A band that overlaps the one above by a hard edge: a ledge in the side-face tone over its top rule. */
+.landing-ledge {
+  position: relative;
+}
+.landing-ledge::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  height: 10px;
+  border-top: 2px solid var(--foreground);
+  background: var(--layer-hover);
 }
 
 .story {
   /* The terminal's tokens: the dark theme's, on either theme. */
   --term-bg: #1c211b;
-  --term-raised: #242a21;
   --term-text: #f0f1e5;
   --term-dim: #c0c6af;
   --term-rule: #67715c;
@@ -60,10 +89,11 @@
   --term-bad: #f39f87;
   --term-acid: #dce94d;
   --term-ink: #20231e;
-  /* The device's: the light theme's paper and ink, on either theme. */
+  /* The device's and the paper receipt's: the light theme's paper and ink, on either theme. */
   --dev-ink: #20231e;
   --dev-shell: #fbf9f1;
   --dev-deck: #eeeee0;
+  --dev-side: #e6e8d5;
   --dev-rule: #999f8a;
   --dev-shadow: var(--ink);
   --dev-off: #080c07;
@@ -76,54 +106,42 @@
 
 .story-stage {
   border-top: 2px solid var(--foreground);
+  container: desk / inline-size;
 }
 
-.story-world {
-  /* The still laptop's size; the story redefines it from the stage. */
-  --sw: min(600px, calc(100vw - 64px));
-  /*
-   * The terminal's type size, here rather than on `.term`: the story's
-   * keyframes on `.term` read the line height from it, and a custom property
-   * an element sets for its own keyframes costs every frame its animation is
-   * live (measured for #770: 32 tasks over 50 ms scrolling below the story at
-   * 4x CPU throttle with it on `.term`, none with it here).
-   */
-  --tf: min(15px, calc((100vw - 72px) / (var(--cols) * 0.61)));
-  --L: calc(var(--sw) / 0.94);
+.desk {
+  --pad: 16px;
+  /* The laptop's size, and from it the screen's, the bezel's and the lid's. */
+  --L: min(760px, calc(100cqw - 2 * var(--pad)));
+  --sw: calc(var(--L) * 0.94);
   --sh: calc(var(--sw) / 1.6);
   --bt: calc(var(--L) * 0.035);
   --chin: calc(var(--L) * 0.05);
   --Hl: calc(var(--sh) + var(--bt) + var(--chin));
+  position: relative;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 56px 16px 72px;
+  padding: 48px var(--pad) 64px;
   display: flex;
   flex-direction: column;
-  gap: 56px;
+  gap: 32px;
 }
 @media (min-width: 640px) {
-  .story-world { padding: 72px 32px 96px; }
+  .desk { --pad: 32px; }
 }
 @media (min-width: 1024px) {
-  .story-world { padding: 96px 48px 120px; gap: 72px; --tf: min(15px, calc((58vw - 120px) / (var(--cols) * 0.61))); }
+  .desk { --pad: 48px; padding-top: 72px; padding-bottom: 96px; }
 }
 
-.term-box {
-  display: flex;
-  flex-direction: column;
-  gap: 56px;
+.desk-plane,
+.desk-objects,
+.desk-figure {
+  display: none;
 }
 
-.scene {
-  display: grid;
-  gap: 20px 56px;
-  align-items: start;
-}
-@media (min-width: 1024px) {
-  .scene { grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr); }
-}
-
-.scene-kicker {
+.desk-kicker,
+.plate-eyebrow,
+.plate-not {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
@@ -131,58 +149,104 @@
   text-transform: uppercase;
   color: var(--terracotta);
 }
-.scene-kicker > span {
-  display: inline-block;
-  margin-right: 6px;
-  padding: 1px 6px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-.scene-title {
-  margin-top: 12px;
+.desk-title {
+  margin-top: 10px;
+  max-width: 24ch;
   font-family: var(--font-display);
-  font-size: clamp(30px, 3.6vw, 52px);
-  line-height: 1.04;
+  font-size: clamp(28px, 3vw, 44px);
+  line-height: 1.05;
   font-weight: 700;
   letter-spacing: -0.04em;
+  text-wrap: balance;
 }
-.scene-body {
-  margin-top: 16px;
-  max-width: 58ch;
-  font-size: 16px;
-  line-height: 1.65;
+.desk-sub {
+  margin-top: 10px;
+  max-width: 70ch;
+  font-size: 15px;
+  line-height: 1.55;
   color: var(--muted-foreground);
 }
-.scene-note {
-  margin-top: 16px;
-  max-width: 58ch;
-  padding-left: 14px;
-  border-left: 4px solid var(--foreground);
-  font-size: 14px;
-  line-height: 1.55;
+
+/* The laptop, still: the bezel round a screen as tall as everything on it. */
+.desk-laptop {
+  width: var(--L);
+  max-width: 100%;
+}
+.lt-front {
+  background: var(--dev-ink);
+  border: calc(var(--L) * 0.006) solid var(--dev-rule);
+  padding: var(--bt) calc((var(--L) - var(--sw)) / 2) var(--chin);
+  box-shadow: calc(var(--L) * 0.012) calc(var(--L) * 0.012) 0 var(--dev-shadow);
+}
+.lt-screen {
+  position: relative;
+  overflow: hidden;
+  background: var(--term-bg);
+  color: var(--term-text);
+  container-type: inline-size;
+}
+.screen-out {
+  padding: 3.2cqw 3.6cqw;
+}
+.cap-out + .cap-out {
+  margin-top: 1.5em;
+  padding-top: 1.5em;
+  border-top: 1px solid var(--term-rule);
+}
+.lt-back,
+.lt-deck,
+.lt-screen-off {
+  display: none;
+}
+.lt-never {
+  padding: 3.2cqw 3.6cqw 4cqw;
+  border-top: 1px solid var(--term-rule);
+}
+.lt-never-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--term-acid);
+}
+.lt-never ul {
+  margin-top: 10px;
+  border-top: 1px solid var(--term-rule);
+}
+.lt-never li {
+  padding: 0.25em 0;
+  border-bottom: 1px solid var(--term-rule);
+  font-family: var(--font-display);
+  font-size: clamp(18px, 4.4cqw, 34px);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
-/* The terminal, still: each scene's output whole, on the terminal's ground. */
+/* The terminal: the CLI's lines in the mono stack, sized so its widest line fits the screen. */
 .term {
   margin: 0;
   min-width: 0;
-  padding: 20px 18px;
-  border: 2px solid var(--foreground);
-  background: var(--term-bg);
   color: var(--term-text);
   font-family: var(--font-mono);
-  font-size: var(--tf);
+  font-size: clamp(8px, calc(92.8cqw / (var(--cols) * 0.61)), 14px);
   line-height: 1.5;
-  white-space: pre;
-  overflow: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   font-variant-ligatures: none;
 }
 .tl {
   display: block;
   min-height: 1.5em;
 }
+/* A heading ruled out to the width runs to the screen's edge and is cut there, as a terminal narrower than the rule cuts it. */
+.tl-rule {
+  white-space: pre;
+  overflow: hidden;
+}
 .t-prompt { color: var(--term-acid); font-weight: 700; }
+.tl-command .t-typed { color: var(--term-acid); }
 .t-cursor { display: none; }
 .t-b { font-weight: 700; }
 .t-d { color: var(--term-dim); }
@@ -194,26 +258,281 @@
 .t-m { background: var(--term-acid); color: var(--term-ink); }
 .t-bar { display: inline-block; }
 
-/* The last scene's words, still. */
-.story-never {
-  max-width: 760px;
+/* The paper receipt, still: a slip under the laptop. */
+.receipt-slot {
+  width: min(300px, 100%);
+}
+.receipt {
+  position: relative;
+}
+.receipt-paper {
+  position: relative;
+  padding: 18px 18px 26px;
+  background: var(--dev-shell);
+  color: var(--dev-ink);
+  border: 2px solid var(--dev-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.receipt-cast,
+.receipt-curl {
+  display: none;
+}
+.receipt-mark {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+  text-align: center;
+}
+.receipt-meta {
+  text-align: center;
+  font-size: 0.9em;
+}
+.receipt-lines {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 2px dashed var(--dev-rule);
+}
+.receipt-lines li + li {
+  margin-top: 6px;
+}
+.receipt-row,
+.receipt-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.receipt-src {
+  display: block;
+  font-size: 0.88em;
+  white-space: nowrap;
+}
+/* The tear line, then the total in ink on the acid fill. */
+.receipt-total {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 2px dashed var(--dev-rule);
+  align-items: center;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.receipt-figure {
+  padding: 1px 6px;
+  border: 2px solid var(--dev-ink);
+  background: var(--term-acid);
+  color: var(--term-ink);
+  font-size: 16px;
+}
+.receipt-caveat {
+  margin-top: 10px;
+  font-size: 10.5px;
+  text-align: center;
 }
 
-/* The laptop, still: open, upright, what never leaves on its screen. */
-.story-camera {
-  position: relative;
-  align-self: center;
-  width: var(--L);
-  /* The lid, the deck in perspective under it, and room for what leaves. */
-  height: calc(var(--Hl) + var(--L) * 0.5);
+/* The plates, still: one after another, each its own bordered block. */
+.desk-plate {
+  display: grid;
+  gap: 16px;
 }
-.story-3d {
+.plate {
+  border: 2px solid var(--foreground);
+  background: var(--background);
+  padding: 20px 22px;
+}
+.plate-title {
+  margin-top: 8px;
+  font-family: var(--font-display);
+  font-size: clamp(22px, 2.2vw, 30px);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+.plate-body {
+  margin-top: 10px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+.plate-not {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 2px solid var(--foreground);
+}
+.plate-list {
+  margin-top: 8px;
+  padding-left: 18px;
+  list-style: square;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.plate-list li + li {
+  margin-top: 4px;
+}
+.plate-link {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 2px solid var(--foreground);
+  padding-bottom: 2px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.plate-link:hover {
+  color: var(--terracotta);
+}
+.plate-link:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+
+/*
+ * Without a script nothing is hidden: every output, what never leaves, and
+ * every plate. The reset hides `[hidden]` with an important rule in the `base`
+ * layer, and an important rule in a layer outranks every unlayered one, so this
+ * one is in that layer too, where the more specific selector wins.
+ */
+@layer base {
+  :root:not([data-desk]) .story [hidden] {
+    display: block !important;
+  }
+}
+
+/* ----------------------------------------------------------------- desk -- */
+
+:root[data-desk] .story [hidden] {
+  display: none !important;
+}
+
+:root[data-desk] .desk {
+  /* The tilt of the desk, the receipt and the objects lying on it: one plane, seen from above and in front. */
+  --tilt: 26deg;
+  --tilt-obj: 18deg;
+  --plate-w: clamp(280px, 24cqw, 380px);
+  --receipt-w: clamp(200px, 17cqw, 260px);
+  --gap: clamp(20px, 2.2cqw, 32px);
+  /* As wide as the row leaves beside the receipt and the plate, as tall as the window leaves under the words and above the objects. */
+  --L: clamp(
+    340px,
+    min(calc(min(100cqw, 1440px) - 2 * var(--pad) - var(--plate-w) - var(--receipt-w) - 3 * var(--gap)), calc((100svh - 285px) / 1.03)),
+    760px
+  );
+  --receipt-from: calc(-100% - var(--gap));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--plate-w);
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    'head head'
+    'scene plate'
+    'objects objects';
+  gap: 20px var(--gap);
+  padding-top: 32px;
+  padding-bottom: 36px;
+}
+
+/*
+ * The far plane: the bill's total, from the generated receipt, set huge in
+ * Space Grotesk behind the laptop. The lid, the receipt and the plate stand in
+ * front of it and cover part of it, by their place in the stacking order, so
+ * the type reads as the wall and the laptop as nearer. It is a picture of a
+ * figure the receipt and the screen already say in words, so it is hidden from
+ * assistive technology; it is cut inside its own box, never wider than the desk.
+ */
+:root[data-desk] .desk-figure {
+  display: block;
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: start;
+  justify-self: center;
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  margin-top: -0.1em;
+  font-family: var(--font-display);
+  font-size: clamp(110px, 21cqw, 320px);
+  font-weight: 700;
+  line-height: 0.86;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--layer-hover);
+  pointer-events: none;
+}
+
+:root[data-desk] .desk-head {
+  grid-area: head;
+  position: relative;
+  z-index: 1;
+}
+:root[data-desk] .desk-title {
+  max-width: none;
+  font-size: clamp(26px, 2.5vw, 40px);
+}
+:root[data-desk] .desk-sub {
+  margin-top: 6px;
+}
+
+/*
+ * The desk: a sunken paper ground with a 2px ink edge, tilted away about its
+ * front edge, and under that edge its thickness, a band in the side-face tone.
+ * It starts behind the laptop's lid and runs under the objects.
+ */
+:root[data-desk] .desk-plane {
+  display: flex;
+  flex-direction: column;
+  grid-column: 1 / -1;
+  grid-row: 2 / 4;
+  position: relative;
+  z-index: 0;
+  margin: calc(var(--Hl) * 0.34) calc(var(--pad) * -0.5) -8px;
+  pointer-events: none;
+}
+:root[data-desk] .desk-top {
+  flex: 1;
+  border: 2px solid var(--foreground);
+  border-bottom: 0;
+  background: var(--paper-sunken);
+  transform-origin: 50% 100%;
+  transform: perspective(1400px) rotateX(var(--tilt));
+}
+:root[data-desk] .desk-edge {
+  height: 16px;
+  border: 2px solid var(--foreground);
+  background: var(--layer-hover);
+  box-shadow: 0 8px 0 var(--rule);
+}
+
+:root[data-desk] .desk-scene {
+  grid-area: scene;
+  position: relative;
+  z-index: 2;
+  align-self: end;
+  /* The lid, and the deck in perspective in front of it; the objects in front may cover its lip and shadow. */
+  height: calc(var(--Hl) + var(--L) * 0.36);
+}
+
+/* The laptop on the desk: open, upright, the deck in perspective under it. */
+:root[data-desk] .desk-laptop {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  width: var(--L);
+  height: var(--Hl);
+  max-width: none;
+  transform-origin: 50% 100%;
+}
+:root[data-desk] .story-3d {
   position: absolute;
   inset: 0;
   perspective: calc(var(--L) * 3.2);
   perspective-origin: 50% calc(var(--L) * -0.12);
 }
-.lt-device {
+:root[data-desk] .lt-device {
   position: absolute;
   left: 0;
   top: 0;
@@ -221,80 +540,88 @@
   height: var(--Hl);
   transform-style: preserve-3d;
 }
-.lt-lid {
+:root[data-desk] .lt-lid {
   position: absolute;
   inset: 0;
   transform-origin: 50% 100%;
   transform-style: preserve-3d;
   transform: rotateX(0deg);
 }
-.lt-face {
+:root[data-desk] .lt-face {
   position: absolute;
   inset: 0;
   backface-visibility: hidden;
 }
-.lt-front {
-  background: var(--dev-ink);
-  border: calc(var(--L) * 0.006) solid var(--dev-rule);
-  box-shadow: calc(var(--L) * 0.012) calc(var(--L) * 0.012) 0 var(--dev-shadow);
+:root[data-desk] .lt-front {
+  padding: 0;
 }
-.lt-screen {
+:root[data-desk] .lt-screen {
   position: absolute;
   left: calc((var(--L) - var(--sw)) / 2 - var(--L) * 0.006);
   top: calc(var(--bt) - var(--L) * 0.006);
   width: var(--sw);
   height: var(--sh);
+}
+:root[data-desk] .screen-out {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   overflow: hidden;
   background: var(--term-bg);
 }
-.lt-never {
+:root[data-desk] .story[data-used] .screen-out,
+:root[data-desk]:not([data-motion]) .screen-out {
+  overflow-y: auto;
+}
+:root[data-desk] .screen-out:focus-visible {
+  outline: 3px solid var(--term-acid);
+  outline-offset: -3px;
+}
+:root[data-desk] .cap-out + .cap-out {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+:root[data-desk] .lt-never {
   position: absolute;
   inset: 0;
+  /* Over the output's ground, which stays drawn while the lid is shut. */
+  z-index: 2;
+  background: var(--term-bg);
+  border: 0;
   padding: calc(var(--L) * 0.045) calc(var(--L) * 0.06);
-  color: var(--term-text);
 }
-.lt-never-label {
-  font-family: var(--font-mono);
+:root[data-desk] .lt-never-label {
   font-size: calc(var(--L) * 0.019);
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--term-acid);
 }
-.lt-never ul {
-  margin-top: calc(var(--L) * 0.022);
-  border-top: 1px solid var(--term-rule);
-}
-.lt-never li {
+:root[data-desk] .lt-never li {
   padding: calc(var(--L) * 0.009) 0;
-  border-bottom: 1px solid var(--term-rule);
-  font-family: var(--font-display);
   font-size: calc(var(--L) * 0.044);
-  line-height: 1.1;
-  font-weight: 700;
-  letter-spacing: -0.03em;
 }
-.lt-screen-off {
+:root[data-desk] .lt-screen-off {
+  display: block;
   position: absolute;
   inset: 0;
+  z-index: 3;
   background: var(--dev-off);
   opacity: 0;
 }
-.lt-back {
-  transform: rotateX(180deg);
+:root[data-desk] .lt-back {
   display: grid;
+  transform: rotateX(180deg);
   place-items: center;
   background: var(--dev-shell);
   border: calc(var(--L) * 0.004) solid var(--dev-ink);
 }
-.lt-back span {
+:root[data-desk] .lt-back span {
   font-family: var(--font-display);
   font-size: calc(var(--L) * 0.085);
   font-weight: 700;
   letter-spacing: -0.045em;
   color: var(--dev-ink);
 }
-.lt-deck {
+:root[data-desk] .lt-deck {
+  display: block;
   position: absolute;
   left: 0;
   top: 100%;
@@ -311,7 +638,7 @@
   width: 100%;
   height: 100%;
 }
-.lt-deck-shade {
+:root[data-desk] .lt-deck-shade {
   position: absolute;
   inset: 0;
   background: var(--dev-ink);
@@ -320,44 +647,294 @@
   opacity: 0;
 }
 
-.story-leaves {
-  margin-top: 28px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px 14px;
+/* The lid, pressed: what never leaves is on the screen, and the lid closes over it about its hinge. */
+:root[data-desk] .story[data-closed] .lt-lid {
+  transform: rotateX(-103deg);
 }
-.story-leaves-label {
-  border: 2px solid var(--foreground);
-  background: var(--primary);
-  color: var(--primary-foreground);
-  padding: 3px 10px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+:root[data-desk] .story[data-closed] .lt-screen-off {
+  opacity: 0.92;
 }
-.story-leaves-text {
-  font-size: 18px;
-  font-weight: 700;
+:root[data-desk] .story[data-closed] .lt-deck-shade {
+  transform: scaleY(1);
+  opacity: 0.18;
 }
-.story-camera .story-leaves {
+
+/*
+ * The receipt, lying on the desk to the right of the laptop, in the desk's
+ * perspective: its far end curls up off the desk where it left the printer,
+ * and it casts its own hard shadow on the desk, down and to the right.
+ */
+:root[data-desk] .receipt-slot {
+  position: absolute;
+  z-index: 1;
+  left: calc(var(--L) + var(--gap) * 0.7);
+  top: calc(var(--Hl) * 0.1);
+  width: var(--receipt-w);
+}
+:root[data-desk] .receipt {
+  transform-origin: 50% 100%;
+  transform: perspective(900px) rotateX(var(--tilt)) rotate(2deg);
+}
+:root[data-desk] .receipt-paper {
+  border: 0;
+  padding: 14px 14px 22px;
+  font-size: clamp(10px, 0.82cqw, 12px);
+  /* The bottom is torn along a zigzag; the top left the printer. */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), 90% 100%, 80% calc(100% - 7px), 70% 100%, 60% calc(100% - 7px), 50% 100%, 40% calc(100% - 7px), 30% 100%, 20% calc(100% - 7px), 10% 100%, 0 calc(100% - 7px));
+}
+:root[data-desk] .receipt-cast {
+  display: block;
+  position: absolute;
+  inset: 0;
+  transform: translate(10px, 12px);
+  background: var(--rule);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), 90% 100%, 80% calc(100% - 7px), 70% 100%, 60% calc(100% - 7px), 50% 100%, 40% calc(100% - 7px), 30% 100%, 20% calc(100% - 7px), 10% 100%, 0 calc(100% - 7px));
+}
+:root[data-desk] .receipt-curl {
+  display: block;
   position: absolute;
   left: 0;
   right: 0;
-  top: 100%;
+  top: -12px;
+  height: 14px;
+  border-bottom: 1px solid var(--dev-rule);
+  background: var(--dev-side);
+  transform-origin: 50% 100%;
+  transform: perspective(240px) rotateX(-58deg);
+}
+:root[data-desk] .receipt-mark {
+  font-size: 1.6em;
+}
+/* Only the bill prints a receipt: pressed elsewhere, it goes back into the laptop. */
+:root[data-desk] .story:not([data-active='bill']) .receipt-slot,
+:root[data-desk] .story[data-closed] .receipt-slot {
+  transform: translateX(var(--receipt-from));
+  opacity: 0;
+  visibility: hidden;
 }
 
-.story-marker,
-.term-cut {
-  display: none;
+/* The plate beside the laptop: the pressed object's. */
+:root[data-desk] .desk-plate {
+  grid-area: plate;
+  align-self: start;
+  position: relative;
+  z-index: 2;
+}
+:root[data-desk] .plate {
+  padding: clamp(16px, 1.6cqw, 24px);
+}
+
+/*
+ * The objects, lying on the desk in front of the laptop, in its perspective:
+ * each with a side face toward the bottom right and a hard shadow on the
+ * desk. The pressed one is in the acid fill, lifted off the desk, its shadow
+ * longer and its edge in ink.
+ */
+:root[data-desk] .desk-objects {
+  display: block;
+  grid-area: objects;
+  position: relative;
+  z-index: 3;
+}
+:root[data-desk] .desk-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 14px;
+  transform-origin: 50% 100%;
+  transform: perspective(1600px) rotateX(var(--tilt-obj));
+  transform-style: preserve-3d;
+}
+:root[data-desk] .obj-slot {
+  transform-style: preserve-3d;
+}
+.obj {
+  --side: var(--layer-hover);
+  --extrude: 1px 1px 0 var(--side), 2px 2px 0 var(--side), 3px 3px 0 var(--side), 4px 4px 0 var(--side), 5px 5px 0 var(--side);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 2px solid var(--foreground);
+  background: var(--paper-raised);
+  color: var(--foreground);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--extrude), 6px 6px 0 var(--rule), 11px 12px 0 var(--rule);
+}
+.obj[aria-pressed='true'] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: var(--extrude), 6px 6px 0 var(--foreground), 16px 20px 0 var(--rule);
+}
+.obj:focus-visible {
+  outline: 3px solid var(--foreground);
+  outline-offset: 4px;
+}
+.obj-icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: miter;
+}
+.obj-icon .ic-paper { fill: var(--paper-raised); }
+.obj-icon .ic-acid { fill: var(--acid); }
+.obj-icon .ic-ink { fill: currentColor; }
+.obj-words {
+  display: grid;
+  min-width: 0;
+}
+.obj-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.obj-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* A phone, or any window narrower than the row: one column, the laptop at the width of the window, the objects a row of their own that scrolls inside itself. */
+@media (max-width: 899px) {
+  :root[data-desk] .desk {
+    --tilt: 12deg;
+    --tilt-obj: 8deg;
+    --L: calc(min(100cqw, 760px) - 2 * var(--pad));
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    grid-template-areas:
+      'head'
+      'scene'
+      'objects'
+      'plate';
+    gap: 14px;
+    padding-top: 24px;
+    padding-bottom: 28px;
+  }
+  :root[data-desk] .desk-title {
+    font-size: 24px;
+  }
+  :root[data-desk] .desk-sub {
+    font-size: 13px;
+  }
+  :root[data-desk] .desk-plane {
+    grid-row: 2 / 4;
+    margin-top: calc(var(--Hl) * 0.5);
+  }
+  :root[data-desk] .desk-figure {
+    font-size: 26cqw;
+    margin-top: -0.18em;
+  }
+  /* No room beside the laptop: the receipt stays in it, and the bill's total is on the screen. */
+  :root[data-desk] .receipt-slot {
+    display: none;
+  }
+  :root[data-desk] .desk-objects {
+    margin-inline: calc(var(--pad) * -1);
+    padding: 6px var(--pad) 22px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  :root[data-desk] .desk-row {
+    display: flex;
+    width: max-content;
+    gap: 12px;
+    transform: perspective(2400px) rotateX(var(--tilt-obj));
+  }
+  :root[data-desk] .obj {
+    width: 172px;
+    min-height: 56px;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+  :root[data-desk] .obj-icon {
+    width: 30px;
+    height: 30px;
+  }
+  :root[data-desk] .obj-name {
+    font-size: 14px;
+  }
+  :root[data-desk] .plate {
+    padding: 14px 16px;
+  }
+  :root[data-desk] .plate-title {
+    font-size: 21px;
+  }
+  :root[data-desk] .plate-body {
+    margin-top: 6px;
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  :root[data-desk] .plate-not {
+    margin-top: 10px;
+    padding-top: 8px;
+  }
+  :root[data-desk] .plate-list {
+    font-size: 13px;
+  }
+}
+
+/*
+ * What a press sets off, on a clock, for a reader who has not asked for less
+ * motion: the output appears a line at a time, what never leaves likewise, the
+ * lid swings shut once it has, and the pressed object lifts. Each starts from
+ * the visitor's press (`data-used`, `data-closed`), never on its own.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-desk] .story[data-used] .cap-out .tl,
+  :root[data-desk] .story[data-closed] .lt-never li {
+    animation-name: desk-line;
+    animation-duration: 1ms;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-delay: calc(var(--i) * var(--step, 70ms));
+  }
+  @keyframes desk-line {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  :root[data-desk] .story[data-used] .lt-lid,
+  :root[data-desk] .story[data-used] .lt-screen-off,
+  :root[data-desk] .story[data-used] .lt-deck-shade {
+    transition-property: transform, opacity;
+    transition-duration: 650ms;
+    transition-timing-function: cubic-bezier(0.55, 0, 0.3, 1);
+  }
+  /* Closing waits for what never leaves to be on the screen; opening does not wait. */
+  :root[data-desk] .story[data-closed] .lt-lid,
+  :root[data-desk] .story[data-closed] .lt-screen-off,
+  :root[data-desk] .story[data-closed] .lt-deck-shade {
+    transition-delay: 450ms;
+  }
+  :root[data-desk] .story[data-used] .receipt-slot {
+    transition-property: transform, opacity, visibility;
+    transition-duration: 450ms, 300ms, 0s;
+    transition-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  }
+  :root[data-desk] .story[data-used]:not([data-active='bill']) .receipt-slot,
+  :root[data-desk] .story[data-used][data-closed] .receipt-slot {
+    transition-delay: 0s, 150ms, 450ms;
+  }
+  :root[data-desk] .obj {
+    transition-property: transform, box-shadow;
+    transition-duration: 180ms;
+    transition-timing-function: ease-out;
+  }
+  :root[data-desk] .obj[aria-pressed='true'] {
+    transform: translateZ(16px) translate(-3px, -4px);
+  }
 }
 
 /* ---------------------------------------------------------------- story -- */
 
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference) and (min-height: 560px) {
   /*
    * Each moving element (`[data-mv]`) runs its own keyframes, written from the
    * timeline by `lib/story-motion.ts` and named on the element, over the
@@ -367,14 +944,17 @@
    * Where the browser has no scroll timeline, `Story.tsx` says so with
    * `data-story="script"`: the same keyframes then sit paused, a second
    * long, and the script sets each one's current time to the scroll position.
+   *
+   * A window shorter than 560 px has no room to pin the desk: it gets the
+   * desk as it rests, as reduced motion does.
    */
   :root[data-motion='scroll'] .story {
     view-timeline: --story block;
     position: relative;
-    height: 900vh;
+    height: 280vh;
   }
-  @media (max-aspect-ratio: 1/1) {
-    :root[data-motion='scroll'] .story { height: 680vh; }
+  @media (max-width: 899px) {
+    :root[data-motion='scroll'] .story { height: 230vh; }
   }
   :root[data-motion='scroll'] .story [data-mv] {
     animation-duration: auto;
@@ -388,170 +968,41 @@
     animation-duration: 1s;
     animation-play-state: paused;
   }
+  /*
+   * Once the visitor has pressed an object, or put focus inside the desk, the
+   * arrival is over: every element rests where the desk has it, so a control
+   * is never reached half-arrived and nothing the visitor chose is undone by
+   * the scroll.
+   */
+  :root[data-motion='scroll'] .story[data-used] [data-mv],
+  :root[data-motion='scroll'] .story:focus-within [data-mv] {
+    animation-name: none !important;
+  }
 
   :root[data-motion='scroll'] .story-stage {
     position: sticky;
     top: 0;
-    /* The small viewport: a phone's toolbars never cover the stage. */
-    height: 100svh;
-    overflow: hidden;
-    container: story / size;
+    min-height: 100svh;
     border-top: 0;
     background: var(--background);
   }
 
-  :root[data-motion='scroll'] .story-world {
-    /*
-     * The geometry, from the stage, which does not move while scrolling. The
-     * screen is 16:10. `--shown` is the largest 16:10 rectangle the window
-     * holds; the screen at rest is `--lam` of it, so pushing in by
-     * `1 / --lam` makes the screen exactly the shown rectangle and the
-     * terminal, laid out at that size, reaches a scale of exactly 1: its text
-     * is never scaled up.
-     */
-    --lam: 0.5;
-    --shown: min(100cqw, 160cqh);
-    --shownH: calc(var(--shown) / 1.6);
-    --sw: calc(var(--shown) * var(--lam));
-    --top: calc((100cqh - var(--Hl) - var(--L) * 0.3) / 2);
-    --cy: calc(var(--top) + var(--bt) + var(--sh) / 2);
-    --hy: calc(var(--top) + var(--Hl));
-    --aside-x: 17cqw;
-    --aside-y: -4cqh;
-    /* Closed, the machine is a third of its open height: it rises to the middle. */
-    --close-y: 9cqh;
-    /*
-     * Where the terminal's lines are (#770). The free part of the window is
-     * what the scene's plate leaves: beside it on a wide screen, under it on
-     * a tall one. Across, its middle is `--free-cx`; down, it runs from the
-     * showing scene's top (`--ft-<scene>`) to `--fb`, and the motion moves
-     * from one scene's top to the next's as the plates swap. The column of
-     * lines is centred on it, across and down, so a short output stands in
-     * the middle and a long one has the same room above as below, cut at the
-     * top. On a wide screen the plate is beside the column and every scene's
-     * free part is the same. The type is the still page's (`--tf`); the
-     * motion scrolls and centres by a line's height in it (`--lh`).
-     */
-    --lh: calc(var(--tf) * 1.5);
-    --cap-r: calc(3.5cqw + min(29cqw, 460px));
-    --free-cx: calc((var(--cap-r) + 100cqw) / 2);
-    --tb-w: 60cqw;
-    --tb-left: calc(var(--free-cx) - var(--tb-w) / 2);
-    --tb-top: calc((100cqh - var(--shownH)) / 2 + var(--shownH) * 0.08);
-    --tb-h: calc((50cqh - var(--tb-top)) * 2);
-    --ft-bill: var(--tb-top);
-    --ft-check: var(--tb-top);
-    --ft-trim: var(--tb-top);
-    --fb: calc(var(--tb-top) + var(--tb-h));
-    /* At rest the column sits in the middle of the screen; inside, it moves aside for the words. */
-    --rest-x: calc(50cqw - var(--tb-w) / 2 - var(--tb-left));
-    /* The words' plates are centred on their own height beside the device. */
-    --words-y: -50%;
-
-    position: absolute;
-    inset: 0;
-    max-width: none;
-    margin: 0;
-    padding: 0;
-    display: block;
-  }
-  @media (max-aspect-ratio: 1/1) {
-    :root[data-motion='scroll'] .story-world {
-      --lam: 0.86;
-      --top: 11cqh;
-      --aside-x: 0px;
-      --aside-y: 0px;
-      --close-y: 0px;
-      /*
-       * On a tall screen the free part is under the scene's plate, which is
-       * as tall as its own words, and above the marker. `Story.tsx` measures
-       * each plate's foot (`--free-t-<scene>`) and the marker's top, or the
-       * scene's name over it (`--free-b`), when the stage or a plate changes
-       * size, never while scrolling. The column keeps 16 px from each, and
-       * its box reaches from under the shortest plate to over the marker.
-       */
-      --free-cx: 50cqw;
-      --tb-w: 92cqw;
-      --ft-bill: calc(var(--free-t-bill, 40cqh) + 16px);
-      --ft-check: calc(var(--free-t-check, 40cqh) + 16px);
-      --ft-trim: calc(var(--free-t-trim, 40cqh) + 16px);
-      --fb: calc(var(--free-b, 94cqh) - 16px);
-      --tb-top: min(var(--ft-bill), var(--ft-check), var(--ft-trim));
-      --tb-h: calc(var(--fb) - var(--tb-top));
-      --rest-x: 0px;
-      --words-y: 0px;
-    }
-  }
-
-  /* The camera: the device, pushed into and pulled out of. */
-  :root[data-motion='scroll'] .story-camera {
-    position: absolute;
-    left: calc(50cqw - var(--L) / 2);
-    top: var(--top);
-    width: var(--L);
-    height: var(--Hl);
-    transform-origin: 50% calc(var(--bt) + var(--sh) / 2);
-  }
-  :root[data-motion='scroll'] .story-3d {
-    perspective-origin: 50% calc(var(--L) * -0.12);
-  }
-
-  /*
-   * The terminal: a layer the size of the window, laid out at its final
-   * size, scaled down onto the laptop's screen and cut to it.
-   */
-  :root[data-motion='scroll'] .story-layer {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100cqw;
-    height: 100cqh;
-    z-index: 3;
-    background: var(--term-bg);
-    transform-origin: 50% 50%;
-  }
-
-  :root[data-motion='scroll'] .term-box {
-    display: block;
-    margin-left: var(--tb-left);
-    margin-top: var(--tb-top);
-    width: var(--tb-w);
-    height: var(--tb-h);
-  }
-
-  :root[data-motion='scroll'] .scene {
-    display: block;
-  }
-
-  /* The cut at the free part's top: the terminal's ground over the column, under the plates (`st-term-cut`). */
-  :root[data-motion='scroll'] .term-cut {
-    display: block;
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100cqw;
-    height: 100cqh;
-    z-index: 1;
-    background: var(--term-bg);
-  }
-
-  :root[data-motion='scroll'] .term {
-    /* As wide as its widest line, in the middle of the free part. */
-    width: calc(var(--cols) * 1ch);
-    max-width: 100%;
-    margin-inline: auto;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    font-size: var(--tf);
-    overflow: visible;
+  :root[data-motion='scroll'] .desk {
+    /* How far each layer rises as it arrives: the desk least, the laptop most, the objects between. */
+    --rise-head: 5svh;
+    --rise-figure: 9svh;
+    --rise-desk: 20svh;
+    --rise-laptop: 46svh;
+    --rise-obj: 30svh;
+    --rise-plate: 18px;
+    min-height: 100svh;
   }
 
   /* A command is typed: the text is all there, and a clip shows it a character at a time. */
   :root[data-motion='scroll'] .tl-command {
     position: relative;
   }
-  :root[data-motion='scroll'] .t-typed {
+  :root[data-motion='scroll'] .t-typed[data-mv] {
     display: inline-block;
   }
   :root[data-motion='scroll'] .t-cursor {
@@ -562,138 +1013,10 @@
     width: 1ch;
     height: 1.2em;
     background: var(--term-acid);
+    opacity: 0;
   }
-
-  /* The words for each scene inside the screen, on paper. */
-  :root[data-motion='scroll'] .scene-cap {
-    position: absolute;
-    left: 3.5cqw;
-    top: 50%;
-    width: min(29cqw, 460px);
-    padding: clamp(18px, 2.2cqw, 32px);
-    z-index: 2;
-    border: 2px solid var(--foreground);
-    background: var(--background);
-    color: var(--foreground);
-  }
-  :root[data-motion='scroll'] .scene-cap .scene-title {
-    font-size: clamp(26px, 2.7cqw, 44px);
-  }
-  :root[data-motion='scroll'] .scene-cap .scene-body {
-    font-size: clamp(14px, 1.1cqw, 16px);
-    line-height: 1.6;
-  }
-  :root[data-motion='scroll'] .scene-cap .scene-note {
-    font-size: 13px;
-  }
-  @media (max-aspect-ratio: 1/1) {
-    :root[data-motion='scroll'] .scene-cap {
-      /* The page's own gutter at the least: 4cqw is 15.6 px at 390 wide. */
-      left: max(16px, 4cqw);
-      right: max(16px, 4cqw);
-      top: 3cqh;
-      width: auto;
-      padding: 14px 16px;
-      /* A plate fades in and out where it stands, so the column under it is never under a plate still sliding into place. */
-      --words-rise: 0px;
-    }
-    :root[data-motion='scroll'] .scene-cap .scene-title {
-      margin-top: 6px;
-      font-size: 24px;
-    }
-    :root[data-motion='scroll'] .scene-cap .scene-body {
-      margin-top: 8px;
-      font-size: 13px;
-      line-height: 1.5;
-    }
-    :root[data-motion='scroll'] .scene-cap .scene-note {
-      display: none;
-    }
-  }
-
-  /* The last scene's words, beside the device. */
-  :root[data-motion='scroll'] .story-never {
-    position: absolute;
-    left: 5cqw;
-    top: 50%;
-    width: min(31cqw, 520px);
-    z-index: 2;
-  }
-  @media (max-aspect-ratio: 1/1) {
-    :root[data-motion='scroll'] .story-never {
-      left: 5cqw;
-      right: 5cqw;
-      width: auto;
-      top: calc(var(--hy) + var(--L) * 0.3);
-    }
-    :root[data-motion='scroll'] .story-never .scene-title {
-      font-size: 28px;
-    }
-    :root[data-motion='scroll'] .story-never .scene-body {
-      font-size: 14px;
-      margin-top: 10px;
-    }
-  }
-
-  /* What does leave comes up out of the closed machine. */
-  :root[data-motion='scroll'] .story-camera .story-leaves {
-    top: auto;
-    bottom: calc(var(--L) * 0.12);
-    margin: 0;
-  }
-  :root[data-motion='scroll'] .story-leaves-text {
-    font-size: clamp(18px, 1.9cqw, 30px);
-  }
-
-  /* Where the visitor is in the story. */
-  :root[data-motion='scroll'] .story-marker {
-    position: absolute;
-    left: 3.5cqw;
-    bottom: 3.5cqh;
-    z-index: 4;
-    display: flex;
-    gap: 10px;
-    padding: 8px 12px;
-    border: 2px solid var(--foreground);
-    background: var(--background);
-    color: var(--foreground);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 600;
-  }
-  :root[data-motion='scroll'] .story-marker li {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  :root[data-motion='scroll'] .mk-bar {
-    position: relative;
-    width: 34px;
-    height: 10px;
-    border: 2px solid var(--foreground);
-  }
-  :root[data-motion='scroll'] .mk-fill {
-    position: absolute;
-    inset: 0;
-    background: var(--primary);
-    transform-origin: 0 50%;
-  }
-  :root[data-motion='scroll'] .mk-label {
-    position: absolute;
-    left: 12px;
-    bottom: calc(100% + 8px);
-    padding: 2px 8px;
-    border: 2px solid var(--foreground);
-    background: var(--primary);
-    color: var(--primary-foreground);
-    white-space: nowrap;
-  }
-  @media (max-aspect-ratio: 1/1) {
-    :root[data-motion='scroll'] .story-marker {
-      left: 50%;
-      bottom: 2.5cqh;
-      transform: translateX(-50%);
-    }
-    :root[data-motion='scroll'] .mk-bar { width: 26px; }
+  :root[data-motion='scroll'] .story[data-used] .t-cursor,
+  :root[data-motion='scroll'] .story:focus-within .t-cursor {
+    display: none;
   }
 }

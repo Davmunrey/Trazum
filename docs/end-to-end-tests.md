@@ -13,8 +13,8 @@ page.
 
 ## What is checked
 
-Twenty-five flows, each from an empty browser. Most drive the application at
-`/app`, where it has lived since the landing took `/`; twelve start on the
+Twenty-six flows, each from an empty browser. Most drive the application at
+`/app`, where it has lived since the landing took `/`; thirteen start on the
 landing:
 
 | Flow | What the page must show |
@@ -35,11 +35,12 @@ landing:
 | Pro | from the landing, the Pro entry to `/pro`, the status above the title and the section that says it is not open, the four tiers as Trazum Pro's `docs/pricing.md` decided them (`€149 a month`, `Up to €5,000`, `2.98%` and the rest), one `mailto:` link to the address `CODE_OF_CONDUCT.md` publishes with the subject filled in, no form or field, every text at its WCAG contrast on paper and again with Dark chosen in the header, no request to another origin from the landing on, and no cookie |
 | Download | from the landing, the Download entry to `/download`, the version the page says it is for (the manifest's), the five sections in order, the CLI at that exact version three ways (`npx`, `npm install -g`, the Homebrew tap), the eight MCP clients in order with the Claude Code, Codex, Cursor, VS Code and Gemini CLI snippets parsed and held to `@trazum/mcp@<version>`, the four files linked by one scheme (`releases/download/v<version>/trazum-vscode-<version>.vsix` and the rest, never `releases/latest`), the Action's pinned line, the checksum command, no store named anywhere, no form or field, every text at its WCAG contrast on paper and with Dark chosen, no sideways scroll on a phone, no request to another origin and no cookie |
 | Tour | all ten steps: the bill, the optimiser and the comparison each run their sample, and the terminal types and runs each of its three commands once |
-| Landing, the story | scrolled from top to bottom a percent at a time: the bill's total, the gate's verdict, the trimming's token counts, what never leaves on the screen and what leaves beside the closed machine each come into view, in that order; the lid's computed rotation is closed (below -95°) at the end, open again halfway back and at the top; no control inside the pinned stage; the last call to action takes focus and leads to `/app` |
-| Landing, the fallback | the same story with `CSS.supports` saying no to scroll-driven animation, so the script writes the progress (`data-story="script"`) |
-| Landing, on a phone | the menu opens above the story, the page never scrolls sideways at five points of it, and the story plays in order |
-| Landing, the output in the middle | at 1440x900 and at 390x844, after each run of output in the bill, the gate's check, its status and the trimming: the printed lines, blank ones included, centred down the free part of the window (beside the scene's plate on a wide screen, between the showing scene's own plate and the marker on a phone) and the column centred across it, within 3 px; each plate as tall as its own words; and at 390x844 and 768x1024, every half percent across each change of plate, the output at least 15 px from the foot of any plate that is up and from the marker (#770) |
-| Landing, reduced motion | no story mode, every scene's text on the page in reading order, every line of output fully shown, the laptop open and still |
+| Landing, the arrival | at 1440x900, scrolled from top to bottom a percent at a time: the desk's heading, the bill's total on the laptop's screen and the receipt's total on the desk each come into view, in that order, and are gone again on the way back up; one laptop on the page; the last call to action takes focus and leads to `/app` |
+| Landing, the desk | at 1440x900, the seven objects reached by Tab in the order they lie, then each object that runs a command pressed by keyboard: its own output on the screen (the bill's total, `All 3 within budget.`, `Trazum: stopped.`, `2026-W36`, `326 → 202`, the calendar's cut), its command on the plate, only it pressed, one laptop, and the receipt out for the bill alone; the lid closes (its computed rotation below -95°) with what leaves on the plate, and opens on the last command; scrolled back to the top, the desk stays |
+| Landing, the fallback | the arrival with `CSS.supports` saying no to scroll-driven animation, so the script writes the progress (`data-story="script"`) |
+| Landing, on a phone | the menu opens above the desk; the page never scrolls sideways at five points of the arrival or after every object is pressed; the objects a row wider than the window that scrolls inside itself; the laptop at the window's width less the gutters; the arrival in order without the receipt, which a phone keeps in the laptop; and every object pressed as on the wide screen |
+| Landing, reduced motion | no story mode but the desk; every line of output fully shown, the laptop open; a press shows the gate's output whole, and the lid is shut by the next frame |
+| Landing, without JavaScript | no desk mode; every command's output, what never leaves, the receipt and every plate in reading order; no object drawn; every line of output shown; one laptop |
 | Appearance, the public site | on a dark system with nothing chosen the landing is light and its control says Light, `/app` is dark, and Dark chosen in the header holds after a reload |
 | Appearance | dark applied at once and still there after a reload |
 | Language | Spanish on the page and in the `lang` attribute, after a reload too |
@@ -115,11 +116,11 @@ privacy probe has run, on a server of its own. It is part of the required
 check, so a pull request that breaks a flow cannot merge. The twenty-three
 there were then took 56 seconds by the times the runner printed, against a local
 production build on a machine another job was sharing, on 2026-11-18 (#770). The
-tour is nine of them, because it waits for a hand that types. The six flows of the
-landing are 23: the three that play the story each scroll the page a hundred
-and one times and read it at each stop, and the one that measures where the
-output stands stops eight times, then nine times across each change of plate
-at two sizes. The Pro flow, added after them, took 1,854 ms on its own on
+tour is nine of them, because it waits for a hand that types. The landing's flows
+were replaced by the desk's six on 2026-11-19, which took 25,086 ms between them by the times the
+runner printed, against a local production build on a machine other jobs were
+sharing; the phone's is the longest, at 9,049 ms, because it plays the arrival
+and then presses every object. The Pro flow, added after them, took 1,854 ms on its own on
 2026-11-19, against a local production build on a machine another job was
 sharing. The Download flow's time is in CHANGELOG.md, under the entry that added it.
 

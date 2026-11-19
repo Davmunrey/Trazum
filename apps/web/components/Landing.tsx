@@ -18,16 +18,17 @@ import { SiteFrame } from './site/SiteFrame';
  *
  * In the order a visitor needs it: what Trazum does, in the README's own
  * first line, with the one command and the way into the dashboard, all in
- * the first screen; then the story (`landing/Story.tsx`): a laptop, the CLI
- * at work on its screen, and a lid that closes over what never leaves the
- * machine; then why the number holds up, the three other things it does,
+ * the first screen; then the desk (`landing/Story.tsx`): the one laptop lands
+ * on it, `bill` runs and the receipt prints, and every capability lies around
+ * it as an object that puts its own output on the screen; then why the number
+ * holds up, the one thing the desk cannot show (the budget check for agents),
  * and the command again with the way in and the way to GitHub.
  *
  * Every sentence is the README's (`lib/landing-copy.ts` says why), and every
  * character on the laptop's screen is what the built CLI printed
  * (`lib/landing-terminal.ts`). The page is paper first; ink is for type,
- * rules and the laptop's screen. DESIGN.md, "Landing: the story told by
- * scrolling", is the rule this follows.
+ * rules and the laptop's screen. DESIGN.md, "Landing: the desk", is the
+ * rule this follows.
  */
 
 const WRAP = 'mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12';
@@ -38,9 +39,15 @@ function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
     <>
       <section aria-labelledby="landing-title" className={`${WRAP} pt-7 pb-8 sm:pt-10 lg:pt-12 lg:pb-12`}>
         <p className="font-mono text-[12px] leading-relaxed text-muted-foreground sm:text-[13px]">{t.eyebrow}</p>
+        {/*
+          The headline's measure is in em, not ch: 22ch of Space Grotesk Bold is 14.25em, and a ch read from the
+          fallback face before the font arrives is narrower, which wrapped the headline onto a fourth line and then
+          back (measured: a layout shift of 0.027 at 1440x900). For the same reason the two actions stack on a phone
+          rather than wrap: in the fallback face they did not fit on one line (0.12 at 390x844).
+        */}
         <h1
           id="landing-title"
-          className="mt-3 max-w-[22ch] font-display text-[clamp(34px,4.9vw,72px)] leading-[1.0] font-bold tracking-[-0.045em] text-balance sm:mt-4"
+          className="mt-3 max-w-[14.25em] font-display text-[clamp(34px,4.9vw,72px)] leading-[1.0] font-bold tracking-[-0.045em] text-balance sm:mt-4"
         >
           {t.heroTitle}
         </h1>
@@ -49,7 +56,7 @@ function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
             <p className="mb-2.5 text-[13px] font-semibold sm:text-[14px]">{t.commandLabel}</p>
             <CommandLine command={COMMAND} copyLabel={copy.copyCommand} copiedLabel={copy.copied} />
           </div>
-          <div className="flex flex-wrap items-center gap-3 lg:col-start-1 lg:row-start-1">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center lg:col-start-1 lg:row-start-1">
             <DashboardAction label={copy.dashboardCta} className="min-h-12 px-6 text-[16px]" />
             <GitHubButton label={copy.links.github} opensExternal={copy.opensExternal} className="min-h-12" />
           </div>
@@ -71,7 +78,7 @@ function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
         </a>
       </p>
 
-      <section aria-labelledby="reasons-title" className="border-t-2 border-foreground bg-layer">
+      <section aria-labelledby="reasons-title" className="landing-ledge border-t-2 border-foreground bg-layer">
         <div className={`${WRAP} py-14 lg:py-20`}>
           <h2
             id="reasons-title"
@@ -105,46 +112,28 @@ function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
         >
           {t.moreTitle}
         </h2>
-        <div className="grid lg:grid-cols-3">
-          {(['ci', 'mcp', 'trim'] as const).map((key, index) => {
-            const item = t.more[key];
-            const link = MORE_LINKS[key];
-            return (
-              <article
-                key={key}
-                className={`flex flex-col border-b-2 border-foreground py-8 lg:py-10 ${
-                  index === 0 ? 'lg:pr-8' : index === 1 ? 'lg:border-x-2 lg:px-8' : 'lg:pl-8'
-                }`}
-              >
-                <code className="self-start border-2 border-foreground bg-primary px-2.5 py-1 font-mono text-[13px] font-semibold text-primary-foreground">
-                  {link.command}
-                </code>
-                <h3 className="mt-5 font-display text-[clamp(22px,2.2vw,30px)] leading-[1.12] font-bold tracking-[-0.03em]">
-                  {item.title}
-                </h3>
-                {/* The budget check has no scene on the laptop (the repository has no example call of it to run), so its words are here. */}
-                {key === 'mcp' && <p className="mt-3 flex-1 text-[15.5px] leading-[1.7] text-muted-foreground">{item.body}</p>}
-                <a
-                  href={link.href}
-                  {...(link.external
-                    ? { target: '_blank', rel: 'noreferrer noopener', 'aria-label': `${item.link}, ${copy.opensExternal}` }
-                    : {})}
-                  className="mt-6 inline-flex items-center gap-2 self-start border-b-2 border-foreground pb-0.5 text-[15px] font-semibold transition-colors hover:text-terracotta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-                >
-                  {item.link}
-                  {link.external ? (
-                    <ArrowUpRight className="size-4" aria-hidden="true" />
-                  ) : (
-                    <ArrowRight className="size-4" aria-hidden="true" />
-                  )}
-                </a>
-              </article>
-            );
-          })}
-        </div>
+        {/* The desk shows the gate and the trimming; the budget check has no object on it (the repository has no example call of it to run), so its words are here. */}
+        <article className="flex flex-col border-b-2 border-foreground py-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-x-12 lg:py-10">
+          <div>
+            <code className="inline-block border-2 border-foreground bg-primary px-2.5 py-1 font-mono text-[13px] font-semibold text-primary-foreground">
+              {MORE_LINKS.mcp.command}
+            </code>
+            <h3 className="mt-5 font-display text-[clamp(22px,2.2vw,30px)] leading-[1.12] font-bold tracking-[-0.03em]">{t.more.mcp.title}</h3>
+          </div>
+          <div>
+            <p className="mt-3 text-[15.5px] leading-[1.7] text-muted-foreground lg:mt-0">{t.more.mcp.body}</p>
+            <a
+              href={MORE_LINKS.mcp.href}
+              className="mt-6 inline-flex items-center gap-2 self-start border-b-2 border-foreground pb-0.5 text-[15px] font-semibold transition-colors hover:text-terracotta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+            >
+              {t.more.mcp.link}
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </a>
+          </div>
+        </article>
       </section>
 
-      <section aria-labelledby="close-title" data-landing-close="" className="border-t-2 border-foreground">
+      <section aria-labelledby="close-title" data-landing-close="" className="landing-ledge border-t-2 border-foreground">
         <div className={`${WRAP} grid items-end gap-10 py-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-16 lg:py-20`}>
           <div>
             <h2

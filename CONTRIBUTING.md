@@ -335,10 +335,10 @@ opens the built page in a real browser and does what a visitor does: pastes a
 log and reads the bill to the cent, optimises and compares a prompt, loads a
 recorded run, changes the theme and the language, and reaches the tabs on a
 phone, follows the landing into the dashboard, scrolls the landing's
-story from top to bottom and back, reads the Pro page without it sending
+desk from top to bottom and back and presses every object on it, reads the Pro page without it sending
 anything off the site, and reads the Download page against the release it names
 and the same way.
-[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-five flows,
+[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-six flows,
 what they do not check, and the lines that install the browser driver outside
 the workspace.
 
