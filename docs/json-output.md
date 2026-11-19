@@ -694,3 +694,18 @@ instruction block's state, not whether a harness loaded or obeyed it.
 | `policyId` | `repeat-review-v1`. |
 | `applied` | `true` after apply, `false` after revert. |
 | `changed` | Whether this invocation changed the selected instruction file; idempotent repeats return `false`. |
+
+## The capability an advisory names
+
+No field of any document above carries it, and this is where a consumer who
+reads the `model-downgrade` advisory in `trazum optimize --json`, or in the
+response of `POST /api/optimize`, will look. The advisory's `detail` is a
+sentence for a person, and it quotes what the heuristic judged the prompt to
+need in the words a catalogue model's `capability` has: `small`, `mid` or
+`large`. Until 3.0.0 it quoted `haiku`, `sonnet` or `opus`. Read the sentence
+for display and never parse it: the id, the severity and `estimatedMonthlyUsd`
+are the fields. The same three names are what `recommendTier` returns and what
+`cheapestOfCapability` takes in code. `capability-names.test.js`, in the core
+and in the CLI, and `api.test.mjs` hold that none of the old three is quoted on
+those surfaces. The MCP server's `optimize_prompt` prints an advisory's title
+and not its detail, so no name reaches it.

@@ -10,7 +10,7 @@ import {
   BUNDLED_CATALOGUE,
   cacheEconomics,
   catalogueFromOverlay,
-  cheapestOfTierIn,
+  cheapestOfCapabilityIn,
   modelFrom,
   optimize,
   profileUsage,
@@ -151,7 +151,7 @@ describe('applying an overlay', () => {
     // Sonnet 5.5 and Sonnet 5 both list at 2/10 and beat Sonnet 4.6's 3/15;
     // on a tie the first listed wins, the newer model.
     assert.equal(
-      cheapestOfTierIn(BUNDLED_CATALOGUE, 'sonnet', on, 'anthropic').id,
+      cheapestOfCapabilityIn(BUNDLED_CATALOGUE, 'mid', on, 'anthropic').id,
       'claude-sonnet-5-5',
     );
     // Overlay a dearer Sonnet 5.5 and Sonnet 5 is the cheapest again —
@@ -159,7 +159,7 @@ describe('applying an overlay', () => {
     const dearer = catalogueFromOverlay(
       overlay({ 'claude-sonnet-5-5': { inputPerMTok: 9, outputPerMTok: 45 } }),
     );
-    assert.equal(cheapestOfTierIn(dearer, 'sonnet', on, 'anthropic').id, 'claude-sonnet-5');
+    assert.equal(cheapestOfCapabilityIn(dearer, 'mid', on, 'anthropic').id, 'claude-sonnet-5');
   });
 
   it('searches the whole catalogue when no provider is named', () => {
@@ -167,8 +167,8 @@ describe('applying an overlay', () => {
     // this repository calls it that way — the advisory always names a provider —
     // but a caller who wants "cheapest anywhere" can ask for it.
     const on = new Date('2026-07-01T00:00:00Z');
-    const anywhere = cheapestOfTierIn(BUNDLED_CATALOGUE, 'sonnet', on);
-    const anthropic = cheapestOfTierIn(BUNDLED_CATALOGUE, 'sonnet', on, 'anthropic');
+    const anywhere = cheapestOfCapabilityIn(BUNDLED_CATALOGUE, 'mid', on);
+    const anthropic = cheapestOfCapabilityIn(BUNDLED_CATALOGUE, 'mid', on, 'anthropic');
     assert.notEqual(anywhere.provider, undefined);
     assert.ok(
       anywhere.inputPerMTok <= anthropic.inputPerMTok,

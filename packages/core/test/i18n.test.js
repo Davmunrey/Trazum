@@ -125,7 +125,7 @@ describe('catalogue parity', () => {
       batchApi: undefined,
       modelDowngrade: {
         modelName: 'Claude Opus 5',
-        tier: 'haiku',
+        capability: 'small',
         candidateName: 'Claude Haiku 4.5',
         currentUsd: 12.5,
         candidateUsd: 2.5,

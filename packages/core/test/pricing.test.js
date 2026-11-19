@@ -333,7 +333,7 @@ describe('advisories', () => {
     const seen = recommendTierDetailed(clear, 200);
     assert.equal(seen.simpleSignals >= seen.complexSignals + 2, true, `not a clear lead: ${JSON.stringify(seen)}`);
     assert.equal(seen.conflicted, false);
-    assert.equal(seen.tier, 'haiku');
+    assert.equal(seen.capability, 'small');
   });
 
   it('never halves a downgrade candidate that has no batch API', () => {
@@ -399,13 +399,13 @@ describe('advisories', () => {
   });
 
   it('the complexity heuristic tells simple tasks from complex ones', () => {
-    assert.equal(recommendTier('Translate this sentence into English.', 20), 'haiku');
+    assert.equal(recommendTier('Translate this sentence into English.', 20), 'small');
     assert.equal(
       recommendTier(
         'Analyse the architecture, design a migration and debug the agent step by step.',
         6000,
       ),
-      'opus',
+      'large',
     );
   });
 });

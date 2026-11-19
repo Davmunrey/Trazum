@@ -1,33 +1,33 @@
 {
   "on": "2026-11-18",
   "prompts": {
-    "haiku": [
+    "small": [
       "Translate this sentence into English.",
       20
     ],
-    "sonnet": [
+    "mid": [
       "Write a short paragraph about the weather in spring for a newsletter.",
       800
     ],
-    "opus": [
+    "large": [
       "Analyse the architecture, design a migration and debug the agent step by step.",
       6000
     ]
   },
   "recommendTier": {
-    "haiku": "haiku",
-    "sonnet": "sonnet",
-    "opus": "opus"
+    "small": "small",
+    "mid": "mid",
+    "large": "large"
   },
-  "cheapestOfTier": {
-    "haiku": "claude-haiku-5-5",
-    "sonnet": "deepseek-flash",
-    "opus": "mistral-large-2512",
+  "cheapestOfCapability": {
+    "small": "claude-haiku-5-5",
+    "mid": "deepseek-flash",
+    "large": "mistral-large-2512",
     "frontier": "gpt-5.2",
     "unknown": null
   },
-  "cheapestOfTierIn": {
-    "haiku": {
+  "cheapestOfCapabilityIn": {
+    "small": {
       "*": "mistral-small-2603",
       "anthropic": "claude-haiku-5-5",
       "deepseek": null,
@@ -37,7 +37,7 @@
       "openai": "gpt-6-luna",
       "xai": null
     },
-    "sonnet": {
+    "mid": {
       "*": "deepseek-flash",
       "anthropic": "claude-sonnet-5-5",
       "deepseek": "deepseek-flash",
@@ -47,7 +47,7 @@
       "openai": "gpt-5.4-mini",
       "xai": "grok-build-0.1"
     },
-    "opus": {
+    "large": {
       "*": "mistral-large-2512",
       "anthropic": "claude-opus-5-5",
       "deepseek": "deepseek-v4-pro",
@@ -80,459 +80,459 @@
   },
   "downgrade": {
     "claude-fable-5-2": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": "claude-opus-5-5"
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": "claude-opus-5-5"
     },
     "claude-mythos-5-2": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": "claude-opus-5-5"
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": "claude-opus-5-5"
     },
     "claude-fable-5-1": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": "claude-opus-5-5"
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": "claude-opus-5-5"
     },
     "claude-mythos-5-1": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": "claude-opus-5-5"
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": "claude-opus-5-5"
     },
     "claude-fable-5": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": "claude-opus-5-5"
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": "claude-opus-5-5"
     },
     "claude-mythos-5": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": "claude-opus-5-5"
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": "claude-opus-5-5"
     },
     "claude-opus-5-5": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": null
     },
     "claude-opus-5": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": null
     },
     "claude-opus-4-8": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": null
     },
     "claude-opus-4-7": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": null
     },
     "claude-opus-4-6": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": null
     },
     "claude-opus-4-5": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": null
     },
     "claude-opus-4-1-20250805": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": null
     },
     "claude-opus-4-20250514": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": "claude-sonnet-5-5",
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": "claude-sonnet-5-5",
+      "large": null
     },
     "claude-sonnet-5-5": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": null,
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": null,
+      "large": null
     },
     "claude-sonnet-5": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": null,
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": null,
+      "large": null
     },
     "claude-sonnet-4-6": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": null,
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": null,
+      "large": null
     },
     "claude-sonnet-4-5": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": null,
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": null,
+      "large": null
     },
     "claude-sonnet-4-20250514": {
-      "haiku": "claude-haiku-5-5",
-      "sonnet": null,
-      "opus": null
+      "small": "claude-haiku-5-5",
+      "mid": null,
+      "large": null
     },
     "claude-haiku-5-5": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "claude-haiku-4-5": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "claude-3-5-haiku-20241022": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "gpt-6-astra": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-6.1-sol": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gpt-6.1-terra": {
-      "haiku": "gpt-6-luna",
-      "sonnet": null,
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": null,
+      "large": null
     },
     "gpt-6-sol": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gpt-6-luna": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "gpt-5.6-sol": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gpt-5.6-terra": {
-      "haiku": "gpt-6-luna",
-      "sonnet": null,
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": null,
+      "large": null
     },
     "gpt-5.6-luna": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "gpt-5.6-cyber": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gpt-5": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gpt-5-mini": {
-      "haiku": "gpt-6-luna",
-      "sonnet": null,
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": null,
+      "large": null
     },
     "gpt-5-nano": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "gpt-5.5": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-5.5-pro": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-5.4": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-5.4-pro": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-5.4-mini": {
-      "haiku": "gpt-6-luna",
-      "sonnet": null,
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": null,
+      "large": null
     },
     "gpt-5.4-nano": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "gpt-5.2": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-5.2-pro": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-5.1": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gpt-5-pro": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-4.1": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gpt-4.1-mini": {
-      "haiku": "gpt-6-luna",
-      "sonnet": null,
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": null,
+      "large": null
     },
     "gpt-4o": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gpt-4o-mini": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "o3": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "o3-pro": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-5.3-codex": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-5.2-codex": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": "gpt-6.1-sol"
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": "gpt-6.1-sol"
     },
     "gpt-5.1-codex": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gpt-5.1-codex-max": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gpt-5.1-codex-mini": {
-      "haiku": "gpt-6-luna",
-      "sonnet": null,
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": null,
+      "large": null
     },
     "gpt-5-codex": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "codex-mini-latest": {
-      "haiku": "gpt-6-luna",
-      "sonnet": null,
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": null,
+      "large": null
     },
     "chat-latest": {
-      "haiku": "gpt-6-luna",
-      "sonnet": "gpt-5.4-mini",
-      "opus": null
+      "small": "gpt-6-luna",
+      "mid": "gpt-5.4-mini",
+      "large": null
     },
     "gemini-2.5-pro": {
-      "haiku": "gemini-3.5-flash-lite",
-      "sonnet": "gemini-3.6-flash",
-      "opus": null
+      "small": "gemini-3.5-flash-lite",
+      "mid": "gemini-3.6-flash",
+      "large": null
     },
     "gemini-2.5-flash": {
-      "haiku": "gemini-3.5-flash-lite",
-      "sonnet": null,
-      "opus": null
+      "small": "gemini-3.5-flash-lite",
+      "mid": null,
+      "large": null
     },
     "gemini-3.6-flash": {
-      "haiku": "gemini-3.5-flash-lite",
-      "sonnet": null,
-      "opus": null
+      "small": "gemini-3.5-flash-lite",
+      "mid": null,
+      "large": null
     },
     "gemini-3.8-flash": {
-      "haiku": "gemini-3.5-flash-lite",
-      "sonnet": null,
-      "opus": null
+      "small": "gemini-3.5-flash-lite",
+      "mid": null,
+      "large": null
     },
     "gemini-3.1-pro-preview": {
-      "haiku": "gemini-3.5-flash-lite",
-      "sonnet": "gemini-3.6-flash",
-      "opus": null
+      "small": "gemini-3.5-flash-lite",
+      "mid": "gemini-3.6-flash",
+      "large": null
     },
     "gemini-4-carbon": {
-      "haiku": "gemini-3.5-flash-lite",
-      "sonnet": "gemini-3.6-flash",
-      "opus": null
+      "small": "gemini-3.5-flash-lite",
+      "mid": "gemini-3.6-flash",
+      "large": null
     },
     "gemini-4-argon": {
-      "haiku": "gemini-3.5-flash-lite",
-      "sonnet": "gemini-3.6-flash",
-      "opus": null
+      "small": "gemini-3.5-flash-lite",
+      "mid": "gemini-3.6-flash",
+      "large": null
     },
     "gemini-4-hydrogen": {
-      "haiku": "gemini-3.5-flash-lite",
-      "sonnet": null,
-      "opus": null
+      "small": "gemini-3.5-flash-lite",
+      "mid": null,
+      "large": null
     },
     "gemini-3.5-flash-lite": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "kimi-k3.1-pro": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "kimi-k3.1-pro-highspeed": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "kimi-k3": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "kimi-k2.7-code": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "kimi-k2.7-code-highspeed": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "kimi-k2.6": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "kimi-k2": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "deepseek-v3": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "deepseek-v4-flash": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "deepseek-flash": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "deepseek-v4-pro": {
-      "haiku": null,
-      "sonnet": "deepseek-flash",
-      "opus": null
+      "small": null,
+      "mid": "deepseek-flash",
+      "large": null
     },
     "grok-4.7": {
-      "haiku": null,
-      "sonnet": "grok-build-0.1",
-      "opus": null
+      "small": null,
+      "mid": "grok-build-0.1",
+      "large": null
     },
     "grok-4.6": {
-      "haiku": null,
-      "sonnet": "grok-build-0.1",
-      "opus": null
+      "small": null,
+      "mid": "grok-build-0.1",
+      "large": null
     },
     "grok-4.5": {
-      "haiku": null,
-      "sonnet": "grok-build-0.1",
-      "opus": null
+      "small": null,
+      "mid": "grok-build-0.1",
+      "large": null
     },
     "grok-4.3": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "grok-4.20-0309-reasoning": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "grok-4.20-0309-non-reasoning": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "grok-4.20-multi-agent-0309": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "grok-build-0.1": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     },
     "grok-4": {
-      "haiku": null,
-      "sonnet": "grok-build-0.1",
-      "opus": null
+      "small": null,
+      "mid": "grok-build-0.1",
+      "large": null
     },
     "mistral-large-2": {
-      "haiku": "mistral-small-2603",
-      "sonnet": null,
-      "opus": null
+      "small": "mistral-small-2603",
+      "mid": null,
+      "large": null
     },
     "mistral-large-2512": {
-      "haiku": "mistral-small-2603",
-      "sonnet": null,
-      "opus": null
+      "small": "mistral-small-2603",
+      "mid": null,
+      "large": null
     },
     "mistral-medium-2604": {
-      "haiku": "mistral-small-2603",
-      "sonnet": null,
-      "opus": null
+      "small": "mistral-small-2603",
+      "mid": null,
+      "large": null
     },
     "mistral-small-2603": {
-      "haiku": null,
-      "sonnet": null,
-      "opus": null
+      "small": null,
+      "mid": null,
+      "large": null
     }
   }
 }

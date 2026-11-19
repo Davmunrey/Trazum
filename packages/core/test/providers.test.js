@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import {
   BUNDLED_CATALOGUE,
-  cheapestOfTierIn,
+  cheapestOfCapabilityIn,
   getModel,
   listModels,
   multipliersFor,
@@ -164,8 +164,8 @@ describe('a cheaper model means a cheaper model, not a different supplier', () =
   });
 
   it('will search the whole catalogue if a caller asks it to', () => {
-    const anywhere = cheapestOfTierIn(BUNDLED_CATALOGUE, 'sonnet', new Date('2026-07-01'));
-    const scoped = cheapestOfTierIn(BUNDLED_CATALOGUE, 'sonnet', new Date('2026-07-01'), 'anthropic');
+    const anywhere = cheapestOfCapabilityIn(BUNDLED_CATALOGUE, 'mid', new Date('2026-07-01'));
+    const scoped = cheapestOfCapabilityIn(BUNDLED_CATALOGUE, 'mid', new Date('2026-07-01'), 'anthropic');
     assert.equal(scoped.provider, 'anthropic');
     assert.ok(anywhere.inputPerMTok <= scoped.inputPerMTok);
   });
