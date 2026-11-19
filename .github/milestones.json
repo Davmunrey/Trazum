@@ -17,7 +17,7 @@
   {
     "title": "3.0.0: the release allowed to break",
     "description": "A major is the only release that may remove something. This one removes `tier` from a model in the pricing catalogue, deprecated since 1.8.0 in favour of `capability`, and nothing its changelog entry does not list.",
-    "issues": [764]
+    "issues": [764, 798]
   },
   {
     "title": "The price anyone can check",

@@ -102,6 +102,54 @@ merged commit with no entry is a change only `git log` remembers.
   `VERSIONING.md` entry put back; and the recording script skipping a prompt, and skipping a provider. The refusal
   is in English only, as every error of the overlay is. (#764)
 
+- **Breaking, for 3.0.0: `recommendTier` answers in `small`, `mid` and `large`, and the lookups that take its answer
+  are renamed to match.** (#798) #764 took `tier` out of a model and left the five old names (`haiku`, `sonnet`, `opus`,
+  `frontier`, `unknown`) as the inputs and outputs of four functions and of the `model-downgrade` advisory, with a
+  table, `CAPABILITY_OF_TIER`, translating them to the `capability` a model carries. The owner decided on
+  2026-11-19 that one vocabulary is spoken in 3.0.0, the model's, and that no release keeps both. A name of the old
+  ladder was a vendor's, said about a task that may be sent to any vendor's model; `recommendTier` reads a prompt
+  and has three answers, so `frontier` and `unknown` were never among its outputs. The migration, repeated here as
+  `VERSIONING.md` asks:
+
+  | | Was | Is |
+  | --- | --- | --- |
+  | `recommendTier(prompt, tokens)` returns | `'haiku'`, `'sonnet'`, `'opus'` | `'small'`, `'mid'`, `'large'` |
+  | `recommendTierDetailed(...)` returns | `{ tier, complexSignals, simpleSignals, conflicted }` | `{ capability, complexSignals, simpleSignals, conflicted }` |
+  | `cheapestOfTier(tier)` | takes `haiku` ... `unknown` | `cheapestOfCapability(capability)`, takes `small`, `mid`, `large`, `frontier`, `unknown` |
+  | `cheapestOfTierIn(catalogue, tier, on, provider?)` | takes `haiku` ... `unknown` | `cheapestOfCapabilityIn(catalogue, capability, on, provider?)`, same arguments after the second |
+  | `CAPABILITY_OF_TIER`, `TierName` | exported | removed: nothing translates, and a `capability` is a `Capability` |
+  | `ModelDowngradeParams.tier` (a locale catalogue's `modelDowngrade`) | `tier: string` | `capability: string` |
+  | `haiku` / `sonnet` / `opus` as the name of an answer | `haiku`, `sonnet`, `opus` | `small`, `mid`, `large`; `frontier` and `unknown` are unchanged |
+
+  - **A consumer of the JSON** reads `small`, `mid` or `large` where the `detail` of a `model-downgrade` advisory
+    quoted `"haiku"`, `"sonnet"` or `"opus"`: in `trazum optimize --json`, in the response of `POST /api/optimize`
+    and in the text the report, the web page and the playground print, in English and Spanish. No field carried the
+    name and none is added or removed; the `detail` is a sentence for display, and `docs/json-output.md` now says
+    so under "The capability an advisory names". The advisory's id, severity and `estimatedMonthlyUsd` are unchanged.
+  - **The MCP server** changes nothing, and neither do the GitHub Action and the VS Code extension: `optimize_prompt`
+    prints an advisory's id and title and not its detail, no tool schema named a tier, and the other two never
+    read the advisory. A client written against them needs no migration.
+  - **In code**, a call to `cheapestOfTier('sonnet')` is `cheapestOfCapability('mid')`; an `if (tier === 'opus')` on
+    what `recommendTier` returned is `=== 'large'`; a custom locale catalogue reads `capability` in `modelDowngrade`.
+    A name of the old ladder passed to `cheapestOfCapability` or `cheapestOfCapabilityIn` throws, as an unknown
+    capability always did, and is not translated. `recommendTier`, `recommendTierDetailed` and the `tier-signals-conflict`
+    advisory keep their names, which the owner decided.
+
+  No price changed and no model chosen changed. `recommendations.json` was written again by
+  `scripts/record-recommendations.mjs` from the build, and a script that maps the names of the file as it stood
+  (`haiku` to `small`, `sonnet` to `mid`, `opus` to `large`, and the two keys `cheapestOfTier` and
+  `cheapestOfTierIn` to their new names) produced the new file byte for byte: 11,695 bytes, the cheapest model of
+  each capability by provider, and the 273 answers (91 models at three prompts) that name a model or none, all the
+  same. `docs/assets/demo.svg` and the landing's terminal were drawn again and differ in the one word of one
+  sentence. Twenty faults were planted and each failed a test: an old name emitted by `optimize --json` alone, by
+  the web route alone, by the English advisory and by the Spanish one, returned beside `capability`, exported as an
+  alias and accepted by the lookups; `mid` read as `small`, `large` read as `mid`, `small` read as `large`,
+  `frontier` ranked level with `mid`, the advisory quoting another capability than it judged, offering the model of
+  another capability, and the lookup ignoring the capability; the cheapest `small` model repriced, Haiku 5.5
+  restated as `mid`, one recorded model changed and one recorded name changed; and the recording script leaving
+  `large` out and writing the old key. Three surfaces could not be planted in because nothing on them emits the
+  name: the MCP server, the Action and the extension.
+
 ### Added
 
 - **`/pro`: a page for Trazum Pro, which says it is in development and not open yet.** Linked from the header and

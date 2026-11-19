@@ -8,10 +8,12 @@
  *
  * `packages/core/test/fixtures/recommendations.json` is what
  * `tier-removed.test.js` holds the catalogue to: the cheapest model of each
- * tier, over the whole catalogue and by provider, and the cheaper model each
+ * capability, over the whole catalogue and by provider, and the cheaper model each
  * catalogue model is offered at three prompts. It was first written from the
  * tree before 3.0.0 removed `tier` from a model (#764), which is how that
- * removal was shown to change no answer.
+ * removal was shown to change no answer, and again when `recommendTier` began
+ * to answer in `small`, `mid` and `large`, which changed the names in it and
+ * nothing else.
  *
  * A change to the catalogue can move an answer, and then the test fails and
  * names the model. That is the test working: a price that changes which model
@@ -27,7 +29,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const FIXTURE = fileURLToPath(new URL('../packages/core/test/fixtures/recommendations.json', import.meta.url));
-const TIERS = ['haiku', 'sonnet', 'opus', 'frontier', 'unknown'];
+const CAPABILITIES = ['small', 'mid', 'large', 'frontier', 'unknown'];
 
 const idOf = (find) => {
   try {
@@ -52,16 +54,16 @@ export function record(core, { on: day, prompts }) {
   const on = new Date(`${day}T12:00:00Z`);
   const { models } = core.BUNDLED_CATALOGUE;
   const providers = [...new Set(models.map((m) => m.provider))].sort();
-  const fixture = { on: day, prompts, recommendTier: {}, cheapestOfTier: {}, cheapestOfTierIn: {}, downgrade: {} };
+  const fixture = { on: day, prompts, recommendTier: {}, cheapestOfCapability: {}, cheapestOfCapabilityIn: {}, downgrade: {} };
   for (const [name, [prompt, tokens]] of Object.entries(prompts)) {
     fixture.recommendTier[name] = core.recommendTier(prompt, tokens);
   }
-  for (const tier of TIERS) {
-    fixture.cheapestOfTier[tier] = idOf(() => core.cheapestOfTier(tier));
-    fixture.cheapestOfTierIn[tier] = {};
+  for (const capability of CAPABILITIES) {
+    fixture.cheapestOfCapability[capability] = idOf(() => core.cheapestOfCapability(capability));
+    fixture.cheapestOfCapabilityIn[capability] = {};
     for (const provider of ['*', ...providers]) {
-      fixture.cheapestOfTierIn[tier][provider] = idOf(() =>
-        core.cheapestOfTierIn(core.BUNDLED_CATALOGUE, tier, on, provider === '*' ? undefined : provider),
+      fixture.cheapestOfCapabilityIn[capability][provider] = idOf(() =>
+        core.cheapestOfCapabilityIn(core.BUNDLED_CATALOGUE, capability, on, provider === '*' ? undefined : provider),
       );
     }
   }

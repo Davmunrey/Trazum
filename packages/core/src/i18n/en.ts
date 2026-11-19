@@ -198,9 +198,9 @@ export const en: CoreMessages = {
         'The Batch API applies a 50% discount on both input and output. Most batches finish in under an hour, with a 24-hour maximum. It fits bulk classification, data enrichment or evaluations: anything that is not answering a user in real time.',
     }),
 
-    modelDowngrade: ({ modelName, tier, candidateName, currentUsd, candidateUsd }) => ({
+    modelDowngrade: ({ modelName, capability, candidateName, currentUsd, candidateUsd }) => ({
       title: `This task may not need ${modelName}`,
-      detail: `By length and vocabulary the prompt looks like "${tier}" complexity. On ${candidateName} you would go from ${currentUsd} to ${candidateUsd} per month. This is a keyword heuristic, not a judgement about answer quality. Measure it before switching in production: \`trazum route <log.jsonl> --prompt-file <prompt> --cases <cases> --yes\` sends the same cases to both models and reports whether the cheaper one still does the job.`,
+      detail: `By length and vocabulary the prompt looks like "${capability}" complexity. On ${candidateName} you would go from ${currentUsd} to ${candidateUsd} per month. This is a keyword heuristic, not a judgement about answer quality. Measure it before switching in production: \`trazum route <log.jsonl> --prompt-file <prompt> --cases <cases> --yes\` sends the same cases to both models and reports whether the cheaper one still does the job.`,
     }),
 
     tierSignalsConflict: ({ complexSignals, simpleSignals }) => ({

@@ -4,13 +4,12 @@ import type { Locale } from './i18n/types.js';
 import { COMPLEX_SIGNALS, SIMPLE_SIGNALS } from './phrases.js';
 import {
   BUNDLED_CATALOGUE,
-  CAPABILITY_OF_TIER,
   effectivePricing,
   isOffered,
   modelFrom,
   multipliersFor,
 } from './pricing.js';
-import type { PricingCatalogue, PromptSize, TierName } from './pricing.js';
+import type { PricingCatalogue, PromptSize } from './pricing.js';
 import { formatUsd } from './savings.js';
 import { analyzeExamples, findContradictions, findMovableSchema,
   findRestatedFormat } from './structure.js';
@@ -24,9 +23,16 @@ function countSignals(haystack: string, signals: readonly string[]): number {
   return count;
 }
 
+/**
+ * What `recommendTier` answers: a capability a model can carry, in the
+ * catalogue's own vocabulary. The heuristic has three answers, so `frontier`
+ * and `unknown` are never among them.
+ */
+type RecommendedCapability = Extract<Capability, 'small' | 'mid' | 'large'>;
+
 /** What `recommendTierDetailed` saw, not only what it concluded. */
 export interface TierRecommendation {
-  tier: TierName;
+  capability: RecommendedCapability;
   complexSignals: number;
   simpleSignals: number;
   /**
@@ -34,7 +40,7 @@ export interface TierRecommendation {
    * heuristic has no business preferring either.
    *
    * The score subtracts one side from the other, so three complex signals
-   * against three simple ones cancels to zero and returns `sonnet` — the same
+   * against three simple ones cancels to zero and returns `mid` — the same
    * answer as a prompt with **no signals at all**. Those are opposite
    * situations reported identically: one is "nothing here suggests a tier", the
    * other is "this prompt contradicts itself about which tier it needs", and
@@ -50,7 +56,7 @@ export interface TierRecommendation {
 }
 
 /**
- * Estimates the capability tier the prompt needs, and says what it saw.
+ * Estimates the capability the prompt needs, and says what it saw.
  *
  * This is a keyword-and-size heuristic, not a judgement about answer quality.
  * Treat it as a hypothesis to validate with your own evaluations before
@@ -68,9 +74,9 @@ export function recommendTierDetailed(prompt: string, tokens: number): TierRecom
 
   if (/```|~~~/.test(prompt)) score += 1;
 
-  const tier: TierName = score >= 3 ? 'opus' : score >= 0 ? 'sonnet' : 'haiku';
+  const capability: RecommendedCapability = score >= 3 ? 'large' : score >= 0 ? 'mid' : 'small';
   return {
-    tier,
+    capability,
     complexSignals,
     simpleSignals,
     conflicted:
@@ -79,22 +85,20 @@ export function recommendTierDetailed(prompt: string, tokens: number): TierRecom
 }
 
 /**
- * The tier alone, unchanged.
+ * The capability alone: `small`, `mid` or `large`, the names a model's
+ * `capability` carries. Until 3.0.0 it answered `haiku`, `sonnet` or `opus`.
  *
- * Kept because it is public API and the 1.x line does not change shapes.
  * Callers that need to know whether the answer is trustworthy reach for
  * `recommendTierDetailed`.
  */
-export function recommendTier(prompt: string, tokens: number): TierName {
-  return recommendTierDetailed(prompt, tokens).tier;
+export function recommendTier(prompt: string, tokens: number): RecommendedCapability {
+  return recommendTierDetailed(prompt, tokens).capability;
 }
 
 /**
  * Capabilities in order, so a suggestion can be compared with the model in use.
  *
- * Keyed by `capability` since 3.0.0, which removed `tier` from a model. The
- * order is the one the tier names had: `small` where `haiku` was, `mid` where
- * `sonnet` was, `large` where `opus` was.
+ * Keyed by `capability`, the one scale a model and a recommendation share.
  */
 const CAPABILITY_ORDER: Record<Capability, number> = {
   /**
@@ -116,10 +120,7 @@ const CAPABILITY_ORDER: Record<Capability, number> = {
 };
 
 /**
- * Cheapest model of a capability tier, using today's effective input price.
- *
- * Chosen by the model's `capability`, the tier name translated through
- * `CAPABILITY_OF_TIER`.
+ * Cheapest model of a capability, using today's effective input price.
  *
  * **Within the same provider**, which is a product decision rather than an
  * implementation detail. Dropping from Opus to Sonnet is a one-line change;
@@ -131,8 +132,8 @@ const CAPABILITY_ORDER: Record<Capability, number> = {
  * A model with no provider recorded only matches others with none, so an overlay
  * that adds a bare model cannot pull a switch out of thin air.
  */
-function cheapestInTier(
-  tier: TierName,
+function cheapestInCapability(
+  capability: Capability,
   on: Date,
   pricing: PricingCatalogue,
   provider: string | undefined,
@@ -140,7 +141,7 @@ function cheapestInTier(
 ): ModelPricing | undefined {
   const candidates = pricing.models.filter(
     (m) =>
-      m.capability === CAPABILITY_OF_TIER[tier] &&
+      m.capability === capability &&
       m.provider === provider &&
       // Not generally available, or refused outright by the provider:
       // recommending a model the reader cannot call is worse than
@@ -475,14 +476,14 @@ export function buildAdvisories(
 
   // --- Recommended model ---
   const recommendation = recommendTierDetailed(optimizedPrompt, tokensAfter);
-  const suggestedTier = recommendation.tier;
+  const suggestedCapability = recommendation.capability;
 
   /**
    * When the prompt argues with itself about which tier it needs, say so and
    * recommend nothing.
    *
    * The score subtracts one side from the other, so a prompt demanding depth
-   * and brevity in equal measure cancels to zero and lands on `sonnet` — the
+   * and brevity in equal measure cancels to zero and lands on `mid` — the
    * identical answer to a prompt with no signals at all. Reporting two opposite
    * situations with one number is the failure; the fix is not a better score,
    * it is declining to pretend there is one.
@@ -522,9 +523,9 @@ export function buildAdvisories(
   if (
     !recommendation.conflicted &&
     model.capability !== 'unknown' &&
-    CAPABILITY_ORDER[CAPABILITY_OF_TIER[suggestedTier]] < CAPABILITY_ORDER[model.capability]
+    CAPABILITY_ORDER[suggestedCapability] < CAPABILITY_ORDER[model.capability]
   ) {
-    const candidate = cheapestInTier(suggestedTier, on, pricing, model.provider, size);
+    const candidate = cheapestInCapability(suggestedCapability, on, pricing, model.provider, size);
     if (candidate) {
       const candidatePricing = effectivePricing(candidate, on, size);
       /**
@@ -555,7 +556,7 @@ export function buildAdvisories(
           severity: 'opportunity',
           ...t.advisories.modelDowngrade({
             modelName: model.displayName,
-            tier: suggestedTier,
+            capability: suggestedCapability,
             candidateName: candidate.displayName,
             currentUsd: formatUsd(monthlyInputUsd + monthlyOutputUsd),
             candidateUsd: formatUsd(candidateMonthly),

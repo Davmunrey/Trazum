@@ -149,7 +149,8 @@ export interface CachePrefixReorderParams {
 
 export interface ModelDowngradeParams {
   modelName: string;
-  tier: string;
+  /** What the prompt looks like it needs: `small`, `mid` or `large`. */
+  capability: string;
   candidateName: string;
   currentUsd: string;
   candidateUsd: string;
