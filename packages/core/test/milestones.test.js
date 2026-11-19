@@ -1084,10 +1084,12 @@ describe('the documents say what the command does', () => {
     assert.ok(!text.includes('—'));
   });
 
-  it('the changelog says it under Unreleased and ends with the issue', () => {
-    const unreleased = sectionOf(read('CHANGELOG.md'), '## Unreleased');
-    const entry = unreleased.split('\n- **').find((text) => text.startsWith('The roadmap’s order') || text.startsWith("The roadmap's order"));
-    assert.ok(entry !== undefined, 'no entry about the roadmap’s order under Unreleased');
+  it('the changelog says it, once, and ends with the issue', () => {
+    // Read from the whole file: the entry sits under Unreleased until a release
+    // turns that heading into a version, and under the version after it.
+    const entries = read('CHANGELOG.md').split('\n- **').filter((text) => text.startsWith('The roadmap’s order') || text.startsWith("The roadmap's order"));
+    assert.equal(entries.length, 1, 'no entry about the roadmap’s order in the changelog, or more than one');
+    const [entry] = entries;
     assert.match(entry.trimEnd().split('\n\n')[0], /\(#720\)\.?$/);
     assert.ok(entry.includes('npm run milestones') && entry.includes('.github/milestones.json'));
   });

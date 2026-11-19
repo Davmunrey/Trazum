@@ -6,7 +6,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { after, describe, it } from 'node:test';
 
-import { sectionOf } from '../../../test-utils/section.mjs';
 import { SPAWN_ENV } from '../../cli/test/env.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -758,10 +757,12 @@ describe('the documents say what the workflow does', () => {
     assert.match(section, /`wiki-publish\.test\.js`/);
   });
 
-  it('CHANGELOG.md has an entry under Unreleased that ends with the issue, and admits what was not run', () => {
-    const unreleased = sectionOf(changelog, '## Unreleased');
-    const [entry] = unreleased.split(/\n(?=- \*\*)/).filter((text) => text.includes('publish-wiki.mjs'));
-    assert.ok(entry, 'no entry for the wiki workflow under Unreleased');
+  it('CHANGELOG.md has an entry that ends with the issue, and admits what was not run', () => {
+    // Read from the whole file: the entry sits under Unreleased until a release
+    // turns that heading into a version, and under the version after it.
+    const entries = changelog.split(/\n(?=- \*\*)/).filter((text) => /\*\*Merging to `main` publishes the wiki\.\*\*/.test(text));
+    assert.equal(entries.length, 1, 'no entry for the wiki workflow in the changelog, or more than one');
+    const [entry] = entries;
     assert.match(entry.trimEnd(), /\(#726\)$/);
     assert.match(entry, /\*\*Merging to `main` publishes the wiki\.\*\*/);
     const flat = entry.replace(/\s+/g, ' ');

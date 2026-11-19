@@ -13,6 +13,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 3.0.0 — 2026-11-19
+
 ### Added
 
 - **`trazum weekly` writes the week down, and the Action posts it where the owner names.** (#757) `bill` and `plan`

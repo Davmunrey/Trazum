@@ -2940,3 +2940,28 @@ are billed at it. Every picture and icon comes from one palette and one mark,
 the command reference covers every command, and triage, the roadmap's open
 work and review are written down and applied by a workflow. The repeated-task
 evaluation this number had been reserved for did not ship in it.
+\n
+## 3.0.0 — Trazum speaks first, and the release allowed to break — released
+
+The owner said on 2026-11-18 that Trazum was passive: it answered well and only
+when asked. This release is mostly the answer.
+
+- **One command turns on what speaks first, and turns it off.** It writes
+  nothing without a yes.
+- **`watch` reads the agents' sessions directly.** The command that alerts
+  stopped being the one that needed the most setup. It can say a crossing on
+  the desktop.
+- **A weekly summary writes itself.** The Action can post it where the
+  repository's owner names.
+
+The two breaks this number had been kept for both changed one word: `tier`
+left the catalogue for `capability`, and `recommendTier` answers in the
+catalogue's own names. No price and no recommendation moved, and the recorded
+answers prove it.
+
+Reading every finding an analyser listed found a quadratic loop in
+`optimize`.
+
+The site gained its documentation, its models, its roadmap, its brand and a page
+for Trazum Pro. The half of #757 that opens a pull request did not ship in this
+number; it is #796.

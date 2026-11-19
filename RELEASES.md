@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.7.12**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 3.0.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,85 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 3.0.0 — Trazum speaks first, and the release allowed to break
+
+**Adoption, read 2026-11-19:** 3341 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 2.7.12.
+
+**Two breaking changes, and nothing else breaks.** Both are about one word.
+
+- **`tier` is gone from a model in the pricing catalogue. Use `capability`.**
+  It was deprecated in 1.8.0. A pricing overlay that still writes `"tier"`
+  on a model is refused by name, with the replacement:
+
+  | `tier` | `capability` |
+  | --- | --- |
+  | `haiku` | `small` |
+  | `sonnet` | `mid` |
+  | `opus` | `large` |
+  | `frontier` | `frontier` |
+  | `unknown` | `unknown` |
+
+- **`recommendTier` answers `small`, `mid` or `large`.** It no longer
+  answers `haiku`, `sonnet` or `opus`, which are one provider's names for a
+  question asked about seven. The renames that come with it:
+
+  | Was | Is |
+  | --- | --- |
+  | `recommendTierDetailed(...).tier` | `.capability` |
+  | `cheapestOfTier` | `cheapestOfCapability` |
+  | `cheapestOfTierIn` | `cheapestOfCapabilityIn` |
+
+  The model-downgrade advisory names the capability in its sentence. No JSON
+  field changed. The MCP tools, the GitHub Action and the editor extension
+  never showed the name.
+
+`CHANGELOG.md` has the full migration for a JSON consumer, an MCP client and
+code. **No price changed and no recommendation changed:** every recorded answer
+is the same model it was, under the new name.
+
+**Trazum speaks first.** Everything below is off until you turn it on:
+
+- **`trazum proactive`** says what is on. **`trazum proactive on`** offers
+  Claude Code's status line with its hook, a scheduled `watch` and the MCP
+  server entries. It writes nothing without a yes for each item, and
+  `trazum proactive off` removes exactly what it added.
+- **`trazum watch --sessions`** judges your budgets against the sessions
+  Claude Code, Codex and Gemini CLI already keep, with no store to fill
+  first. **`--notify`** says a crossing on your desktop, with the figures and
+  nothing else.
+- **`trazum weekly`** writes the week down: the bill, what moved against the
+  week before, and the three changes to make first. Each change is labelled
+  projected, never measured. The GitHub Action can post it as an issue, or as
+  a comment on one standing issue, if the repository's owner names which.
+
+```bash
+npx -y @trazum/cli@3.0.0 watch --sessions --once
+npx -y @trazum/cli@3.0.0 weekly
+```
+
+**The terminal answers first.** `bill`, `profile`, `plan`, `optimize`, `check`
+and `proactive` open with their question and the figure that answers it, and
+fit the window.
+
+**`optimize` no longer stalls on a long schema.** A prompt of 80,000
+characters, half a schema of 1,778 keys and half prose, took 37.8 seconds and
+takes 0.37. The answer is the same, compared on 3,000 generated cases.
+
+**The site.** The landing tells the product as you scroll, and the
+application moved to `/app`. New pages:
+
+- **`/docs`**: the documentation;
+- **`/models`**: models and prices;
+- **the roadmap and the changelog**;
+- **`/brand`**: the brand;
+- **`/pro`**: Trazum Pro, which is in development and not open yet.
+
+**For contributors.**
+- **`npm run done`** says whether a change is done and why not.
+- **End-to-end tests** run in a browser.
+- **A linter** and **mutation testing on the core** are part of every pull request.
+- **Codacy and DeepSource** are configured from the repository, and every finding they listed was read and answered.
 
 ## 2.7.12 — A safe level that leaves a thanks, a quotation and three ordinary words alone
 
