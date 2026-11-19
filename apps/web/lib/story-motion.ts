@@ -94,6 +94,33 @@ function cameraTransform(p: number, layer: boolean): string {
     : `translate(calc(${x}), calc(${y})) scale(calc(${zoom} * ${n(1 + 0.32 * X)}))`;
 }
 
+/**
+ * Where one scene's plate gives way to the next's: the plate going fades over the last 0.015 of its scene and the
+ * one coming over the first 0.015 of its own (`windowed` below).
+ */
+const SWAP_AT = [SCENES[1].range[0], SCENES[2].range[0]] as const;
+const SWAP = 0.015;
+
+/**
+ * The top of the free part of the scene that is showing, as a CSS length, from each scene's (`--ft-<scene>`, which
+ * the stylesheet sets). Across a swap it moves from one scene's top to the next's while only the plate it moves away
+ * from is up: down to a lower top while the plate going fades (the one coming is not up yet), up to a higher one while
+ * the plate coming fades in (the one going is gone). Either way it is the larger of the two paths, so no line of
+ * output is ever under a plate that is up at all.
+ */
+export function freeTop(p: number): string {
+  const path = (shift: number) => {
+    const toCheck = progress(p, [SWAP_AT[0] - SWAP + shift, SWAP_AT[0] + shift]);
+    const toTrim = progress(p, [SWAP_AT[1] - SWAP + shift, SWAP_AT[1] + shift]);
+    const w = { bill: 1 - toCheck, check: toCheck - toTrim, trim: toTrim };
+    // Only the scenes that count: outside a swap that is one, and the length is that scene's top as it stands.
+    const terms = (['bill', 'check', 'trim'] as const).filter((scene) => w[scene] > 1e-6);
+    return terms.length === 1 ? `var(--ft-${terms[0]})` : terms.map((scene) => `${n(w[scene])} * var(--ft-${scene})`).join(' + ');
+  };
+  const [a, b] = [path(0), path(SWAP)];
+  return a === b ? a : `max(${a}, ${b})`;
+}
+
 /** A window of the story in which something is shown, with short ramps at either end. */
 function windowed(p: number, [start, end]: Range, ramp: number, stays = false): number {
   const rise = progress(p, [start, start + ramp]);
@@ -119,27 +146,44 @@ export function storyMotion(blocks: readonly TerminalBlock[]): string {
   // The terminal: each block of output prints a line at a time and the column scrolls by what no longer fits.
   const timed = timeLines(blocks);
   const scenes = ['bill', 'check', 'trim'] as const;
-  const breaks = [...through(PHASES.dive, 10), ...through(PHASES.undive, 10)];
+  const breaks = [...through(PHASES.dive, 10), ...through(PHASES.expand, 4), ...through(PHASES.unexpand, 4), ...through(PHASES.undive, 10)];
   for (const block of blocks) {
     const { type, print } = RUNS[block.id];
     breaks.push(type[0] - PROMPT_LEAD, type[0] - PROMPT_LEAD + 0.004, ...through(print, 12));
   }
+  for (const at of SWAP_AT) breaks.push(...through([at - SWAP, at + SWAP], 5));
   for (const scene of scenes) {
     const mine = timed.filter(({ block }) => SCENE_OF[block.id] === scene);
     const first = mine[0]?.command.index ?? 0;
     const count = mine.reduce((sum, { lines }) => sum + 1 + lines.length, 0);
     rules.push(
       keyframes(`st-term-${scene}`, breaks, (p) => {
-        const { D } = phasesAt(p);
+        const { D, X } = phasesAt(p);
+        // The free part: from the showing scene's top (`freeTop`) to its foot (`--fb`), which is the same in every scene.
+        const top = `(${freeTop(p)})`;
+        // The middle the column stands on: the laptop's screen while the camera is outside it, the free part's once the screen is the window.
+        const free = `(${top} + var(--fb)) / 2`;
+        const middle = X >= 1 ? `(${free})` : X <= 0 ? '50cqh' : `(${n(1 - X)} * 50cqh + ${n(X)} * ${free})`;
+        // How many lines' height the free part holds.
+        const room = `(var(--fb) - ${top})`;
         const lines = lineCount(blocks, p);
         const shown = Math.min(count, Math.max(0, lines - first));
+        // Centred on the free part's middle while the lines fit; once they fill it, scrolled by what does not fit.
+        const rise = `${middle} - var(--tb-top) - min(${n(lines)} * var(--lh), ${room}) / 2 - max(0px, ${n(lines)} * var(--lh) - ${room})`;
         return {
-          transform: `translate(calc(var(--rest-x) * ${n(1 - D)}), calc(-1 * max(0px, ${n(lines)} * var(--lh) - var(--tb-h))))`,
+          transform: `translate(calc(var(--rest-x) * ${n(1 - D)}), calc(${rise}))`,
           'clip-path': `inset(0 -50% calc(${n(count - shown)} * 1.5em) -50%)`,
         };
       }),
     );
   }
+  /*
+   * What has scrolled past the free part's top is gone: a sheet of the terminal's ground over the column, its foot at
+   * that top, under the plates. It moves by a transform alone. Measured for #770 at 1440x900 and 4x CPU throttle:
+   * the same cut made by the blocks' own clip, its top reading the stylesheet's lengths, cost 32 to 36 tasks over
+   * 50 ms (up to 270 ms) scrolling past the story; with this sheet, none in three scrolls of the whole page.
+   */
+  rules.push(keyframes('st-term-cut', breaks, (p) => ({ transform: `translateY(calc(${freeTop(p)} - 100cqh))` })));
 
   // Each command typed a character at a time, its cursor ahead of it; each share bar filling once its row prints.
   timed.forEach(({ block, command, lines }, index) => {
@@ -180,7 +224,7 @@ export function storyMotion(blocks: readonly TerminalBlock[]): string {
     rules.push(
       keyframes(`st-words-${scene.id}`, stops, (p) => ({
         opacity: n(on(p)),
-        transform: `translateY(calc(var(--words-y) + ${n(1 - on(p))} * 24px))`,
+        transform: `translateY(calc(var(--words-y) + ${n(1 - on(p))} * var(--words-rise, 24px)))`,
       })),
     );
     // The marker: each scene's bar fills while it plays, and its name shows.

@@ -7,7 +7,7 @@
   {
     "title": "A site that carries the brand",
     "description": "The landing as the front door, the documentation, the catalogue of models and prices, the roadmap and the changelog as pages of one site, and a brand page, all in the design system the project already chose and each with a way to GitHub.",
-    "issues": [734, 735, 736, 737, 744, 759, 770]
+    "issues": [734, 735, 736, 737, 744, 770]
   },
   {
     "title": "Trazum speaks first",
@@ -20,9 +20,19 @@
     "issues": [764]
   },
   {
+    "title": "The price anyone can check",
+    "description": "Every comparable tool prices from the same community file and calls the figure an estimate, and a model it cannot price counts as zero. Next: the catalogue published as an open dataset with the provider's page and the date read behind every row, and a pull request comment that says what a change does to a prompt's monthly cost against the base branch, each figure with its dated price.",
+    "issues": [784, 785]
+  },
+  {
+    "title": "The bill where a team already looks",
+    "description": "The bill is printed, saved or gated. Next: the same measured figures as metrics for the dashboards a team already runs, and what was spent in a repository while a branch was written, said as a time window and never as the cost of the change.",
+    "issues": [776, 777, 789]
+  },
+  {
     "title": "A repository a stranger can contribute to",
     "description": "What a visitor and a contributor need that is not the product: a roadmap that opens with what comes next, a wiki that publishes itself, documents that agree with each other, and Discussions with a form for each kind of question.",
-    "issues": [725, 726, 727, 732, 747, 765, 767]
+    "issues": [725, 726, 727, 732, 747, 765, 767, 772, 778, 779, 787]
   },
   {
     "title": "Tests that would notice a wrong price",
@@ -32,12 +42,12 @@
   {
     "title": "Every agent's sessions",
     "description": "The bill reads what each coding agent already keeps on disk. Next: OpenCode's SQLite sessions, and a reader for Cursor, GitHub Copilot CLI, Cline and Amp as soon as somebody supplies one real session of each.",
-    "issues": [645, 648, 728, 729, 730]
+    "issues": [645, 648, 728, 729, 730, 782, 786]
   },
   {
     "title": "Every provider, counted and priced exactly",
     "description": "The estimator's error measured against each provider's own counter, a tokenizer package where the error is large, retired models marked on the provider's own evidence, and the gateway in front of the providers it does not front yet.",
-    "issues": [641, 642, 643, 647]
+    "issues": [641, 642, 643, 647, 775]
   },
   {
     "title": "Seven dictionaries, each read by a speaker",
@@ -47,7 +57,7 @@
   {
     "title": "Where people meet Trazum",
     "description": "The editor extension on the VS Code Marketplace, the playground as a Hugging Face Space, and the hosted web app measured for how fast it loads, off unless its operator asks.",
-    "issues": [640, 646, 723]
+    "issues": [640, 646, 723, 774, 780, 781]
   },
   {
     "title": "The optional model pass",

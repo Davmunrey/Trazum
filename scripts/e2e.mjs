@@ -151,6 +151,131 @@ const lidAngle = (page) =>
     return Math.round((Math.atan2(v[6], v[5]) * 180) / Math.PI);
   });
 
+/**
+ * Where the terminal's output stands in the free part of the window (#770),
+ * in pixels from that part's middle: `down` for the visible text, `across`
+ * for the column (whose lines are left-aligned, so its text is narrower
+ * than it most of the time). The free part is what the scene's plate leaves:
+ * beside it on a wide screen, under it and above the marker (and the
+ * scene's name over the marker) on a tall one.
+ * The visible output is every printed line on the stage, blank ones
+ * included, less what its clip, the sheet that cuts the free part's top
+ * and the window hide.
+ * The plate is the showing scene's own, so on a phone each scene's free part
+ * is measured under its own plate.
+ */
+const terminalOffCentre = (page) =>
+  page.evaluate(() => {
+    const stage = document.querySelector('.story-stage').getBoundingClientRect();
+    const opacityOf = (element) => {
+      let opacity = 1;
+      for (let at = element; at !== null; at = at.parentElement) opacity *= Number(getComputedStyle(at).opacity);
+      return opacity;
+    };
+    const plate = [...document.querySelectorAll('.story .scene-cap')].find((element) => opacityOf(element) > 0.9);
+    if (plate === undefined) return { error: 'no scene plate is up' };
+    const cap = plate.getBoundingClientRect();
+    // The foot on a phone: the marker, or the scene's name standing over it.
+    const foot = Math.min(...[...document.querySelectorAll('.story-marker, .story-marker .mk-label')].map((element) => element.getBoundingClientRect().top));
+    const wide = window.innerWidth > window.innerHeight;
+    const free = wide ? { l: cap.right, t: stage.top, r: stage.right, b: stage.bottom } : { l: stage.left, t: cap.bottom, r: stage.right, b: foot };
+    // What has scrolled past the free part's top is under the sheet that cuts it (`.term-cut`), which ends there.
+    const top = Math.max(stage.top, document.querySelector('.story .term-cut')?.getBoundingClientRect().bottom ?? stage.top);
+    const bottom = stage.bottom;
+    let text = null;
+    for (const term of document.querySelectorAll('.story .term')) {
+      const termBox = term.getBoundingClientRect();
+      // The block's clip, top and bottom, as the browser resolves it (one to four lengths, the CSS way).
+      const inset = /inset\(([^)]*)\)/.exec(getComputedStyle(term).clipPath);
+      const sides = inset ? inset[1].trim().split(/\s+/) : ['0px'];
+      const px = (value) => (value?.endsWith('px') ? Number.parseFloat(value) : 0);
+      const shownFrom = termBox.top + px(sides[0]);
+      const shownTo = termBox.bottom - px(sides.length >= 3 ? sides[2] : sides[0]);
+      for (const line of term.querySelectorAll('.tl')) {
+        const range = document.createRange();
+        range.selectNodeContents(line);
+        const rects = [...range.getClientRects()].filter((rect) => rect.width > 0.5);
+        const lineBox = line.getBoundingClientRect();
+        // Down, a line is its whole height, an empty one included: the output's blank lines are part of it.
+        const t = Math.max(lineBox.top, top, shownFrom);
+        const b = Math.min(lineBox.bottom, bottom, shownTo);
+        if (b - t < 1) continue;
+        const l = rects.length > 0 ? Math.min(...rects.map((rect) => rect.left)) : lineBox.left;
+        const r = rects.length > 0 ? Math.max(...rects.map((rect) => rect.right)) : lineBox.left;
+        text = text === null ? { l, t, r, b } : { l: Math.min(text.l, l), t: Math.min(text.t, t), r: Math.max(text.r, r), b: Math.max(text.b, b) };
+      }
+    }
+    if (text === null) return { error: 'no line of output is on the screen' };
+    const termBox = document.querySelector('.story .term').getBoundingClientRect();
+    return {
+      down: Math.round((text.t + text.b) / 2 - (free.t + free.b) / 2),
+      across: Math.round((termBox.left + termBox.right) / 2 - (free.l + free.r) / 2),
+      above: Math.round(text.t - free.t),
+      below: Math.round(free.b - text.b),
+      // Empty plate under the plate's words: its inner foot less its padding, less the foot of its last line of words.
+      emptyUnderWords: (() => {
+        const style = getComputedStyle(plate);
+        const words = Math.max(...[...plate.children].filter((child) => child.getBoundingClientRect().height > 0).map((child) => child.getBoundingClientRect().bottom));
+        return Math.round(cap.bottom - Number.parseFloat(style.borderBottomWidth) - Number.parseFloat(style.paddingBottom) - words);
+      })(),
+    };
+  });
+
+/**
+ * Across a change of plate on a tall screen, where the output stands against
+ * every plate that is up at all (opacity above 0.02) and against the marker:
+ * the least room, in pixels, between the output's top and the foot of any
+ * such plate, and between the output's foot and the marker or the scene's
+ * name over it.
+ */
+const outputClearance = (page) =>
+  page.evaluate(() => {
+    const opacityOf = (element) => {
+      let opacity = 1;
+      for (let at = element; at !== null; at = at.parentElement) opacity *= Number(getComputedStyle(at).opacity);
+      return opacity;
+    };
+    const cut = document.querySelector('.story .term-cut')?.getBoundingClientRect().bottom ?? Number.NEGATIVE_INFINITY;
+    let top = Number.POSITIVE_INFINITY;
+    let bottom = Number.NEGATIVE_INFINITY;
+    for (const term of document.querySelectorAll('.story .term')) {
+      const termBox = term.getBoundingClientRect();
+      const inset = /inset\(([^)]*)\)/.exec(getComputedStyle(term).clipPath);
+      const sides = inset ? inset[1].trim().split(/\s+/) : ['0px'];
+      const px = (value) => (value?.endsWith('px') ? Number.parseFloat(value) : 0);
+      const from = Math.max(cut, termBox.top + px(sides[0]));
+      const to = termBox.bottom - px(sides.length >= 3 ? sides[2] : sides[0]);
+      for (const line of term.querySelectorAll('.tl')) {
+        const box = line.getBoundingClientRect();
+        if (Math.min(box.bottom, to) - Math.max(box.top, from) < 1) continue;
+        top = Math.min(top, Math.max(box.top, from));
+        bottom = Math.max(bottom, Math.min(box.bottom, to));
+      }
+    }
+    const plates = [...document.querySelectorAll('.story .scene-cap')].filter((plate) => opacityOf(plate) > 0.02);
+    const underPlate = Math.min(...plates.map((plate) => top - plate.getBoundingClientRect().bottom));
+    const foot = Math.min(...[...document.querySelectorAll('.story-marker, .story-marker .mk-label')].filter((element) => opacityOf(element) > 0.02).map((element) => element.getBoundingClientRect().top));
+    return { underPlate: Math.round(underPlate * 10) / 10, overMarker: Math.round((foot - bottom) * 10) / 10 };
+  });
+
+/** Where one scene's plate gives way to the next's (`SCENES` in `lib/story-timeline.ts`): the bill's to the gate's, the gate's to the trimming's. */
+const PLATE_SWAPS = [
+  ['the bill’s plate to the gate’s', 0.36],
+  ['the gate’s plate to the trimming’s', 0.55],
+];
+
+/**
+ * Points of the story at which no line is half printed: after each run of
+ * output and before the next command's prompt, one in each terminal scene
+ * and two in the gate's (its check, then its status).
+ */
+const TERMINAL_STOPS = [
+  ['the bill', 0.335],
+  ['the gate’s check', 0.49],
+  ['the gate’s status', 0.528],
+  ['the trimming', 0.75],
+];
+
 /** What each scene says that only that scene says, in the order the story tells it. */
 const STORY_MARKS = [
   ['the bill’s total', '$12.70 across 126 priced call(s)'],
@@ -570,6 +695,46 @@ export const FLOWS = [
       }
       await toStory(page, 0);
       await storyInOrder({ page, is });
+    },
+  },
+  {
+    name: 'landing: the terminal’s output stands in the middle of the free part of the window, wide and on a phone',
+    covers: [],
+    viewport: { width: 1440, height: 900 },
+    async run({ page, open }) {
+      // A few pixels either way: a line is 22.5 px at 1440 x 900 and 10 px on a phone, so an output set to the top or one line off fails.
+      const TOLERANCE = 3;
+      for (const viewport of [{ width: 1440, height: 900 }, PHONE]) {
+        await page.setViewportSize(viewport);
+        await open('/');
+        for (const [what, p] of TERMINAL_STOPS) {
+          await toStory(page, p);
+          const at = await terminalOffCentre(page);
+          const where = `${what} at ${viewport.width}x${viewport.height} (${p * 100}% of the story)`;
+          if (at.error) throw new Error(`${where}: ${at.error}`);
+          // Each plate is as tall as its own words: the free part is measured under the plate that is showing, not a stretched one.
+          if (Math.abs(at.emptyUnderWords) > 1) throw new Error(`${where}: the plate has ${at.emptyUnderWords} px of empty plate under its words`);
+          if (Math.abs(at.down) > TOLERANCE || Math.abs(at.across) > TOLERANCE) {
+            throw new Error(`${where}: the output is ${at.down} px below and the column ${at.across} px right of the free part's middle (${at.above} px free above it, ${at.below} below)`);
+          }
+        }
+      }
+      // On a tall screen, as one plate gives way to the next, a half-step either side: the output keeps its 16 px from
+      // every plate that is up at all and from the marker (less a pixel, for where a line's box falls between pixels).
+      for (const viewport of [PHONE, { width: 768, height: 1024 }]) {
+        await page.setViewportSize(viewport);
+        await open('/');
+        for (const [what, at] of PLATE_SWAPS) {
+          for (let step = -4; step <= 4; step += 1) {
+            const p = at + step * 0.005;
+            await toStory(page, p);
+            const room = await outputClearance(page);
+            const where = `${what} at ${viewport.width}x${viewport.height} (${(p * 100).toFixed(1)}% of the story)`;
+            if (room.underPlate < 15) throw new Error(`${where}: the output's top is ${room.underPlate} px under the foot of a plate that is up`);
+            if (room.overMarker < 15) throw new Error(`${where}: the output's foot is ${room.overMarker} px over the marker`);
+          }
+        }
+      }
     },
   },
   {
