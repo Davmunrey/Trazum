@@ -59,7 +59,11 @@ these):
 - `trazum-vscode-<version>.vsix`, the editor extension, installed with *Install
   from VSIX* in VS Code and in editors built on it;
 - `trazum-mcp-<version>.mcpb`, the MCP server as a bundle Claude Desktop opens;
-- `SHA256SUMS`, the SHA-256 of those two and of the bill of materials.
+- `trazum-pricing-<version>.json`, the price catalogue as an open dataset, the
+  same file the site serves at `/datasets/pricing/<version>.json`
+  ([docs/pricing-dataset.md](docs/pricing-dataset.md)), from the first release
+  made after 3.0.1;
+- `SHA256SUMS`, the SHA-256 of those files and of the bill of materials.
 
 The `assets` job of `release.yml` attaches them, after the job that publishes has
 npm serving every package and the release page exists: the order of the
@@ -67,7 +71,9 @@ publishes is the one it always was. Nothing is uploaded to any marketplace, and
 no token for one exists. The extension is built by `@vscode/vsce@4.1.1` and the
 bundle by `@anthropic-ai/mcpb@2.1.2`, both fetched by `npx` at those versions
 (pinned in `scripts/release-assets.mjs`), and each holds `@trazum/core`'s built
-files and nothing else the lockfile does not name. None of the three is signed
+files and nothing else the lockfile does not name. The dataset is not built
+there: it is the file the release pull request committed, checked byte for byte
+against what the catalogue at the published commit builds. None of them is signed
 or attested: this workflow makes no build-provenance attestation, so none is
 claimed, and `SHA256SUMS` says that a file is the one the release lists, not who
 made it. The site's [download page](https://trazum.vercel.app/download) links
@@ -77,7 +83,7 @@ source as `docs/agents.md`.
 **Checking them.** Put the files and `SHA256SUMS` in one folder and run
 `sha256sum --check --ignore-missing SHA256SUMS` (Linux). On macOS, print a
 file's digest with `shasum -a 256 <file>` and compare it with its line. A
-manual run of the `Release` workflow builds the two files and prints their sums
+manual run of the `Release` workflow builds the files and prints their sums
 without attaching anything.
 
 **The MCP registry listing** names the bundle and its digest, and only for a

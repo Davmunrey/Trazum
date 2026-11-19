@@ -3,10 +3,17 @@
  * The files a GitHub release carries besides its notes and its bill of
  * materials, built from the commit that was just published.
  *
- *   node scripts/release-assets.mjs build [--out DIR]   the .vsix and the .mcpb
+ *   node scripts/release-assets.mjs build [--out DIR]   the pricing dataset, the .vsix and the .mcpb
  *   node scripts/release-assets.mjs vsix  [--out DIR]   the editor extension only
  *   node scripts/release-assets.mjs mcpb  [--out DIR]   the MCP bundle only
+ *   node scripts/release-assets.mjs pricing [--out DIR] the pricing dataset only
  *   node scripts/release-assets.mjs sums DIR            DIR/SHA256SUMS over the files in it
+ *
+ * The pricing dataset is not made here. It is the document the site already
+ * serves for this version (`scripts/pricing-dataset.mjs`, #784), checked to
+ * be byte for byte what the catalogue at this commit builds, and copied under
+ * the release's name for it: one file at two addresses, under one digest.
+ * A document that is not the catalogue stops the build.
  *
  * `build` needs the workspaces built first (`npm run build`). Nothing here
  * publishes: not to a marketplace, not to a registry. The files are attached
@@ -42,6 +49,7 @@ import { basename, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { REPOSITORY_URL, assetNames } from './install-snippets.mjs';
+import { checkPublished, loadCatalogue } from './pricing-dataset.mjs';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -314,6 +322,20 @@ export async function buildMcpb(out, { root = ROOT } = {}) {
   return target;
 }
 
+/**
+ * The published pricing document of this version, copied into `out` as the
+ * release names it, once it is checked to be what the catalogue builds.
+ */
+export async function buildPricing(out, { root = ROOT } = {}) {
+  const catalogue = await loadCatalogue(root);
+  const published = checkPublished(catalogue, { root });
+  if (!published.ok) throw new Error(published.reason);
+  mkdirSync(out, { recursive: true });
+  const target = join(out, assetNames(catalogue.version).pricing);
+  cpSync(join(root, published.path), target);
+  return target;
+}
+
 export function writeSums(directory) {
   const files = readdirSync(directory)
     .filter((name) => name !== 'SHA256SUMS' && statSync(join(directory, name)).isFile())
@@ -328,11 +350,12 @@ async function main() {
   const [command, ...rest] = process.argv.slice(2);
   const at = rest.indexOf('--out');
   const out = at === -1 ? join(ROOT, 'release-assets') : rest[at + 1];
+  if (command === 'pricing' || command === 'build') console.log(await buildPricing(out));
   if (command === 'vsix' || command === 'build') console.log(await buildVsix(out));
   if (command === 'mcpb' || command === 'build') console.log(await buildMcpb(out));
   if (command === 'sums') console.log(writeSums(rest[0]));
-  if (!['vsix', 'mcpb', 'build', 'sums'].includes(command)) {
-    console.error('usage: node scripts/release-assets.mjs build|vsix|mcpb [--out DIR] | sums DIR');
+  if (!['vsix', 'mcpb', 'pricing', 'build', 'sums'].includes(command)) {
+    console.error('usage: node scripts/release-assets.mjs build|vsix|mcpb|pricing [--out DIR] | sums DIR');
     process.exit(2);
   }
 }

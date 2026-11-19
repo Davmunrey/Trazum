@@ -39,6 +39,8 @@ describe('prepare-release', () => {
       'packages/tokenizer-openai/package.json', 'apps/web/package.json', 'apps/vscode/package.json',
       'packages/mcp/server.json', 'packages/mcp/src/index.ts', 'plugin/.claude-plugin/plugin.json',
       'gemini-extension.json', 'docs/agents.md', 'package-lock.json', 'CHANGELOG.md', 'RELEASES.md',
+      // #784: the release's pricing dataset, with the changelog and schema beside it.
+      `apps/web/public/datasets/pricing/${nextPatch}.json`, 'apps/web/public/datasets/pricing/changelog.json',
     ]) {
       assert.ok(result.stderr.includes(`would change ${path} (`), `${path} would be left at ${current}`);
     }
@@ -53,7 +55,8 @@ describe('prepare-release', () => {
       'packages/tokenizer-openai/package.json', 'apps/web/package.json', 'apps/vscode/package.json',
       'plugin/.claude-plugin/plugin.json',
     ];
-    const files = [...manifests, 'packages/mcp/server.json', 'packages/mcp/src/index.ts', 'gemini-extension.json', 'docs/agents.md', 'package-lock.json', 'CHANGELOG.md', 'RELEASES.md'];
+    const dataset = 'apps/web/public/datasets/pricing';
+    const files = [...manifests, 'packages/mcp/server.json', 'packages/mcp/src/index.ts', 'gemini-extension.json', 'docs/agents.md', 'package-lock.json', 'CHANGELOG.md', 'RELEASES.md', `${dataset}/${current}.json`];
     const dir = mkdtempSync(join(tmpdir(), 'trazum-release-'));
     try {
       for (const path of files) {
@@ -99,6 +102,13 @@ describe('prepare-release', () => {
       assert.ok(at >= 0, 'the changelog has no fresh Unreleased above the new version');
       assert.match(changelog.slice(at + heading.length, at + heading.length + 11), /^\d{4}-\d{2}-\d{2}\n$/);
       assert.ok(readFileSync(join(dir, 'RELEASES.md'), 'utf8').includes(`**All four packages are on npm at ${nextPatch}**`));
+      // #784: the dataset of the new version, compared with the one published before it, and the old one untouched.
+      const written = JSON.parse(readFileSync(join(dir, dataset, `${nextPatch}.json`), 'utf8'));
+      assert.equal(written.version, nextPatch);
+      assert.equal(written.changes.since, current, 'the new document is not compared with the last published one');
+      assert.equal(readFileSync(join(dir, dataset, `${current}.json`), 'utf8'), readFileSync(join(ROOT, dataset, `${current}.json`), 'utf8'), 'a published version was rewritten');
+      const datasets = JSON.parse(readFileSync(join(dir, dataset, 'changelog.json'), 'utf8'));
+      assert.deepEqual(datasets.versions.map((entry) => entry.version), [nextPatch, current]);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

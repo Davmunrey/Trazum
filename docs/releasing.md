@@ -259,7 +259,11 @@ It moves every version that has to move in lockstep (the root, the six
 workspaces, each workspace's `@trazum/core` pin, the lockfile,
 `packages/mcp/server.json`, the plugin manifest and the MCP handshake),
 turns `Unreleased` into the version's heading in `CHANGELOG.md`, moves the
-"on npm at" line at the top of `RELEASES.md`, and moves the
+"on npm at" line at the top of `RELEASES.md`, writes the version's
+[pricing dataset](pricing-dataset.md) with its changelog and schema into
+`apps/web/public/datasets/pricing/` from the catalogue as built (so run
+`npm run build` first; it refuses without one, and refuses to rewrite a
+version already published), and moves the
 Action pin in every document to the **newest tag that exists**. Every
 replacement is counted, and a count that differs from what a file is known to
 hold stops the run before anything is written, so a manifest added later is a
@@ -496,7 +500,8 @@ does not exist yet.
 ## The files a release carries
 
 Besides the packages, a release carries `trazum-vscode-<version>.vsix`,
-`trazum-mcp-<version>.mcpb` and `SHA256SUMS` (#640, #780). They are built by
+`trazum-mcp-<version>.mcpb`, `trazum-pricing-<version>.json` and `SHA256SUMS`
+(#640, #780, #784). They are built by
 the `assets` job of `release.yml`, which needs the job that publishes, so it
 starts after `npm actually serves every package` and after the GitHub release
 exists; the publish order is not touched. The job holds `contents: write` and
@@ -505,6 +510,20 @@ packagers fetched by `npx` at an exact version (`scripts/release-assets.mjs`
 names them). A manual run of the workflow makes the files and prints their sums
 and attaches nothing: do that from a release pull request's branch to know the
 packagers still work before the merge.
+
+The pricing dataset is not made in that job, only checked there. It is the
+document `prepare-release.mjs` wrote into `apps/web/public/datasets/pricing/`
+in the release pull request, which the site serves at the same version;
+`release-assets.mjs` builds it again from the core the job just built and
+copies the committed file only when the two are the same bytes, so the asset
+and the site's file are one file under one digest. A difference stops the job
+before anything is uploaded. It should not get that far: in the release pull
+request the document records the `pricing.ts` it was built from, so
+`test/pricing-dataset.test.mjs` compares it byte for byte with a fresh build
+and fails there, which is how a document written from a `dist/` older than its
+source is caught before the merge. `node scripts/pricing-dataset.mjs check`
+asks the same question locally.
+[The pricing dataset](pricing-dataset.md) is the page for whoever consumes it.
 
 If the job fails after the release exists, re-run it: the upload replaces what an
 earlier attempt left. The MCP registry listing waits for it and adds the bundle

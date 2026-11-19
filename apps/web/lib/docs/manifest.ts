@@ -94,6 +94,7 @@ export const DOCS: readonly DocEntry[] = [
   { path: 'docs/plan-format.md', slug: 'plan-format', title: 'The plan document', group: 'use' },
   { path: 'docs/json-output.md', slug: 'json-output', title: 'JSON output', group: 'use' },
   { path: 'docs/format.md', slug: 'format', title: 'The interchange format', group: 'use' },
+  { path: 'docs/pricing-dataset.md', slug: 'pricing-dataset', title: 'The pricing dataset', group: 'use' },
 
   // I am deciding whether to use this.
   { path: 'docs/doctrine.md', slug: 'doctrine', title: 'The doctrine', group: 'decide' },

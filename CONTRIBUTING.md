@@ -141,7 +141,7 @@ And two that produce what a release carries (the files, not a listing):
 
 ```bash
 npm run package:vscode     # builds the editor extension and writes a .vsix into apps/vscode
-npm run package:release    # the .vsix and the MCP .mcpb, into release-assets/ (build first)
+npm run package:release    # the .vsix, the MCP .mcpb and the pricing dataset, into release-assets/ (build first)
 ```
 
 `vsce` and `mcpb` are fetched by `npx` for that one run, at the exact versions
@@ -204,6 +204,13 @@ string exists but not that it is right.
 `PRICING_LAST_REVIEWED` in the same commit, and cite where the numbers came from
 in the commit message. Pricing changes ship as patch releases — see
 [VERSIONING.md](VERSIONING.md).
+
+A provider's date in `PROVIDER_REVIEWED` and its pages in `PROVIDER_SOURCES`
+move together: the pages are the ones the comment above the date says were
+read that day, and `provider-sources.test.js` fails on one it does not name.
+Every row of the published [pricing dataset](docs/pricing-dataset.md) carries
+both. That dataset is written by the release, not by the pull request that
+changes a price: the next release's document lists the change.
 
 A price can change which model Trazum recommends, and a test holds the
 answers: `packages/core/test/fixtures/recommendations.json` records the

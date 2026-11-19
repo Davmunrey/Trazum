@@ -1,0 +1,28 @@
+{
+  "dataset": "trazum-pricing",
+  "format": 1,
+  "schema": "https://trazum.vercel.app/datasets/pricing/schema-1.json",
+  "versions": [
+    {
+      "version": "3.0.1",
+      "url": "https://trazum.vercel.app/datasets/pricing/3.0.1.json",
+      "releaseAsset": null,
+      "sha256": "dd8fcb9e910f0ad99730c1ace16ea45083b9f0ca0c0427867fba3048316fa716",
+      "models": 91,
+      "rows": 734,
+      "changes": {
+        "since": null,
+        "rows": {
+          "added": [],
+          "removed": [],
+          "changed": []
+        },
+        "models": {
+          "added": [],
+          "removed": [],
+          "changed": []
+        }
+      }
+    }
+  ]
+}
