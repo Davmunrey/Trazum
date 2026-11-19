@@ -29,6 +29,7 @@ field table for that command's document.
 | `trazum rollup <document...> --json` | [The roll-up document](json-output.md#the-roll-up-document) |
 | `trazum pulse --json` | [The pulse document](json-output.md#the-pulse-document) |
 | `trazum proactive --json` | [The proactive document](json-output.md#the-proactive-document) |
+| `trazum waste --json` | [The waste document](json-output.md#the-waste-document) |
 | `trazum bench --json` | [The bench document](json-output.md#the-bench-document) |
 | `trazum rules --measure <dir> --json` | [The rule-yield document](json-output.md#the-rule-yield-document) |
 | `trazum write --json` | [The prompt-draft document](json-output.md#the-prompt-draft-document) |

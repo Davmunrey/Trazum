@@ -398,6 +398,17 @@ export type {
   RepricedSlice,
 } from './reprice.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';
+// Waste in a coding-agent session, priced from its own counts. See session-waste.ts.
+export { analyzeSessionWaste, mcpServerOf, sessionCwd, MAX_LISTED_READS, WASTE_LIMITATIONS } from './session-waste.js';
+export type {
+  ClaudeMdFinding,
+  McpSource,
+  RepeatedRead,
+  SessionWasteOptions,
+  SessionWasteReport,
+  UnusedMcpServer,
+} from './session-waste.js';
+
 // What one conversation costs — median and p95, exact. See session-cost.ts.
 export { createSessionCostTracker, sessionCostShapes } from './session-cost.js';
 export type { SessionCostOptions, SessionCostShape, SessionCostTracker } from './session-cost.js';

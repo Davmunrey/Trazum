@@ -12,12 +12,12 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 |---|---|
 | Read and reconcile spend | [bill](#one-door-trazum-bill) · [profile](#where-the-money-actually-went-trazum-profile) · [connect](#your-bill-without-the-export-trazum-connect) · [reconcile](#what-you-were-actually-billed-trazum-reconcile) · [import OpenTelemetry](#the-universal-cost-lens-trazum-from-otel) |
 | Plan and measure changes | [plan](#the-plan-trazum-plan) · [verify](#did-it-work-trazum-verify) · [switch](#when-does-the-switch-pay-trazum-switch) · [route](#is-the-cheaper-model-good-enough-trazum-route) · [history](#the-long-run-trazum-history) |
-| Review an agent task | [task](#task-efficiency-trazum-task): analyze repetitions, apply a reviewed policy and compare explicit outcomes; since 2.6.0 |
+| Review an agent task | [task](#task-efficiency-trazum-task): analyze repetitions, apply a reviewed policy and compare explicit outcomes; since 2.6.0 · [waste](#what-a-session-paid-for-twice-trazum-waste): what a coding-agent session paid for twice, priced |
 | Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [proactive](#speaking-first-trazum-proactive) · [session-guard](#a-spend-limit-for-a-session-trazum-session-guard) · [weekly](#the-week-written-down-trazum-weekly) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
 | Improve prompts | [use measured traffic](#the-multiplication-stops-guessing---from-log) · [reorder](#reordering-for-the-cache---reorder) · [rank](#which-prompt-to-fix-first-trazum-rank) · [prune](#which-few-shot-examples-earn-their-tokens-trazum-prune) · [evaluate](#does-the-shorter-prompt-still-work) |
 | Integrate and report | [MCP](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) · [conform](#building-on-the-format-trazum-conform) · [rollup](#more-than-one-machine-trazum-rollup) · [receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt) · [report](#the-year-from-what-was-already-written-down-trazum-report) |
 
-[All commands](../README.md#the-58-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
+[All commands](../README.md#the-59-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
 
 <details>
 <summary>All chapters on this page</summary>
@@ -38,6 +38,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 - [The afternoon it happened: `trazum watch`](#the-afternoon-it-happened-trazum-watch)
 - [Speaking first: `trazum proactive`](#speaking-first-trazum-proactive)
 - [A spend limit for a session: `trazum session-guard`](#a-spend-limit-for-a-session-trazum-session-guard)
+- [What a session paid for twice: `trazum waste`](#what-a-session-paid-for-twice-trazum-waste)
 - [The week, written down: `trazum weekly`](#the-week-written-down-trazum-weekly)
 - [Before the call is sent: `trazum serve`](#before-the-call-is-sent-trazum-serve)
 - [The counterpart: recording an outcome](#the-counterpart-recording-an-outcome)
@@ -1239,6 +1240,122 @@ never touch `~/.claude/settings.json`: `packages/cli/test/session-guard.test.js`
 The money in them is worked out by hand from the catalogue's output price for
 Claude Opus 5, $25 per million tokens: a call that outputs 100,000 tokens is $2.50.
 
+### What a session paid for twice: `trazum waste`
+
+`session-guard` stops a session at a figure. `waste` says, after the fact or
+while it runs, what part of the figure was spent on something that can be
+removed, and what removing it is worth. It is a command of its own because its
+answer is a short list of named costs, each with the reason it is or is not
+priced, and `bill` answers a different question: which slice of the spend
+belongs to whom.
+
+```bash
+trazum waste ~/.claude/projects/<project>/<session>.jsonl
+trazum waste session.jsonl --min-reads 4 --json
+trazum waste session.jsonl --claude-md ./CLAUDE.md --mcp-servers github,sentry
+```
+
+It reads the session's transcript and the transcripts of its subagents, in the
+folder beside it, as `session-guard` and the status line do, and prices at the
+bundled catalogue, dated, as API-equivalent cost. It never loads
+`trazum.config.json` and refuses `--pricing`, `--pricing-live` and `--config`,
+so the figure is the catalogue's and nobody's overlay.
+
+**It recommends and edits nothing.** No file is written, edited or opened for
+writing, and `waste.test.js` holds the module to that by its source and by the
+files left unchanged after a run. **It reads counts and paths, never content**:
+from the transcript, the usage counts, each tool call's name, the one
+`file_path` of a file tool and a `Read`'s `offset` and `limit`, whether a tool
+result was an error, and the names of the MCP servers and tools Claude Code
+records as loaded; from a CLAUDE.md, its size in bytes, by `stat`. No message
+text, no command, no tool result body and no file content is read into the
+report, which a test holds by planting a secret in each and searching the output.
+
+Three findings, and what each can honestly be priced from:
+
+- **The same file read again.** A `Read` of the same path and the same range as
+  an earlier one in the same conversation, with no `Edit`, `Write`, `MultiEdit`
+  or `NotebookEdit` of that path between, and not a read that errored. The cost
+  comes from the session's own counts: the prompt grew by `P(next) - P(this) -
+  output(this)` tokens across the call that read it, and those tokens were
+  carried on every later call of that conversation until the prompt shrank,
+  which is a compaction and ends the carrying. The figure is the difference
+  between the conversation priced as it was and priced with those tokens taken
+  out, both by the same code that prices `bill`, so a long-context band, a cache
+  lifetime or fast mode is applied where it applies. It is a **lower bound**: the
+  extra round trip is not counted. A repeat is priced only where its call made
+  no other tool call, because with several the growth cannot be split among
+  them; the rest are counted and left unpriced, and the output says how many.
+  `--min-reads` (default 3, never below 2) chooses which files are listed, and
+  at most 20 are. A file that `Bash` rewrote between two reads is not seen as
+  changed, so that second read counts as a repeat.
+- **MCP servers loaded and never called.** Named, with the number of tools each
+  brought where the transcript lists them, and **not priced**. What a server's
+  tool definitions cost is not in a transcript, and where tools are deferred
+  their definitions are not sent until the tool is asked for, so any figure
+  here would be made up. The loaded list is read from what Claude Code records
+  of it: the `deferred_tools_delta` and `mcp_instructions_delta` attachments,
+  and an `mcp_servers` list on a `system` line. The two attachment types and
+  their `addedNames` and `removedNames` fields were checked on 2026-11-19
+  against a real Claude Code transcript; the `system` list was not seen there,
+  and no transcript of an older version was read, so a transcript with none of
+  the three says so and names no server.
+  `--mcp-servers a,b` states the loaded servers by name instead, and the output
+  says they were given and not read.
+- **A CLAUDE.md carried on every turn.** The transcript does not record its
+  size, so this is the one estimated figure. The size comes from a `stat` of the
+  CLAUDE.md in the directory the session ran in, or of `--claude-md`; the tokens
+  are that size over the estimator's divisor of 4 bytes a token, and the cost is
+  what carrying them cost on every call of the main thread (written once, then
+  read, and written again after a compaction), with the figure at both ends of
+  the published estimator band, 33% either side. Only that file is looked at:
+  a user-level or nested CLAUDE.md is not, and subagents are not counted, so
+  it is a floor on both counts.
+
+Nothing here is a percentage taken from elsewhere. A saving is computed from the
+session's own counts or it is not given.
+
+*Real output, on a made-up session of six calls on Claude Opus 5 (one thread,
+`src/app.ts` read three times with no edit between, one compaction at the end),
+with a 4,000-byte CLAUDE.md in its directory and the two servers named by
+`--mcp-servers`, the path shortened to `…`.* The money is worked out by hand in
+`packages/core/test/session-waste.test.js` from the catalogue's prices for
+Claude Opus 5, $5 per million input tokens, with a cache write at 1.25 times
+that and a cache read at 0.1 times: the two repeats added 3,000 tokens each,
+which come to $0.042 over the calls that carried them.
+
+```
+$ trazum waste session.jsonl --mcp-servers github,sentry
+Waste in this session: 6 calls in 1 thread
+Every figure is API-equivalent cost at the bundled catalogue, last reviewed 2026-11-05: not what you were charged. A saving is a lower bound worked out from this session's own counts.
+
+The same file read again
+  src/app.ts
+    read 3 times, 2 repeats of the same range with no edit between. 2 measured, 6,000 tokens added to the context and carried on every later call: $0.0420.
+Together: $0.0420 for the 2 of 2 repeats that could be measured.
+
+MCP servers loaded and never called
+2 servers loaded (as you named them), 0 called.
+  github: never called
+  sentry: never called
+Not priced: what a server's tool definitions cost is not in the transcript, and where tools are deferred their definitions are not sent until asked for. A number here would be invented.
+
+A CLAUDE.md carried on every turn
+  …/project/CLAUDE.md
+    4,000 bytes, about 1,000 tokens, on 6 calls of the main thread: $0.0145 ($0.00972 to $0.0193). Estimated: the transcript does not record its size, so tokens are bytes over the estimator's divisor, within its published band of 33%. Only the file's size was read.
+
+Nothing was changed. This command recommends and edits no file.
+```
+
+`--json` prints the same findings as one document (`kind: "trazum-waste"`), with
+every limitation in a `limitations` list. A transcript that cannot be paired with
+its usage, or has a call that cannot be read as usage, is reported as cannot
+tell and nothing is computed from part of it; a model with no price is named and
+its calls left out of every figure, which are then floors. Messages are in
+English and Spanish. Not measured: how long it takes on a very large
+transcript, and how many of the repeats real sessions make are priced rather
+than counted.
+
 ### The week, written down: `trazum weekly`
 
 `bill` answers when somebody asks. `weekly` is the answer to the same question
@@ -2395,7 +2512,7 @@ believe a limit is set.
 
 ### Building on the format: `trazum conform`
 
-Trazum emits twenty-five documents, defines a twenty-sixth it does not emit, and
+Trazum emits twenty-six documents, defines a twenty-seventh it does not emit, and
 [docs/format.md](format.md) is the index. `conform` checks its twenty-four named
 contracts; the task document family introduced in 2.6.0 has a separate `version` / `kind`
 contract and is validated by the task workflow. This is how you check your own

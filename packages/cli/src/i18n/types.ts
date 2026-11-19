@@ -2568,5 +2568,34 @@ export interface CliMessages {
     windows(): string;
     noClaude(dir: string): string;
   };
+  /** `trazum waste`: findings on a coding-agent session, priced from its own counts. */
+  waste: {
+    refusedFlag(flag: string): string;
+    noPath(): string;
+    notFound(path: string): string;
+    unreadable(path: string): string;
+    minReadsBad(given: string): string;
+    cannotTell(): string;
+    heading(calls: number, threads: number): string;
+    apiEquivalent(reviewed: string): string;
+    unpriced(models: string): string;
+    readsHeading(): string;
+    readsNone(minReads: number): string;
+    /** One path: reads, repeats, repeats measured, the prompt growth they caused, and the cost (null: nothing measured). */
+    readLine(reads: number, repeats: number, measured: number, tokens: number, usd: string | null): string;
+    readsOmitted(count: number): string;
+    readsTotal(usd: string, measured: number, repeats: number): string;
+    readsUnmeasured(repeats: number): string;
+    mcpHeading(): string;
+    mcpNoList(): string;
+    mcpAllCalled(loaded: number): string;
+    mcpSummary(loaded: number, called: number, source: 'transcript' | 'flag'): string;
+    mcpUnused(server: string, tools: number | null): string;
+    mcpNotPriced(): string;
+    claudeHeading(): string;
+    claudeNone(path: string): string;
+    claudeLine(bytes: number, tokens: number, calls: number, usd: string, low: string, high: string, bandPct: number): string;
+    nothingChanged(): string;
+  };
 
 }

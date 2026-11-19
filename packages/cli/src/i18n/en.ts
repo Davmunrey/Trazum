@@ -86,6 +86,7 @@ ${bold('USAGE')}
   trazum pulse [--max-stale-hours <n>]
   trazum proactive [status|on|off] [--only <item,...>] [--dry-run | --yes] [--json]
   trazum session-guard [status|install|uninstall] --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed> [--dry-run | --yes]
+  trazum waste <transcript.jsonl> [--min-reads <n>] [--claude-md <file>] [--mcp-servers <a,b>] [--json]
   trazum bench [--workload <id>] [--record <file>] [--against <file> --max-ratio <n>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
   trazum models
@@ -520,6 +521,24 @@ ${bold('OPTIONS FOR session-guard')}
   command refuses by name. Every figure is API-equivalent cost, what the usage
   would cost at the provider's list API prices, not what you were charged.
   Nothing leaves this machine.
+
+${bold('OPTIONS FOR waste')}
+  <transcript.jsonl>          A Claude Code session's transcript. Its subagents'
+                              transcripts, in the folder beside it, are read too.
+  --min-reads <n>             List a file only if it was read at least n times
+                              (2 or more; default 3). It chooses what is listed,
+                              not what is counted.
+  --claude-md <file>          The CLAUDE.md to size. Without it, the CLAUDE.md in
+                              the directory the session ran in, if there is one.
+                              Only its size in bytes is read, never its content.
+  --mcp-servers <a,b>         The MCP servers that were loaded, when the
+                              transcript does not say. Names only.
+
+  It names a cost and prices it at the bundled catalogue, from this session's
+  own counts: a file read again, an MCP server loaded and never called, a
+  CLAUDE.md carried on every turn. It recommends and edits no file. A cost it
+  cannot compute from what the transcript records is named and not priced.
+  Every figure is API-equivalent cost, not what you were charged.
 
 ${bold('OPTIONS FOR bench')}
   --workload <id>             Run one standard workload instead of all of them.
@@ -2708,6 +2727,50 @@ ${bold('EXAMPLES')}
     apiEquivalent: () => "Every figure is API-equivalent cost: the usage at the provider's list API prices, not what you were charged.",
     windows: () => 'The session guard hook is written as a shell command and is not available on Windows.',
     noClaude: (dir) => `${dir} is not there, so Claude Code does not look installed for this user. Nothing was written.`,
+  },
+
+  waste: {
+    refusedFlag: (flag) =>
+      `${flag} is not accepted here. waste prices at the catalogue bundled with this version and reads only files already on this machine.`,
+    noPath: () => 'Name the session transcript to read. Example: trazum waste <session>.jsonl',
+    notFound: (path) => `${path} is not a file.`,
+    unreadable: (path) => `${path}, or a transcript of its subagents, could not be read.`,
+    minReadsBad: (given) => `--min-reads needs a whole number of 2 or more, and "${given}" is not one: a file read once has not been read again.`,
+    cannotTell: () =>
+      'Cannot tell: the transcript could not be paired with its usage line for line, and pairing a tool call with the wrong prompt would price the wrong thing. Nothing was computed. Run trazum from-claude-code on it to see what it reads as.',
+    heading: (calls, threads) => `Waste in this session: ${plural(calls, 'call')} in ${plural(threads, 'thread')}`,
+    apiEquivalent: (reviewed) =>
+      `Every figure is API-equivalent cost at the bundled catalogue, last reviewed ${reviewed}: not what you were charged. A saving is a lower bound worked out from this session's own counts.`,
+    unpriced: (models) => `No price in the catalogue for ${models}: those calls are left out of every figure, so each is a floor.`,
+    readsHeading: () => 'The same file read again',
+    readsNone: (minReads) => `No file was read ${minReads} or more times with nothing changing it in between.`,
+    readLine: (reads, repeats, measured, tokens, usd) =>
+      `read ${reads} times, ${plural(repeats, 'repeat')} of the same range with no edit between. ${
+        usd === null
+          ? 'Not priced: the calls that repeated it also made other tool calls, so the growth cannot be split.'
+          : `${measured} measured, ${tokens.toLocaleString('en-US')} tokens added to the context and carried on every later call: ${usd}.`
+      }`,
+    readsOmitted: (count) => `${plural(count, 'more file')} read again and not listed (under --min-reads, or past the 20 listed).`,
+    readsTotal: (usd, measured, repeats) =>
+      `Together: ${usd} for the ${measured} of ${repeats} repeats that could be measured.`,
+    readsUnmeasured: (repeats) => `${plural(repeats, 'repeat')} found and none could be priced from the counts.`,
+    mcpHeading: () => 'MCP servers loaded and never called',
+    mcpNoList: () =>
+      'Cannot tell which servers were loaded: this transcript records no list. Name them with --mcp-servers <a,b> and it will say which were never called.',
+    mcpAllCalled: (loaded) => `${plural(loaded, 'server')} loaded, and every one was called at least once.`,
+    mcpSummary: (loaded, called, source) =>
+      `${plural(loaded, 'server')} loaded${source === 'flag' ? ' (as you named them)' : ''}, ${called} called.`,
+    mcpUnused: (server, tools) => `${server}: never called${tools === null ? '' : `, ${plural(tools, 'tool')} loaded`}`,
+    mcpNotPriced: () =>
+      "Not priced: what a server's tool definitions cost is not in the transcript, and where tools are deferred their definitions are not sent until asked for. A number here would be invented.",
+    claudeHeading: () => 'A CLAUDE.md carried on every turn',
+    claudeNone: (path) =>
+      path === ''
+        ? 'No CLAUDE.md to size: the transcript names no directory. Pass --claude-md <file>.'
+        : `No CLAUDE.md at ${path}. Pass --claude-md <file> to size another.`,
+    claudeLine: (bytes, tokens, calls, usd, low, high, bandPct) =>
+      `${plural(bytes, 'byte')}, about ${tokens.toLocaleString('en-US')} tokens, on ${plural(calls, 'call')} of the main thread: ${usd} (${low} to ${high}). Estimated: the transcript does not record its size, so tokens are bytes over the estimator's divisor, within its published band of ${bandPct}%. Only the file's size was read.`,
+    nothingChanged: () => 'Nothing was changed. This command recommends and edits no file.',
   },
 
   pulse: {

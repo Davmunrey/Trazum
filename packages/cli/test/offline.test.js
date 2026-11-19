@@ -451,6 +451,7 @@ const INVOCATION = {
   'from-codex': ['codex-rollout.jsonl', '--label', 'offline-test', '-o', 'codex-usage.jsonl'],
   'from-gemini-cli': ['gemini-session.jsonl', '--label', 'offline-test', '-o', 'gemini-usage.jsonl'],
   'from-claude-code': ['transcript.jsonl', '-o', 'c1.jsonl'],
+  waste: ['transcript.jsonl'],
   'from-otel': ['spans.json', '-o', 'c2.jsonl'],
   'from-litellm': ['litellm.json', '-o', 'c3.jsonl'],
   'from-anthropic': ['anthropic-usage.json', '--label', 'billing', '-o', 'c6.jsonl'],

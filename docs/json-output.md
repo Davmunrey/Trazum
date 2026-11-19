@@ -409,6 +409,58 @@ store's measured total, because that is the figure a person is shown before choo
 field holds one. The exit code is 1 when any change `failed`, and 0 otherwise: an item that is
 `not-ready` or `could-not-tell` is a report, not an error.
 
+## The waste document
+
+`trazum waste <transcript> --json`. What a coding-agent session paid for twice or for nothing, priced from its own counts.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `kind` | `trazum-waste`. |
+| `pricing` | Where the money comes from. |
+| `pricing.source` | Always `bundled`: this command never reads an overlay. |
+| `pricing.lastReviewed` | The catalogue's date. |
+| `pricing.basis` | `api-equivalent`: what the usage costs at list prices, not what was charged. |
+| `session` | What was read. |
+| `session.calls` | Calls priced. |
+| `session.threads` | Conversations they ran in: the main one and each subagent are one each. |
+| `session.files` | Transcript files read. |
+| `cannotTell` | `null`, or `unreadable` when the transcript could not be paired with its usage, or a call could not be read as usage. Nothing below is computed then. |
+| `unpricedModels` | Models in the session the catalogue has no price for. Their calls are in no figure, so each figure is a floor. |
+| `reads` | The same file read again. |
+| `reads.minReads` | The fewest reads of one path that were listed (`--min-reads`). It chooses what is listed and not what is counted. |
+| `reads.findings[]` | At most 20 paths, the dearest first. |
+| `reads.findings[].path` | The path as the tool call named it. |
+| `reads.findings[].reads` | Reads of it that were not an error, in every conversation. |
+| `reads.findings[].repeats` | Reads of the same range as an earlier one in the same conversation with no `Edit`, `Write`, `MultiEdit` or `NotebookEdit` of the path between. |
+| `reads.findings[].measured` | Repeats whose call made one tool call, so the growth it caused is known. The rest are counted and not priced. |
+| `reads.findings[].tokens` | The prompt growth of the measured repeats, summed: `P(next) - P(this) - output(this)` per repeat. |
+| `reads.findings[].usd` | What carrying those tokens cost, as the difference between the conversation priced as it was and priced without them, or `null` where nothing was measured. A lower bound. |
+| `reads.omitted` | Paths read again and not listed, under `minReads` or past the 20. |
+| `reads.repeats`, `reads.measured` | The same two counts over the listed paths. |
+| `reads.usd` | All listed repeats taken out together, or `null` where none was measured. It can differ slightly from the sum of the rows where a rate depends on prompt size. |
+| `mcp` | MCP servers loaded and never called. |
+| `mcp.source` | `transcript` (read from what Claude Code records as loaded), `flag` (named with `--mcp-servers`) or `none`, which means the list is unknown and nothing is claimed. |
+| `mcp.loaded`, `mcp.called` | Servers loaded, and how many of them were called at least once. |
+| `mcp.unused[]` | Loaded and never called, by name. **No field of money**: see `mcp.unpricedReason`. |
+| `mcp.unused[].server` | The server's name. |
+| `mcp.unused[].tools` | The tools it brought where the transcript names them, otherwise `null`. |
+| `mcp.unpricedReason` | `definitions-not-recorded`: a server's tool-definition tokens are not in a transcript, and where tools are deferred they are not sent until asked for. |
+| `claudeMd` | A CLAUDE.md carried on every turn. The one estimated figure. |
+| `claudeMd.checked` | Whether a size was available to look at: false when no CLAUDE.md was found in the session's directory and none was named. |
+| `claudeMd.bandPct` | The estimator's published band, in percent, either side of the token estimate. |
+| `claudeMd.findings[]` | One per file sized. |
+| `claudeMd.findings[].path`, `claudeMd.findings[].bytes` | The file and its size from a `stat`. Its content is never opened. |
+| `claudeMd.findings[].tokens` | `ceil(bytes / 4)`, the estimator's divisor for text it cannot read. An estimate. |
+| `claudeMd.findings[].usd` | What carrying that many tokens cost on every call of the main thread: written by the first call and read by the rest, and written again after a compaction. |
+| `claudeMd.findings[].usdLow`, `claudeMd.findings[].usdHigh` | The same at the band's two ends. |
+| `claudeMd.findings[].calls` | The calls of the main thread that carried it. Subagents are not counted. |
+| `limitations[]` | What this report cannot say, in the words the terminal prints. |
+
+**It carries paths and counts and nothing else of the session.** No message text, command, tool result or file content is
+read into it. The directory a session ran in is read to find a CLAUDE.md and is not in the document; the paths in it are the
+ones tool calls named and the one CLAUDE.md that was sized. The exit code is 0 whatever it found: it reports and does not gate.
+
 ## The bench document
 
 `trazum bench --json`. What this machine measures, one shot per workload.

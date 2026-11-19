@@ -73,6 +73,7 @@ ${bold('USO')}
   trazum pulse [--max-stale-hours <n>]
   trazum proactive [status|on|off] [--only <item,...>] [--dry-run | --yes] [--json]
   trazum session-guard [status|install|uninstall] --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed> [--dry-run | --yes]
+  trazum waste <transcripcion.jsonl> [--min-reads <n>] [--claude-md <fichero>] [--mcp-servers <a,b>] [--json]
   trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
   trazum models
@@ -530,6 +531,25 @@ ${bold('OPCIONES DE session-guard')}
   el comando se niega y lo nombra. Toda cifra es coste equivalente en API, lo que
   costaría el uso a los precios de lista de la API del proveedor, no lo que te
   cobraron. Nada sale de esta máquina.
+
+${bold('OPCIONES DE waste')}
+  <transcripcion.jsonl>       La transcripción de una sesión de Claude Code. Se
+                              leen también las de sus subagentes, en la carpeta
+                              de al lado.
+  --min-reads <n>             Lista un fichero solo si se leyó al menos n veces
+                              (2 o más; por defecto 3). Elige lo que se lista,
+                              no lo que se cuenta.
+  --claude-md <fichero>       El CLAUDE.md que medir. Sin él, el CLAUDE.md del
+                              directorio donde corrió la sesión, si lo hay. Solo
+                              se lee su tamaño en bytes, nunca su contenido.
+  --mcp-servers <a,b>         Los servidores MCP que estaban cargados, cuando la
+                              transcripción no lo dice. Solo nombres.
+
+  Nombra un coste y lo valora al catálogo incluido, con los recuentos de esta
+  sesión: un fichero leído otra vez, un servidor MCP cargado y nunca llamado, un
+  CLAUDE.md que se paga en cada turno. Recomienda y no edita ningún fichero. Un
+  coste que no se puede calcular con lo que registra la transcripción se nombra
+  y no se valora. Toda cifra es coste equivalente en API, no lo que te cobraron.
 
 ${bold('OPCIONES DE bench')}
   --workload <id>             Ejecuta una sola carga estándar en vez de todas.
@@ -2748,6 +2768,50 @@ ${bold('EJEMPLOS')}
     apiEquivalent: () => 'Toda cifra es coste equivalente en API: el uso a los precios de lista de la API del proveedor, no lo que te cobraron.',
     windows: () => 'El hook de la guarda de sesión se escribe como comando de shell y no está disponible en Windows.',
     noClaude: (dir) => `${dir} no existe, así que Claude Code no parece instalado para este usuario. No se escribió nada.`,
+  },
+
+  waste: {
+    refusedFlag: (flag) =>
+      `${flag} no se acepta aquí. waste valora al catálogo incluido en esta versión y lee solo ficheros que ya están en esta máquina.`,
+    noPath: () => 'Indica la transcripción de la sesión que leer. Ejemplo: trazum waste <sesion>.jsonl',
+    notFound: (path) => `${path} no es un fichero.`,
+    unreadable: (path) => `No se pudo leer ${path}, o una transcripción de sus subagentes.`,
+    minReadsBad: (given) => `--min-reads necesita un número entero de 2 o más, y "${given}" no lo es: un fichero leído una vez no se ha leído otra vez.`,
+    cannotTell: () =>
+      'No se puede saber: la transcripción no se pudo emparejar línea a línea con su uso, y emparejar una llamada a herramienta con el prompt equivocado valoraría lo que no es. No se calculó nada. Ejecuta trazum from-claude-code sobre ella para ver cómo se lee.',
+    heading: (calls, threads) => `Desperdicio en esta sesión: ${plural(calls, 'llamada')} en ${plural(threads, 'hilo')}`,
+    apiEquivalent: (reviewed) =>
+      `Toda cifra es coste equivalente en API al catálogo incluido, revisado por última vez el ${reviewed}: no lo que te cobraron. Un ahorro es una cota inferior calculada con los recuentos de esta sesión.`,
+    unpriced: (models) => `El catálogo no tiene precio para ${models}: esas llamadas quedan fuera de toda cifra, así que cada una es un mínimo.`,
+    readsHeading: () => 'El mismo fichero leído otra vez',
+    readsNone: (minReads) => `Ningún fichero se leyó ${minReads} o más veces sin que nada lo cambiara entre medias.`,
+    readLine: (reads, repeats, measured, tokens, usd) =>
+      `leído ${reads} veces, ${plural(repeats, 'repetición', 'repeticiones')} del mismo tramo sin edición entre medias. ${
+        usd === null
+          ? 'Sin valorar: las llamadas que lo repitieron hicieron también otras llamadas a herramientas, así que el crecimiento no se puede repartir.'
+          : `${measured} medidas, ${tokens.toLocaleString('es-ES')} tokens añadidos al contexto y arrastrados en cada llamada posterior: ${usd}.`
+      }`,
+    readsOmitted: (count) => `${plural(count, 'fichero más', 'ficheros más')} leído${count === 1 ? '' : 's'} otra vez y sin listar (por debajo de --min-reads, o pasadas las 20 listadas).`,
+    readsTotal: (usd, measured, repeats) =>
+      `En conjunto: ${usd} por las ${measured} de ${repeats} repeticiones que se pudieron medir.`,
+    readsUnmeasured: (repeats) => `${plural(repeats, 'repetición', 'repeticiones')} encontradas y ninguna se pudo valorar con los recuentos.`,
+    mcpHeading: () => 'Servidores MCP cargados y nunca llamados',
+    mcpNoList: () =>
+      'No se puede saber qué servidores estaban cargados: esta transcripción no registra una lista. Nómbralos con --mcp-servers <a,b> y dirá cuáles no se llamaron nunca.',
+    mcpAllCalled: (loaded) => `${plural(loaded, 'servidor', 'servidores')} cargado${loaded === 1 ? '' : 's'}, y todos se llamaron al menos una vez.`,
+    mcpSummary: (loaded, called, source) =>
+      `${plural(loaded, 'servidor', 'servidores')} cargado${loaded === 1 ? '' : 's'}${source === 'flag' ? ' (como los nombraste)' : ''}, ${called} llamado${called === 1 ? '' : 's'}.`,
+    mcpUnused: (server, tools) => `${server}: nunca llamado${tools === null ? '' : `, ${plural(tools, 'herramienta')} cargada${tools === 1 ? '' : 's'}`}`,
+    mcpNotPriced: () =>
+      'Sin valorar: lo que cuestan las definiciones de herramientas de un servidor no está en la transcripción, y donde las herramientas se difieren sus definiciones no se envían hasta que se piden. Una cifra aquí sería inventada.',
+    claudeHeading: () => 'Un CLAUDE.md que se paga en cada turno',
+    claudeNone: (path) =>
+      path === ''
+        ? 'No hay CLAUDE.md que medir: la transcripción no nombra ningún directorio. Pasa --claude-md <fichero>.'
+        : `No hay CLAUDE.md en ${path}. Pasa --claude-md <fichero> para medir otro.`,
+    claudeLine: (bytes, tokens, calls, usd, low, high, bandPct) =>
+      `${plural(bytes, 'byte')}, unos ${tokens.toLocaleString('es-ES')} tokens, en ${plural(calls, 'llamada')} del hilo principal: ${usd} (${low} a ${high}). Estimado: la transcripción no registra su tamaño, así que los tokens son los bytes entre el divisor del estimador, dentro de su banda publicada de ${bandPct}%. Solo se leyó el tamaño del fichero.`,
+    nothingChanged: () => 'No se cambió nada. Este comando recomienda y no edita ningún fichero.',
   },
 
   pulse: {
