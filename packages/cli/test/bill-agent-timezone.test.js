@@ -161,7 +161,7 @@ describe('bill --timezone cuts days in the zone asked for', () => {
       const result = run(['bill', path, '--timezone', 'Europe/Madrid', ...args]);
       assert.equal(result.status, 1, `${args[0]} was combined with --timezone`);
       assert.match(result.stderr, /--timezone cuts the statement's days in that zone/);
-      assert.match(result.stderr, new RegExp(args[0].replace(/-/g, '\\-')));
+      assert.ok(result.stderr.includes(args[0]), `the refusal does not name ${args[0]}`);
     }
     const range = run(['bill', path, '--timezone', 'Europe/Madrid', '--git-range', 'main..HEAD']);
     assert.equal(range.status, 1);
