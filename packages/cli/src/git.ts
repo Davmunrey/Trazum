@@ -174,6 +174,19 @@ export function repositoryRoot(cwd: string): string | null {
 }
 
 /**
+ * Whether git tracks `repoPath` in the repository at `root`.
+ *
+ * `trazum plan --edits` writes an edit only for a tracked file: the edit is
+ * opened later as a pull request, and a pull request can only change what the
+ * repository holds. The path goes after `--`, like every path here, so a file
+ * named like an option is read as a file.
+ */
+export function isTracked(root: string, repoPath: string): boolean {
+  const out = git(['ls-files', '--error-unmatch', '--', repoPath], root);
+  return out !== null && out.trim() !== '';
+}
+
+/**
  * The path as git knows it — relative to the repository root, forward slashes —
  * or `null` when it falls outside the repository.
  */

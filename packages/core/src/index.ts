@@ -75,9 +75,11 @@ export type {
 } from './receipt.js';
 export { heartbeats } from './heartbeat.js';
 export { ruleYield } from './rule-yield.js';
-export { buildPlan, planLabelName, parsePlanDocument, PLAN_ACTION_KINDS } from './plan.js';
+export { buildPlan, planLabelName, parsePlanDocument, planEditProblem, PLAN_ACTION_KINDS, PLAN_EDIT_STEPS } from './plan.js';
 export type { PlanParseFailure, PlanParseResult } from './plan.js';
-export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
+export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument, PlanEdit, PlanEditStep } from './plan.js';
+export { applyPlanEdit, isEditableFile, planEdits, planFileEdit, runPlanEditSteps } from './plan-edit.js';
+export type { PlanDigest, PlanEditApplication, PlanEditRefusal, PlanFileEditInput } from './plan-edit.js';
 export { verifyPlan } from './verify.js';
 export { buildWeeklySummary, billFigures, strayFigures, weekWindows, weeklyMarker, WEEK_MS, WEEKLY_CHANGES, WEEKLY_MODELS, WEEKLY_MOVERS } from './weekly.js';
 export type { BillFigures, WeekWindow, WeeklyChange, WeeklyModelRow, WeeklyMover, WeeklySummary } from './weekly.js';

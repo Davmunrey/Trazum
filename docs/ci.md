@@ -97,6 +97,72 @@ one the workflow runs in: no input and nothing in the event moves it.
   every gate (`max-usd`, `against`, `max-growth-usd`, `max-cache-loss-usd`,
   `since`): one run says one thing. Run a gate in its own step.
 
+### A plan that opens its own pull request
+
+Some of what a plan says to do is an edit Trazum can already write: a prompt
+trimmed by the `safe` rules. With `plan-pull-request: 'true'` the Action makes
+the plan with [`trazum plan --edits`](commands.md#the-plan-trazum-plan), makes
+those edits on a new branch, and opens one pull request whose body is the
+plan: each change, the measured figure it is expected against, and how
+`trazum verify` checks it. It is off unless asked for, and it is the one step
+of the Action that writes to the repository, so give it a job of its own and
+the two permissions there:
+
+```yaml
+on:
+  schedule:
+    - cron: '23 6 * * 1'
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Davmunrey/Trazum@<commit-sha>  # pin to a commit, never a tag
+        with:
+          usage-log: logs/usage/
+          plan-pull-request: 'true'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+The files come from `labels` in `trazum.config.json`, which says which prompt
+file each workload sends. Only a file git tracks is edited, never a source
+file, and only by the `safe` rules: no model writes any of it.
+
+- **The branch carries the plan's edits and nothing else.** Each new text is
+  made again from the default branch's file, which has to be the file the plan
+  was made against (by SHA-256), and has to come out as the text the plan
+  promised (by SHA-256). One file that moved on refuses the whole pull request,
+  because a body listing a change the branch does not make would not be the
+  plan. A file's mode is kept.
+- **No pull request with no change.** A plan with no edit, or one whose edits
+  are all on the default branch already, creates nothing: no branch, no commit.
+- **One pull request per plan.** The branch is `trazum/plan-` and a hash of the
+  plan's edits, so the same edits made into a plan next week are the same plan.
+  An open pull request from it is reused; a closed or merged one is the owner's
+  answer and is not opened again; a branch of that name with no pull request is
+  left alone.
+- **Never the default branch, never a merge.** The one ref it creates is the new
+  branch, once. It calls no merge endpoint, and sets no label, reviewer or
+  assignee. The repository is the one the workflow runs in and the base is its
+  default branch: no input and nothing in the event moves either.
+- **No saving is projected.** The figure each edit is held to is what the
+  workload cost in the log, measured. The file's tokens before and after are
+  the estimator's and are labelled estimated. `trazum verify plan.json
+  --against <the newer log>` says afterwards whether the edit is in the file
+  and whether the calls got shorter.
+- **It never fails the build for not opening.** A token without the two
+  permissions, a file that moved on or an API that refuses each leave a notice,
+  and the plan is on the run's summary page either way. A plan that could not
+  be made does fail the run.
+- **It is a mode of its own.** It takes `usage-log` (and optionally `config`
+  and `locale`) and refuses `target`, `weekly-summary` and every gate and
+  window: it proposes, over the whole log, and gates nothing.
+
 ## GitLab CI
 
 ```yaml
