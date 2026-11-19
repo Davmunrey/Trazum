@@ -10,6 +10,13 @@
  * being no way to say otherwise. `127.0.0.1` is compiled in. A Unix socket is
  * offered for callers that would rather not use a port at all.
  *
+ * **A web page on this machine is not "only the local machine".** A page can
+ * rebind its own hostname to 127.0.0.1 and read what this answers. So a
+ * request whose `Host` is not a loopback name on the bound port is refused
+ * with 403, and a POST without `content-type: application/json` with 415,
+ * which a page cannot send cross-origin without a preflight nothing answers.
+ * See `loopback-guard.ts`.
+ *
  * **No auth, on purpose.** Anything reachable only from the machine it runs on
  * is already behind the operating system's own boundary, and a token checked
  * over loopback is theatre: whoever can reach the socket can read the token
@@ -24,6 +31,7 @@
  */
 
 import { createServer } from 'node:http';
+import { refuseContentType, refuseHost } from './loopback-guard.js';
 import { importUsage, validateImportPayload } from './serve-import.js';
 import { planSavings, verifySavings, validateSavingsPayload } from './serve-savings.js';
 import { SERVE_OPENAPI, validateCostPayload } from './serve-schema.js';
@@ -92,8 +100,15 @@ const send = (response: ServerResponse, status: number, body: unknown): void => 
 };
 
 export function buildServer(context: ServeContext): Server {
-  return createServer((request, response) => {
+  const server: Server = createServer((request, response) => {
     void (async () => {
+      // Before anything is routed: a page that rebound its own hostname to
+      // this address must not read an answer, not even a 404.
+      const refused = refuseHost(server, request);
+      if (refused !== null) {
+        send(response, refused.status, { error: refused.error, detail: refused.detail });
+        return;
+      }
       const url = new URL(request.url ?? '/', `http://${BIND_HOST}`);
 
       if (request.method === 'GET' && url.pathname === '/capabilities') {
@@ -118,6 +133,12 @@ export function buildServer(context: ServeContext): Server {
           error: 'not-found',
           detail: 'POST /cost, POST /usage/import, POST /savings/plan, POST /savings/verify, GET /health, GET /capabilities, or GET /openapi.json.',
         });
+        return;
+      }
+
+      const untyped = refuseContentType(request);
+      if (untyped !== null) {
+        send(response, untyped.status, { error: untyped.error, detail: untyped.detail });
         return;
       }
 
@@ -216,6 +237,7 @@ export function buildServer(context: ServeContext): Server {
       send(response, 200, { ...answer, policy });
     })();
   });
+  return server;
 }
 
 export interface ListenTarget {

@@ -178,7 +178,7 @@ describe('serve', () => {
     const missing = await fetch(`${where}/anything-else`);
     assert.equal(missing.status, 404);
 
-    const bad = await fetch(`${where}/cost`, { method: 'POST', body: 'not json' });
+    const bad = await fetch(`${where}/cost`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: 'not json' });
     assert.equal(bad.status, 400);
   });
 

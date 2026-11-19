@@ -18,6 +18,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Reads this repository and nothing else. The push to N0's Gitea carries its own
+# credential in the URL (N0_GITEA_TOKEN), so the GitHub token needs no write
+# scope and is not left in .git/config for the rest of the job.
+permissions:
+  contents: read
+
 jobs:
   mirror:
     runs-on: ubuntu-latest
@@ -38,6 +44,7 @@ jobs:
         if: steps.creds.outputs.configured == 'true'
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Push to N0 Gitea over HTTPS
         if: steps.creds.outputs.configured == 'true'

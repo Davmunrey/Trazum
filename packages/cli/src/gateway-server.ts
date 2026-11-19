@@ -36,6 +36,7 @@ import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { estimateTokens, gatewayDecision, streamingUsageReader, usageFromResponse } from '@trazum/core';
 import { GatewaySpend } from './gateway-spend.js';
+import { refuseContentType, refuseHost } from './loopback-guard.js';
 import type {
   GatewayDecision,
   GatewayPolicy,
@@ -493,9 +494,18 @@ export function buildGateway(context: GatewayContext): Server {
   const doFetch = context.fetchImpl ?? fetch;
   const spend = context.liveBudget ? new GatewaySpend(context.catalogue) : null;
 
-  return createServer((request: IncomingMessage, response: ServerResponse) => {
+  const server: Server = createServer((request: IncomingMessage, response: ServerResponse) => {
     let ticket: symbol | undefined;
     void (async () => {
+      // A page that rebound its own hostname to 127.0.0.1 must not read the
+      // standing a 402 carries, or reach a path that spends. See
+      // `loopback-guard.ts`; the same two refusals as `trazum serve`.
+      const refused = refuseHost(server, request);
+      if (refused !== null) {
+        response.writeHead(refused.status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        response.end(`${JSON.stringify({ error: refused.error, detail: refused.detail })}\n`);
+        return;
+      }
       if (upstream === undefined) {
         response.writeHead(500, { 'content-type': 'application/json' });
         response.end(`${JSON.stringify({ error: 'no upstream configured for this provider' })}\n`);
@@ -516,6 +526,15 @@ export function buildGateway(context: GatewayContext): Server {
             ...(alsoForwards(upstream).length === 0 ? {} : { alsoForwards: alsoForwards(upstream) }),
           })}\n`,
         );
+        return;
+      }
+
+      // After routing, so an unknown path is still a 404; before any body is
+      // read, so a text/plain POST is never judged or forwarded.
+      const untyped = refuseContentType(request);
+      if (untyped !== null) {
+        response.writeHead(untyped.status, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        response.end(`${JSON.stringify({ error: untyped.error, detail: untyped.detail })}\n`);
         return;
       }
 
@@ -816,6 +835,7 @@ export function buildGateway(context: GatewayContext): Server {
       }
     }).finally(() => { if (ticket !== undefined) spend?.release(ticket); });
   });
+  return server;
 }
 
 export function listenGateway(

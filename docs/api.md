@@ -35,6 +35,14 @@ All responses are JSON with `Cache-Control: no-store`. No authentication or CORS
 headers are added. The listener remains loopback-only; there is no configurable
 network bind address. Do not expose it through a public reverse proxy.
 
+A request whose `Host` header is not `localhost`, `127.0.0.1` or `[::1]` on the
+port the server is bound to gets `403` with `error: "forbidden-host"`, on every
+path. A web page that points its own hostname at `127.0.0.1` (DNS rebinding)
+sends its own hostname, and `text/plain` is the one body type it can send
+without a preflight, so the two checks together keep it from reading the answer.
+The Unix-socket transport has no port and skips the `Host` check. A client behind
+a reverse proxy that rewrites `Host` is refused; that setup is unsupported.
+
 ## Discover integration capabilities
 
 `GET /capabilities` returns `schemaVersion: 1`, `accessChannels`, `taskQuality`
@@ -83,9 +91,11 @@ must otherwise be a JSON object, at most **1,000,000 bytes**.
 
 Unknown properties are ignored. Invalid JSON, arrays, `null`, invalid field
 types, negative/non-finite counts, unsupported `basis`, or oversized bodies
-return `400` with `{ "error": "bad-request", "detail": "..." }`. The server
-accepts JSON regardless of Content-Type for compatibility; clients should send
-`application/json`. It does not accept raw prompt text or count tokens here.
+return `400` with `{ "error": "bad-request", "detail": "..." }`. A POST must send
+`content-type: application/json` (parameters such as `charset` are fine);
+anything else, or none, returns `415` with `error: "unsupported-media-type"`.
+The server used to accept JSON whatever the Content-Type; it no longer does. It
+does not accept raw prompt text or count tokens here.
 
 ## Interpret the answer
 

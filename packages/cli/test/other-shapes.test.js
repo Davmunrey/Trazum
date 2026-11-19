@@ -242,7 +242,7 @@ describe('the local HTTP API handed a coding agent session as a log', () => {
     const address = await listen(server, { port: 0 });
     t.after(() => { server.closeAllConnections(); server.close(); });
     return async (path, payload) => {
-      const response = await fetch(`http://${address}${path}`, { method: 'POST', body: JSON.stringify(payload) });
+      const response = await fetch(`http://${address}${path}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
       return { status: response.status, body: await response.json() };
     };
   };
