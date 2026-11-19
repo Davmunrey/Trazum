@@ -262,11 +262,12 @@ export function render(findings, compared) {
   return lines;
 }
 
-async function fetchList(url, attempts = 3) {
+/** Reads LiteLLM's list. It takes no address: the one it reads is `LITELLM_URL`. */
+async function fetchList(attempts = 3) {
   let last;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
-      const response = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(60_000) });
+      const response = await fetch(LITELLM_URL, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(60_000) });
       if (response.ok) return await response.text();
       last = new Error(`HTTP ${response.status}`);
     } catch (error) {
@@ -286,7 +287,7 @@ async function main(argv) {
   let findings;
   let compared = {};
   try {
-    const text = file === undefined ? await fetchList(LITELLM_URL) : readFileSync(file, 'utf8');
+    const text = file === undefined ? await fetchList() : readFileSync(file, 'utf8');
     ({ findings, compared } = compareLiteLlm(readLiteLlm(JSON.parse(text)), core, PROVIDER_SOURCES));
   } catch (error) {
     findings = [{ provider: 'litellm', kind: 'unread', detail: `${file ?? LITELLM_URL} could not be read: ${error.message}` }];
