@@ -98,6 +98,19 @@ function resolveRequestedEndpoint(raw: string, t: WebMessages): { url: string } 
   return { url: listed };
 }
 
+/**
+ * The models a caller may name on the operator's own endpoint, from
+ * `TRAZUM_ALLOWED_LLM_MODELS` (comma separated). Empty unless the operator
+ * writes it, so by default the only model reachable there is the one
+ * `TRAZUM_LLM_MODEL` names.
+ */
+function allowedModels(env: Record<string, string | undefined>): string[] {
+  return (env.TRAZUM_ALLOWED_LLM_MODELS ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== '');
+}
+
 type RequestBody = Infer<typeof OPTIMIZE.schema>;
 
 function badRequest(message: string) {
@@ -163,17 +176,29 @@ function buildProvider(
   }
 
   /**
-   * The endpoint and the model may still come from the operator; the key may
-   * not.
+   * The operator's endpoint is used the way the operator configured it: with
+   * the operator's model.
    *
-   * Those are different kinds of setting and collapsing them is what caused
-   * this. `TRAZUM_LLM_BASE_URL` is the documented Ollama-on-localhost case, and
-   * it costs an operator nothing when a stranger uses it, because the stranger
-   * still has to bring the credential that pays.
+   * The endpoint and the model may still come from the operator; the key may
+   * not. Those are different kinds of setting and collapsing them is what
+   * caused the keyless-caller hole.
+   *
+   * **A caller's key does not make the operator's hardware free to use.** This
+   * comment used to say the operator's endpoint costs nothing when a stranger
+   * uses it, because the stranger still brings the credential that pays. That
+   * holds for a metered provider and is false for the documented
+   * Ollama-on-localhost case, which checks no key: any string satisfies it,
+   * and the caller could also pick any model the operator had pulled. So on
+   * the operator's own endpoint a caller's `model` is honoured only when the
+   * operator listed it in `TRAZUM_ALLOWED_LLM_MODELS`; otherwise
+   * `TRAZUM_LLM_MODEL` is used and the caller's choice is ignored. A caller
+   * who selects an endpoint the operator listed (`endpoint !== null`) spends
+   * their own key on a provider they chose, and names the model as before.
    */
   const fromOperator = endpoint === null;
   const base = endpoint ?? process.env.TRAZUM_LLM_BASE_URL ?? null;
-  const named = model ?? process.env.TRAZUM_LLM_MODEL ?? null;
+  const callerModel = fromOperator && model && !allowedModels(process.env).includes(model) ? undefined : model;
+  const named = callerModel ?? process.env.TRAZUM_LLM_MODEL ?? null;
   if (base && named) {
     return openAiCompatible({
       baseUrl: base,

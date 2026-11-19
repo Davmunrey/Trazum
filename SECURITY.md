@@ -38,7 +38,12 @@ reaches `fetch` is the entry from that list, not the string that arrived over
 HTTP. The list is empty unless you set it, so a deployment that has not thought
 about this cannot be pointed anywhere at all. Anyone running Trazum for
 themselves still points it wherever they like, through `TRAZUM_LLM_BASE_URL` or
-the CLI; what changed is who is allowed to choose.
+the CLI; what changed is who is allowed to choose. On that operator endpoint the
+model is the operator's too: a caller's `llm.model` is used only if it is in
+`TRAZUM_ALLOWED_LLM_MODELS`, empty by default. The caller's key is still
+required, but a server that checks no key (Ollama) accepts any string, so a
+public deployment that sets `TRAZUM_LLM_BASE_URL` to one is open to anyone
+within the rate limit, with the operator's model. Do not do that.
 
 ### The controls, and what each is actually for
 
@@ -50,11 +55,13 @@ the CLI; what changed is who is allowed to choose.
 | ReDoS from a crafted prompt | Time budget over pathological inputs on every pull request | `security.test.js` |
 | A dependency that reads your prompts | All three published packages — core, CLI and the MCP server — carry **zero** runtime dependencies, asserted in CI. The MCP server hand-rolls its JSON-RPC layer for exactly this reason: it reads text a model chose | `security.test.js`, `publish.test.js` |
 | `optimize()` quietly phoning home | `fetch` is only permitted in the two modules whose job is to make calls | `security.test.js` |
+| A web page on the same machine reading what `trazum serve` or `trazum gateway` answers (DNS rebinding) | Both refuse, with `403`, a request whose `Host` is not `localhost`, `127.0.0.1` or `[::1]` on the port they are bound to, and refuse, with `415`, a POST that does not send `content-type: application/json`, which a page cannot send across origins without a preflight nothing answers. A Unix socket has no hostname to rebind and skips the first check | `packages/cli/src/loopback-guard.ts`, `packages/cli/test/loopback-guard.test.js` |
+| A stranger using the operator's own model endpoint | On `TRAZUM_LLM_BASE_URL` a caller's `llm.model` is ignored unless the operator listed it in `TRAZUM_ALLOWED_LLM_MODELS`; `TRAZUM_LLM_MODEL` is what runs. A key checks nothing on a keyless server such as Ollama, so an operator who does not want strangers on it does not set the variable on a public deployment | `apps/web/app/api/optimize/route.ts`, `apps/web/test/api.test.mjs` |
 | Memory exhaustion | 400 KB prompt cap, 30 requests/minute per IP | `apps/web/lib/body-schemas.ts`, `apps/web/app/api/optimize/route.ts` |
 | A body the route did not expect: `null`, a string where a key goes, a field nobody declared | Every body the API accepts has a declarative schema; anything else is a `400` naming the field, before the route reads a byte of it | `apps/web/lib/body-schemas.ts`, `apps/web/test/body-schemas.test.mjs` |
 | A vulnerable dependency arriving in a PR | Dependency review blocks moderate and above | `.github/workflows/security.yml` |
 | Injected code in a contribution | CodeQL with `security-extended` | `.github/workflows/security.yml` |
-| A workflow being used to exfiltrate secrets | `permissions: contents: read` by default, `--ignore-scripts` on install, no `pull_request_target` — the last one now asserted | `.github/workflows/`, `security.test.js` |
+| A workflow being used to exfiltrate secrets | `permissions: contents: read` by default, `--ignore-scripts` on install, no `pull_request_target`. Every workflow declares a top-level `permissions:` block, and a workflow that pushes with its own secret (`mirror-to-n0.yml`) does not keep the checkout token | `.github/workflows/`, `security.test.js` |
 | A dependency hook running on someone else's runner | The packaged Action installs with `--ignore-scripts` too | `action.yml`, asserted in `security.test.js` |
 | A moved action tag changing what runs | Every third-party action is pinned to a commit SHA, with a `# vN` comment Dependabot bumps | `.github/workflows/`, asserted in `security.test.js` |
 | A finding that goes green because it is not *new* | CodeQL's pull-request check only reports alerts in changed code, so a job fails the build while `main` carries an open critical or high alert | `.github/workflows/security.yml`, asserted in `security.test.js` |

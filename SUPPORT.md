@@ -61,7 +61,10 @@ named rather than counted, because a count is the half that goes stale:
 credential to the provider, because that is what standing in the path means. It
 holds neither: the body is counted and dropped, the credential is passed through
 untouched, and the host is compiled in so no config on disk can redirect it.
-[docs/gateway.md](docs/gateway.md) is the full account.
+[docs/gateway.md](docs/gateway.md) is the full account. Like `trazum serve`, it
+answers only requests addressed to `localhost`, `127.0.0.1` or `[::1]` on its
+own port, and only POSTs that send `content-type: application/json`, so a web
+page that points its own hostname at your machine cannot read it.
 
 That is enforced rather than promised. The build fails if `trazum feedback`
 reaches the network or opens a browser on your behalf, if anything about your

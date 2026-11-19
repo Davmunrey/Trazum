@@ -19,7 +19,7 @@ async function setup(t, catalogue = BUNDLED_CATALOGUE) {
   const address = await listen(server, { port: 0 });
   t.after(() => { server.closeAllConnections(); server.close(); });
   return async (path, payload, raw = false, method = 'POST') => {
-    const response = await fetch(`http://${address}${path}`, { method, ...(method === 'GET' ? {} : { body: raw ? payload : JSON.stringify(payload) }) });
+    const response = await fetch(`http://${address}${path}`, { method, headers: { 'content-type': 'application/json' }, ...(method === 'GET' ? {} : { body: raw ? payload : JSON.stringify(payload) }) });
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.equal(response.headers.get('access-control-allow-origin'), null);
     return { status: response.status, body: await response.json() };

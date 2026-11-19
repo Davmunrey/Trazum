@@ -1209,7 +1209,7 @@ the time the report exists, the call has been paid for.
 
 ```bash
 trazum serve                 # 127.0.0.1:7317, or --socket /tmp/trazum.sock
-curl -s localhost:7317/cost -d '{"model":"claude-opus-5","inputTokens":200000}'
+curl -s localhost:7317/cost -H 'content-type: application/json' -d '{"model":"claude-opus-5","inputTokens":200000}'
 ```
 
 ```json
@@ -1241,7 +1241,11 @@ it takes this call to cross.
 your model mix and your budgets and answers whoever asks; `checkedEndpoint`
 has guarded outbound requests since 1.14 on the principle that a caller selects
 an endpoint rather than naming one, and this is the inbound counterpart. There
-is no auth for the same reason — a token checked over loopback is theatre.
+is no auth for the same reason: a token checked over loopback is theatre. What a
+web page on the same machine could do is closed by two refusals instead: a `Host`
+that is not `localhost`, `127.0.0.1` or `[::1]` on the bound port is a `403`, and
+a POST without `content-type: application/json` is a `415`. `curl -d` alone sends
+the wrong type, so pass `-H 'content-type: application/json'`.
 
 **It degrades rather than failing.** No store and no budget: it still prices
 the call and says the budget half is unknown. Offline is a mode, not a failure.

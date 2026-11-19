@@ -1640,6 +1640,44 @@ describe('the packaged Action', () => {
     assert.deepEqual(missing, [], `a pinned action has no version comment:\n  ${missing.join('\n  ')}`);
   });
 
+  it('every workflow declares its token permissions at the top level', () => {
+    // SECURITY.md says every workflow runs with `permissions: contents: read`
+    // by default. A workflow with no `permissions:` block gets whatever the
+    // repository's setting says, which is an admin checkbox this repository
+    // cannot test, and when it is not set the token can write.
+    // `mirror-to-n0.yml` was the one of 17 without one, and nothing noticed
+    // because each other test reads the workflows it is about.
+    //
+    // Anchored to column zero: a job-level block six spaces in is not the
+    // default for the file, and a loose match accepted it.
+    const without = [];
+    let inspected = 0;
+
+    for (const name of readdirSync(join(repoRoot, '.github/workflows'))) {
+      if (!/\.ya?ml$/.test(name)) continue;
+      inspected++;
+      const source = readFileSync(join(repoRoot, '.github/workflows', name), 'utf8');
+      if (!/^permissions:/m.test(source)) without.push(name);
+    }
+
+    assert.ok(inspected > 0, 'no workflow was inspected, so nothing was checked');
+    assert.deepEqual(
+      without,
+      [],
+      `a workflow declares no top-level permissions, so its token takes the repository default:\n  ${without.join('\n  ')}`,
+    );
+  });
+
+  it('a workflow that pushes with its own secret does not keep the checkout token', () => {
+    // `mirror-to-n0.yml` pushes to another host with a URL-embedded secret, so
+    // the GitHub token the checkout would leave in `.git/config` is used by
+    // nothing and readable by every later step in a job that holds a
+    // third-party secret.
+    const source = readFileSync(join(repoRoot, '.github/workflows/mirror-to-n0.yml'), 'utf8');
+    assert.match(source, /^permissions:\n {2}contents: read$/m, 'mirror-to-n0.yml is not read-only at the top level');
+    assert.match(source, /persist-credentials: false/, 'mirror-to-n0.yml keeps the checkout token');
+  });
+
   it('sub-actions of the same action agree on their commit', () => {
     // `github/codeql-action/init` and `github/codeql-action/analyze` are two
     // entry points of one action, and analyze refuses a configuration file init

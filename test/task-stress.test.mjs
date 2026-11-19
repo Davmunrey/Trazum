@@ -136,7 +136,7 @@ test('local HTTP isolates concurrent imports and recovers after an oversized req
   await Promise.all(Array.from({ length: 24 }, async (_, i) => {
     const valid = i % 3 !== 0;
     const label = `synthetic-workload-${i}`;
-    const response = await fetch(url, { method: 'POST', signal: AbortSignal.timeout(20000),
+    const response = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(20000),
       body: JSON.stringify({ format: valid ? 'claude-code' : 'unsupported', text, label }) });
     assert.equal(response.status, valid ? 200 : 400);
     assert.equal(response.headers.get('cache-control'), 'no-store');
@@ -147,10 +147,10 @@ test('local HTTP isolates concurrent imports and recovers after an oversized req
       assert.doesNotMatch(JSON.stringify(body), /SYNTHETIC_PRIVATE/);
     } else assert.equal(body.error, 'bad-request');
   }));
-  const oversized = await fetch(url, { method: 'POST', body: ' '.repeat(MAX_BODY_BYTES + 1), signal: AbortSignal.timeout(20000) });
+  const oversized = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: ' '.repeat(MAX_BODY_BYTES + 1), signal: AbortSignal.timeout(20000) });
   assert.equal(oversized.status, 400);
   await oversized.text();
-  const recovered = await fetch(url, { method: 'POST', body: JSON.stringify({ format: 'claude-code', text }), signal: AbortSignal.timeout(20000) });
+  const recovered = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ format: 'claude-code', text }), signal: AbortSignal.timeout(20000) });
   assert.equal(recovered.status, 200);
   assert.equal((await recovered.json()).records, 400);
   t.diagnostic(`24 concurrent HTTP requests, 6400 imported usage records: ${Math.round(performance.now() - started)} ms; oversize refusal and subsequent recovery verified`);
