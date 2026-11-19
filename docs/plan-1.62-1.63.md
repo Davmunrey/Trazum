@@ -13,7 +13,7 @@ in hindsight.
 
 ## The 1.62 arc — its own output, held to its own standard
 
-### The thesis
+### The 1.62 thesis
 
 1.61 closed on a claim: *a prompt this tool cannot improve*. The stress session
 turned that lens around and asked whether **`optimize` holds itself to it** —
@@ -31,7 +31,7 @@ tokens buys itself an approval. The same hole, smaller, in three other doors.
 The arc: **any input, and every promise still holds.** Not by reading the
 parsers — by fuzzing them, permanently, in the suite.
 
-### The chapters, in order
+### The 1.62 chapters, in order
 
 **1. Nothing is ever negative money, and no door disagrees with its sibling.**
 The six defects fixed at the layer that owns each:
@@ -82,7 +82,7 @@ negative.
 
 ## The 1.63 arc — scale is measured, not assumed
 
-### The thesis
+### The 1.63 thesis
 
 The stress session timed the pathological cases and the numbers were good —
 1MB of prose in ~1s, a 200,000-line log in ~1.3s — **and nothing holds them
@@ -91,7 +91,7 @@ repository's own comments remember) and was caught by hand. The arc: the
 ceilings become measurements the build is held to, the way token budgets
 already are.
 
-### The chapters, in order
+### The 1.63 chapters, in order
 
 **1. The bench.** A `bench` command that measures this machine, honestly —
 shown here without its invocation on purpose: this repository's own guard

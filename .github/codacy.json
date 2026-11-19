@@ -1,0 +1,483 @@
+{
+  "tools": [
+    {
+      "name": "Agentlinter",
+      "uuid": "498c9a6e-5ff8-45de-9bd3-0fef69370617",
+      "why": "A lint for prompts. It reads SECURITY.md and AGENTS.md, documents for people, and asks every absolute rule for an escape hatch; on 2026-11-18 it also said CONTRIBUTING.md, which is at the root, does not exist. This repository has no prompt it would be right about."
+    },
+    {
+      "name": "TSQLLint",
+      "uuid": "35cf97c2-6548-483e-baf9-549433891295",
+      "why": "A linter for SQL Server's T-SQL. The one SQL file, apps/web/db/001_accounts.sql, is PostgreSQL, and every finding asked for a SET statement PostgreSQL does not have."
+    }
+  ],
+  "patterns": [
+    {
+      "id": "Semgrep_codacy.yaml.security.hard-coded-tokens",
+      "tool": "6792c561-236d-41b7-ba5e-9d6bee0d548b",
+      "why": "It matches a key with \"token\" in its name. Here that is input_tokens, prompt_tokens, max_tokens: counts of model tokens, which is what this product prices, in 60 places outside the tests and 242 inside on 2026-11-18. Credentials are held by GitHub secret scanning and the CLI's own redaction tests."
+    },
+    {
+      "id": "Lizard_file-nloc-medium",
+      "tool": "76348462-84b3-409a-90d3-955e90abfb87",
+      "why": "File length. The 16 files it named are long because each is one thing kept in one place on purpose: the price catalogue, the phrase dictionaries, the message types. Lizard's patterns for a function's length and complexity stay on."
+    }
+  ],
+  "dismissed": [
+    {
+      "pattern": "Checkov_CKV_GHA_7",
+      "file": ".github/workflows/backfill-releases.yml",
+      "count": 1,
+      "reason": "AcceptedUse",
+      "why": "The one-shot archive job takes a version, a commit and a flag at dispatch. Each reaches the script through env, never spliced into it, and is refused unless it is X.Y.Z and a 40-character sha that package.json at that commit agrees with. It publishes nothing to npm."
+    },
+    {
+      "pattern": "Checkov_CKV_SECRET_4",
+      "file": ".github/workflows/ci.yml",
+      "count": 1,
+      "reason": "NotExploitable",
+      "why": "postgres://trazum_ci:trazum_ci@127.0.0.1 is the throwaway role the same step creates in the runner's own PostgreSQL, started for that step, empty, reachable only on the runner's loopback, and gone with the runner."
+    },
+    {
+      "pattern": "ESLint8_@typescript-eslint_no-empty-function",
+      "file": "action/post-comment.mjs",
+      "count": 1,
+      "reason": "AcceptedUse",
+      "why": "`log = () => {}` is the default of an injected logger: called without one, postComment logs nothing. The tests pass their own."
+    },
+    {
+      "pattern": "ESLint8_@typescript-eslint_no-empty-function",
+      "file": "action/suggest-fixes.mjs",
+      "count": 1,
+      "reason": "AcceptedUse",
+      "why": "`log = () => {}` is the default of an injected logger: called without one, suggestFixes logs nothing. The tests pass their own."
+    },
+    {
+      "pattern": "ESLint8_security_detect-non-literal-fs-filename",
+      "file": "action/post-comment.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "readFileImpl reads TRAZUM_BODY_PATH, a file the Action's own previous step wrote under the runner's temp directory, set in action.yml; nothing a pull request writes names the path."
+    },
+    {
+      "pattern": "ESLint8_security_detect-non-literal-fs-filename",
+      "file": "action/suggest-fixes.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "readFileImpl reads the report path the Action's own previous step wrote, set in action.yml; nothing a pull request writes names the path."
+    },
+    {
+      "pattern": "ESLint8_security_detect-unsafe-regex",
+      "file": "action/suggest-fixes.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`/^@@ -\\d+(?:,\\d+)? \\+(\\d+)(?:,(\\d+))? @@/gm` reads the hunk headers of a pull request's diff from GitHub: measured linear, 0.005 ms at 32,000 characters against 0.001 ms at 8,000 on its worst input found (\"@@ -\" then digits and commas). Each optional part starts with a literal, so nothing can be matched two ways."
+    },
+    {
+      "pattern": "Semgrep_javascript.audit.detect-replaceall-sanitization.detect-replaceall-sanitization",
+      "file": "packages/cli/src/html.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "esc() replaces &, <, >, \" and ' in that order, & first, which is the whole of what HTML text and quoted attributes need; every interpolation in the report goes through it, and the CLI tests feed it hostile labels."
+    },
+    {
+      "pattern": "Semgrep_javascript.audit.detect-replaceall-sanitization.detect-replaceall-sanitization",
+      "file": "scripts/terminal-picture.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "esc() escapes &, < and > for the SVG's text, which is the CLI's own transcript of the repository's examples. Reading it found the one attribute it wrote, aria-label, did not escape a quotation mark; that is fixed in #772 (attribute()), and the finding about replaceAll itself is wrong."
+    },
+    {
+      "pattern": "Semgrep_javascript.lang.security.audit.detect-redos.detect-redos",
+      "file": "scripts/build-docs-site.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "SLUG, `^[a-z0-9]+(?:-[a-z0-9]+)*$`: measured linear, 1.77 ms at 400,000 characters of \"a-\" then \"!\" (0.27 ms at 100,000). The hyphen separates the repetitions, so they cannot overlap. It checks the slugs this repository writes."
+    },
+    {
+      "pattern": "Semgrep_javascript.lang.security.audit.detect-redos.detect-redos",
+      "file": "scripts/docs-markdown.mjs",
+      "count": 7,
+      "reason": "FalsePositive",
+      "why": "HR (five uses) and TABLE_DELIM (two) were measured linear: 3 to 9.6 ms at 400,000 characters on their worst inputs, 4.5 to 9 times as long for 4 times the text. They read one line of the repository's own documents when the docs site is built."
+    },
+    {
+      "pattern": "Semgrep_javascript.lang.security.audit.spawn-shell-true.spawn-shell-true",
+      "file": "scripts/done.mjs",
+      "count": 1,
+      "reason": "AcceptedUse",
+      "why": "npm run done runs the command lines written in its own CRITERIA table, which are shell lines on purpose (pipes, &&); nothing from outside the repository reaches `line`."
+    },
+    {
+      "pattern": "Semgrep_javascript.lang.security.audit.unsafe-dynamic-method.unsafe-dynamic-method",
+      "file": "apps/web/lib/docs/load.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "DOC_LOADERS[slug]() runs only after Object.hasOwn(DOC_LOADERS, slug): the slug from the address can only name a loader the build wrote, never constructor or __proto__."
+    },
+    {
+      "pattern": "Semgrep_javascript.lang.security.audit.unsafe-dynamic-method.unsafe-dynamic-method",
+      "file": "apps/web/lib/history/load.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "RELEASE_LOADERS[version]() runs only after Object.hasOwn(RELEASE_LOADERS, version): the version from the address can only name a loader the build wrote."
+    },
+    {
+      "pattern": "Semgrep_javascript.lang.security.audit.unsafe-dynamic-method.unsafe-dynamic-method",
+      "file": "packages/core/src/rules.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "WHERE_ONLY[phrase]?.(body) looks up a phrase of the module's own dictionaries in a constant object of three functions (please, kindly, bitte); no text a caller sends is the key."
+    },
+    {
+      "pattern": "Semgrep_javascript.lang.security.audit.unsafe-dynamic-method.unsafe-dynamic-method",
+      "file": "packages/core/src/suggest.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "getMessages(locale).suggest[reason]() indexes the message catalogue by a RejectedReason, a union of this package's own codes checked by the compiler."
+    },
+    {
+      "pattern": "Semgrep_javascript.lang.security.audit.unsafe-dynamic-method.unsafe-dynamic-method",
+      "file": "packages/tokenizer-openai/src/index.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "RANKS[name]() is reached with a KnownEncoding, the encoding tiktoken names for a model; a model it does not know is refused before this."
+    },
+    {
+      "pattern": "Semgrep_javascript.lang.security.insecure-object-assign.insecure-object-assign",
+      "file": "packages/core/src/gateway.ts",
+      "count": 2,
+      "reason": "FalsePositive",
+      "why": "Object.assign(usage, ...) copies the object cacheWriteBreakdown or openAiWrites built, which holds only the named cache-write counts, each checked to be a finite non-negative number; no key of the provider's answer is copied."
+    },
+    {
+      "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
+      "file": "packages/core/src/rules.ts",
+      "count": 5,
+      "reason": "FalsePositive",
+      "why": "Every pattern here is built from the module's own constants or a phrase of its dictionaries, escaped (phraseRegex, dropRegex, THANKS_SENTENCE, NOT_A_THANKS, the emphasis prefixes). All 353 built were measured on adversarial input: the slowest took 0.68 ms at 32,000 characters, 4 to 8 times its time at 8,000."
+    },
+    {
+      "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
+      "file": "packages/core/src/segment.ts",
+      "count": 2,
+      "reason": "FalsePositive",
+      "why": "QUOTED is built once from six literals bounded at 400 characters to a line, and the other site copies one of the segmenter's literal patterns so lastIndex is not shared. All measured linear: the slowest, the e-mail pattern, 5.9 ms at 32,000 characters against 1.5 ms at 8,000."
+    },
+    {
+      "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
+      "file": "packages/core/src/structure.ts",
+      "count": 6,
+      "reason": "FalsePositive",
+      "why": "Built once from the module's own constants (the contradiction axes, the example labels) or, in keyPattern, from a schema key escaped by escapeRegExp. All measured linear: the slowest 0.92 ms at 32,000 characters against 0.22 ms at 8,000. The loop that asked the key pattern of every sentence was quadratic and is fixed in #772."
+    },
+    {
+      "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
+      "file": "scripts/build-site-pages.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "Built from a CSS custom property name this script passes (`--background` and the like), its hyphens escaped: 0.025 ms at 32,000 characters against 0.007 ms at 8,000 on its worst input found (\"--background:\" then spaces, no colour)."
+    },
+    {
+      "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
+      "file": "scripts/build-wiki.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "Built from the heading pattern this script declares at line 141, `## The \\d+ commands`: 0.035 ms at 32,000 characters against 0.009 ms at 8,000 on its worst input found (\"## The 1\" lines with no tail)."
+    },
+    {
+      "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
+      "file": "scripts/coverage.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "Built from an indent of spaces read from TAP and a field name this script passes: 0.022 ms at 32,000 characters against 0.006 ms at 8,000 on its worst input found (spaces with no \"error:\")."
+    },
+    {
+      "pattern": "Semgrep_javascript_dos_rule-non-literal-regexp",
+      "file": "scripts/e2e.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "Built from a count the page printed, a number: 0.023 ms at 32,000 characters against 0.006 ms at 8,000 on its worst input found (\"All providers\" then spaces)."
+    },
+    {
+      "pattern": "Semgrep_javascript_react_rule-dangerouslysetinnerhtml",
+      "file": "apps/web/app/layout.tsx",
+      "count": 1,
+      "reason": "AcceptedUse",
+      "why": "The script is THEME_BOOTSTRAP, a constant of this repository, run under the request's CSP nonce; nothing a visitor sends reaches it."
+    },
+    {
+      "pattern": "Semgrep_javascript_react_rule-dangerouslysetinnerhtml",
+      "file": "apps/web/components/landing/Story.tsx",
+      "count": 1,
+      "reason": "AcceptedUse",
+      "why": "MOTION is keyframes this repository writes from the landing's timeline and the CLI's transcript at build time; nothing a visitor sends reaches it."
+    },
+    {
+      "pattern": "Semgrep_javascript_timing_rule-possible-timing-attacks",
+      "file": "apps/web/components/history/ChangelogPages.tsx",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`anchor !== hash` compares the address's fragment with the release it names, in the visitor's own browser. No secret is compared."
+    },
+    {
+      "pattern": "Semgrep_javascript_timing_rule-possible-timing-attacks",
+      "file": "scripts/npm-publish-preflight.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`token === ''` asks whether the release job was given a token at all; it compares with the empty string, not with a secret, and runs in CI with nobody timing it."
+    },
+    {
+      "pattern": "Semgrep_javascript_timing_rule-possible-timing-attacks",
+      "file": "scripts/terminal-picture.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`token === '\\n'` compares a piece of terminal output (the match of a regular expression) with a line break. \"token\" here is not a credential."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_crypto_rule-node-insecure-random-generator",
+      "file": "apps/web/components/Optimizer.tsx",
+      "count": 1,
+      "reason": "AcceptedUse",
+      "why": "The id keys one row of the visitor's own history in their browser and guards nothing. crypto.randomUUID would throw on a page served over plain http, as the Docker image serves it on 0.0.0.0:3000, because browsers offer it only in secure contexts."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_crypto_rule-node-timing-attack",
+      "file": "apps/web/components/history/ChangelogPages.tsx",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`anchor !== hash` compares the address's fragment with the release it names, in the visitor's own browser. No secret is compared."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_crypto_rule-node-timing-attack",
+      "file": "scripts/npm-publish-preflight.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`token === ''` asks whether the release job was given a token at all; it compares with the empty string, not with a secret."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_crypto_rule-node-timing-attack",
+      "file": "scripts/terminal-picture.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`token === '\\n'` compares a piece of terminal output with a line break. \"token\" here is not a credential."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "apps/web/lib/api-methods.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`/^\\[[^\\]/]+\\]$/` on one path segment of the route table: measured linear, 0.026 ms at 32,000 characters against 0.007 ms at 8,000 on its worst input found (\"[\" then no closing bracket)."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "apps/web/lib/auth/cookies.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`TOKEN`, one anchored character class, on a cookie name this code chose: measured linear, 0.031 ms at 32,000 characters against 0.008 ms at 8,000 on its worst input found (token characters then a space)."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/cli/src/git.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`SHA`, `/^[0-9a-f]{40}$/`, bounded: measured linear, 0 ms at 32,000 characters against 0 ms at 8,000 on its worst input found (\" \")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/core/src/advisories.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`/```|~~~/`, two literals: measured linear, 0.479 ms at 32,000 characters against 0.116 ms at 8,000 on its worst input found (\"``\")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/core/src/changes.ts",
+      "count": 2,
+      "reason": "FalsePositive",
+      "why": "`/\\s/` tested on one character at a time: measured linear, 1.409 ms at 32,000 characters against 0.322 ms at 8,000 on its worst input found (\" \")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/core/src/config-schema.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`IS_ABSOLUTE`, an anchored alternation of fixed width: measured linear, 0 ms at 32,000 characters against 0 ms at 8,000 on its worst input found (\" \")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/core/src/extract.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`/[ \\t\\n]/` tested on one character at a time: measured linear, 1.577 ms at 32,000 characters against 0.345 ms at 8,000 on its worst input found (\"\\n\")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/core/src/pricing-overlay.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`ISO_DATE`, `/^\\d{4}-\\d{2}-\\d{2}$/`, fixed width: measured linear, 0 ms at 32,000 characters against 0 ms at 8,000 on its worst input found (\" \")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/core/src/pricing.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`/^\\d{4}-\\d{2}-\\d{2}$/`, fixed width: measured linear, 0 ms at 32,000 characters against 0 ms at 8,000 on its worst input found (\" \")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/core/src/segment.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "one character class of quotation marks: measured linear, 1.273 ms at 32,000 characters against 0.339 ms at 8,000 on its worst input found (\"\\\"\")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/core/src/structure.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "the contradiction patterns of `AXES` (structure.ts:88 to 162), every one measured: measured linear, 0.919 ms at 32,000 characters against 0.224 ms at 8,000 on its worst input found (\"redacta\" and a space). The slowest of the nine is reported; each is in regex-timings.json."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/core/src/task-analysis.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "one character class of control characters: measured linear, 0.019 ms at 32,000 characters against 0.005 ms at 8,000 on its worst input found (\" \")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "packages/core/src/tool-output.ts",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "a character class of control characters and `/```|~~~/`: measured linear, 0.444 ms at 32,000 characters against 0.123 ms at 8,000 on its worst input found (\"`\")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "scripts/build-docs-site.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`SCHEME` (line 173) on a link of the repository's own documents: measured linear, 0.031 ms at 32,000 characters against 0.008 ms at 8,000 on its worst input found (scheme characters, no colon)."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "scripts/coverage.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`/^(\\s*)not ok \\d+ - (.*)$/` (line 219) on the test runner's own TAP output: measured linear, 0.022 ms at 32,000 characters against 0.006 ms at 8,000 on its worst input found (spaces then \"not ok 1 -\" no space)."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "scripts/docs-markdown.mjs",
+      "count": 15,
+      "reason": "NotExploitable",
+      "why": "The markdown reader of the docs build, on the repository's own documents. Thirteen of the fifteen are linear when measured. Two are super-linear on a hostile input: the tag pattern, 1,098 ms at 2,000 characters of \"<a\" and spaces against 21 ms at 500, and the <source> pattern on many unclosed tags, 48 ms at 32,000 against 3 ms at 8,000. Neither ever reads text from outside the repository; a rewrite would change the groups its callers read."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "scripts/done.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "one character class, on a path filter written in done.mjs's own table: measured linear, 0.018 ms at 32,000 characters against 0.005 ms at 8,000 on its worst input found (\" \")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "scripts/draw-demo.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "`LEVER`, `/^ {2}[→·!] /`, fixed width, on the CLI's own transcript: measured linear, 0 ms at 32,000 characters against 0 ms at 8,000 on its worst input found (\" \")."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "scripts/mutation.mjs",
+      "count": 3,
+      "reason": "FalsePositive",
+      "why": "One character class tested on one character, a number pattern on a literal of the repository's own built code, and a TAP line pattern: all measured linear, under 1.6 ms at 32,000 characters."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_dos_rule-regex-dos",
+      "file": "scripts/sbom.mjs",
+      "count": 2,
+      "reason": "FalsePositive",
+      "why": "Two anchored patterns of fixed shape on the bill of materials this repository writes: measured linear, under 0.03 ms at 32,000 characters."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_ssrf_rule-node-ssrf",
+      "file": "apps/web/components/Library.tsx",
+      "count": 2,
+      "reason": "FalsePositive",
+      "why": "Runs in the visitor's browser, not on a server, and every address is this app's own /api/prompts, relative, with credentials same-origin. No server is made to fetch anything."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_ssrf_rule-node-ssrf",
+      "file": "scripts/check-model-availability.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "A maintainer's script: the host is Google's, fixed, and the id is a model id from the bundled catalogue."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_ssrf_rule-node-ssrf",
+      "file": "scripts/npm-publish-preflight.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "registryUrl() refuses any address whose origin is not the registry's, and the name and version are this repository's own packages, encoded."
+    },
+    {
+      "pattern": "Semgrep_rules_lgpl_javascript_ssrf_rule-node-ssrf",
+      "file": "scripts/price-drift.mjs",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "fetchPage is given the providers' pricing pages from this script's own PAGES and LIFECYCLE_PAGES constants, run on a schedule by CI."
+    },
+    {
+      "pattern": "Semgrep_typescript.react.security.audit.react-href-var.react-href-var",
+      "file": "apps/web/components/docs/DocsIndex.tsx",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "href={DOCS_ON_GITHUB} is a constant of lib/site.ts, https://github.com/Davmunrey/Trazum/tree/main/docs; no visitor value can make it javascript:."
+    },
+    {
+      "pattern": "Semgrep_typescript.react.security.audit.react-href-var.react-href-var",
+      "file": "apps/web/components/history/ChangelogPages.tsx",
+      "count": 2,
+      "reason": "FalsePositive",
+      "why": "href={CHANGELOG_PATH} is the constant '/changelog' of lib/site.ts."
+    },
+    {
+      "pattern": "Semgrep_typescript.react.security.audit.react-href-var.react-href-var",
+      "file": "apps/web/components/history/RoadmapPage.tsx",
+      "count": 1,
+      "reason": "FalsePositive",
+      "why": "The href is GITHUB_URL, a constant of lib/site.ts, plus a fixed path to ROADMAP.md."
+    },
+    {
+      "pattern": "Semgrep_typescript.react.security.audit.react-href-var.react-href-var",
+      "file": "apps/web/components/models/ModelsPage.tsx",
+      "count": 2,
+      "reason": "FalsePositive",
+      "why": "Both hrefs are GITHUB_URL, a constant of lib/site.ts, plus a fixed path: pricing.ts and the price-report form."
+    },
+    {
+      "pattern": "Semgrep_yaml.github-actions.security.audit.unsafe-add-mask-workflow-command.unsafe-add-mask-workflow-command",
+      "file": ".github/workflows/wiki.yml",
+      "count": 1,
+      "reason": "AcceptedUse",
+      "why": "The base64 of the job's token is masked before it is used: GitHub masks the token, not a value derived from it. The step runs without set -x, so the masking line is never echoed."
+    },
+    {
+      "pattern": "Stylelint_declaration-no-important",
+      "file": "apps/web/app/globals.css",
+      "count": 4,
+      "reason": "AcceptedUse",
+      "why": "Inside @media (prefers-reduced-motion: reduce): !important is what lets the visitor's wish for no motion beat every animation a component sets, whatever its specificity."
+    },
+    {
+      "pattern": "Stylelint_selector-not-notation",
+      "file": "apps/web/app/globals.css",
+      "count": 1,
+      "reason": "AcceptedUse",
+      "why": "A notation preference. `:root:not([data-theme='light']):not([data-surface='site'])` and `:root:not([data-theme='light'], [data-surface='site'])` select the same element, and theme.test.mjs holds this exact selector as the rule that keeps the public site light on a dark system without JavaScript; rewriting it would move a guard to quiet a style rule."
+    }
+  ]
+}

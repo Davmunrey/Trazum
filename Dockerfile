@@ -62,7 +62,12 @@ COPY --from=build /repo/apps/web/.next/static ./apps/web/.next/static
 # the documentation's images are served from it.
 COPY --from=build /repo/apps/web/public ./apps/web/public
 
-USER node
+# The base image's unprivileged `node` user, by number: the node image's own
+# Dockerfile creates it as uid 1000 in group 1000. A name is resolved inside
+# the image, so a runtime that must check the user is not root before it
+# starts the container (Kubernetes' runAsNonRoot) can check a number and
+# cannot check a name.
+USER 1000:1000
 EXPOSE 3000
 # 0.0.0.0, never localhost: Alpine's musl resolves localhost to ::1 and the
 # server listens on IPv4.

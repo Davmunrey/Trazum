@@ -15,7 +15,7 @@ not code are named in "what stays out" rather than dressed up as chapters.
 
 ## The 1.65 arc — the format anyone can adopt
 
-### The thesis
+### The 1.65 thesis
 
 The interchange format is this product's best claim to being infrastructure:
 eighteen documented contracts, parity-tested in both directions. But a tool
@@ -24,7 +24,7 @@ that wants to *emit* or *validate* the format today has two options — run
 eighteen contracts can even be named to `conform`. A format is adoptable when
 **checking a document requires nothing but the document**.
 
-### The chapters, in order
+### The 1.65 chapters, in order
 
 **1. Every contract answers to its name.** The seven documented contracts
 that `--contract` cannot name — the fleet document, the spend guard, the
@@ -54,7 +54,7 @@ against this format by a tool that has never installed this product.
 
 ## The 1.66 arc — one policy, three doors
 
-### The thesis
+### The 1.66 thesis
 
 The product can already refuse: the gateway with an HTTP 402, `serve` with a
 cost answer, `spend_guard` over MCP. But each door reads its own slice of
@@ -63,7 +63,7 @@ agreeing by coincidence is a defect waiting for its input**. An agent fleet
 needs one policy — per label, per session, per day — stated once, enforced
 identically at whichever door the call arrives.
 
-### The chapters, in order
+### The 1.66 chapters, in order
 
 **1. The policy has one shape.** A `limits` block in `trazum.config.json` —
 per-label, per-session and per-day USD ceilings — validated like every other
@@ -93,7 +93,7 @@ go red the day any door starts agreeing by coincidence again.
 
 ## The 1.67 arc — the month ends on a measured position
 
-### The thesis
+### The 1.67 thesis
 
 The product refuses to forecast, and that refusal stays. But "refuses to
 forecast" and "cannot say where the month stands" are different sentences:
@@ -102,7 +102,7 @@ configured limit are all measurements — and today they are scattered across
 `profile`, `budgetPositions` and `watch` rather than answerable as one
 question.
 
-### The chapters, in order
+### The 1.67 chapters, in order
 
 **1. The position, as one answer.** The measured month-to-date spend against
 every configured budget and limit, with the denominator on every figure —

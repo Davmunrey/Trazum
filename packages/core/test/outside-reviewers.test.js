@@ -46,38 +46,65 @@ const deepsource = read('.deepsource.toml');
 const leftOutByCodacy = listOf(codacy, 'exclude_paths:');
 const leftOutByDeepSource = listOf(deepsource, 'exclude_patterns = [');
 const tests = listOf(deepsource, 'test_patterns = [');
+/** The paths Codacy leaves out because a script writes them, and the ones it leaves out because they are tests. */
+const generatedByCodacy = leftOutByCodacy.filter((path) => !tests.includes(path));
+const testsByCodacy = leftOutByCodacy.filter((path) => tests.includes(path));
+/** A path pattern as Codacy reads one: `**` crosses directories, `*` does not. `scripts/codacy.mjs` reads it the same way. */
+const glob = (pattern) => new RegExp(`^${pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*|\*/g, (star) => (star === '**' ? '.*' : '[^/]*'))}$`);
+const leftOut = (file) => leftOutByCodacy.some((path) => glob(path).test(file));
 
 describe('what the outside reviewers leave out', () => {
   it('Codacy\'s file is one it will read: it opens with the document marker', () => {
     assert.ok(codacy.startsWith('---\n'), 'Codacy ignores a configuration file that does not start with ---');
   });
 
-  it('is the same two paths in both files', () => {
-    assert.equal(leftOutByCodacy.length, 2, `read ${leftOutByCodacy.length} paths from .codacy.yaml`);
-    assert.deepEqual(leftOutByDeepSource, leftOutByCodacy);
+  it('leaves out the same generated paths in both files, and in Codacy the tests DeepSource calls tests', () => {
+    assert.equal(leftOutByCodacy.length, 4, `read ${leftOutByCodacy.length} paths from .codacy.yaml`);
+    assert.deepEqual(generatedByCodacy, leftOutByDeepSource);
+    assert.deepEqual(testsByCodacy, tests);
   });
 
   it('names directories that are there, whole', () => {
-    for (const path of leftOutByCodacy) {
+    for (const path of generatedByCodacy) {
       assert.ok(path.endsWith('/**'), `${path} is not a whole directory`);
       const dir = path.slice(0, -3);
       assert.ok(existsSync(join(ROOT, dir)), `${dir} does not exist: this path leaves out nothing`);
       assert.ok(tracked.some((file) => file.startsWith(`${dir}/`)), `${dir} holds no tracked file`);
     }
+    for (const path of testsByCodacy) assert.ok(tracked.some((file) => glob(path).test(file)), `${path} leaves out no tracked file`);
   });
 
-  it('leaves out only what AGENTS.md says is generated', () => {
+  it('leaves out only what AGENTS.md says is generated, and the tests', () => {
     const agents = read('AGENTS.md');
     assert.ok(agents.includes('`wiki/` and `plugin/skills/` are generated'), 'AGENTS.md no longer says these two are generated');
-    assert.deepEqual([...leftOutByCodacy].sort(), ['plugin/skills/**', 'wiki/**']);
+    assert.deepEqual([...generatedByCodacy].sort(), ['plugin/skills/**', 'wiki/**']);
   });
 
-  it('leaves no source and no test out', () => {
-    for (const path of leftOutByCodacy) {
+  it('leaves no code of this repository out with the generated paths', () => {
+    for (const path of generatedByCodacy) {
       const dir = path.slice(0, -3);
       const inside = tracked.filter((file) => file.startsWith(`${dir}/`));
       const code = inside.filter((file) => /\.(?:ts|tsx|mjs|js|sh)$/.test(file));
       assert.deepEqual(code, [], `${dir} holds code of this repository that nobody would review`);
+    }
+  });
+
+  it('leaves out every test file, wherever it lives', () => {
+    const named = tracked.filter((file) => /\.test\.[a-z]+$/.test(file));
+    assert.ok(named.length > 100, `only ${named.length} test files`);
+    assert.deepEqual(named.filter((file) => !leftOut(file)), [], 'a test file Codacy would still read');
+    for (const file of ['test/task-stress.test.mjs', 'packages/core/test/security.test.js', 'apps/web/test/helpers/x.mjs']) assert.ok(leftOut(file), file);
+  });
+
+  it('leaves out no shipped source: a security scanner still reads every file that runs', () => {
+    // What runs: each package's src/, the web app's pages, libraries and
+    // components, the Action and the scripts. A test directory among them is
+    // tests, and the only thing under these paths that is left out.
+    const shipped = tracked.filter((file) => /^(?:packages\/[^/]+\/src|apps\/web\/(?:app|lib|components)|action|scripts)\//.test(file) && !/(?:^|\/)test\//.test(file));
+    assert.ok(shipped.length > 300, `only ${shipped.length} shipped files`);
+    assert.deepEqual(shipped.filter(leftOut), [], 'shipped source Codacy would no longer read');
+    for (const file of ['packages/core/src/rules.ts', 'apps/web/lib/auth/session.ts', 'action/post-comment.mjs', 'scripts/codacy.mjs', 'packages/core/src/test.ts', 'apps/web/app/tests/page.tsx']) {
+      assert.ok(!leftOut(file), `${file} is left out`);
     }
   });
 });

@@ -127,6 +127,8 @@ export function styledLines(ansi) {
 
 const esc = (text) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 const run = (text) => esc(text).replaceAll(' ', '&#160;');
+/** Text for an attribute in double quotes, which a quotation mark would end. */
+const attribute = (text) => esc(text).replaceAll('"', '&quot;');
 
 /** One run as a `<tspan>`: the theme's colour, and two glyphs treated as what they are. */
 function span({ text, bold, dim, colour, mark }) {
@@ -187,7 +189,7 @@ export function drawTerminal({ command, lines, label, comment, note = null }) {
   <text x="${pad}" y="${height - 14}" font-family="${MONO}" font-size="${noteSize}" fill="${DARK.secondary}">${run(note)}</text>
 `;
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(label)}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="${attribute(label)}">
   <!--
 ${comment.split('\n').map((line) => `    ${line}`).join('\n')}
   -->

@@ -690,6 +690,26 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **A schema with thousands of keys no longer holds `optimize` for half a minute.** The advisory that notices prose
+  restating an output schema asked one pattern of every sentence for every key, and built the pattern again each
+  time: the square of the text. A prompt of 40,000 characters, half a schema of 1,778 keys and half prose, made
+  `optimize` take 6.8 seconds, and one of 80,000 characters took 37.8, measured on 2026-11-18; the HTTP API accepts 400,000. The prose is now
+  read once, every key looked for in one pass, and the key's own pattern only confirms the place: 80,000 characters
+  take 0.37 seconds. The answer is the same, in the same order: `restated-format-scaling.test.js` compares the two
+  on 3,000 generated cases, holds the case folding to the engine's own over every cased character, and fails when
+  four times the text takes ten times as long. Found by reading a Codacy finding that called the pattern a
+  regular-expression denial of service; the pattern was linear, the loop around it was not. (#772)
+- **Every finding Codacy lists is answered, and a script says when one is not.** #772 read the 204 findings outside
+  the tests one by one: 6 fixed, 92 from two tools and two patterns switched off, 106 dismissed with a reason a
+  reader can check, in `.github/codacy.json`. The 710 in the tests are left out by `.codacy.yaml`, and a test holds
+  that no shipped source is. `npm run codacy` reads Codacy's public list and prints what the file does not account
+  for, including a new finding of a kind already dismissed; `apply --yes`, with an account token, switches off what
+  the file says and dismisses the rest, a hundred at a time, without printing the token. Each regular expression a
+  finding named was timed at a text and one four times as long; two in the docs build's markdown reader grow faster
+  on hostile input and only ever read the repository's own documents. Also fixed while reading: the terminal
+  pictures' accessible name now escapes a quotation mark, the image runs as user 1000 by number, and the two plans'
+  repeated headings name their arc. `docs/coverage.md`, "Codacy",
+  says what is off and why. (#772)
 - **The landing's terminal stood in the top of its window; it is centred
   now.** Measured in a browser at five sizes, light and dark, through the
   whole story: at 1440x900 the bill's output had 72 px above it and 525
