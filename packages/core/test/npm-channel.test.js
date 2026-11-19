@@ -153,7 +153,10 @@ describe('release.yml reads the channel wherever latest could move', () => {
     // GitHub's tag filter: `*` matches anything but `/`.
     const pattern = release.match(/^ {4}tags: \['([^']+)'\]$/m)?.[1];
     assert.equal(pattern, 'v*.*.*');
-    const glob = new RegExp(`^${pattern.replace(/\./g, '\\.').replace(/\*/g, '[^/]*')}$`);
+    // Escape every regular-expression character first, then turn the glob's
+    // `*` (now `\*`) into "anything but a slash".
+    const escaped = pattern.replace(/[\\^$.|?*+()[\]{}]/g, '\\$&');
+    const glob = new RegExp(`^${escaped.replaceAll('\\*', '[^/]*')}$`);
     assert.ok(glob.test('v3.1.0-next.1'));
     assert.ok(glob.test('v3.1.0'));
   });
