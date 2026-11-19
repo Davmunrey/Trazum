@@ -81,6 +81,20 @@ const VERSION = /^(\d+)\.(\d+)\.(\d+)$/;
 const DATE = '^\\d{4}-\\d{2}-\\d{2}$';
 const INSTANT = '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$';
 
+/**
+ * Every pattern the schema uses, compiled once from a literal. The validator
+ * reads `pattern` only through this table and refuses any other: a regular
+ * expression built from a document it is checking is one that document could
+ * choose, and the schema has no need of one it does not already name.
+ */
+const PATTERNS = new Map([
+  ['^https://', /^https:\/\//],
+  ['^\\d+\\.\\d+\\.\\d+$', /^\d+\.\d+\.\d+$/],
+  ['^[0-9a-f]{64}$', /^[0-9a-f]{64}$/],
+  [DATE, /^\d{4}-\d{2}-\d{2}$/],
+  [INSTANT, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/],
+]);
+
 /** Each rate a row can carry, and the unit its value is in. */
 export const UNITS = Object.freeze({
   input: 'usd-per-million-tokens',
@@ -180,7 +194,7 @@ function rowsOf(model, { reviewed, sources }) {
   if (typeof provider !== 'string' || provider === '') throw new Error(`${where} names no provider, so no page and no date can be given for its prices`);
   const date = reviewed[provider];
   const pages = sources[provider];
-  if (typeof date !== 'string' || !new RegExp(DATE).test(date)) throw new Error(`${where}: provider ${provider} has no review date in PROVIDER_REVIEWED`);
+  if (typeof date !== 'string' || !compiledPattern(DATE).test(date)) throw new Error(`${where}: provider ${provider} has no review date in PROVIDER_REVIEWED`);
   if (!Array.isArray(pages) || pages.length === 0) throw new Error(`${where}: provider ${provider} has no page in PROVIDER_SOURCES`);
 
   const rows = [];
@@ -508,6 +522,13 @@ const typeOf = (value) => (value === null ? 'null' : Array.isArray(value) ? 'arr
  * the schema above uses and throws on any other, so the schema cannot grow a
  * rule nothing here checks.
  */
+
+function compiledPattern(pattern) {
+  const compiled = PATTERNS.get(pattern);
+  if (compiled === undefined) throw new Error(`the validator has no compiled pattern for ${JSON.stringify(pattern)}; add it to PATTERNS`);
+  return compiled;
+}
+
 export function validate(schema, value, { root = schema, at = '$' } = {}) {
   for (const key of Object.keys(schema)) if (!KEYWORDS.has(key)) throw new Error(`the schema uses "${key}", which validate() does not read`);
   if (schema.$ref !== undefined) {
@@ -531,7 +552,7 @@ export function validate(schema, value, { root = schema, at = '$' } = {}) {
   }
   if (actual === 'string') {
     if (schema.minLength !== undefined && value.length < schema.minLength) errors.push(`${at}: is shorter than ${schema.minLength}`);
-    if (schema.pattern !== undefined && !new RegExp(schema.pattern).test(value)) errors.push(`${at}: ${JSON.stringify(value)} does not match ${schema.pattern}`);
+    if (schema.pattern !== undefined && !compiledPattern(schema.pattern).test(value)) errors.push(`${at}: ${JSON.stringify(value)} does not match ${schema.pattern}`);
   }
   if (actual === 'array') {
     if (schema.minItems !== undefined && value.length < schema.minItems) errors.push(`${at}: has fewer than ${schema.minItems} items`);

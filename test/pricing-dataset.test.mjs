@@ -323,6 +323,11 @@ describe('what a check of a document catches', () => {
     assert.deepEqual(validate({ type: 'integer', exclusiveMinimum: 0 }, 2), []);
     assert.equal(validate({ type: 'integer' }, 2.5).length, 1);
     assert.equal(validate({ type: ['number', 'null'], exclusiveMinimum: 0 }, null).length, 0);
+    // A pattern is never compiled from the document under check: only the
+    // ones the schema already names, from literals (Codacy, PR #809).
+    assert.deepEqual(validate({ type: 'string', pattern: '^https://' }, 'https://example.org'), []);
+    assert.equal(validate({ type: 'string', pattern: '^https://' }, 'http://example.org').length, 1);
+    assert.throws(() => validate({ type: 'string', pattern: '(a+)+$' }, 'aaaa'), /no compiled pattern for "\(a\+\)\+\$"/);
   });
 
   it('every row id is the one its fields make', () => {
