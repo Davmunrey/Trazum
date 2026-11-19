@@ -2940,7 +2940,7 @@ are billed at it. Every picture and icon comes from one palette and one mark,
 the command reference covers every command, and triage, the roadmap's open
 work and review are written down and applied by a workflow. The repeated-task
 evaluation this number had been reserved for did not ship in it.
-\n
+
 ## 3.0.0 — Trazum speaks first, and the release allowed to break — released
 
 The owner said on 2026-11-18 that Trazum was passive: it answered well and only
@@ -2965,3 +2965,13 @@ Reading every finding an analyser listed found a quadratic loop in
 The site gained its documentation, its models, its roadmap, its brand and a page
 for Trazum Pro. The half of #757 that opens a pull request did not ship in this
 number; it is #796.
+
+## 3.0.1 — Trazum, downloaded from its own pages — released
+
+The owner asked on 2026-11-19 for Trazum to be downloadable from the project's
+own pages, without waiting on a marketplace account, a tap token or a hand
+check. Every release now carries the editor extension, the MCP bundle Claude
+Desktop opens and their checksums, and the site has a page that links them at
+the version it was built at. The extension the old script packaged could not
+have loaded; this one carries the core it imports. Nothing in the packages
+changed.

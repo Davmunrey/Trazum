@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 3.0.0**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 3.0.1**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: it is not
@@ -110,6 +110,29 @@ The formula in this repository can be behind the manifests, because a release
 pull request bumps them before npm has a tarball to hash, and never ahead.
 
 ---
+
+## 3.0.1 — Trazum, downloaded from its own pages
+
+**Adoption, read 2026-11-19:** 3341 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 3.0.0.
+
+**Nothing in the packages changed.** This release exists so that a release
+carries the files the site now links. 3.0.0 went out before the job that
+builds them existed, and carries none of them.
+
+- **Every release now carries three more files.** `trazum-vscode-3.0.1.vsix`
+  is the editor extension, installed with *Install from VSIX*.
+  `trazum-mcp-3.0.1.mcpb` is the MCP server as a bundle Claude Desktop opens.
+  `SHA256SUMS` holds the SHA-256 of both and of the bill of materials. They
+  are not signed, and nothing here claims they are.
+- **The extension now loads.** The `.vsix` the old packaging script built held
+  8 files and left out `@trazum/core`, which the extension imports.
+- **`/download` on the site** links those files at this exact version, with
+  the CLI, the Action and an MCP snippet for each agent, in the site's five
+  languages.
+- **A Homebrew formula and a Gemini CLI extension manifest** are in the
+  repository. The tap is a step the owner takes by hand, described above.
+
+Upgrade with `npm install -g @trazum/cli@3.0.1`. Nothing you call has moved.
 
 ## 3.0.0 — Trazum speaks first, and the release allowed to break
 

@@ -13,6 +13,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+No changes yet.
+
+## 3.0.1 — 2026-11-19
+
 ### Added
 
 - **Trazum can be downloaded from the project's own places, with no marketplace account.** (#774, #780, #781; advances #640, which stays open because no listing exists) The owner asked on 2026-11-19 for everything needed so it can be downloaded. Six parts:
