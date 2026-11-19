@@ -2523,5 +2523,42 @@ export interface CliMessages {
     backupNote(suffix: string): string;
     crontab(): string;
   };
+  /** `trazum session-guard`: the Claude Code hook that warns and then stops at a dollar figure. */
+  sessionGuard: {
+    unknownAction(given: string): string;
+    /** The flags that were not given, by name: there is no default for any of them. */
+    refusedMissing(flags: string): string;
+    refusedAmount(flag: string, given: string): string;
+    refusedPolicy(given: string, allowed: string): string;
+    refusedWarnNotBelowStop(): string;
+    refusedFlag(flag: string): string;
+    /** What the hook says to the person; every figure is API-equivalent cost, never what was paid. */
+    warn(usd: string, warnUsd: string, stopUsd: string, atLeast: boolean): string;
+    block(usd: string, stopUsd: string, atLeast: boolean): string;
+    cannotTellOpen(why: string): string;
+    cannotTellClosed(why: string): string;
+    cause: Record<'no-transcript' | 'unreadable' | 'unparseable' | 'skipped', () => string>;
+    unpriced(models: string): string;
+    /** The settings file's shape, when it cannot be edited. */
+    settingsShape(file: string, key: string): string;
+    wouldInstall(): string;
+    wouldUninstall(): string;
+    askInstall(file: string): string;
+    askUninstall(file: string): string;
+    didInstall(file: string): string;
+    didUninstall(file: string): string;
+    declined(): string;
+    nothingToUninstall(): string;
+    alreadyInstalled(file: string): string;
+    dryRun(): string;
+    dryRunNoTerminal(): string;
+    failed(reason: string): string;
+    statusOn(file: string, warnUsd: string, stopUsd: string, policy: string): string;
+    statusOff(file: string): string;
+    statusPartial(file: string): string;
+    apiEquivalent(): string;
+    windows(): string;
+    noClaude(dir: string): string;
+  };
 
 }

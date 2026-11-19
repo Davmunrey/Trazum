@@ -332,10 +332,21 @@ import {
   CRONTAB,
   inspectAll as inspectProactive,
   run as runProactive,
+  pathsFor,
+  readJsonObject,
   shown as shownPath,
   systemCrontab,
 } from './proactive.js';
 import type { Ctx as ProactiveCtx, Finding as ProactiveFinding, Item as ProactiveItem, ItemResult, ItemStatus } from './proactive.js';
+import {
+  GuardWriteFailed,
+  applyGuardPlan,
+  check as checkSessionGuard,
+  guardState,
+  parseThresholds as parseGuardThresholds,
+  planGuard,
+  viewGuard,
+} from './session-guard.js';
 import { MAX_COLUMNS, Report, WINDOW, c, cErr, fitPath, sectionHeading, table, wrap } from './style.js';
 import type { Cell, TableColumn } from './style.js';
 
@@ -381,6 +392,9 @@ const VALUE_FLAGS = new Set([
   'against',
   'contract',
   'on-cannot-tell',
+  // `session-guard check|install`: the two dollar thresholds, which have no default.
+  'warn',
+  'stop',
   'from-log',
   'min-usd',
   'payload',
@@ -927,6 +941,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
   doctor: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'otlp-out'],
   proactive: ['only', 'dry-run', 'yes', 'json'],
+  'session-guard': ['warn', 'stop', 'on-cannot-tell', 'dry-run', 'yes'],
 };
 
 function rejectUnknownFlags(args: Args, t: CliMessages): void {
@@ -14829,6 +14844,157 @@ function printRank(
   console.log(`${c.dim(t.rank.recoverableNote())}\n`);
 }
 
+/**
+ * `trazum session-guard`: a Claude Code hook that warns, then stops a session,
+ * at two dollar figures the person sets. The logic is in `session-guard.ts`;
+ * this reads the flags and the machine once and says what happened.
+ *
+ * **It never loads the project's config or a pricing overlay.** `check` is the
+ * hook Claude Code runs before every prompt and tool call, and a
+ * `trazum.config.json` that fails to parse in whatever directory the session
+ * is in must not decide whether a spending limit holds. It prices at the
+ * bundled catalogue, dated, and reads only files already on this machine.
+ */
+async function commandSessionGuard(args: Args, t: CliMessages): Promise<void> {
+  const action = args.positional[0] ?? 'status';
+  if (!['status', 'install', 'uninstall', 'check'].includes(action)) throw new Error(t.sessionGuard.unknownAction(action));
+  for (const flag of ['pricing', 'pricing-live', 'config']) {
+    if (args.flags.has(flag)) throw new Error(t.sessionGuard.refusedFlag(`--${flag}`));
+  }
+
+  const parsed = parseGuardThresholds({
+    warn: stringFlag(args, 'warn'),
+    stop: stringFlag(args, 'stop'),
+    policy: stringFlag(args, 'on-cannot-tell'),
+  });
+  const refusal = (given: ReturnType<typeof parseGuardThresholds>): string => {
+    if (given.ok) return '';
+    const r = given.refusal;
+    switch (r.code) {
+      case 'missing':
+        return t.sessionGuard.refusedMissing(r.flags.join(', '));
+      case 'notAmount':
+        return t.sessionGuard.refusedAmount(r.flag, r.given);
+      case 'badPolicy':
+        return t.sessionGuard.refusedPolicy(r.given, r.allowed);
+      case 'warnNotBelowStop':
+        return t.sessionGuard.refusedWarnNotBelowStop();
+    }
+  };
+
+  if (action === 'check') {
+    if (!parsed.ok) throw new Error(refusal(parsed));
+    let stdin = '';
+    if (process.stdin.isTTY !== true) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
+      stdin = Buffer.concat(chunks).toString('utf8');
+    }
+    const result = await checkSessionGuard(stdin, parsed.thresholds, {
+      catalogue: BUNDLED_CATALOGUE,
+      env: process.env,
+      now: new Date(),
+      t,
+    });
+    if (result.stdout !== '') process.stdout.write(`${result.stdout}\n`);
+    if (result.stderr !== '') process.stderr.write(`${result.stderr}\n`);
+    process.exitCode = result.code;
+    return;
+  }
+
+  const home = process.env.HOME || process.env.USERPROFILE || homedir();
+  const entry = (() => {
+    try {
+      return realpathSync(process.argv[1] ?? '');
+    } catch {
+      return resolvePath(process.argv[1] ?? '');
+    }
+  })();
+  const ctx: ProactiveCtx = {
+    home,
+    cwd: process.cwd(),
+    platform: process.platform,
+    execPath: process.execPath,
+    entry,
+    trazumBin: process.env.TRAZUM_BIN,
+    // Not used: the guard writes the settings file and the record, never the crontab.
+    crontab: { read: () => ({ kind: 'none' }), write: () => undefined },
+    script: async () => '',
+    catalogue: BUNDLED_CATALOGUE,
+  };
+  const settings = pathsFor(ctx).settings;
+  const file = shownPath(ctx, settings);
+
+  if (action === 'status') {
+    const read = await readJsonObject(ctx, settings, resolvePath(home));
+    if (read.kind === 'refused') {
+      console.log(t.proactive.reason[read.finding.code](read.finding.params));
+      return;
+    }
+    const view = viewGuard(read.kind === 'ok' ? read.value : {});
+    if (view.shape !== null) {
+      console.log(t.sessionGuard.settingsShape(file, view.shape));
+      return;
+    }
+    const state = guardState(view);
+    const first = view.found.UserPromptSubmit ?? view.found.PreToolUse;
+    if (state === 'off' || first === undefined) console.log(t.sessionGuard.statusOff(file));
+    else {
+      const line = t.sessionGuard.statusOn(file, formatUsd(first.warnUsd), formatUsd(first.stopUsd), first.policy);
+      console.log(state === 'partial' ? t.sessionGuard.statusPartial(file) : line);
+    }
+    console.log(c.dim(t.sessionGuard.apiEquivalent()));
+    return;
+  }
+
+  if (action === 'install' && !parsed.ok) throw new Error(refusal(parsed));
+  const plan = await planGuard(ctx, action as 'install' | 'uninstall', parsed.ok ? parsed.thresholds : null, t);
+  if (plan.kind !== 'plan') {
+    console[plan.kind === 'refused' ? 'error' : 'log'](plan.message);
+    if (plan.kind === 'refused') process.exitCode = 1;
+    return;
+  }
+
+  const yes = boolFlag(args, 'yes');
+  const terminal = process.stdin.isTTY === true;
+  const dryRun = boolFlag(args, 'dry-run') || (!yes && !terminal);
+  const header = action === 'install' ? t.sessionGuard.wouldInstall() : t.sessionGuard.wouldUninstall();
+  const show = (): void => {
+    console.log(header);
+    for (const change of plan.changes) {
+      console.log(`    ${shownPath(ctx, change.target)}`);
+      for (const line of change.removed) console.log(`      ${c.red(`- ${line}`)}`);
+      for (const line of change.added) console.log(`      ${c.green(`+ ${line}`)}`);
+    }
+  };
+  if (dryRun) {
+    show();
+    console.log(!boolFlag(args, 'dry-run') ? t.sessionGuard.dryRunNoTerminal() : t.sessionGuard.dryRun());
+    return;
+  }
+  if (!yes) {
+    show();
+    const reader = createInterface({ input: process.stdin, output: process.stderr });
+    const answer = await reader
+      .question(action === 'install' ? t.sessionGuard.askInstall(file) : t.sessionGuard.askUninstall(file))
+      .finally(() => reader.close());
+    if (!/^(y|yes|s|si|sí)$/i.test(answer.trim())) {
+      console.log(t.sessionGuard.declined());
+      return;
+    }
+  }
+  try {
+    await applyGuardPlan(ctx, plan, action as 'install' | 'uninstall');
+  } catch (error) {
+    if (!(error instanceof GuardWriteFailed)) throw error;
+    console.error(t.sessionGuard.failed(t.proactive.reason[error.finding.code](error.finding.params)));
+    process.exitCode = 1;
+    return;
+  }
+  console.log(action === 'install' ? t.sessionGuard.didInstall(file) : t.sessionGuard.didUninstall(file));
+  if (action === 'install') console.log(c.dim(t.sessionGuard.apiEquivalent()));
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   if (argv[0] === 'task') {
@@ -14899,6 +15065,12 @@ async function main(): Promise<void> {
 
   rejectUnknownFlags(args, t);
   rejectExtraPositionals(args, t);
+
+  // Before the config loads, for the reason `commandSessionGuard` gives.
+  if (args.command === 'session-guard') {
+    await commandSessionGuard(args, t);
+    return;
+  }
 
   // Loaded before dispatch so every command sees the same settings, and after
   // flag validation so a typo is reported before any file is touched. An

@@ -72,6 +72,7 @@ ${bold('USO')}
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
   trazum proactive [status|on|off] [--only <item,...>] [--dry-run | --yes] [--json]
+  trazum session-guard [status|install|uninstall] --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed> [--dry-run | --yes]
   trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
   trazum models
@@ -499,6 +500,30 @@ ${bold('OPCIONES DE pulse')}
   Nunca falla por una primera ejecución que nunca ocurrió (no hay cadencia
   contra la que ir tarde) ni por hasta dónde llegan las mediciones, que es un
   proveedor informando a su ritmo y no un trabajo que falló.
+
+${bold('OPCIONES DE session-guard')}
+  status                      Si el hook está en ~/.claude/settings.json, y con
+                              qué cifras. Es lo predeterminado; no escribe nada.
+  install                     Añade el hook a los eventos UserPromptSubmit y
+                              PreToolUse. Dice el archivo y cada línea antes, y
+                              solo escribe tras un sí.
+  uninstall                   Quita exactamente el hook que añadió.
+  check                       Lo que ejecuta el hook: lee la transcripción de la
+                              sesión, le pone precio con el catálogo incluido y
+                              avisa una vez, detiene (código de salida 2) o
+                              calla. No es para escribirlo a mano.
+  --warn <usd>                Avisa una vez por sesión con este coste equivalente
+                              en API.
+  --stop <usd>                Detiene la sesión con este coste. Mayor que --warn.
+  --on-cannot-tell <política> fail-open o fail-closed: qué pasa cuando no se
+                              puede saber el coste (sin transcripción, un modelo
+                              sin precio). Nunca cuenta el coste como cero.
+  --dry-run, --yes            Como en proactive.
+
+  No hay valor por defecto para los umbrales ni para la política: si falta uno,
+  el comando se niega y lo nombra. Toda cifra es coste equivalente en API, lo que
+  costaría el uso a los precios de lista de la API del proveedor, no lo que te
+  cobraron. Nada sale de esta máquina.
 
 ${bold('OPCIONES DE bench')}
   --workload <id>             Ejecuta una sola carga estándar en vez de todas.
@@ -2664,6 +2689,53 @@ ${bold('EJEMPLOS')}
     backupNote: (suffix) =>
       `La primera vez que cambia un archivo tuyo, se guarda una copia al lado como <nombre>${suffix}. Nunca se reemplaza.`,
     crontab: () => 'tu crontab',
+  },
+
+  sessionGuard: {
+    unknownAction: (given) => `Acción desconocida "${given}". Usa: trazum session-guard [status|install|uninstall].`,
+    refusedMissing: (flags) =>
+      `Falta: ${flags}. No hay valor por defecto para los dos umbrales en dólares ni para lo que se hace cuando no se puede saber el coste: cada uno es decisión tuya, y una guarda que eligiera uno lo habría decidido por ti. Ejemplo: trazum session-guard install --warn 5 --stop 15 --on-cannot-tell fail-open`,
+    refusedAmount: (flag, given) => `${flag} necesita un importe en dólares mayor que cero, y "${given}" no lo es.`,
+    refusedPolicy: (given, allowed) => `--on-cannot-tell es "${given}". Tiene que ser uno de: ${allowed}. fail-open deja seguir el trabajo cuando no se puede saber el coste, y fail-closed lo detiene.`,
+    refusedWarnNotBelowStop: () => '--warn tiene que ser menor que --stop, o el aviso nunca se vería antes de la parada.',
+    refusedFlag: (flag) =>
+      `${flag} no se acepta aquí. La guarda pone precio a la sesión con el catálogo incluido en esta versión y solo lee archivos que ya están en esta máquina.`,
+    warn: (usd, warnUsd, stopUsd, atLeast) =>
+      `Trazum: esta sesión ha llegado a ${atLeast ? 'al menos ' : ''}${usd} de coste equivalente en API. Tu cifra de aviso es ${warnUsd} y se detiene en ${stopUsd}. Equivalente en API es lo que costaría este uso a los precios de lista de la API del proveedor, no lo que te cobraron.${atLeast ? ' Algunas llamadas son de un modelo para el que Trazum no tiene precio, así que la cifra real es mayor.' : ''} Esto se dice una vez por sesión.`,
+    block: (usd, stopUsd, atLeast) =>
+      `Trazum: detenida. Esta sesión ha llegado a ${atLeast ? 'al menos ' : ''}${usd} de coste equivalente en API, igual o por encima de tu cifra de parada de ${stopUsd}. Equivalente en API es lo que costaría este uso a los precios de lista de la API del proveedor, no lo que te cobraron. Para seguir, sube la cifra: trazum session-guard install --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed>.`,
+    cannotTellOpen: (why) =>
+      `Trazum no pudo saber cuánto cuesta esta sesión: ${why}. Tu política es fail-open, así que el trabajo sigue y esta guarda no detiene nada. No contó el coste como cero. Esto se dice una vez por sesión.`,
+    cannotTellClosed: (why) =>
+      `Trazum: detenida, porque no pudo saber cuánto cuesta esta sesión: ${why}. Tu política es fail-closed. No contó el coste como cero. Para seguir, arregla la causa o cambia la política con trazum session-guard install.`,
+    cause: {
+      'no-transcript': () => 'Claude Code no dio ninguna transcripción que leer',
+      unreadable: () => 'no se pudo leer la transcripción',
+      unparseable: () => 'la transcripción tiene líneas y ninguna se pudo leer como uso',
+      skipped: () => 'una parte de la transcripción no se pudo leer como registro de uso',
+    },
+    unpriced: (models) => `el catálogo no tiene precio para ${models}`,
+    settingsShape: (file, key) => `${file} tiene un "${key}" que no tiene la forma que lee Claude Code, así que se deja como está.`,
+    wouldInstall: () => 'guarda de sesión: escribiría',
+    wouldUninstall: () => 'guarda de sesión: quitaría',
+    askInstall: (file) => `¿Escribir el hook de la guarda de sesión (${file})? [s/N] `,
+    askUninstall: (file) => `¿Quitar el hook de la guarda de sesión (${file})? [s/N] `,
+    didInstall: (file) => `guarda de sesión: escrito en ${file}`,
+    didUninstall: (file) => `guarda de sesión: quitado de ${file}`,
+    declined: () => 'guarda de sesión: no se escribió, dijiste que no.',
+    nothingToUninstall: () => 'guarda de sesión: nada que quitar.',
+    alreadyInstalled: (file) => `guarda de sesión: ya está como pediste en ${file}, nada que cambiar.`,
+    dryRun: () => 'Simulacro: no se escribió nada.',
+    dryRunNoTerminal: () =>
+      'Esto no es una terminal y no se pasó --yes, así que es un simulacro: no se escribió nada. Ejecútalo en una terminal para que te pregunte, o pasa --yes.',
+    failed: (reason) => `guarda de sesión: no se escribió. ${reason}`,
+    statusOn: (file, warnUsd, stopUsd, policy) =>
+      `activa en ${file}: avisa en ${warnUsd}, detiene en ${stopUsd} de coste equivalente en API, y cuando no se puede saber el coste es ${policy}.`,
+    statusOff: (file) => `desactivada: no hay hook de la guarda de sesión en ${file}.`,
+    statusPartial: (file) => `activa a medias: ${file} tiene el hook en uno de los dos eventos y no en el otro. Ejecuta install otra vez para completarla.`,
+    apiEquivalent: () => 'Toda cifra es coste equivalente en API: el uso a los precios de lista de la API del proveedor, no lo que te cobraron.',
+    windows: () => 'El hook de la guarda de sesión se escribe como comando de shell y no está disponible en Windows.',
+    noClaude: (dir) => `${dir} no existe, así que Claude Code no parece instalado para este usuario. No se escribió nada.`,
   },
 
   pulse: {

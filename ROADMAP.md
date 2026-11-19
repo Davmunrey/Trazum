@@ -68,7 +68,7 @@ closed, not when somebody remembers this page. Live:
 [open to a first contribution](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
-**Ready to be picked up (26).**
+**Ready to be picked up (21).**
 
 | Issue | What | Area |
 | --- | --- | --- |
@@ -89,15 +89,10 @@ closed, not when somebody remembers this page. Live:
 | [#781](https://github.com/Davmunrey/Trazum/issues/781) | brew install the CLI from a tap this repository keeps current | cli |
 | [#786](https://github.com/Davmunrey/Trazum/issues/786) | bill takes what ccusage already reports, and prices it with dated rates, budgets and the ranked changes | cli |
 | [#787](https://github.com/Davmunrey/Trazum/issues/787) | OpenSSF Scorecard runs on main and its result is on the README | - |
-| [#820](https://github.com/Davmunrey/Trazum/issues/820) | A weekly cross-check against LiteLLM's model list, as a signal to re-read a provider page | - |
-| [#821](https://github.com/Davmunrey/Trazum/issues/821) | A Claude Code hook that warns, then stops a session, at a dollar figure the user sets | cli |
 | [#822](https://github.com/Davmunrey/Trazum/issues/822) | Point out the waste in a coding-agent session, priced, without changing anything | cli |
 | [#823](https://github.com/Davmunrey/Trazum/issues/823) | Show an agent plan's limit and reset time, from the agent's own signals only | cli |
 | [#824](https://github.com/Davmunrey/Trazum/issues/824) | Prometheus metrics and a Grafana dashboard for the bill and the gateway | cli |
 | [#825](https://github.com/Davmunrey/Trazum/issues/825) | Spend beside delivery: what was recorded per commit, PR and day, from local git | cli |
-| [#826](https://github.com/Davmunrey/Trazum/issues/826) | bill --agent and --timezone | cli |
-| [#827](https://github.com/Davmunrey/Trazum/issues/827) | Publish llms.txt, and a page for people building on the JSON | web |
-| [#829](https://github.com/Davmunrey/Trazum/issues/829) | Staging and production for the web app, a `next` npm channel, and release approval | web |
 
 **Waiting on something outside the repository (11).** Each issue says what.
 

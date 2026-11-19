@@ -85,6 +85,7 @@ ${bold('USAGE')}
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
   trazum proactive [status|on|off] [--only <item,...>] [--dry-run | --yes] [--json]
+  trazum session-guard [status|install|uninstall] --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed> [--dry-run | --yes]
   trazum bench [--workload <id>] [--record <file>] [--against <file> --max-ratio <n>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
   trazum models
@@ -491,6 +492,28 @@ ${bold('OPTIONS FOR proactive')}
   It never invents a budget and never fills the store. A watch with no store or
   no spend limit is "not ready", with the command or the key that would make it
   ready.
+
+${bold('OPTIONS FOR session-guard')}
+  status                      Whether the hook is in ~/.claude/settings.json, and
+                              at which figures. The default; writes nothing.
+  install                     Add the hook to the UserPromptSubmit and PreToolUse
+                              events. Says the file and every line first, and
+                              writes only after a yes.
+  uninstall                   Remove exactly the hook it added.
+  check                       What the hook runs: reads the session's transcript,
+                              prices it at the bundled catalogue and warns once,
+                              stops (exit code 2) or stays silent. Not for typing.
+  --warn <usd>                Warn once per session at this API-equivalent cost.
+  --stop <usd>                Stop the session at this cost. Must exceed --warn.
+  --on-cannot-tell <policy>   fail-open or fail-closed: what happens when the
+                              cost cannot be told (no transcript, a model with
+                              no price). It never counts the cost as zero.
+  --dry-run, --yes            As for proactive.
+
+  There is no default for the thresholds or the policy: leave one out and the
+  command refuses by name. Every figure is API-equivalent cost, what the usage
+  would cost at the provider's list API prices, not what you were charged.
+  Nothing leaves this machine.
 
 ${bold('OPTIONS FOR bench')}
   --workload <id>             Run one standard workload instead of all of them.
@@ -2626,6 +2649,53 @@ ${bold('EXAMPLES')}
     backupNote: (suffix) =>
       `The first time a file you own changes, a copy of it is kept beside it as <name>${suffix}. It is never replaced.`,
     crontab: () => 'your crontab',
+  },
+
+  sessionGuard: {
+    unknownAction: (given) => `Unknown action "${given}". Use: trazum session-guard [status|install|uninstall].`,
+    refusedMissing: (flags) =>
+      `Not set: ${flags}. There is no default for the two dollar thresholds or for what to do when the cost cannot be told: each is your decision, and a guard that picked one would have made it for you. Example: trazum session-guard install --warn 5 --stop 15 --on-cannot-tell fail-open`,
+    refusedAmount: (flag, given) => `${flag} needs an amount in US dollars greater than zero, and "${given}" is not one.`,
+    refusedPolicy: (given, allowed) => `--on-cannot-tell is "${given}". It has to be one of: ${allowed}. fail-open lets the work go on when the cost cannot be told, and fail-closed stops it.`,
+    refusedWarnNotBelowStop: () => '--warn has to be less than --stop, or the warning could never be seen before the stop.',
+    refusedFlag: (flag) =>
+      `${flag} is not accepted here. The guard prices the session at the catalogue bundled with this version and reads only files already on this machine.`,
+    warn: (usd, warnUsd, stopUsd, atLeast) =>
+      `Trazum: this session has reached ${atLeast ? 'at least ' : ''}${usd} in API-equivalent cost. Your warning figure is ${warnUsd} and it stops at ${stopUsd}. API-equivalent is what this usage would cost at the provider's list API prices, not what you were charged.${atLeast ? ' Some calls are on a model Trazum has no price for, so the true figure is higher.' : ''} This is said once per session.`,
+    block: (usd, stopUsd, atLeast) =>
+      `Trazum: stopped. This session has reached ${atLeast ? 'at least ' : ''}${usd} in API-equivalent cost, at or over your stop figure of ${stopUsd}. API-equivalent is what this usage would cost at the provider's list API prices, not what you were charged. To go on, raise the figure: trazum session-guard install --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed>.`,
+    cannotTellOpen: (why) =>
+      `Trazum could not tell what this session costs: ${why}. Your policy is fail-open, so the work goes on and this guard stops nothing. It did not count the cost as zero. This is said once per session.`,
+    cannotTellClosed: (why) =>
+      `Trazum: stopped, because it could not tell what this session costs: ${why}. Your policy is fail-closed. It did not count the cost as zero. To go on, fix the cause, or change the policy with trazum session-guard install.`,
+    cause: {
+      'no-transcript': () => 'Claude Code gave no transcript to read',
+      unreadable: () => 'the transcript could not be read',
+      unparseable: () => 'the transcript has lines and none of them could be read as usage',
+      skipped: () => 'part of the transcript could not be read as a usage record',
+    },
+    unpriced: (models) => `the catalogue has no price for ${models}`,
+    settingsShape: (file, key) => `${file} has a "${key}" that is not the shape Claude Code reads, so it is left alone.`,
+    wouldInstall: () => 'session guard: would write',
+    wouldUninstall: () => 'session guard: would remove',
+    askInstall: (file) => `Write the session guard hook (${file})? [y/N] `,
+    askUninstall: (file) => `Remove the session guard hook (${file})? [y/N] `,
+    didInstall: (file) => `session guard: wrote ${file}`,
+    didUninstall: (file) => `session guard: removed from ${file}`,
+    declined: () => 'session guard: not written, you said no.',
+    nothingToUninstall: () => 'session guard: nothing to remove.',
+    alreadyInstalled: (file) => `session guard: already as asked in ${file}, nothing to change.`,
+    dryRun: () => 'Dry run: nothing was written.',
+    dryRunNoTerminal: () =>
+      'This is not a terminal and --yes was not given, so it is a dry run: nothing was written. Run it in a terminal to be asked, or pass --yes.',
+    failed: (reason) => `session guard: not written. ${reason}`,
+    statusOn: (file, warnUsd, stopUsd, policy) =>
+      `on in ${file}: warns at ${warnUsd}, stops at ${stopUsd} of API-equivalent cost, and when the cost cannot be told it is ${policy}.`,
+    statusOff: (file) => `off: no session guard hook in ${file}.`,
+    statusPartial: (file) => `partly on: ${file} has the hook on one of the two events and not the other. Run install again to complete it.`,
+    apiEquivalent: () => "Every figure is API-equivalent cost: the usage at the provider's list API prices, not what you were charged.",
+    windows: () => 'The session guard hook is written as a shell command and is not available on Windows.',
+    noClaude: (dir) => `${dir} is not there, so Claude Code does not look installed for this user. Nothing was written.`,
   },
 
   pulse: {
