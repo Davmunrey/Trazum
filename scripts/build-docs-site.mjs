@@ -16,9 +16,14 @@
  *   from where they are in the repository, so a page loads them from its own
  *   origin and nothing is hot-linked.
  *
+ * - `apps/web/public/llms.txt` and `llms-full.txt`: the documents as an index
+ *   and as one file for a model to read (`scripts/llms-txt.mjs`). Ignored by git
+ *   like the two above, and `llms-txt.test.js` holds what the builder makes
+ *   to the documents.
+ *
  * It runs before `next build`, `next dev`, the web app's tests and its type
- * check, because the pages cannot be built without it. Both outputs are
- * ignored by git: they are made from the documents, and a committed copy would
+ * check, because the pages cannot be built without it. These outputs
+ * are ignored by git: they are made from the documents, and a committed copy would
  * be the second copy this script exists to prevent.
  *
  * It runs at build time and never in a request. Nothing a visitor sends
@@ -58,6 +63,7 @@ import {
   notPublishedKind,
 } from '../apps/web/lib/docs/manifest.ts';
 import { safeHref } from '../apps/web/lib/docs/safe.ts';
+import { writeLlms } from './llms-txt.mjs';
 import { UnknownConstruct, inlineText, parseMarkdown, walkBlocks, walkInlines } from './docs-markdown.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -445,8 +451,9 @@ function main() {
     process.exit(1);
   }
   writeDocs(result);
+  writeLlms(result, { root: ROOT });
   console.log(
-    `docs: ${result.documents.length} documents, ${result.search.length} search entries, ${result.images.length} images copied, ${result.remoteImages} remote images left unloaded`,
+    `docs: ${result.documents.length} documents, llms.txt and llms-full.txt, ${result.search.length} search entries, ${result.images.length} images copied, ${result.remoteImages} remote images left unloaded`,
   );
 }
 

@@ -145,6 +145,11 @@ const HOSTS = {
   'https://api-docs.deepseek.com': 'documentation link',
   'https://docs.x.ai': 'documentation link',
   'https://mistral.ai': 'documentation link',
+  // Named by `scripts/llms-txt.mjs`: the format its comment cites, and the
+  // origin it writes into `llms.txt` as the address of each document's page.
+  // Text written for a reader, never a request this repository makes.
+  'https://llmstxt.org': 'documentation link',
+  'https://trazum.vercel.app': 'documentation link',
 
   'https://api.example': 'example',
   'https://api.github.test': 'example',

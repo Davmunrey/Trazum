@@ -93,6 +93,7 @@ export const DOCS: readonly DocEntry[] = [
   { path: 'docs/deploy-n0.md', slug: 'deploy-n0', title: 'Deploying on N0', group: 'use' },
   { path: 'docs/plan-format.md', slug: 'plan-format', title: 'The plan document', group: 'use' },
   { path: 'docs/json-output.md', slug: 'json-output', title: 'JSON output', group: 'use' },
+  { path: 'docs/building-on-the-json.md', slug: 'building-on-the-json', title: 'Building on the JSON', group: 'use' },
   { path: 'docs/format.md', slug: 'format', title: 'The interchange format', group: 'use' },
   { path: 'docs/pricing-dataset.md', slug: 'pricing-dataset', title: 'The pricing dataset', group: 'use' },
 
