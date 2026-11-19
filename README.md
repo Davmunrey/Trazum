@@ -813,6 +813,9 @@ The four you are most likely to want directly:
   logs, and what each optional field unlocks if you start writing it.
 - **[docs/json-output.md](docs/json-output.md)** — every machine-readable
   document, field by field, with the provenance each one carries.
+- **[docs/building-on-the-json.md](docs/building-on-the-json.md)** — for people
+  building on that JSON: where each command's contract is, what is stable and
+  what is not, and that nothing uploads usage.
 
 ## Roadmap and contributing
 

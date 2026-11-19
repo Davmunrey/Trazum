@@ -22,6 +22,7 @@
     "**/tests/**",
     "**/fixtures/**",
     "**/corpus/**",
-    "action/**"
+    "action/**",
+    "apps/web/public/llms*.txt"
   ]
 }

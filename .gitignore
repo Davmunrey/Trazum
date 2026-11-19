@@ -45,6 +45,12 @@ skills-lock.json
 /apps/web/lib/docs/generated/
 /apps/web/public/docs-assets/
 
+# Also written by `scripts/build-docs-site.mjs`: the documents as `llms.txt` (an
+# index) and `llms-full.txt` (one file). A committed copy would churn on every
+# edit of any document.
+/apps/web/public/llms.txt
+/apps/web/public/llms-full.txt
+
 # Written by `scripts/build-site-pages.mjs` from CHANGELOG.md, ROADMAP.md,
 # .github/milestones.json and the catalogue's source, before the web app
 # builds, runs or is tested: the pages of /changelog, /roadmap and the part of
