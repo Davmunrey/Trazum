@@ -6,15 +6,27 @@
 # "Review", says how a finding of its is handled: traced in the code before
 # anybody acts on it.
 #
-# Only paths can be set from this file. Which patterns are on is set in
-# Codacy's own Code patterns page, and issue #767 records the three that are
-# wrong for this repository and why.
+# Only paths can be set from this file. Which tools and patterns are on is set
+# in Codacy's own settings, and .github/codacy.json is the record of what is
+# switched off there and why, with every finding dismissed and its reason.
+# `npm run codacy` compares the two; docs/coverage.md, "Codacy", says how.
 #
 # Left out, so that a finding is reported once and against the file a person
 # edits: the two directories that are written by a script from a source that
 # is read anyway. .deepsource.toml leaves out the same two, and a test holds
-# the two lists to each other. Nothing else is left out: the tests are read
-# like the rest.
+# the two lists to each other.
+#
+# Left out as well: the tests, every file in a directory named `test`, the
+# same two patterns .deepsource.toml calls tests. On 2026-11-18 they held 710
+# of Codacy's 914 findings, nearly all of them a security rule reading a
+# fixture: a token count named `input_tokens`, a price written as `0.0005`, a
+# test calling the server it started. The tests are still read by the linter,
+# by CodeQL and by GitHub's secret scanning, and run on every pull request.
+# No shipped source is left out: a test holds that no file under a package's
+# `src/`, the web app's `app/`, `lib/` or `components/`, `action/` or
+# `scripts/` matches any path here.
 exclude_paths:
   - "wiki/**"
   - "plugin/skills/**"
+  - "test/**"
+  - "**/test/**"

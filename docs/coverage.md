@@ -298,3 +298,64 @@ in the code, and nothing here waits on it.
 Codacy is not a required check, and neither it nor DeepSource can be: a test
 holds the ruleset to that. What each of them reads is in
 [`.codacy.yaml`](../.codacy.yaml) and [`.deepsource.toml`](../.deepsource.toml).
+
+### What it finds, and how each finding is answered
+
+On 2026-11-18 Codacy's API listed 914 open findings on `main`: 710 in test
+files and 204 elsewhere. #772 read the 204 one by one against the code. Each
+ended in one of three places, and the next one has to end in one of them too.
+
+- **Fixed in the code**, where the finding was right or the code is better for
+  the change: 6. One was a real fault. The restated-schema advisory asked a
+  pattern of every sentence for every key of a schema, so a prompt of 40,000
+  characters, half a schema of 1,778 keys and half prose, made `optimize`
+  take 6.8 seconds, and one of 80,000 characters took 38. It now reads the prose once
+  (`restated-format-scaling.test.js`). The others: the image's user by
+  number, four duplicated headings in two plans.
+- **Switched off**, where a tool or a pattern does not apply here: 92.
+- **Dismissed with its reason**, where the finding was read and is wrong
+  here: 106, in 65 entries.
+
+What is switched off, and why. Each is in
+[`.github/codacy.json`](../.github/codacy.json) with the reason in full:
+
+| In Codacy | Off | Why |
+| --- | --- | --- |
+| Agentlinter | the tool | A lint for prompts, reading `SECURITY.md` and `AGENTS.md` as prompts. |
+| TSQLLint | the tool | A T-SQL linter; the one SQL file is PostgreSQL. |
+| Opengrep, "hard-coded tokens" | the pattern | It matches `input_tokens`, `max_tokens`: counts of model tokens, what this product prices. |
+| Lizard, file length | the pattern | The long files are one thing each on purpose. The function patterns stay on. |
+| The tests | the paths, in [`.codacy.yaml`](../.codacy.yaml) | 710 findings, nearly all a security rule reading a fixture. The linter, CodeQL, secret scanning and the test runner still read them. |
+
+Codacy reads paths from `.codacy.yaml` and nothing else from the repository.
+Tools, patterns and dismissals live in its own settings, so
+`.github/codacy.json` is the record of them, and a script compares Codacy
+with it:
+
+```bash
+npm run codacy                  # what is open and not accounted for; exit 1 if anything is
+npm run codacy -- apply         # what would change in Codacy; changes nothing
+npm run codacy -- apply --yes   # changes it, then compares again
+```
+
+Reading needs no token: Codacy shows a public repository's findings and its
+tool list to anybody. It does not show which patterns are on without one, so
+the comparison counts a finding of a switched-off pattern as accounted for,
+and `apply` sends that setting every time. Writing needs the account token of
+somebody who administers the repository in Codacy, in `CODACY_ACCOUNT_TOKEN`.
+It is sent in a header and never printed. Nothing runs it on a schedule.
+
+A dismissal is kept by pattern and file, with how many findings the file
+expects there, never by Codacy's id or a line, which move with every edit. A
+new finding of a kind already dismissed is therefore reported, and none of
+that kind is dismissed until it has been read: **a finding is read before it
+is dismissed**, and its reason is one a reader can check against the code.
+
+Each regular expression the findings named was timed on the worst input found
+for it, at a text and one four times as long. All of those in the packages,
+the web app and the Action grew with the text and not faster; two in the
+markdown reader of the docs build did, on hostile input, and that reader only
+ever reads this repository's own documents.
+
+DeepSource's list cannot be read from outside its dashboard, so it is not
+compared. `.deepsource.toml` calls the same two paths tests.

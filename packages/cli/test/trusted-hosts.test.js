@@ -97,6 +97,10 @@ const HOSTS = {
 
   'https://api.github.com': 'tooling, not a model call',
   'https://registry.npmjs.org': 'tooling, not a model call',
+  // Asked by `scripts/codacy.mjs` for the findings Codacy lists on this
+  // repository and its tool settings, and told with an account token what to
+  // switch off and dismiss. A code-review service, never a prompt.
+  'https://app.codacy.com': 'tooling, not a model call',
   // Asked once, by `scripts/adoption.mjs`, for the line docs/releasing.md
   // writes under a version: download counts and the registry's latest
   // version. Public counters, no credential, never a prompt.

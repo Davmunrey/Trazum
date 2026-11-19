@@ -118,6 +118,14 @@ describe('runs become a picture', () => {
     assert.ok(svg.includes(note));
   });
 
+  it('keeps a label with a quotation mark inside its attribute', () => {
+    // The label is the picture's accessible name, written into a double-quoted
+    // attribute. Until #772 a quotation mark in it ended the attribute early and
+    // the rest of the label became markup a browser refuses.
+    const svg = picture({ label: 'the line "Your bill" & <more>' });
+    assert.match(svg, /^<svg[^>]* aria-label="the line &quot;Your bill&quot; &amp; &lt;more&gt;">/);
+  });
+
   it('refuses a comment that would make the file unreadable as XML', () => {
     assert.throws(() => picture({ comment: 'run with --table' }), /two hyphens/);
   });
