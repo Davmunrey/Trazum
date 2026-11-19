@@ -80,7 +80,7 @@ describe('the page and the documentation are one source', () => {
           assert.ok(text.includes(`href="${client.code}"`), `${locale}/${client.id}: the button does not go to ${client.code}`);
         } else {
           assert.ok(text.includes(client.code.split('\n')[0]), `${locale}/${client.id}: the first line is not there`);
-          assert.ok(text.replace(/<[^>]*>/g, '').includes(client.code), `${locale}/${client.id}: the snippet is not there whole`);
+          assert.ok(decode(item.replace(/<[^>]*>/g, '')).includes(client.code), `${locale}/${client.id}: the snippet is not there whole`);
         }
       }
     }
