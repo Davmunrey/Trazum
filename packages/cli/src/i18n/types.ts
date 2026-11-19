@@ -893,6 +893,28 @@ export interface CliMessages {
     /** A --since/--until window no record falls in: refused, never a $0 bill. */
     windowMatchesNothing(from: string, to: string): string;
     written(file: string): string;
+    /** --git-range cannot be combined with a flag that sets the period, the project or an output. */
+    rangeConflict(flag: string): string;
+    /** git could not be run, or the directory is not inside a repository. */
+    rangeNoGit(): string;
+    rangeNoRepository(): string;
+    /** git did not know the range. */
+    rangeBad(range: string): string;
+    /** The range holds no commit, so it has no span. */
+    rangeEmpty(range: string): string;
+    rangeHeading(range: string): string;
+    rangeWindow(from: string, to: string, commits: number): string;
+    rangeInside(usd: string, calls: number, sessions: number): string;
+    rangeNothingInside(): string;
+    rangeStraddleHeading(count: number): string;
+    rangeStraddleRow(session: string, from: string, to: string, insideUsd: string, insideCalls: number, outsideUsd: string, outsideCalls: number): string;
+    rangeNoStraddle(): string;
+    /** What the figure is, and that it is not the cost of the change. */
+    rangeMeaning(): string;
+    rangeLeftOut(outsideCalls: number, otherProjects: number, otherSources: number, undated: number): string;
+    rangeUnpriced(calls: number): string;
+    /** No record of any session read belongs to this repository's project folder. */
+    rangeNoProject(): string;
   };
 
   fromOpenrouter: {

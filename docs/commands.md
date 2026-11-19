@@ -3985,6 +3985,91 @@ move a figure to another day:
   `asDouble`, through the same `otlp.ts`. A failed write is reported and does
   not fail the bill, as for `doctor`; the success line goes to stderr.
 
+**What was recorded while a range was written: `--git-range`.** A reviewer
+asks what a pull request cost, and no transcript knows which commit a call was
+for. What can be measured honestly is narrower, and the command says so in its
+own output: the spend recorded in this repository's Claude Code sessions
+between the first and the last commit of a range.
+
+```bash
+cd my-repo
+npx @trazum/cli bill ~/.claude/projects --git-range main..HEAD
+```
+
+```
+Recorded in this repository's sessions while main..HEAD was written
+
+Span: 2026-03-02T09:00:00Z to 2026-03-02T11:30:00Z, from the author and commit times of 2 commit(s).
+$4.00 across 4 priced call(s) in 2 session(s) that began and ended inside the span.
+
+2 session(s) began before the span or went on after it. Counted apart, not in the figure above:
+  straddle-lo  2026-03-02T08:30:00Z to 2026-03-02T09:30:00Z: $0.2000 (1 call(s)) inside the span, $2.00 (1 call(s)) outside it.
+  straddle-hi  2026-03-02T11:00:00Z to 2026-03-02T12:00:00Z: $0.4000 (1 call(s)) inside the span, $2.00 (1 call(s)) outside it.
+
+This is everything recorded in this repository during that span. It is not the cost of the change: other work in the same repository is in it, and work for the change done anywhere else is not.
+Left out: 2 call(s) of sessions wholly outside the span, 1 record(s) of other projects, 0 record(s) from sources with no project folder to match (Codex, Gemini CLI, logs), 1 call(s) with no timestamp.
+```
+
+That is the output on stdout for the made-up repository and sessions of
+`bill-git-range.test.js`, whose figures are worked out by hand there: $3.00 and
+$1.00 for the two sessions inside, and for each straddling session the part
+inside and the part outside.
+
+- **The span** is read from `git log` over the range, run from the repository
+  by `packages/cli/src/git.ts`, the one module that runs a program. It starts at
+  the earliest *author* time of any commit and ends at the latest *author or
+  commit* time. Both, because they differ exactly when it matters: a commit
+  rebased onto `main` yesterday was written last week, and the work happened last
+  week. The edges are inclusive, in whole seconds as git keeps them. No author
+  name, subject or hash is read or printed. A range git does not know, or one
+  that holds no commit, is refused; a range that begins with `-` never reaches
+  git.
+- **"This repository's project"** is told without reading anything out of a
+  transcript. Claude Code keeps one folder per project and names it after the
+  project's absolute path, every character that is not a letter or a digit
+  written as `-`. That encoding cannot be undone, so it is not undone: git says
+  where the repository's root is, the same encoding is applied to that path, and
+  a record belongs to the repository when the folder it was found in has that
+  name. This is the label every record already carries under
+  `--label-from-project`, so it is also why `--git-range` is refused with
+  `--label` and `--no-label-from-project`. **Never a branch name and never a
+  working directory:** the reader drops `gitBranch` and `cwd` on purpose, and the
+  test greps the output for both. A session started in a subdirectory or in a
+  worktree sits in a folder of another name and is not matched, and a session
+  read from a single file rather than through a directory has no folder to
+  match. When nothing matches at all the command says that, rather than printing
+  $0. Run it from the repository's own root.
+- **A session is inside, outside or straddling.** Inside means its first and
+  last call both fall in the span, and only those sessions are in the figure.
+  A session that began before the span or went on after it is named, with its
+  first and last call and what each side cost, and is **not added**: half a
+  session says nothing about which half the change needed, so the reader adds
+  what they judge to belong. A session wholly outside is counted as calls left
+  out. A call that names no session is a session of one call.
+- **What it is, and is not.** The figure is *everything recorded in this
+  repository during that span*. It is not the cost of the change: other work in
+  the same repository in those hours is in it, and work for the change done on
+  another machine or in another folder is not. Nothing in the output says the
+  change caused the spend. Like every figure `bill` prints from Claude Code
+  transcripts, it is the API-equivalent price, not what a plan charged.
+- **What is left out is counted** on the last lines: calls of sessions wholly
+  outside the span, records of other projects, records from Codex, Gemini CLI
+  and logs (they have no project folder to match), and calls with no timestamp.
+  A call to a model the catalogue does not price is named, never counted as $0.
+- **It prints its own statement** and takes no period, label or output flag:
+  `--since`, `--until`, `--label`, `--no-label-from-project`, `--by`,
+  `--receipt`, `--table`, `--stamp`, `-o` and every `--*-out` are refused beside
+  it by name, because a flag quietly overridden would put another period on the
+  page than the one asked for.
+- **On a pull request.** The Action does not take `--git-range`, and that is on
+  purpose: the sessions are on the developer's machine, and a hosted runner has
+  none, so a step there would print nothing or, worse, a figure from a folder
+  that is not the author's. A runner that does hold the sessions (a self-hosted
+  one, or a job that mounts them) can print it in a step of its own:
+  `npx @trazum/cli bill "$SESSIONS" --git-range origin/main..HEAD`, with the
+  checkout deep enough to hold the range (`fetch-depth: 0`). Adding an input to
+  `action.yml` for it was left out of this change.
+
 ### What the router says: `trazum from-openrouter`
 
 OpenRouter is the one provider Trazum already prices from a live catalogue:

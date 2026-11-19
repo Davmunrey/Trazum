@@ -68,6 +68,7 @@ ${bold('USAGE')}
   trazum receipt <usage.jsonl> [--stamp] [--since <when>] [--until <when>] [-o <file>]
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
               [--since <when>] [--until <when>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <file>]
+              [--git-range <range>]
   trazum weekly [<file|dir>...] [--until <when>] [--label <name>] [--notify] [-o <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-codex <file|dir> [--label <name>] [-o <file>]
@@ -247,6 +248,15 @@ ${bold('OPTIONS FOR bill')}
   --by <day|week|month>       Split the statement by UTC day, ISO week (Monday
                               to Sunday) or month. Without it, a bill spanning
                               two months or more is split by month.
+  --git-range <range>         Instead of a bill, say what was recorded in this
+                              repository's Claude Code sessions between the
+                              earliest author time and the latest commit time of
+                              the range (main..HEAD), run from the repository.
+                              Only sessions that began and ended inside the span
+                              are in the figure; sessions that crossed an edge are
+                              named and counted apart. It is everything spent in
+                              this repository then, not the cost of the change.
+                              Not with --since, --until, --label or an output.
   --otlp-out <file>           Also write the bill as OpenTelemetry metrics (OTLP/HTTP
                               JSON): per closed UTC day, cost, tokens and calls by
                               project, model and agent, and what could not be priced
@@ -2281,6 +2291,31 @@ ${bold('EXAMPLES')}
     windowMatchesNothing: (from, to) =>
       `No call falls inside this period. What was read covers ${from} → ${to}. A period with nothing in it is not a $0 bill: check the dates, or leave --since/--until off to bill everything.`,
     written: (file) => `Wrote ${file}.`,
+    rangeConflict: (flag) =>
+      `--git-range sets the period itself, from the commits, and prints its own statement: it cannot be combined with ${flag}.`,
+    rangeNoGit: () => "could not run git, which --git-range reads the commits' times from.",
+    rangeNoRepository: () => 'This directory is not inside a git repository, so --git-range has no repository to read.',
+    rangeBad: (range) => `git does not know the range "${range}". Name one such as main..HEAD.`,
+    rangeEmpty: (range) => `The range "${range}" holds no commit, so it has no span to sum.`,
+    rangeHeading: (range) => `Recorded in this repository's sessions while ${range} was written`,
+    rangeWindow: (from, to, commits) =>
+      `Span: ${from} to ${to}, from the author and commit times of ${commits} commit(s).`,
+    rangeInside: (usd, calls, sessions) =>
+      `${usd} across ${calls.toLocaleString('en-US')} priced call(s) in ${sessions.toLocaleString('en-US')} session(s) that began and ended inside the span.`,
+    rangeNothingInside: () => 'No session of this project began and ended inside the span.',
+    rangeStraddleHeading: (count) =>
+      `${count} session(s) began before the span or went on after it. Counted apart, not in the figure above:`,
+    rangeStraddleRow: (session, from, to, insideUsd, insideCalls, outsideUsd, outsideCalls) =>
+      `  ${session}  ${from} to ${to}: ${insideUsd} (${insideCalls} call(s)) inside the span, ${outsideUsd} (${outsideCalls} call(s)) outside it.`,
+    rangeNoStraddle: () => 'No session crossed either edge of the span.',
+    rangeMeaning: () =>
+      'This is everything recorded in this repository during that span. It is not the cost of the change: other work in the same repository is in it, and work for the change done anywhere else is not.',
+    rangeLeftOut: (outsideCalls, otherProjects, otherSources, undated) =>
+      `Left out: ${outsideCalls} call(s) of sessions wholly outside the span, ${otherProjects} record(s) of other projects, ${otherSources} record(s) from sources with no project folder to match (Codex, Gemini CLI, logs), ${undated} call(s) with no timestamp.`,
+    rangeUnpriced: (calls) =>
+      `Not in the figure: ${calls} call(s) to models the catalogue does not price. Named, never counted as $0.`,
+    rangeNoProject: () =>
+      "No session read belongs to this repository's project folder. Claude Code names that folder after the repository's absolute path, so read the folder that holds it (trazum bill ~/.claude/projects --git-range main..HEAD) from the repository's own root. A session started in a subdirectory or a worktree sits in a folder of another name and is not matched.",
   },
 
   fromOpenrouter: {

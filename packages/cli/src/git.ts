@@ -309,6 +309,56 @@ export function runNotifier(
   };
 }
 
+/** When one commit of a range was written and when it was committed, in epoch milliseconds. */
+export interface CommitTimes {
+  authorMs: number;
+  committerMs: number;
+}
+
+/**
+ * A revision range is one argument that git reads as a range. It is refused
+ * before it reaches the argv when it could be read as an option (a leading
+ * `-`) or carries a control character or a space, which no range needs.
+ */
+function isSafeRange(range: string): boolean {
+  if (range === '' || range.startsWith('-')) return false;
+  for (const ch of range) {
+    const code = ch.codePointAt(0) ?? 0;
+    // `trim()` removes exactly the characters a regular expression's `\s` matches.
+    if (code <= 0x1f || code === 0x7f || ch.trim() === '') return false;
+  }
+  return true;
+}
+
+/**
+ * The author and commit times of every commit in `range`, for `bill --git-range`.
+ *
+ * Times only: no author's name, no subject, no hash leaves this function, because
+ * the one thing the caller needs is when the work began and when it was
+ * committed, and anything else would be a way for a name to reach a bill.
+ * `null` when git ran and refused the range (it names nothing that exists); an
+ * empty list when the range holds no commit; a thrown `GitUnavailableError`
+ * when git could not be run at all, so the two never read as the same answer.
+ */
+export function commitTimes(range: string, options: { cwd: string; spawn?: SpawnLike }): CommitTimes[] | null {
+  if (!isSafeRange(range)) return null;
+  const outcome = runGit(
+    ['log', '--format=%at\u001f%ct', '--max-count=100000', range, '--'],
+    options.cwd,
+    options.spawn,
+  );
+  if (!outcome.ran) throw new GitUnavailableError(outcome.detail);
+  if (outcome.stdout === null) return null;
+  const times: CommitTimes[] = [];
+  for (const row of outcome.stdout.split('\n')) {
+    if (row.trim() === '') continue;
+    const [author = '', committer = ''] = row.trim().split('\u001f');
+    if (!/^\d+$/.test(author) || !/^\d+$/.test(committer)) continue;
+    times.push({ authorMs: Number(author) * 1000, committerMs: Number(committer) * 1000 });
+  }
+  return times;
+}
+
 /**
  * Commits that touched `repoPath`, newest first.
  *
