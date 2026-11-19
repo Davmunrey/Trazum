@@ -27,7 +27,7 @@ async function setup(t) {
   const address = await listen(server, { port: 0 });
   t.after(() => { server.closeAllConnections(); server.close(); });
   return async (payload, { path = '/usage/import', method = 'POST', raw = false } = {}) => {
-    const response = await fetch(`http://${address}${path}`, { method,
+    const response = await fetch(`http://${address}${path}`, { method, headers: { 'content-type': 'application/json' },
       ...(method === 'GET' || method === 'OPTIONS' ? {} : { body: raw ? payload : JSON.stringify(payload) }) });
     assert.equal(response.headers.get('cache-control'), 'no-store');
     assert.equal(response.headers.get('access-control-allow-origin'), null);

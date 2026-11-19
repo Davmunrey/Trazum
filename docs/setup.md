@@ -505,7 +505,10 @@ means worse**. Both endpoints are rate limited (30/min per IP), with a bucket
 each. And `/api/optimize` will not fetch an LLM endpoint a caller names: a
 request may only **select** one from `TRAZUM_ALLOWED_LLM_ENDPOINTS`, empty by
 default — stricter than filtering the URL, because a hostname an attacker
-registered can resolve wherever they like. See [SECURITY.md](../SECURITY.md).
+registered can resolve wherever they like. On the operator's own endpoint
+(`TRAZUM_LLM_BASE_URL`) a caller cannot choose the model either: `llm.model` is
+used only when it appears in `TRAZUM_ALLOWED_LLM_MODELS`, and `TRAZUM_LLM_MODEL`
+runs otherwise. See [SECURITY.md](../SECURITY.md).
 
 ### Signing in (optional)
 

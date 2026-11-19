@@ -280,6 +280,14 @@ one path **per provider** — the one that spends tokens, listed in the table
 above. A gateway that forwarded any path would be a general proxy for your API
 key.
 
+A request whose `Host` is not `localhost`, `127.0.0.1` or `[::1]` on the gateway's
+own port is refused with `403` before anything is routed, and a POST without
+`content-type: application/json` with `415`. The 402 body carries your standing
+and the estimate, and a web page that points its own hostname at `127.0.0.1`
+(DNS rebinding) could otherwise read it. Provider SDKs send JSON and address
+`localhost` or `127.0.0.1`, so nothing legitimate changes. A path the gateway
+does not forward is still a `404`.
+
 ## Nothing about the payload is written down
 
 The store has held aggregates since 1.42 and standing in the path changes

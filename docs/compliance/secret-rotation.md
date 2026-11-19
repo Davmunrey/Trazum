@@ -165,8 +165,9 @@ Listed so nobody rotates them in a hurry, or guards them as if they were:
 - **How sessions and the database behave:** `TRAZUM_SESSION_MAX_HOURS`,
   `TRAZUM_SESSION_IDLE_MINUTES`, `TRAZUM_DATABASE_SSL`, `TRAZUM_DATABASE_POOL`.
 - **Which model endpoints exist:** `TRAZUM_ALLOWED_LLM_ENDPOINTS`,
-  `TRAZUM_LLM_BASE_URL`, `TRAZUM_LLM_MODEL`. None of them is a key: the server
-  never holds one.
+  `TRAZUM_LLM_BASE_URL`, `TRAZUM_LLM_MODEL`, and `TRAZUM_ALLOWED_LLM_MODELS`
+  (the models a caller may name on the operator's own endpoint). None of them
+  is a key: the server never holds one.
 - **What the browser is told:** `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_POSTHOG_HOST`
   and `NEXT_PUBLIC_POSTHOG_KEY`, a public project key the browser sends with
   every event; `NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS`, a switch that holds no
