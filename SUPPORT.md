@@ -55,6 +55,7 @@ named rather than counted, because a count is the half that goes stale:
 | `--exact-tokens` | Anthropic's `count_tokens` endpoint | the flag. It is not charged for tokens |
 | `trazum gateway` | the provider you named, at a compiled-in host | **the whole point of the command** — it stands in the path of your calls and forwards them |
 | `trazum watch --webhook` | the URL you gave it | the flag, and only when a threshold is crossed |
+| `trazum bill --receipt --send` | the URL you gave it, with the receipt that run wrote and nothing else | the flag, once per run |
 
 **The gateway is the one to read twice.** It forwards your prompt and your
 credential to the provider, because that is what standing in the path means. It
