@@ -2514,6 +2514,7 @@ describe('the packaged Action', () => {
       check: /token budget/,
       profile: /spend budget/,
       weekly: /weekly summary/,
+      plan: /plan pr/,
     };
     const unnamed = modes.filter((mode) => {
       const pattern = evidence[mode];

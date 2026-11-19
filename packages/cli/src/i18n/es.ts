@@ -934,6 +934,13 @@ ${bold('OPCIONES DE plan')}
   --min-usd <n>               Deja fuera las acciones que valen menos de n
                               dólares. Cuántas quedaron fuera se dice, nunca
                               en silencio.
+  --edits                     Añade una edición a cada fichero de prompt que
+                              "labels" en trazum.config.json asigna a un
+                              label: el texto de las reglas safe, guardado por
+                              hash, sin escribirse. Solo ficheros que git
+                              sigue. No se proyecta ningún ahorro.
+  --reorder                   Con --edits: mueve los bloques estables delante
+                              del primer marcador antes de recortar.
   -o, --out <fichero>         Guarda el plan como JSON fechado, el fichero al
                               que "trazum verify" lo atará después.
   --markdown-out <fichero>    Escribe además el plan como Markdown, para un
@@ -3471,7 +3478,9 @@ ${bold('EJEMPLOS')}
               ? 'Enruta y agrupa'
               : kind === 'fix-truncation'
                 ? 'Arregla los reintentos por truncado de'
-                : 'Mira la caché de';
+                : kind === 'edit-file'
+                  ? 'Edita el fichero de prompt de'
+                  : 'Mira la caché de';
       return `${verb} ${label} (${model})`;
     },
     routeTo: (model, withBatch) =>
@@ -3488,6 +3497,8 @@ ${bold('EJEMPLOS')}
           return 'supone que un max_tokens en el que quepan las respuestas elimina el par';
         case 'traffic-pattern-holds':
           return 'supone que el patrón de tráfico se mantiene: una caché que perdió dinero en este registro puede rendir con otro tráfico';
+        case 'file-is-what-label-sends':
+          return `supone que ${assumption.path} es lo que envía esta carga: trazum.config.json lo dice, el registro guarda tokens, no ficheros`;
       }
     },
     check: (command) => `compruébalo: ${command}`,
@@ -3499,6 +3510,25 @@ ${bold('EJEMPLOS')}
       'Ordenado por dinero, proyectado o ya gastado por igual. Los supuestos los respondes tú: este plan es aritmética sobre el registro, no conocimiento de tu producto.',
     wrote: (path) =>
       `Plan escrito en ${path}, con fecha. Guárdalo: una predicción que nadie apuntó es una predicción que no se le puede exigir a nadie.`,
+    editsNeedLabels: () =>
+      '--edits lee el fichero de prompt que envía cada label, y trazum.config.json no asigna ninguno: añade "labels", por ejemplo {"labels": {"soporte": "prompts/soporte.txt"}}.',
+    reorderNeedsEdits: () => '--reorder es un paso de una edición: añade --edits.',
+    editMeasured: (usd, calls, inputPerCall) =>
+      `se espera contra ${usd} en ${calls} llamadas a ${inputPerCall} tokens de entrada por llamada, medido`,
+    editChange: (path, reordered, tokensBefore, tokensAfter) =>
+      `${path}: ${reordered ? 'bloques estables movidos delante del primer marcador, y luego recortado' : 'recortado'} por las reglas safe, ${tokensBefore} → ${tokensAfter} tokens según el estimador, estimado, no medido; no se proyecta ningún ahorro`,
+    editCheck: () =>
+      'trazum verify lee el fichero, que debe tener el texto que este plan prometió, y el registro más nuevo, donde la entrada por llamada debe bajar de la cifra de arriba',
+    editSkipped: (why, label, path) =>
+      why === 'no-traffic'
+        ? `Sin edición para ${label} (${path}): el registro no tiene ninguna llamada tasada con ese label, así que no hay cifra medida contra la que esperarla.`
+        : why === 'unreadable'
+          ? `Sin edición para ${label}: no se pudo leer ${path}.`
+          : why === 'not-tracked'
+            ? `Sin edición para ${label}: git no sigue ${path}, y una edición se propone al repositorio.`
+            : why === 'source-file'
+              ? `Sin edición para ${label}: ${path} es código fuente, y una edición reescribe el fichero entero.`
+              : `Sin edición para ${label}: las reglas safe dejan ${path} como está.`,
   },
 
   serve: {
@@ -3681,7 +3711,9 @@ ${bold('EJEMPLOS')}
               ? `Enrutar y agrupar ${label} (${model})`
               : kind === 'fix-truncation'
                 ? `Arreglar los reintentos por truncado de ${label} (${model})`
-                : `Arreglar la caché de ${label} (${model})`;
+                : kind === 'edit-file'
+                  ? `Editar el fichero de prompt de ${label} (${model})`
+                  : `Arreglar la caché de ${label} (${model})`;
       const span = first !== null && last !== null ? ` (${first} → ${last})` : '';
       return `${what} se ha planificado ${appearances} veces${span} y sigue en el plan más reciente: una decisión que nadie está revisando.`;
     },
@@ -3762,7 +3794,9 @@ ${bold('EJEMPLOS')}
               ? `Enrutar y agrupar ${label} (${model})`
               : kind === 'fix-truncation'
                 ? `Arreglar los reintentos por truncado de ${label} (${model})`
-                : `Arreglar la caché de ${label} (${model})`;
+                : kind === 'edit-file'
+                  ? `Editar el fichero de prompt de ${label} (${model})`
+                  : `Arreglar la caché de ${label} (${model})`;
       const verdict =
         outcome === 'arrived' ? 'LLEGÓ' : outcome === 'not-arrived' ? 'NO LLEGÓ' : 'NO SE PUEDE SABER';
       return `${what}: ${verdict}`;
@@ -3772,7 +3806,11 @@ ${bold('EJEMPLOS')}
         ? 'el label no lleva tráfico tasado en este registro: una carga desaparecida no está arreglada, y tampoco rota'
         : reason === 'fields-stopped'
           ? 'los campos que la detección necesita no están en este registro: "no registrado" no puede leerse como "arreglado", así que con --gate esto suspende'
-          : 'el registro guarda tokens, y los tokens no dicen con qué tarifa se facturaron: el Batch API no se puede ver desde aquí',
+          : reason === 'file-not-read'
+            ? 'el fichero no se pudo leer desde aquí, así que no se puede saber si se hizo la edición'
+            : reason === 'file-changed'
+              ? 'el fichero no tiene ni el texto del que partió el plan ni el que prometió: siguió cambiando, y con --gate esto suspende'
+              : 'el registro guarda tokens, y los tokens no dicen con qué tarifa se facturaron: el Batch API no se puede ver desde aquí',
     routeObserved: (dearestModel, onTargetUsd, onOldUsd) =>
       `el modelo más caro del label ahora es ${dearestModel} · ${onTargetUsd} en el destino, ${onOldUsd} todavía en el modelo antiguo`,
     batchUnobservable: () =>
@@ -3783,6 +3821,9 @@ ${bold('EJEMPLOS')}
       outcome === 'arrived'
         ? `la caché ahora se paga sola en esta porción (${deltaUsd} contra la factura sin caché)`
         : `la caché todavía añade ${deltaUsd} a la factura de esta porción`,
+    editObserved: (before, after) =>
+      `el fichero tiene el texto planeado; entrada por llamada ${before} → ${after} tokens, medido`,
+    editNotMade: (path) => `${path} todavía tiene el texto del que partió el plan: la edición no se hizo`,
     attribution: (callsBefore, callsAfter, outBefore, outAfter) =>
       `el mundo también se movió: llamadas ${callsBefore} → ${callsAfter}, salida/llamada ${outBefore} → ${outAfter} tokens, dicho para que el veredicto no se lea como toda la historia`,
     gateFailed: (failures, total) =>

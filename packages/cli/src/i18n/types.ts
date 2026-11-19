@@ -2067,6 +2067,18 @@ export interface CliMessages {
     footer(): string;
     /** The plan saved as dated JSON — what 1.39's verify will hold it to. */
     wrote(path: string): string;
+    /** `--edits` with no `labels` in the configuration: there is no file to read. */
+    editsNeedLabels(): string;
+    /** `--reorder` without `--edits`: it is a step of an edit, not a plan of its own. */
+    reorderNeedsEdits(): string;
+    /** An edit's measured figure: the workload's bill as the log measured it. */
+    editMeasured(usd: string, calls: string, inputPerCall: string): string;
+    /** What the edit does to which file, with the estimator's tokens labelled as estimated. */
+    editChange(path: string, reordered: boolean, tokensBefore: string, tokensAfter: string): string;
+    /** How verify checks an edit. */
+    editCheck(): string;
+    /** A label the configuration maps to a file that produced no edit, and why. */
+    editSkipped(why: 'no-traffic' | 'unreadable' | 'not-tracked' | 'source-file' | 'unchanged', label: string, path: string): string;
   };
 
   /**
@@ -2287,6 +2299,10 @@ export interface CliMessages {
     batchUnobservable(): string;
     truncationObserved(retryBillUsd: string): string;
     cacheObserved(deltaUsd: string, outcome: VerifyOutcome): string;
+    /** An edit landed: the workload's input per call, before and after, measured. */
+    editObserved(before: string, after: string): string;
+    /** An edit did not land: the file still holds the text the plan was made from. */
+    editNotMade(path: string): string;
     /** The world's movement, measured: never a verdict, always both numbers. */
     attribution(callsBefore: string, callsAfter: string, outBefore: string, outAfter: string): string;
     gateFailed(failures: string, total: string): string;

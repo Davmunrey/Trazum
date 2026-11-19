@@ -32,7 +32,14 @@ export type VerifyOutcome = 'arrived' | 'not-arrived' | 'cannot-tell';
  * the fields the detection needs is the team's, and "not recorded" must not
  * read as "fixed".
  */
-export type CannotTellReason = 'workload-vanished' | 'fields-stopped' | 'tier-not-recorded';
+export type CannotTellReason =
+  | 'workload-vanished'
+  | 'fields-stopped'
+  | 'tier-not-recorded'
+  /** An `edit-file` action, checked where nothing could read the file: a browser, an HTTP body. */
+  | 'file-not-read'
+  /** The file is neither the one the plan saw nor the one it promised: it moved on. */
+  | 'file-changed';
 
 export interface VerifiedAction {
   /** The plan's action, verbatim — the prediction being judged. */
@@ -111,14 +118,83 @@ function perCall(breakdown: { calls: number; inputTokens: number; cacheReadToken
   };
 }
 
+/**
+ * An edit is checked twice: in the tree, then in the log.
+ *
+ * The file has to hold the text the plan promised, by hash. A file still
+ * holding the text the plan saw did not get the edit, which is a broken
+ * promise; a file holding something else moved on in a way the plan did not
+ * write, and that cannot be told, failing the gate the way a log that stopped
+ * recording its fields does. Then the workload's input per call in the newer
+ * log is held to the baseline the plan recorded: shorter is arrived, not
+ * shorter is not.
+ */
+function verifyEdit(
+  action: PlanAction,
+  report: UsageProfileReport,
+  files: ReadonlyMap<string, string | null> | undefined,
+): VerifiedAction {
+  const edit = action.detail.edit;
+  const now = edit === undefined || files === undefined || !files.has(edit.path) ? undefined : files.get(edit.path);
+  if (edit === undefined || now === undefined) {
+    return { action, outcome: 'cannot-tell', reason: 'file-not-read', observed: {}, attribution: null, gateFailing: false };
+  }
+  if (now === edit.beforeSha256) {
+    return { action, outcome: 'not-arrived', reason: null, observed: { file: 'as-planned-from' }, attribution: null, gateFailing: true };
+  }
+  if (now !== edit.afterSha256) {
+    return {
+      action,
+      outcome: 'cannot-tell',
+      reason: 'file-changed',
+      observed: { file: now === null ? 'missing' : 'other' },
+      attribution: null,
+      gateFailing: true,
+    };
+  }
+  const slice = report.byLabelAndModel.find(
+    (s) => s.label === action.label && s.model === action.model && s.breakdown.calls > 0,
+  );
+  if (slice === undefined) {
+    return { action, outcome: 'cannot-tell', reason: 'workload-vanished', observed: { file: 'edited' }, attribution: null, gateFailing: false };
+  }
+  const after = perCall(slice.breakdown);
+  const before = action.detail.baseline?.inputPerCallTokens;
+  const shorter = before !== undefined && after.inputPerCallTokens < before;
+  return {
+    action,
+    outcome: shorter ? 'arrived' : 'not-arrived',
+    reason: null,
+    observed: {
+      file: 'edited',
+      inputPerCallTokens: after.inputPerCallTokens,
+      inputPerCallTokensBefore: before ?? null,
+    },
+    attribution: attributionFrom(action, after),
+    gateFailing: !shorter,
+  };
+}
+
 export function verifyPlan(
   plan: PlanDocument & { createdAt?: string },
   report: UsageProfileReport,
-  options: { currentPricingLastReviewed: string },
+  options: {
+    currentPricingLastReviewed: string;
+    /**
+     * For `edit-file` actions: the SHA-256 of each file as it is now, by the
+     * plan's path, or null for a file that is not there. Whoever can read
+     * the files supplies it; a path missing from it cannot be told.
+     */
+    files?: ReadonlyMap<string, string | null>;
+  },
 ): PlanVerification {
   const actions: VerifiedAction[] = [];
 
   for (const action of plan.actions) {
+    if (action.kind === 'edit-file') {
+      actions.push(verifyEdit(action, report, options.files));
+      continue;
+    }
     const slices = slicesForLabel(report, action.label);
     const total = slices.reduce((sum, s) => sum + s.breakdown.totalUsd, 0);
     const allCalls = slices.reduce((sum, s) => sum + s.breakdown.calls, 0);

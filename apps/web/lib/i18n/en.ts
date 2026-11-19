@@ -408,7 +408,9 @@ export const en: WebMessages = {
             ? `Route ${label} off ${model} and batch it`
             : kind === 'fix-truncation'
               ? `Stop ${label} on ${model} being truncated and retried`
-              : `Fix caching on ${label} for ${model}`,
+              : kind === 'edit-file'
+                ? `Edit the prompt file ${label} sends to ${model}`
+                : `Fix caching on ${label} for ${model}`,
     projectedAmount: (usd) => `${usd} projected`,
     stakedAmount: (usd) => `${usd} already spent on it`,
     noAmount: 'no figure',
@@ -420,7 +422,9 @@ export const en: WebMessages = {
         ? 'these calls tolerate a batch window. Nobody but you knows whether they do.'
         : kind === 'cache-reuse'
           ? 'the prefix would actually be reused within the cache lifetime.'
-          : 'something the log cannot confirm.',
+          : kind === 'file-is-what-label-sends'
+            ? 'the file is what this workload sends. The configuration says so; the log records tokens, not files.'
+            : 'something the log cannot confirm.',
     check: 'Check it with: ',
     andMore: (count) => `…and ${count} more, in the saved plan.`,
     save: 'Save plan.json',
@@ -455,7 +459,11 @@ export const en: WebMessages = {
         ? 'That workload carries no priced traffic in this log at all. It may have been renamed, moved or stopped, and none of that is a saving.'
         : reason === 'fields-stopped'
           ? 'The fields this action would be judged on are no longer in the log. Nothing degraded here counts as a pass.'
-          : 'The log does not record the tier this action moved to, so the move cannot be seen.',
+          : reason === 'file-not-read'
+            ? 'This is an edit to a file in your repository, and a browser tab cannot read it. trazum verify, run in the repository, can.'
+            : reason === 'file-changed'
+              ? 'The file holds neither the text the plan was made from nor the text it promised. It moved on, and nothing here counts that as a pass.'
+              : 'The log does not record the tier this action moved to, so the move cannot be seen.',
     callsMoved: (before, after) => `Calls: ${before} when the plan was made, ${after} now.`,
   },
 

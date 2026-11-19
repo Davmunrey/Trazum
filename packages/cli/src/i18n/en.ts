@@ -899,6 +899,12 @@ ${bold('OPTIONS FOR profile')}
 ${bold('OPTIONS FOR plan')}
   --min-usd <n>               Leave out actions worth less than n dollars. How
                               many were left out is stated, never silent.
+  --edits                     Add an edit to each prompt file "labels" in
+                              trazum.config.json maps a label to: the safe
+                              rules' text, recorded by hash, written nowhere.
+                              Only files git tracks. No saving is projected.
+  --reorder                   With --edits: move stable blocks ahead of the
+                              first placeholder before trimming.
   -o, --out <file>            Save the plan as dated JSON: the file
                               "trazum verify" will later hold it to.
   --markdown-out <file>       Also write the plan as Markdown, for a CI job
@@ -3437,7 +3443,9 @@ ${bold('EXAMPLES')}
               ? 'Route and batch'
               : kind === 'fix-truncation'
                 ? 'Fix the truncation retries on'
-                : 'Look at the cache on';
+                : kind === 'edit-file'
+                  ? 'Edit the prompt file of'
+                  : 'Look at the cache on';
       return `${verb} ${label} (${model})`;
     },
     routeTo: (model, withBatch) =>
@@ -3454,6 +3462,8 @@ ${bold('EXAMPLES')}
           return 'assumes a max_tokens the answers fit in removes the pair';
         case 'traffic-pattern-holds':
           return 'assumes the traffic pattern holds: a cache that lost money on this log may pay on different traffic';
+        case 'file-is-what-label-sends':
+          return `assumes ${assumption.path} is what this workload sends: trazum.config.json says so, the log records tokens, not files`;
       }
     },
     check: (command) => `check it: ${command}`,
@@ -3465,6 +3475,25 @@ ${bold('EXAMPLES')}
       'Ranked by money, projected or already spent alike. The assumptions are yours to answer: this plan is arithmetic over the log, not knowledge of your product.',
     wrote: (path) =>
       `Plan written to ${path}, dated. Keep it: a prediction nobody wrote down is a prediction nobody can be held to.`,
+    editsNeedLabels: () =>
+      '--edits reads the prompt file each label sends, and trazum.config.json maps none: add "labels", for example {"labels": {"support": "prompts/support.txt"}}.',
+    reorderNeedsEdits: () => '--reorder is a step of an edit: add --edits.',
+    editMeasured: (usd, calls, inputPerCall) =>
+      `expected against ${usd} over ${calls} calls at ${inputPerCall} input tokens a call, measured`,
+    editChange: (path, reordered, tokensBefore, tokensAfter) =>
+      `${path}: ${reordered ? 'stable blocks moved ahead of the first placeholder, then trimmed' : 'trimmed'} by the safe rules, ${tokensBefore} → ${tokensAfter} tokens by the estimator, estimated, not measured; no saving is projected`,
+    editCheck: () =>
+      'trazum verify reads the file, which must hold the text this plan promised, and the newer log, where the input per call must fall below the figure above',
+    editSkipped: (why, label, path) =>
+      why === 'no-traffic'
+        ? `No edit for ${label} (${path}): the log has no priced call carrying that label, so there is no measured figure to expect it against.`
+        : why === 'unreadable'
+          ? `No edit for ${label}: ${path} could not be read.`
+          : why === 'not-tracked'
+            ? `No edit for ${label}: git does not track ${path}, and an edit is proposed to the repository.`
+            : why === 'source-file'
+              ? `No edit for ${label}: ${path} is source code, and an edit rewrites a whole file.`
+              : `No edit for ${label}: the safe rules leave ${path} as it is.`,
   },
 
   serve: {
@@ -3647,7 +3676,9 @@ ${bold('EXAMPLES')}
               ? `Routing and batching ${label} (${model})`
               : kind === 'fix-truncation'
                 ? `Fixing the truncation retries on ${label} (${model})`
-                : `Fixing the cache on ${label} (${model})`;
+                : kind === 'edit-file'
+                  ? `Editing the prompt file of ${label} (${model})`
+                  : `Fixing the cache on ${label} (${model})`;
       const span = first !== null && last !== null ? ` (${first} → ${last})` : '';
       return `${what} has been planned ${appearances} times${span} and is still in the newest plan: a decision nobody is revisiting.`;
     },
@@ -3728,7 +3759,9 @@ ${bold('EXAMPLES')}
               ? `Route and batch ${label} (${model})`
               : kind === 'fix-truncation'
                 ? `Fix the truncation retries on ${label} (${model})`
-                : `Fix the cache on ${label} (${model})`;
+                : kind === 'edit-file'
+                  ? `Edit the prompt file of ${label} (${model})`
+                  : `Fix the cache on ${label} (${model})`;
       const verdict =
         outcome === 'arrived' ? 'ARRIVED' : outcome === 'not-arrived' ? 'DID NOT ARRIVE' : 'CANNOT BE TOLD';
       return `${what}, ${verdict}`;
@@ -3738,7 +3771,11 @@ ${bold('EXAMPLES')}
         ? 'the label carries no priced traffic in this log: a vanished workload is not a fixed one, and not a broken one either'
         : reason === 'fields-stopped'
           ? 'the fields the detection needs are not in this log, "not recorded" must not read as "fixed", so with --gate this fails'
-          : 'the log records tokens, and tokens do not say which tier billed them: the Batch API cannot be seen from here',
+          : reason === 'file-not-read'
+            ? 'the file could not be read from here, so whether the edit was made cannot be told'
+            : reason === 'file-changed'
+              ? 'the file holds neither the text the plan was made from nor the text it promised: it moved on, and with --gate this fails'
+              : 'the log records tokens, and tokens do not say which tier billed them: the Batch API cannot be seen from here',
     routeObserved: (dearestModel, onTargetUsd, onOldUsd) =>
       `the label's dearest model is now ${dearestModel} · ${onTargetUsd} on the target, ${onOldUsd} still on the old model`,
     batchUnobservable: () =>
@@ -3749,6 +3786,9 @@ ${bold('EXAMPLES')}
       outcome === 'arrived'
         ? `caching now pays for itself on this slice (${deltaUsd} against the no-cache bill)`
         : `caching still adds ${deltaUsd} to this slice's bill`,
+    editObserved: (before, after) =>
+      `the file holds the planned text; input per call ${before} → ${after} tokens, measured`,
+    editNotMade: (path) => `${path} still holds the text the plan was made from: the edit was not made`,
     attribution: (callsBefore, callsAfter, outBefore, outAfter) =>
       `the world moved too: calls ${callsBefore} → ${callsAfter}, output/call ${outBefore} → ${outAfter} tokens, stated so the verdict is not read as the whole story`,
     gateFailed: (failures, total) =>

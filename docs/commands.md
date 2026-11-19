@@ -577,6 +577,18 @@ with nothing left to move has a route and no batch, and the plan ends by
 saying how much input and output it left out and why. A log that marks
 nothing is read as it always was, and still asks whether its calls can wait.
 
+**`--edits` adds the changes Trazum can make itself.** For each prompt file
+`labels` in `trazum.config.json` maps a workload to, it adds an `edit-file`
+action: the text the `safe` rules make of that file (with `--reorder`, stable
+blocks moved ahead of the first placeholder first), recorded by the SHA-256 of
+the file before and of the text after. Nothing is written to the file. Only a
+file git tracks gets one, never a source file, and a mapped label that gets
+none is named with the reason. An edit projects no saving: the figure it is
+expected against is what the workload cost in the log, measured, and the
+file's tokens before and after are labelled as the estimator's. The Action can
+make these edits on a branch and open the pull request
+([CI](ci.md#a-plan-that-opens-its-own-pull-request)).
+
 [The document it writes
 is documented field by field](plan-format.md), because a plan is the one
 output here meant to be committed and read back later. `-o plan.json` saves
@@ -614,6 +626,14 @@ revoked.
 promised *or became unverifiable because the team's own log dropped the
 fields* — "not recorded" must not read as "fixed". A workload that merely
 vanished fails nothing.
+
+An edit is checked in the repository as well as in the log. The file has to
+hold the text the plan promised, by SHA-256, and the workload's input tokens
+per call in the newer log have to be below the plan's measured baseline: both,
+or it did not arrive. A file still holding the text the plan was made from did
+not get the edit. A file holding anything else moved on in a way the plan did
+not write: that cannot be told, and fails `--gate`. `verify` reads the files
+from the repository it runs in.
 
 ### The long run: `trazum history`
 

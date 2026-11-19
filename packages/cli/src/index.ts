@@ -190,6 +190,7 @@ import type {
   ProfileCsvShape,
   MeasuredUsage,
   PruneReport,
+  PlanAction,
   PlanDocument,
   StoredReport,
   VerifiedAction,
@@ -266,6 +267,8 @@ import {
   runSelf,
 } from './git.js';
 import type { Revision } from './git.js';
+import { currentFileDigests, planEditsFor } from './plan-edits.js';
+import type { EditSkip } from './plan-edits.js';
 import { fetchProviderUsage, findCredential } from './connect.js';
 import { STORE_DIR, appendRecords, readStore, rewriteStore } from './store-fs.js';
 import { WAIVER_LOG, appendWaiverUse, readWaiverLog } from './waiver-log.js';
@@ -850,7 +853,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline', 'files-from'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
   profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'html-out', 'pdf-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source', 'allow-empty'],
-  plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
+  plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live', 'edits', 'reorder'],
   verify: ['against', 'gate', 'json', 'markdown-out', 'pricing', 'pricing-live'],
   history: ['store', 'json', 'markdown-out'],
   connect: ['since', 'until', 'payload', 'store', 'json', 'out', 'markdown-out', 'pricing', 'pricing-live', 'dry-run'],
@@ -9503,7 +9506,12 @@ async function commandVerify(
   const raw = texts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
   const report = profileUsage(raw, { catalogue: pricing });
 
-  const verification = verifyPlan(plan, report, { currentPricingLastReviewed: pricing.lastReviewed });
+  // An edit is checked in the tree as well as in the log: the files it names
+  // are hashed where they are now, and a file that is not there says so.
+  const verification = verifyPlan(plan, report, {
+    currentPricingLastReviewed: pricing.lastReviewed,
+    files: await currentFileDigests(plan),
+  });
   const gate = boolFlag(args, 'gate');
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
@@ -9531,6 +9539,17 @@ async function commandVerify(
       }
       if (v.action.kind === 'fix-caching' && v.outcome !== 'cannot-tell') {
         rows.push(t.verify.cacheObserved(formatUsd(Number(v.observed.deltaUsd ?? 0)), v.outcome));
+      }
+      if (v.action.kind === 'edit-file' && v.observed.file === 'as-planned-from') {
+        rows.push(t.verify.editNotMade(v.action.detail.edit?.path ?? ''));
+      }
+      if (v.action.kind === 'edit-file' && v.observed.file === 'edited' && v.outcome !== 'cannot-tell') {
+        rows.push(
+          t.verify.editObserved(
+            n(Math.round(Number(v.observed.inputPerCallTokensBefore ?? 0))),
+            n(Math.round(Number(v.observed.inputPerCallTokens ?? 0))),
+          ),
+        );
       }
       if (v.attribution?.calls !== undefined) {
         rows.push(
@@ -11729,11 +11748,21 @@ function reportCacheVerdict(report: UsageProfileReport, t: CliMessages): void {
  */
 async function commandPlan(
   args: Args,
+  config: TrazumConfig,
   pricing: PricingCatalogue,
   t: CliMessages,
 ): Promise<void> {
   const path = args.positional[0];
   if (path === undefined) throw new Error(t.plan.noTarget());
+  /*
+    `--edits` (#796): an edit to each prompt file the configuration maps a
+    label to, made by the deterministic steps and recorded by hash. Refused
+    before the log is read when it cannot do anything, rather than after.
+  */
+  const withEdits = boolFlag(args, 'edits');
+  if (boolFlag(args, 'reorder') && !withEdits) throw new Error(t.plan.reorderNeedsEdits());
+  const labelMap = config.labels ?? {};
+  if (withEdits && Object.keys(labelMap).length === 0) throw new Error(t.plan.editsNeedLabels());
 
   const GZ = LOG_EXTENSIONS.map((ext) => `${ext}.gz`);
   const READABLE = [...LOG_EXTENSIONS, ...GZ];
@@ -11757,13 +11786,47 @@ async function commandPlan(
   if (report.total.calls === 0) throw new Error(t.plan.nothingPriced());
   const levers = billLevers(report, { catalogue: pricing });
   const plan = buildPlan(report, levers, pricing.lastReviewed);
+  let editSkips: EditSkip[] = [];
+  if (withEdits) {
+    const planned = await planEditsFor({
+      report,
+      labels: labelMap,
+      steps: boolFlag(args, 'reorder') ? ['reorder', 'trim'] : ['trim'],
+      disabledRules: config.disable ?? [],
+      pricing,
+    });
+    // Last, because they carry no money to rank by: the edit's figure is the
+    // workload's measured bill, not a saving, and ranking it among savings
+    // would be ranking it by a number it does not have.
+    plan.actions.push(...planned.actions);
+    editSkips = planned.skipped;
+  }
 
+  /*
+    `--min-usd` is a floor on money, and an edit carries none, so it keeps
+    every edit: one dropped for having no projected saving would have been
+    dropped for being honest about it.
+  */
   const minUsd = typeof args.flags.get('min-usd') === 'string' ? numberFlag(args, 'min-usd', 0, t) : 0;
-  const actions = plan.actions.filter((a) => (a.savingUsd ?? a.stakeUsd ?? 0) >= minUsd);
+  const kept = (a: PlanAction): boolean => a.kind === 'edit-file' || (a.savingUsd ?? a.stakeUsd ?? 0) >= minUsd;
+  const actions = plan.actions.filter(kept);
   const filtered = plan.actions.length - actions.length;
   const droppedUsd = plan.actions
-    .filter((a) => (a.savingUsd ?? a.stakeUsd ?? 0) < minUsd)
+    .filter((a) => !kept(a))
     .reduce((sum, a) => sum + (a.savingUsd ?? a.stakeUsd ?? 0), 0);
+  /** An edit's figure and change, in the order the reader needs them. */
+  const editLines = (action: PlanAction): { money: string; rows: string[] } | null => {
+    const edit = action.detail.edit;
+    const base = action.detail.baseline;
+    if (action.kind !== 'edit-file' || edit === undefined || base === undefined) return null;
+    return {
+      money: t.plan.editMeasured(formatUsd(base.usd), n(base.calls), n(Math.round(base.inputPerCallTokens))),
+      rows: [
+        t.plan.editChange(edit.path, edit.steps.includes('reorder'), n(edit.beforeTokens), n(edit.afterTokens)),
+        t.plan.editCheck(),
+      ],
+    };
+  };
 
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   /**
@@ -11797,17 +11860,25 @@ async function commandPlan(
     }
     for (const action of actions) {
       const name = action.label === UNLABELLED ? t.profile.unlabelled() : action.label;
+      const edit = editLines(action);
       const money =
-        action.savingUsd !== null
-          ? t.plan.projected(formatUsd(action.savingUsd))
-          : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
+        edit !== null
+          ? edit.money
+          : action.savingUsd !== null
+            ? t.plan.projected(formatUsd(action.savingUsd))
+            : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
       lines.push('');
       lines.push(`### ${t.plan.action(action.kind, name, action.model)} — ${money}`);
+      for (const row of edit?.rows ?? []) lines.push(`- ${row}`);
       if (action.detail.routeTo !== undefined) {
         lines.push(`- ${t.plan.routeTo(action.detail.routeTo.displayName, action.kind === 'route+batch')}`);
       }
       for (const assumption of action.assumes) lines.push(`- ${t.plan.assume(assumption)}`);
       if (action.check !== null) lines.push(`- ${t.plan.check(action.check)}`);
+    }
+    if (editSkips.length > 0) {
+      lines.push('');
+      for (const skip of editSkips) lines.push(`- _${t.plan.editSkipped(skip.why, skip.label, skip.path)}_`);
     }
     if (filtered > 0) {
       lines.push('');
@@ -11841,10 +11912,13 @@ async function commandPlan(
   if (plan.span === null) draw.text(t.plan.noClock(), { tone: 'dim' });
   for (const action of actions) {
     const name = action.label === UNLABELLED ? t.profile.unlabelled() : action.label;
+    const edit = editLines(action);
     const money =
-      action.savingUsd !== null
-        ? t.plan.projected(formatUsd(action.savingUsd))
-        : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
+      edit !== null
+        ? edit.money
+        : action.savingUsd !== null
+          ? t.plan.projected(formatUsd(action.savingUsd))
+          : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
     draw.blank();
     // The action and its money on one line when the window holds them; the
     // money under the action when it does not, never split from its word.
@@ -11853,6 +11927,7 @@ async function commandPlan(
     if (draw.fits(whole)) draw.line(whole);
     else draw.text(title, { first: `  ${draw.markOf('point')} `, indent: '    ', tone: 'bold' }).text(money, { indent: '    ' });
     // The module's `wrap`, at the widths these lines always had on a pipe.
+    for (const row of edit?.rows ?? []) draw.line(`    ${c.dim(wrap(row, 72, '    '))}`);
     if (action.detail.routeTo !== undefined) {
       draw.line(`    ${c.dim(wrap(t.plan.routeTo(action.detail.routeTo.displayName, action.kind === 'route+batch'), 1000, '    '))}`);
     }
@@ -11861,6 +11936,8 @@ async function commandPlan(
     }
     if (action.check !== null) draw.line(`    ${c.dim(wrap(t.plan.check(action.check), 72, '      '))}`);
   }
+  if (editSkips.length > 0) draw.blank();
+  for (const skip of editSkips) draw.text(t.plan.editSkipped(skip.why, skip.label, skip.path), { tone: 'dim' });
   if (filtered > 0) draw.blank().text(t.plan.filtered(n(filtered), formatUsd(minUsd), formatUsd(droppedUsd)), { tone: 'dim' });
   if (plan.batchExcludedUsd > 0) draw.blank().text(t.plan.batchExcluded(formatUsd(plan.batchExcludedUsd)), { tone: 'dim' });
   draw.blank().text(t.plan.footer(), { tone: 'dim' });
@@ -14499,7 +14576,7 @@ async function main(): Promise<void> {
       await commandProfile(args, config, configDir, pricing, t);
       break;
     case 'plan':
-      await commandPlan(args, pricing, t);
+      await commandPlan(args, config, pricing, t);
       break;
     case 'verify':
       await commandVerify(args, pricing, t);
