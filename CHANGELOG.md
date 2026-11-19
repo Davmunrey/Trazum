@@ -59,6 +59,7 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The roadmap carries eight issues from a review of what other AI cost tools do** (#820 to #827). Each is our own take, held to the rules here: a LiteLLM cross-check that only tells a person to re-read a provider page, a per-session spend guard for Claude Code, priced waste findings, plan limits from the agent's own signals, Prometheus metrics, spend beside delivery from local git, `bill --agent` and `--timezone`, and `llms.txt`. `.github/milestones.json` places each in one milestone, and the open-work table and the ordered list in `ROADMAP.md` are redrawn by their scripts.
 - **The Action pin in `docs/setup.md` and `docs/running.md` moves to 3.0.1** (`9b0b245`). The 3.0.1 release PR was prepared without the 3.0.0 tag fetched, so `prepare-release` found no newer tag and left the pin at 2.7.12; the docs-pin guard in `security.test.js` caught the two releases of lag.
 - **The Homebrew formula names `@trazum/cli` 3.0.1**, with the SHA-256 `59eb2a96…079a` of the tarball npm serves, checked against `sha256sum` on that tarball.
 
