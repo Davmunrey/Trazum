@@ -19,7 +19,9 @@ import {
   breaches,
   cacheableMinimum,
   analyzeCachePrefix,
+  billFigures,
   billLevers,
+  buildWeeklySummary,
   bucketedCacheEconomics,
   bucketedProfile,
   buildHistory,
@@ -155,6 +157,7 @@ import {
   profilePrompt,
   profileToCsv,
   profileUsage,
+  weekWindows,
   promptId,
   providerFromEnv,
   pruneExamples,
@@ -219,6 +222,7 @@ import type {
   FailurePolicy,
   GatewayStanding,
   UsageProfileReport,
+  WeekWindow,
   BillPeriodUnit,
   WaiverUse,
   InitDecline,
@@ -305,6 +309,7 @@ import type { CliMessages } from './i18n/index.js';
 // style.test.js holds the contract: stripped colour output is byte-identical
 // to plain output, and a pipe stays plain.
 import { runCrontab } from './git.js';
+import { checkedWeekly } from './weekly.js';
 import {
   ITEMS as PROACTIVE_ITEMS,
   BACKUP_SUFFIX,
@@ -874,6 +879,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
   bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'since', 'until', 'by'],
+  weekly: ['label', 'label-from-project', 'out', 'o', 'until', 'notify', 'pricing', 'pricing-live'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
@@ -3651,19 +3657,79 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   }
 }
 
-async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
-  /* Refused before any file is read: a bad shape found after the receipt
-     printed would end a run that looked finished with an error. */
-  const csvShape = csvShapeOf(args, t);
-  /* "What did this month cost" is the question a Claude Code folder of a
-     year's sessions answers worst without a period. */
-  const period = billingPeriod(args, t);
-  const byFlag = stringFlag(args, 'by');
-  if (byFlag !== undefined && byFlag !== 'day' && byFlag !== 'week' && byFlag !== 'month') {
-    throw new Error(t.bill.badBy(byFlag));
-  }
-  const by = byFlag as BillPeriodUnit | undefined;
+/**
+ * `trazum weekly [<file|dir>...]`: the week in Markdown, for somebody to read
+ * in an issue (#757).
+ *
+ * It reads what `bill` reads, prices the seven days before `--until` and the
+ * seven before those with the same catalogue, and writes the bill, what moved
+ * and the three changes `plan` ranks first. It writes a file or stdout and
+ * nothing else: it holds no GitHub token and makes no call. Where the summary
+ * is posted is the Action's business, and the Action's inputs are the owner's
+ * word for where.
+ *
+ * Every dollar amount and percentage in the finished text is read back against
+ * the two weeks' bills. A summary with one that is in neither is refused and
+ * nothing is written: the number would be read, believed and not re-added.
+ */
+async function commandWeekly(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  const now = Date.now();
+  const until = parseWhen(args, 'until', true, t, now);
+  const windows = weekWindows(until.ms ?? now);
+  const { lines } = await gatherUsageLines(args, t);
+  const text = lines.join('\n');
+  const profileWeek = (week: WeekWindow): UsageProfileReport =>
+    profileUsage(text, { catalogue: pricing, sinceMs: week.sinceMs, untilMs: week.untilMs });
+  const current = profileWeek(windows.current);
+  const previous = profileWeek(windows.previous);
+  const plan = buildPlan(current, billLevers(current, { catalogue: pricing }), pricing.lastReviewed);
 
+  const { markdown, headline } = checkedWeekly(
+    buildWeeklySummary(current, previous, plan, windows),
+    billFigures(current, previous, plan),
+    t,
+  );
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, markdown, 'utf8');
+    console.error(t.weekly.wrote(out));
+  } else {
+    process.stdout.write(markdown);
+  }
+
+  /*
+    The person at the machine, once the summary is safely written: the same
+    notifier `watch --notify` uses, carrying one sentence of figures that went
+    through the same check as the file. Off unless asked for; where the
+    platform has no notifier it is said and the file stands.
+  */
+  if (boolFlag(args, 'notify')) {
+    const sent = sendNotification(notificationFor([headline]));
+    if (sent.outcome === 'unavailable') console.error(c.yellow(t.weekly.notifyUnavailable(sent.command)));
+    if (sent.outcome === 'failed') console.error(c.yellow(t.weekly.notifyFailed(sent.command, sent.error)));
+  }
+}
+
+/**
+ * What `bill` and `weekly` read: every path given, or every coding agent's own
+ * sessions when none is, converted in memory to the one record shape the
+ * profile reads. Everything said about a file is said here, once, so the two
+ * commands refuse and report the same way.
+ */
+interface GatheredUsage {
+  lines: string[];
+  sources: number;
+  fileCount: number;
+  claudeCodeFiles: number;
+  codexFiles: number;
+  geminiCliFiles: number;
+  codexEvidence: { source: string; basis: string; files: number; duplicates: number; missingModel: number; unsupported: number; unparseable: number };
+  agentLines: Map<AgentId, string[]>;
+  labelledByProject: number;
+}
+
+async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsage> {
   /*
     No path is the most common first run, and it used to be a refusal: the
     person had to know where Claude Code keeps its sessions before the one
@@ -3917,6 +3983,24 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
   if (geminiRemainder > 0) console.error(t.fromGeminiCli.remainder(geminiRemainder));
 
   if (sources === 0) throw new Error(t.bill.nothingRead());
+  return { lines, sources, fileCount: files.length, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, labelledByProject };
+}
+
+async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  /* Refused before any file is read: a bad shape found after the receipt
+     printed would end a run that looked finished with an error. */
+  const csvShape = csvShapeOf(args, t);
+  /* "What did this month cost" is the question a Claude Code folder of a
+     year's sessions answers worst without a period. */
+  const period = billingPeriod(args, t);
+  const byFlag = stringFlag(args, 'by');
+  if (byFlag !== undefined && byFlag !== 'day' && byFlag !== 'week' && byFlag !== 'month') {
+    throw new Error(t.bill.badBy(byFlag));
+  }
+  const by = byFlag as BillPeriodUnit | undefined;
+
+  const { lines, sources, fileCount, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, labelledByProject } =
+    await gatherUsageLines(args, t);
 
   const text = lines.join('\n');
   const report = profileUsage(text, {
@@ -3949,7 +4033,7 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
   } else if (!statement) {
     console.log(json);
   }
-  console.error(t.bill.sources(sources, files.length));
+  console.error(t.bill.sources(sources, fileCount));
   printReceiptSummary(document, t);
   const agentSessions = claudeCodeFiles + codexFiles + geminiCliFiles > 0;
   /*
@@ -14524,6 +14608,9 @@ async function main(): Promise<void> {
       break;
     case 'bill':
       await commandBill(args, pricing, t);
+      break;
+    case 'weekly':
+      await commandWeekly(args, pricing, t);
       break;
     case 'from-helicone':
       await commandFromHelicone(args, t);

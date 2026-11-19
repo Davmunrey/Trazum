@@ -7,7 +7,7 @@ name: 'Trazum Check'
 # the one line a Marketplace visitor reads described a version of this action
 # that stopped being the whole story several releases ago. security.test.js
 # now derives the modes from the script and fails when one is unnamed.
-description: 'Fails the build when a prompt busts its token budget, or a usage log busts its spend budget. Says what would fit.'
+description: 'Fails the build when a prompt busts its token budget or a log its spend budget. Can post a weekly summary.'
 author: 'David Muñoz Rey'
 branding:
   icon: 'scissors'
@@ -69,7 +69,13 @@ inputs:
     description: 'With usage-log: profile only calls at or after this moment — a UTC day (2026-08-14) or a full ISO 8601 timestamp. Calls with no "ts" are excluded and counted out loud in the report.'
     required: false
   until:
-    description: 'With usage-log: profile only calls up to this moment; a bare date includes that whole UTC day. A window the log does not cover fails the run naming what it does.'
+    description: 'With usage-log: profile only calls up to this moment; a bare date includes that whole UTC day. A window the log does not cover fails the run naming what it does. With weekly-summary: where the week ends (default now).'
+    required: false
+  weekly-summary:
+    description: 'Write the week as a summary (the bill, what moved against the week before, the three changes to make first) from usage-log, and post it where you name: "issue" opens one issue for the week, "comment" adds one comment on the standing issue named by weekly-summary-issue. Needs github-token and issues write. Empty, the default, posts nothing. Mutually exclusive with target and with every gate.'
+    required: false
+  weekly-summary-issue:
+    description: 'With weekly-summary set to comment: the number of the standing issue the summary is commented on. The only place it comments.'
     required: false
 
 runs:
@@ -111,6 +117,7 @@ runs:
         TRAZUM_LABEL: ${{ inputs.label }}
         TRAZUM_SINCE: ${{ inputs.since }}
         TRAZUM_UNTIL: ${{ inputs.until }}
+        TRAZUM_WEEKLY_SUMMARY: ${{ inputs.weekly-summary }}
         TRAZUM_ACTION_PATH: ${{ github.action_path }}
       # Every optional flag is added only when it was actually given. Passing
       # `--level safe` unconditionally is what made a config file's `level` and
@@ -126,6 +133,36 @@ runs:
         set -uo pipefail
 
         target="${TRAZUM_TARGET:-$TRAZUM_FILE}"
+        # The weekly summary is a third mode and exclusive like the other two:
+        # it reads a log and writes a note, it gates nothing, and a run that
+        # also carried a budget would leave the reader unsure which verdict
+        # the red build was. Refused naming what was mixed.
+        if [ -n "$TRAZUM_WEEKLY_SUMMARY" ]; then
+          if [ "$TRAZUM_WEEKLY_SUMMARY" != "issue" ] && [ "$TRAZUM_WEEKLY_SUMMARY" != "comment" ]; then
+            echo "::error title=Trazum::The 'weekly-summary' input is 'issue' or 'comment', the one place the owner chose. '$TRAZUM_WEEKLY_SUMMARY' is neither."
+            echo "outcome=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$TRAZUM_USAGE_LOG" ] || [ -n "$target" ]; then
+            echo "::error title=Trazum::Set 'usage-log' (and not 'target') with 'weekly-summary': the summary is written from a usage log."
+            echo "outcome=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -n "$TRAZUM_MAX_USD$TRAZUM_AGAINST$TRAZUM_MAX_GROWTH_USD$TRAZUM_MAX_CACHE_LOSS_USD$TRAZUM_SINCE" ]; then
+            echo "::error title=Trazum::'weekly-summary' writes a note and gates nothing, and its week is the seven days before 'until'. Remove max-usd, against, max-growth-usd, max-cache-loss-usd and since, or run the gate in its own step."
+            echo "outcome=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          args=(weekly "$TRAZUM_USAGE_LOG" --out "$RUNNER_TEMP/trazum-report.md")
+          [ -n "$TRAZUM_LABEL" ] && args+=(--label "$TRAZUM_LABEL")
+          [ -n "$TRAZUM_UNTIL" ] && args+=(--until "$TRAZUM_UNTIL")
+          [ -n "$TRAZUM_CONFIG" ] && args+=(--config "$TRAZUM_CONFIG")
+          [ -n "$TRAZUM_REPORT_LOCALE" ] && args+=(--locale "$TRAZUM_REPORT_LOCALE")
+          node "$TRAZUM_ACTION_PATH/packages/cli/dist/index.js" "${args[@]}"
+          echo "outcome=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
         # Two modes, mutually exclusive: gate the tokens before the money is
         # spent (check), or gate the spend itself (profile). A run doing both
         # would fold two verdicts into one exit code, and saying which gate
@@ -218,15 +255,38 @@ runs:
       env:
         TRAZUM_OUTCOME: ${{ steps.check.outputs.outcome }}
         TRAZUM_USAGE_LOG: ${{ inputs.usage-log }}
+        TRAZUM_WEEKLY_SUMMARY: ${{ inputs.weekly-summary }}
       run: |
         if [ "${TRAZUM_OUTCOME:-1}" != "0" ]; then
-          if [ -n "$TRAZUM_USAGE_LOG" ]; then
+          if [ -n "$TRAZUM_WEEKLY_SUMMARY" ]; then
+            echo "::error title=Trazum::The weekly summary could not be written. See the log above: nothing was posted."
+          elif [ -n "$TRAZUM_USAGE_LOG" ]; then
             echo "::error title=Trazum::The spend gate failed — the log is over its budget or grew past its limit, or the profile could not run. See the run summary."
           else
             echo "::error title=Trazum::A prompt busts its token budget, or the check could not run. See the run summary."
           fi
           exit 1
         fi
+
+    - name: Post the weekly summary
+      shell: bash
+      # Only when the owner chose a place: 'issue' or 'comment', and nothing
+      # else is a place. Never fails the build, like the comment step: the
+      # summary is already on the job page, and the verdict above belongs to
+      # the writing of it.
+      #
+      # The token is the one the workflow gave, passed through the environment
+      # to the one script that talks to GitHub. The CLI that wrote the summary
+      # never receives it.
+      if: always() && (inputs.weekly-summary == 'issue' || inputs.weekly-summary == 'comment') && steps.check.outputs.outcome == '0'
+      env:
+        TRAZUM_GITHUB_TOKEN: ${{ inputs.github-token }}
+        TRAZUM_SUMMARY_TARGET: ${{ inputs.weekly-summary }}
+        TRAZUM_SUMMARY_ISSUE: ${{ inputs.weekly-summary-issue }}
+        TRAZUM_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        TRAZUM_BODY_PATH="$RUNNER_TEMP/trazum-report.md" \
+          node "$TRAZUM_ACTION_PATH/action/post-weekly.mjs" || true
 
     - name: Suggest the optimised prompts
       shell: bash

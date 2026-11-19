@@ -42,6 +42,61 @@ something nobody asked about.
 
 Or use the binary directly, exactly as below.
 
+### A weekly summary in the repository
+
+The same Action can write the week down and post it, so nobody has to remember
+to run `bill`. It reads a usage log the job can see (committed, or fetched by
+an earlier step), writes [`trazum weekly`](commands.md#the-week-written-down-trazum-weekly)'s
+summary, and posts it to the one place you name. It is off unless
+`weekly-summary` is set.
+
+```yaml
+on:
+  schedule:
+    - cron: '41 7 * * 1'
+permissions:
+  contents: read
+  issues: write
+jobs:
+  weekly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Davmunrey/Trazum@<commit-sha>  # pin to a commit, never a tag
+        with:
+          usage-log: logs/usage/
+          weekly-summary: comment
+          weekly-summary-issue: '12'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+`weekly-summary` is the owner's choice and there are two answers. `issue` opens
+one issue for the week, titled with its dates. `comment` adds one comment for
+the week on the standing issue `weekly-summary-issue` names, which is the only
+place it comments. Any other value stops the run. The repository is always the
+one the workflow runs in: no input and nothing in the event moves it.
+
+- **A week is posted once.** The summary ends in a marker naming the week's
+  last day, and a re-run of the same week replaces its own post instead of
+  adding another; the next week gets its own. Only a post made by a bot counts
+  as its own, so an issue or comment somebody else wrote is never edited, even
+  one that quotes the marker. That recognition needs the workflow's own
+  `GITHUB_TOKEN`: with a personal access token the author is a user, and a
+  re-run of the same week would post again.
+- **It sets nothing else.** No label, assignee or milestone: those are yours.
+- **The endpoints are the four it needs**: list the repository's issues or the
+  standing issue's comments, create an issue or a comment, and edit the one it
+  created. The token is the workflow's, handed to one script and never to the
+  CLI. It needs `issues: write` and nothing more.
+- **It never fails the build for not posting.** A token too narrow, an issue
+  that is not there or an API that refuses each leave a notice, and the summary
+  is on the run's summary page either way. A summary that could not be written
+  does fail the run, since nothing was said.
+- **It is a mode of its own.** With `weekly-summary` the run takes `usage-log`
+  (and optionally `until`, `label`, `config`, `locale`) and refuses `target` and
+  every gate (`max-usd`, `against`, `max-growth-usd`, `max-cache-loss-usd`,
+  `since`): one run says one thing. Run a gate in its own step.
+
 ## GitLab CI
 
 ```yaml

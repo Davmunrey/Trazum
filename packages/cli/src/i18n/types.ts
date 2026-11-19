@@ -2356,6 +2356,52 @@ export interface CliMessages {
     moneyIncomparableScenario(): string;
     moneyIncomparablePricing(was: string, now: string): string;
   };
+  /**
+   * `trazum weekly`: the week in Markdown, written to be read in an issue by
+   * somebody who did not run it.
+   *
+   * Every figure these sentences carry is handed in already formatted, and
+   * `strayFigures` reads the finished text back against the two weeks' bills,
+   * so a sentence here cannot introduce a number of its own. The three words a
+   * reader must never have to infer are in them: *measured* for the two
+   * weeks, *projected* for a saving that has not happened, and what `verify`
+   * will say afterwards.
+   */
+  weekly: {
+    heading(firstDay: string, lastDay: string): string;
+    billHeading(): string;
+    billTotal(usd: string, calls: string): string;
+    /** The week holds no call: said as that, never as a bill of nothing. */
+    noCalls(firstDay: string, lastDay: string): string;
+    colModel(): string;
+    colCalls(): string;
+    colUsd(): string;
+    moreModels(count: string): string;
+    unpriced(models: string, calls: string): string;
+    undated(count: string): string;
+    movedHeading(firstDay: string, lastDay: string): string;
+    /** The week before holds no call, so there is nothing to compare with. */
+    noWeekBefore(): string;
+    moved(delta: string, pct: string | null, now: string, before: string, calls: string): string;
+    unchanged(now: string, before: string): string;
+    moversHeading(): string;
+    mover(model: string, before: string, now: string, delta: string): string;
+    changesHeading(): string;
+    noChanges(): string;
+    projected(usd: string): string;
+    stake(usd: string): string;
+    measuredBefore(usd: string, calls: string): string;
+    moreChanges(count: string): string;
+    verifyHow(): string;
+    footer(): string;
+    /** The summary was not written: a figure in it is in neither week's bill. */
+    strayFigures(figures: string): string;
+    wrote(path: string): string;
+    /** The one sentence a desktop notification carries: the bill, and the movement when there is one to state. */
+    notifyUnavailable(command: string): string;
+    notifyFailed(command: string, why: string): string;
+    headline(usd: string, calls: string, delta: string | null, pct: string | null): string;
+  };
   /** `trazum proactive`: what speaks first, turned on and off from one command. */
   proactive: {
     heading(): string;

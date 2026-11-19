@@ -68,6 +68,7 @@ ${bold('USAGE')}
   trazum receipt <usage.jsonl> [--stamp] [--since <when>] [--until <when>] [-o <file>]
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
               [--since <when>] [--until <when>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out <file>]
+  trazum weekly [<file|dir>...] [--until <when>] [--label <name>] [--notify] [-o <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-codex <file|dir> [--label <name>] [-o <file>]
   trazum from-gemini-cli <file|dir> [--label <name>] [-o <file>]
@@ -262,6 +263,30 @@ ${bold('OPTIONS FOR bill')}
   file two shapes claim is named as ambiguous and left alone; a provider's
   cost report is pointed at reconcile. Each file's line says how many rows
   were left out, and the dedicated from-<shape> command says why.
+
+${bold('OPTIONS FOR weekly')}
+  --until <when>              Where the week ends: a UTC day (2026-11-19, the
+                              whole of it), a timestamp, a relative window or
+                              "now", the default. The week is the seven days
+                              before it, and the week before that is what it
+                              is compared with.
+  --label <name>              The project this usage belongs to, for the
+                              shapes that take one.
+  --notify                    Also show a desktop notification with one line of
+                              it, the bill and its movement, through what the
+                              platform has (as watch --notify does). Said, not
+                              fatal, where there is none.
+  -o, --out <file>            Write the summary there instead of stdout.
+
+  The week in Markdown: the bill, what moved against the week before, and the
+  three changes worth making first. Reads what bill reads, and with no path
+  the coding agents' own session folders. Both weeks are measured, from the
+  same logs and the same price list. The changes are projections and say so,
+  each beside what its workload cost this week; trazum verify is what
+  measures them afterwards. Every dollar amount and percentage is checked
+  against the two weeks' bills before anything is written, and a summary with
+  one that is not there is refused. It sends nothing anywhere: the file is
+  the output, and the GitHub Action is what posts it.
 
 ${bold('OPTIONS FOR from-openrouter')}
   --label <name>              The project this usage belongs to.
@@ -2384,6 +2409,47 @@ ${bold('EXAMPLES')}
     source: () =>
       'Measured from this log alone, priced record by record. The store\'s provider-billed monthly standing is a different measurement, "trazum store" prints it, and the two are never merged into one figure.',
     noLog: () => 'position needs a usage log: trazum position usage.jsonl',
+  },
+  weekly: {
+    heading: (firstDay, lastDay) => `Trazum, the week of ${firstDay} to ${lastDay}`,
+    billHeading: () => 'The bill',
+    billTotal: (usd, calls) => `**${usd}** over ${calls} ${calls === '1' ? 'call' : 'calls'}, measured from the logs and priced with the catalogue's own rates.`,
+    noCalls: (firstDay, lastDay) =>
+      `No call in the logs falls between ${firstDay} and ${lastDay}, so there is no bill to state for it. That is not a bill of nothing: either nothing ran, or what ran was not written to a log this was given.`,
+    colModel: () => 'Model',
+    colCalls: () => 'Calls',
+    colUsd: () => 'USD',
+    moreModels: (count) => `${count} more models, smaller than these.`,
+    unpriced: (models, calls) =>
+      `Calls on models the catalogue cannot price: ${calls} (${models}). They are not in the bill above, which is therefore a floor.`,
+    undated: (count) =>
+      `Calls with no timestamp: ${count}. They cannot be placed in any week and are left out, not guessed into this one.`,
+    movedHeading: (firstDay, lastDay) => `Against the week before (${firstDay} to ${lastDay})`,
+    noWeekBefore: () =>
+      'No call in the logs falls in the week before, so there is nothing to compare with. A percentage of nothing is not printed.',
+    moved: (delta, pct, now, before, calls) =>
+      `The bill moved ${delta}${pct === null ? '' : ` (${pct})`} against the week before: ${now} now, ${before} then, over ${calls} ${calls === '1' ? 'call' : 'calls'}. Both are measured.`,
+    unchanged: (now, before) => `The week cost the same as the week before: ${now} now, ${before} then. Both are measured.`,
+    moversHeading: () => 'What moved most, by model:',
+    mover: (model, before, now, delta) => `${model}: ${before} then, ${now} now (${delta})`,
+    changesHeading: () => 'Three changes to make first',
+    noChanges: () =>
+      "Nothing in this week's calls gives a change to propose: no cheaper model that fits, no batchable call, no settled cache loss and no truncation retry.",
+    projected: (usd) => `${usd} projected saving on this week's calls. Projected, not measured: it has not happened.`,
+    stake: (usd) => `${usd} already spent on this problem this week. Measured, not projected.`,
+    measuredBefore: (usd, calls) => `Measured before the change: this workload on this model cost ${usd} over ${calls} ${calls === '1' ? 'call' : 'calls'} this week.`,
+    moreChanges: (count) => `${count} more changes are in the plan and are smaller than these.`,
+    verifyHow: () =>
+      'How each will be checked: `trazum plan <log> --out plan.json` before changing anything, then `trazum verify plan.json --against <the newer log>` after. It says for each action whether the change arrived, did not arrive, or cannot be told, and what the bill did. Until then a projected saving is a projection.',
+    footer: () =>
+      'Written by `trazum weekly` from logs on the machine that ran it. Nothing was sent anywhere to produce it, and no model was called.',
+    strayFigures: (figures) =>
+      `The summary was not written: it holds ${figures}, which is in neither week's bill. A figure nobody can find in the bill is not printed.`,
+    wrote: (path) => `Weekly summary written to ${path}.`,
+    notifyUnavailable: (command) => `--notify asked for a desktop notification, and this machine has no ${command}, so none was sent. The summary is written all the same.`,
+    notifyFailed: (command, why) => `--notify: ${command} refused (${why}), so no notification was shown. The summary is written all the same.`,
+    headline: (usd, calls, delta, pct) =>
+      `Trazum, this week: ${usd} over ${calls} ${calls === '1' ? 'call' : 'calls'}${delta === null ? '' : `, ${delta}${pct === null ? '' : ` (${pct})`} against the week before`}.`,
   },
   proactive: {
     heading: () => 'Trazum, speaking first',

@@ -2505,6 +2505,7 @@ describe('the packaged Action', () => {
     const evidence = {
       check: /token budget/,
       profile: /spend budget/,
+      weekly: /weekly summary/,
     };
     const unnamed = modes.filter((mode) => {
       const pattern = evidence[mode];
