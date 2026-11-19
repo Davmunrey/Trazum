@@ -937,6 +937,14 @@ export interface CliMessages {
     rangeMeaning(): string;
     rangeLeftOut(outsideCalls: number, otherProjects: number, otherSources: number, undated: number): string;
     rangeUnpriced(calls: number): string;
+    /** --delivery without --git-range. */
+    deliveryNeedsRange(): string;
+    /** What git shows landed in the range: counts only (#825). */
+    rangeDelivered(commits: number, merges: number, pullRequests: number, days: number): string;
+    /** The figure divided by each count; null where the count is zero. */
+    rangeDividedBy(perCommit: string | null, perPullRequest: string | null, perDay: string | null): string;
+    /** No session inside the span, so nothing to divide. */
+    rangeDividedNothing(): string;
     /** No record of any session read belongs to this repository's project folder. */
     rangeNoProject(): string;
   };

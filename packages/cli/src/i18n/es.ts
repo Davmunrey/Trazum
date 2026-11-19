@@ -55,7 +55,7 @@ ${bold('USO')}
   trazum receipt <uso.jsonl> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
               [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <fichero>]
-              [--agent <nombre>] [--timezone <zona>] [--git-range <rango>]
+              [--agent <nombre>] [--timezone <zona>] [--git-range <rango> [--delivery]]
   trazum weekly [<fichero|dir>...] [--until <cuándo>] [--label <nombre>] [--notify] [-o <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-codex <fichero|dir> [--label <nombre>] [-o <fichero>]
@@ -299,6 +299,12 @@ ${bold('OPCIONES DE bill')}
                               extremo se nombran y cuentan aparte. Es todo lo
                               gastado entonces en este repositorio, no el coste
                               del cambio. No con --since, --until, --label ni salida.
+  --delivery                  Con --git-range, dice además qué muestra git local que
+                              llegó en el mismo rango (commits, pull requests con
+                              número en un asunto, días con un commit) y divide la
+                              cifra por cada uno. Solo recuentos: no se lee ningún
+                              nombre, mensaje ni hash. Un promedio del periodo, no
+                              lo que costó un commit o una pull request.
   --otlp-out <fichero>        Escribe además la factura como métricas OpenTelemetry
                               (JSON OTLP/HTTP): por día UTC cerrado, coste, tokens
                               y llamadas por proyecto, modelo y agente, y lo que no
@@ -2412,6 +2418,12 @@ ${bold('EJEMPLOS')}
       `Fuera: ${outsideCalls} llamada(s) de sesiones por completo fuera del periodo, ${otherProjects} registro(s) de otros proyectos, ${otherSources} registro(s) de fuentes sin carpeta de proyecto que comparar (Codex, Gemini CLI, logs), ${undated} llamada(s) sin marca de tiempo.`,
     rangeUnpriced: (calls) =>
       `No está en la cifra: ${calls} llamada(s) a modelos que el catálogo no valora. Nombradas, nunca contadas como $0.`,
+    deliveryNeedsRange: () => '--delivery pone el gasto de un rango de commits junto a lo que git muestra que llegó en él, así que necesita --git-range.',
+    rangeDelivered: (commits, merges, pullRequests, days) =>
+      `Llegó en el mismo rango, según git local: ${commits.toLocaleString('es-ES')} commit(s), ${merges.toLocaleString('es-ES')} de ellos commits de fusión; ${pullRequests.toLocaleString('es-ES')} pull request(s) con número en un asunto; ${days.toLocaleString('es-ES')} día(s) UTC con un commit. Una pull request fusionada con rebase no lleva número, así que esa cuenta puede quedarse corta.`,
+    rangeDividedBy: (perCommit, perPullRequest, perDay) =>
+      `La cifra de arriba dividida por cada cuenta: ${perCommit ?? 'sin cifra'} por commit, ${perPullRequest ?? 'sin cifra (no se nombra ninguna pull request)'} por pull request, ${perDay ?? 'sin cifra'} por día. Dos números sobre un mismo periodo, no lo que costó un commit, una pull request o un día.`,
+    rangeDividedNothing: () => 'Ninguna sesión empezó y terminó dentro del periodo, así que no hay cifra que dividir por estas cuentas.',
     rangeNoProject: () =>
       'Ninguna sesión leída pertenece a la carpeta de proyecto de este repositorio. Claude Code nombra esa carpeta con la ruta absoluta del repositorio, así que lee la carpeta que la contiene (trazum bill ~/.claude/projects --git-range main..HEAD) desde la raíz del repositorio. Una sesión iniciada en un subdirectorio o en un worktree está en una carpeta de otro nombre y no se reconoce.',
   },

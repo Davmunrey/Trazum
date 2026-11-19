@@ -68,7 +68,7 @@ ${bold('USAGE')}
   trazum receipt <usage.jsonl> [--stamp] [--since <when>] [--until <when>] [-o <file>]
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
               [--since <when>] [--until <when>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <file>]
-              [--agent <name>] [--timezone <zone>] [--git-range <range>]
+              [--agent <name>] [--timezone <zone>] [--git-range <range> [--delivery]]
   trazum weekly [<file|dir>...] [--until <when>] [--label <name>] [--notify] [-o <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-codex <file|dir> [--label <name>] [-o <file>]
@@ -266,6 +266,12 @@ ${bold('OPTIONS FOR bill')}
                               named and counted apart. It is everything spent in
                               this repository then, not the cost of the change.
                               Not with --since, --until, --label or an output.
+  --delivery                  With --git-range, also say what local git shows
+                              landed in the same range (commits, pull requests
+                              named by number in a subject, days with a commit)
+                              and divide the figure by each. Counts only: no
+                              name, message or hash is read out. An average over
+                              the span, not what any commit or pull request cost.
   --otlp-out <file>           Also write the bill as OpenTelemetry metrics (OTLP/HTTP
                               JSON): per closed UTC day, cost, tokens and calls by
                               project, model and agent, and what could not be priced
@@ -2372,6 +2378,12 @@ ${bold('EXAMPLES')}
       `Left out: ${outsideCalls} call(s) of sessions wholly outside the span, ${otherProjects} record(s) of other projects, ${otherSources} record(s) from sources with no project folder to match (Codex, Gemini CLI, logs), ${undated} call(s) with no timestamp.`,
     rangeUnpriced: (calls) =>
       `Not in the figure: ${calls} call(s) to models the catalogue does not price. Named, never counted as $0.`,
+    deliveryNeedsRange: () => '--delivery sets the spend of a range of commits beside what git shows landed in it, so it needs --git-range.',
+    rangeDelivered: (commits, merges, pullRequests, days) =>
+      `Landed in the same range, from local git: ${commits.toLocaleString('en-US')} commit(s), ${merges.toLocaleString('en-US')} of them merge commits; ${pullRequests.toLocaleString('en-US')} pull request(s) named by number in a subject; ${days.toLocaleString('en-US')} UTC day(s) with a commit. A pull request merged by rebase names no number, so that count can be low.`,
+    rangeDividedBy: (perCommit, perPullRequest, perDay) =>
+      `The figure above divided by each count: ${perCommit ?? 'no figure'} per commit, ${perPullRequest ?? 'no figure (no pull request is named)'} per pull request, ${perDay ?? 'no figure'} per day. Two numbers over one span, not what any commit, pull request or day cost.`,
+    rangeDividedNothing: () => 'No session began and ended inside the span, so there is no figure to divide by these counts.',
     rangeNoProject: () =>
       "No session read belongs to this repository's project folder. Claude Code names that folder after the repository's absolute path, so read the folder that holds it (trazum bill ~/.claude/projects --git-range main..HEAD) from the repository's own root. A session started in a subdirectory or a worktree sits in a folder of another name and is not matched.",
   },

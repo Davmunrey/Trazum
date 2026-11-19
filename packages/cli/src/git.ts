@@ -359,6 +359,65 @@ export function commitTimes(range: string, options: { cwd: string; spawn?: Spawn
   return times;
 }
 
+/** What a range delivered, as counts: no name, no subject and no hash is kept. */
+export interface RangeDelivery {
+  commits: number;
+  /** Commits with more than one parent. They are in `commits` too. */
+  merges: number;
+  /** Distinct UTC calendar days (YYYY-MM-DD) on which a commit was committed. */
+  days: number;
+  /** Distinct pull request numbers a subject names; a rebase merge names none, so this is a floor. */
+  pullRequests: number;
+}
+
+/**
+ * The pull request a commit subject names, or `null`: only the number.
+ *
+ * Two shapes, both written by GitHub's own merge buttons: `Merge pull request
+ * #N from ...` on a merge commit, and `... (#N)` closing the subject of a squash
+ * commit. The caller keeps the number and the subject goes out of scope on
+ * return, so the text of a message cannot reach an output from here.
+ */
+function pullRequestOf(subject: string, parents: number): number | null {
+  const text = subject.trim();
+  const found = parents > 1 ? text.match(/^Merge pull request #(\d{1,9}) from /) : text.match(/\(#(\d{1,9})\)$/);
+  return found === null ? null : Number(found[1]);
+}
+
+/**
+ * What `range` delivered, for `bill --git-range --delivery` (#825): the number
+ * of commits, of them merges, of UTC days with a commit, and of pull requests
+ * named by number. Metadata only: the log is asked for the parents, the commit
+ * time and the subject, the subject is read for a number and dropped, and the
+ * return value is four integers. Same refusals as `commitTimes`.
+ */
+export function rangeDelivery(range: string, options: { cwd: string; spawn?: SpawnLike }): RangeDelivery | null {
+  if (!isSafeRange(range)) return null;
+  const outcome = runGit(
+    ['log', '--format=%P\u001f%ct\u001f%s', '--max-count=100000', range, '--'],
+    options.cwd,
+    options.spawn,
+  );
+  if (!outcome.ran) throw new GitUnavailableError(outcome.detail);
+  if (outcome.stdout === null) return null;
+  const days = new Set<string>();
+  const pullRequests = new Set<number>();
+  let commits = 0;
+  let merges = 0;
+  for (const row of outcome.stdout.split('\n')) {
+    if (row.trim() === '') continue;
+    const [parentField = '', committer = '', ...subject] = row.split('\u001f');
+    if (!/^\d+$/.test(committer)) continue;
+    const parents = parentField.split(' ').filter((p) => p !== '').length;
+    commits += 1;
+    if (parents > 1) merges += 1;
+    days.add(new Date(Number(committer) * 1000).toISOString().slice(0, 10));
+    const pr = pullRequestOf(subject.join('\u001f'), parents);
+    if (pr !== null) pullRequests.add(pr);
+  }
+  return { commits, merges, days: days.size, pullRequests: pullRequests.size };
+}
+
 /**
  * Commits that touched `repoPath`, newest first.
  *
