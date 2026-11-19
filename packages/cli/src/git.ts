@@ -320,7 +320,15 @@ export interface CommitTimes {
  * before it reaches the argv when it could be read as an option (a leading
  * `-`) or carries a control character or a space, which no range needs.
  */
-const SAFE_RANGE = /^[^\s\u0000-\u001f\u007f-][^\s\u0000-\u001f\u007f]*$/;
+function isSafeRange(range: string): boolean {
+  if (range === '' || range.startsWith('-')) return false;
+  for (const ch of range) {
+    const code = ch.codePointAt(0) ?? 0;
+    // `trim()` removes exactly the characters a regular expression's `\s` matches.
+    if (code <= 0x1f || code === 0x7f || ch.trim() === '') return false;
+  }
+  return true;
+}
 
 /**
  * The author and commit times of every commit in `range`, for `bill --git-range`.
@@ -333,7 +341,7 @@ const SAFE_RANGE = /^[^\s\u0000-\u001f\u007f-][^\s\u0000-\u001f\u007f]*$/;
  * when git could not be run at all, so the two never read as the same answer.
  */
 export function commitTimes(range: string, options: { cwd: string; spawn?: SpawnLike }): CommitTimes[] | null {
-  if (!SAFE_RANGE.test(range)) return null;
+  if (!isSafeRange(range)) return null;
   const outcome = runGit(
     ['log', '--format=%at\u001f%ct', '--max-count=100000', range, '--'],
     options.cwd,
