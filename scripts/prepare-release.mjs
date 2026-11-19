@@ -6,6 +6,7 @@
  *   node scripts/prepare-release.mjs 2.7.0            # write
  *   node scripts/prepare-release.mjs 2.7.0 --dry-run  # say what would change, change nothing
  *   node scripts/prepare-release.mjs --pin-only       # move the Action pin to the newest tag
+ *   node scripts/prepare-release.mjs 3.1.0-next.1     # a `next` prerelease: the versions only
  *
  * Why it exists. `docs/releasing.md` listed these steps for a person to do by
  * hand, and each one has been missed at least once: a manifest left behind
@@ -34,6 +35,12 @@
  * "on npm at" line is moved here, being a version and nothing else) and
  * the ROADMAP entry, moved into HISTORY.md (prose about what shipped), and the per-provider price
  * review (numbers only the providers' own pages can settle).
+ *
+ * A `next` prerelease (`MAJOR.MINOR.PATCH-next.N`, see `npm-channel.mjs`)
+ * moves the versions that move in lockstep and nothing else. It is committed
+ * on a branch and published from its tag under the `next` dist-tag; it never
+ * merges, so the changelog, `RELEASES.md`, the pricing dataset and the Action
+ * pin keep describing the release on `latest`, and this leaves them alone.
  */
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -41,6 +48,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { replaceBlock } from './install-snippets.mjs';
+import { baseOf, channelOf, recordedVersion } from './npm-channel.mjs';
 import { npmTokenStanding, recordedNpmTokenExpiry } from './npm-token-expiry.mjs';
 import { datasetFiles, loadCatalogue } from './pricing-dataset.mjs';
 
@@ -65,6 +73,20 @@ const newer = (a, b) => {
   for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] > b[i];
   return false;
 };
+/** `N` of `X.Y.Z-next.N`, or `null` for a stable version. */
+const nextNumber = (version) => (/-next\.(\d+)$/.exec(version) ? Number(/-next\.(\d+)$/.exec(version)[1]) : null);
+/**
+ * Whether `to` comes after `from`, where either may be a `next` prerelease.
+ * `3.1.0-next.1` comes after `3.0.1` and before `3.1.0`, as semver orders them.
+ */
+const after = (to, from) => {
+  const [a, b] = [parse(baseOf(to)), parse(baseOf(from))];
+  if (newer(a, b)) return true;
+  if (newer(b, a)) return false;
+  const [m, n] = [nextNumber(to), nextNumber(from)];
+  if (m === null) return n !== null; // the release after its own prereleases
+  return n !== null && m > n; // next.2 after next.1; never a prerelease of a version already released
+};
 
 /** Planned edits: path -> new text. Nothing is written until every one is computed. */
 const edits = new Map();
@@ -86,6 +108,8 @@ function replace(path, from, to, expected) {
 }
 
 const current = JSON.parse(read('package.json')).version;
+/** A `next` prerelease moves the lockstep versions and leaves the record alone. */
+let prerelease = false;
 const token = npmTokenStanding(recordedNpmTokenExpiry(ROOT));
 
 if (!pinOnly) {
@@ -93,10 +117,14 @@ if (!pinOnly) {
     console.error('Usage: node scripts/prepare-release.mjs <version> [--dry-run] | --pin-only');
     process.exit(2);
   }
-  const from = parse(current);
-  const to = parse(next);
-  if (to === null) throw new Error(`"${next}" is not a version: use MAJOR.MINOR.PATCH, e.g. 2.7.0.`);
-  if (from === null || !newer(to, from)) throw new Error(`${next} is not newer than the current ${current}.`);
+  let channel;
+  try {
+    channel = channelOf(next);
+  } catch {
+    throw new Error(`"${next}" is not a version: use MAJOR.MINOR.PATCH, e.g. 2.7.0, or MAJOR.MINOR.PATCH-next.N for the next channel.`);
+  }
+  if (!after(next, current)) throw new Error(`${next} is not newer than the current ${current}.`);
+  prerelease = channel === 'next';
 
   // Before anything is planned: a release that cannot upload is not one to prepare.
   if (token.status === 'expired' || token.status === 'invalid') {
@@ -120,8 +148,11 @@ if (!pinOnly) {
   // The Gemini CLI extension starts the server at the version the release publishes, and the install table in docs/agents.md says the same.
   replace('gemini-extension.json', version(current), version(next), 1);
   replace('gemini-extension.json', `@trazum/mcp@${current}`, `@trazum/mcp@${next}`, 1);
-  edits.set('docs/agents.md', replaceBlock(edits.get('docs/agents.md') ?? read('docs/agents.md'), { name: '@trazum/mcp', version: next }));
-  touched.push('docs/agents.md (the install table, written by scripts/install-snippets.mjs)');
+  // The install table tells a reader what to install, which a prerelease is not.
+  if (!prerelease) {
+    edits.set('docs/agents.md', replaceBlock(edits.get('docs/agents.md') ?? read('docs/agents.md'), { name: '@trazum/mcp', version: next }));
+    touched.push('docs/agents.md (the install table, written by scripts/install-snippets.mjs)');
+  }
   /*
     The lockfile is edited as JSON, entry by entry, never as text. A text
     replacement also moves any third-party package that happens to share the
@@ -160,6 +191,12 @@ if (!pinOnly) {
   edits.set('package-lock.json', `${JSON.stringify(lock, null, 2)}\n`);
   touched.push(`package-lock.json (${lockVersions}x version, ${lockPins}x @trazum/core, entry by entry)`);
 
+  // The record below describes `latest`, and a prerelease never reaches main: see the header.
+  if (!prerelease) await recordTheRelease();
+}
+
+/** CHANGELOG.md, RELEASES.md and the pricing dataset: what a release on `latest` adds to the record. */
+async function recordTheRelease() {
   // The changelog: Unreleased becomes the version, and a fresh Unreleased opens above it.
   const changelog = read('CHANGELOG.md');
   if (!changelog.includes('\n## Unreleased\n')) throw new Error('CHANGELOG.md has no "## Unreleased" heading.');
@@ -167,7 +204,8 @@ if (!pinOnly) {
   replace('CHANGELOG.md', '\n## Unreleased\n', `\n## Unreleased\n\nNo changes yet.\n\n## ${next} — ${day}\n`, 1);
 
   // The first line a stranger reads in the release notes names the version on npm.
-  replace('RELEASES.md', `**All four packages are on npm at ${current}**`, `**All four packages are on npm at ${next}**`, 1);
+  // From a next's tree the line names the release on latest, not the prerelease.
+  replace('RELEASES.md', `**All four packages are on npm at ${recordedVersion(current, ROOT)}**`, `**All four packages are on npm at ${next}**`, 1);
 
   /*
     The pricing dataset the release publishes (#784): the catalogue as built,
@@ -199,7 +237,10 @@ const tags = execFileSync('git', ['tag', '--list', 'v*'], { cwd: ROOT, encoding:
   .filter((tag) => parse(tag.slice(1)) !== null)
   .sort((a, b) => (newer(parse(a.slice(1)), parse(b.slice(1))) ? -1 : 1));
 const newest = tags[0];
-if (newest === undefined) {
+if (prerelease) {
+  // A prerelease is not a release a reader can be told to pin.
+  console.error('A next prerelease leaves the Action pin where it is.');
+} else if (newest === undefined) {
   console.error('No v* tag in this clone: run git fetch --tags first. The pin was left alone.');
 } else {
   const sha = execFileSync('git', ['rev-parse', `${newest}^{commit}`], { cwd: ROOT, encoding: 'utf8' }).trim();
@@ -235,7 +276,15 @@ if (!dryRun) {
   }
 }
 
-if (!pinOnly) {
+if (!pinOnly && prerelease) {
+  console.error(`
+${dryRun ? 'Dry run: nothing written.' : `Prepared ${current} -> ${next}, the versions only.`} A next is published from its tag and never merged:
+  - npm run verify
+  - commit on a branch that is not main (git switch -c next/${next}), signed off
+  - git tag v${next} && git push origin v${next}
+  - approve the Release run on the release environment; it publishes under the next dist-tag and leaves latest alone (docs/releasing.md, "A next prerelease")${token.status === 'ok' ? '' : `
+  - ${token.text}`}`);
+} else if (!pinOnly) {
   console.error(`
 ${dryRun ? 'Dry run: nothing written.' : `Prepared ${current} -> ${next}.`} Still yours, because they are prose or prices:
   - RELEASES.md: a "## ${next}" section (the "on npm at" line has moved)

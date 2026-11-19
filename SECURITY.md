@@ -333,6 +333,14 @@ Some of this cannot be committed to a file — it lives in repository settings.
    what stops a key from reaching the history in the first place.
 6. **Code security → Private vulnerability reporting**, so the link at the top
    of this file works.
+7. **Put the environments on GitHub.** `npm run environments -- apply --yes`,
+   run by an admin signed in to `gh` with their own token, makes `staging`,
+   `production` and `release` what `.github/environments.json` states: a
+   required reviewer on each, main alone into `staging` and `production`. It
+   never writes a secret. The secrets each environment needs are named in the
+   file, and the run says which are missing; their values are added on the
+   settings page by the owner. The weekly `Repository settings` run compares
+   and never writes, as it does for the ruleset.
 
 None of these can be committed, which is why they are a checklist and not a
 file.

@@ -64,6 +64,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { REPOSITORY_URL, assetNames, assetUrl } from './install-snippets.mjs';
+import { recordedVersion } from './npm-channel.mjs';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -159,7 +160,8 @@ export async function loadCatalogue(root = ROOT) {
     lastReviewed: core.PRICING_LAST_REVIEWED,
     defaults: core.COST_MULTIPLIERS,
     sha256: catalogueDigest(readFileSync(join(root, CATALOGUE), 'utf8')),
-    version: manifest.version,
+    // A next's tree has no dataset of its own: it reads as the release on latest (npm-channel.mjs).
+    version: recordedVersion(manifest.version, root),
     homepage: manifest.homepage,
     licence: manifest.license,
   };

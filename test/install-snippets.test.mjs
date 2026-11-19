@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
 import { ROOT, SERVER_KEY, assetNames, assetUrl, block, clients, mcpPackage, replaceBlock, spec } from '../scripts/install-snippets.mjs';
+import { recordedVersion } from '../scripts/npm-channel.mjs';
 
 /**
  * The install snippets for the MCP server (#774), each held to the package name
@@ -17,7 +18,10 @@ import { ROOT, SERVER_KEY, assetNames, assetUrl, block, clients, mcpPackage, rep
 
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 const readJson = (path) => JSON.parse(read(path));
-const { name, version } = readJson('packages/mcp/package.json');
+const { name, version: carried } = readJson('packages/mcp/package.json');
+// What a reader is told to install: the release on latest. On a `next` tree the
+// package carries the prerelease and the documents keep the release (npm-channel.mjs).
+const version = recordedVersion(carried);
 const pinned = `${name}@${version}`;
 const rows = clients();
 const row = (id) => rows.find((entry) => entry.id === id);
@@ -94,8 +98,8 @@ describe('gemini-extension.json (#774), against Gemini CLI\'s own extension refe
   });
 
   it('starts the server at the version the package carries, exactly, and is at that version itself', () => {
-    assert.deepEqual(manifest.mcpServers, { [SERVER_KEY]: { command: 'npx', args: ['-y', pinned] } });
-    assert.equal(manifest.version, version);
+    assert.deepEqual(manifest.mcpServers, { [SERVER_KEY]: { command: 'npx', args: ['-y', `${name}@${carried}`] } });
+    assert.equal(manifest.version, carried);
     assert.equal(manifest.version, readJson('package.json').version);
   });
 

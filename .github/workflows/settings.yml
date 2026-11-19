@@ -1,6 +1,9 @@
 name: Repository settings
 
-# Whether GitHub enforces the branch ruleset this repository states.
+# Whether GitHub enforces the branch ruleset this repository states, and the
+# environments: `.github/environments.json` is to the environments that
+# publish and promote what the ruleset file is to the branch, and
+# scripts/environments.mjs compares them the same way.
 #
 # `.github/rulesets/main-branch.json` is the policy, and GitHub enforces a copy
 # an admin puts there. On 2026-11-18 the copy had drifted: it lacked `PR
@@ -21,8 +24,10 @@ on:
   pull_request:
     paths:
       - .github/rulesets/**
+      - .github/environments.json
       - .github/workflows/settings.yml
       - scripts/ruleset.mjs
+      - scripts/environments.mjs
   schedule:
     # Mondays, after the weekly runs at 06:41, 07:23 and 07:53, so a stale
     # repository's failures do not arrive in one email.
@@ -50,6 +55,8 @@ jobs:
           sparse-checkout: |
             scripts/ruleset.mjs
             .github/rulesets/main-branch.json
+            scripts/environments.mjs
+            .github/environments.json
             package.json
           sparse-checkout-cone-mode: false
 
@@ -63,3 +70,15 @@ jobs:
           EVENT: ${{ github.event_name }}
         run: |
           if [ "$EVENT" = "pull_request" ]; then node scripts/ruleset.mjs --report; else node scripts/ruleset.mjs; fi
+
+      # The environments, read the same way and never written. The workflow's
+      # token is shown an environment's reviewers and branches and not its
+      # secrets' names, so those are "not read" here; an admin reads them with
+      # `npm run environments`. Run whatever the ruleset step found.
+      - name: Compare the environments GitHub enforces with the file
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+        run: if [ "$EVENT" = "pull_request" ]; then node scripts/environments.mjs --report; else node scripts/environments.mjs; fi
