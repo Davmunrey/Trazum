@@ -44,6 +44,9 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **A web session no longer starts with `package-lock.json` changed.** The session-start hook installed with
+  `npm install`, which rewrote the lockfile in the layout of the container's npm; npm 10.9 dropped 48 `libc` lines a
+  newer npm had written. It now runs `npm ci`, which installs the lockfile as it is. (#788)
 - **A release's MCP registry check reads every page.** (#806) The registry's search answers 30 entries a page and names the next one in `metadata.nextCursor`. The check read only the first page, so 3.0.0, the thirtieth version, passed, and 3.0.1, the thirty-first, failed a minute after it had published correctly and was listed with its npm package and its `.mcpb`. The check now follows the cursor until there is none. `security.test.js` fails when the cursor is removed from the step.
 
 ### Changed
@@ -864,9 +867,6 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
-- **A web session no longer starts with `package-lock.json` changed.** The session-start hook installed with
-  `npm install`, which rewrote the lockfile in the layout of the container's npm; npm 10.9 dropped 48 `libc` lines a
-  newer npm had written. It now runs `npm ci`, which installs the lockfile as it is. (#788)
 - **A schema with thousands of keys no longer holds `optimize` for half a minute.** The advisory that notices prose
   restating an output schema asked one pattern of every sentence for every key, and built the pattern again each
   time: the square of the text. A prompt of 40,000 characters, half a schema of 1,778 keys and half prose, made
