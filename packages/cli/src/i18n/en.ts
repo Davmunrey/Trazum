@@ -67,7 +67,7 @@ ${bold('USAGE')}
   trazum position <usage.jsonl>
   trazum receipt <usage.jsonl> [--stamp] [--since <when>] [--until <when>] [-o <file>]
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
-              [--since <when>] [--until <when>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out <file>]
+              [--since <when>] [--until <when>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <file>]
   trazum weekly [<file|dir>...] [--until <when>] [--label <name>] [--notify] [-o <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-codex <file|dir> [--label <name>] [-o <file>]
@@ -247,6 +247,14 @@ ${bold('OPTIONS FOR bill')}
   --by <day|week|month>       Split the statement by UTC day, ISO week (Monday
                               to Sunday) or month. Without it, a bill spanning
                               two months or more is split by month.
+  --otlp-out <file>           Also write the bill as OpenTelemetry metrics (OTLP/HTTP
+                              JSON): per closed UTC day, cost, tokens and calls by
+                              project, model and agent, and what could not be priced
+                              as its own metric. Every cost point says it is
+                              api-equivalent, not what a plan paid. Today, and a day
+                              the --since/--until window cuts, are not points: the
+                              resource says which and what they held. Trazum writes
+                              the file; your pipeline sends it.
   --stamp                     Stamp the receipt with the time it was written.
   -o, --out <file>            Write the receipt there instead of stdout.
 

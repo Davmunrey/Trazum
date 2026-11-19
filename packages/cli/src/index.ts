@@ -175,6 +175,8 @@ import {
   isOffered,
   SOURCE_EXTENSIONS,
   suggestRewrites,
+  billOtlpInput,
+  toBillOtlpMetrics,
   toOtlpMetrics,
   toPromptfoo,
   UNLABELLED,
@@ -881,7 +883,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'since', 'until', 'by'],
+  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'since', 'until', 'by'],
   weekly: ['label', 'label-from-project', 'out', 'o', 'until', 'notify', 'pricing', 'pricing-live'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
@@ -3729,6 +3731,8 @@ interface GatheredUsage {
   geminiCliFiles: number;
   codexEvidence: { source: string; basis: string; files: number; duplicates: number; missingModel: number; unsupported: number; unparseable: number };
   agentLines: Map<AgentId, string[]>;
+  /** The records no coding agent's session folder produced: a log, a provider export, spans. */
+  otherLines: string[];
   labelledByProject: number;
 }
 
@@ -3808,6 +3812,7 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
   let geminiRemainder = 0;
   /* Each agent's own records, so a bill that read more than one can say which spent what. */
   const agentLines = new Map<AgentId, string[]>();
+  const otherLines: string[] = [];
   const codexEvidence = { source: 'codex', basis: 'api-equivalent-telemetry', files: 0, duplicates: 0, missingModel: 0, unsupported: 0, unparseable: 0 };
   const lines: string[] = [];
   let sources = 0;
@@ -3933,7 +3938,11 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
       case 'usage-log': {
         /* Already the shape every door reads: passed through line by line,
            and what does not parse is the receipt's own unread-lines gap. */
-        for (const line of text.split('\n')) if (line.trim() !== '') lines.push(line);
+        for (const line of text.split('\n')) {
+          if (line.trim() === '') continue;
+          lines.push(line);
+          otherLines.push(line);
+        }
         break;
       }
     }
@@ -3942,6 +3951,8 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
       const own = agentLines.get(shape) ?? [];
       for (const record of records) own.push(JSON.stringify(record));
       agentLines.set(shape, own);
+    } else {
+      for (const record of records) otherLines.push(JSON.stringify(record));
     }
     sources += 1;
     const count = shape === 'usage-log' ? null : records.length;
@@ -3986,7 +3997,7 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
   if (geminiRemainder > 0) console.error(t.fromGeminiCli.remainder(geminiRemainder));
 
   if (sources === 0) throw new Error(t.bill.nothingRead());
-  return { lines, sources, fileCount: files.length, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, labelledByProject };
+  return { lines, sources, fileCount: files.length, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, otherLines, labelledByProject };
 }
 
 async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
@@ -4002,7 +4013,7 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
   }
   const by = byFlag as BillPeriodUnit | undefined;
 
-  const { lines, sources, fileCount, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, labelledByProject } =
+  const { lines, sources, fileCount, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, otherLines, labelledByProject } =
     await gatherUsageLines(args, t);
 
   const text = lines.join('\n');
@@ -4018,6 +4029,34 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
     importEvidence: [{ ...codexEvidence, complete: codexEvidence.missingModel + codexEvidence.unsupported + codexEvidence.unparseable === 0 }],
   };
   const json = JSON.stringify(billDocument, null, 2);
+
+  /*
+    The bill as OTLP metrics, when asked for: a file and nothing sent, the way
+    `doctor --otlp-out` does it. Priced here from the same records through the
+    same `profileUsage`, split by day, project, model and agent; a day still
+    being measured is counted in the payload's resource and not drawn as a
+    point. See `toBillOtlpMetrics`.
+  */
+  const otlpPath = stringFlag(args, 'otlp-out');
+  if (otlpPath !== undefined) {
+    const written = await writeOtlp(args, () =>
+      toBillOtlpMetrics(
+        billOtlpInput(
+          [
+            { agent: null, lines: otherLines },
+            ...[...agentLines.entries()].map(([agent, own]) => ({ agent: AGENT_NAMES[agent], lines: own })),
+          ],
+          {
+            catalogue: pricing,
+            ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+            ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+            nowMs: Date.now(),
+          },
+        ),
+      ),
+    );
+    if (written) console.error(t.report.reportWritten(otlpPath));
+  }
 
   /*
     A terminal gets a statement a person can read; a pipe gets the receipt.
@@ -7932,15 +7971,17 @@ async function writeMarkdown(args: Args, render: () => string): Promise<void> {
  * full disk on a metrics runner must not turn a survey into a failure — the
  * survey is the thing somebody asked for, and the metrics are a copy of it.
  */
-async function writeOtlp(args: Args, build: () => unknown): Promise<void> {
+async function writeOtlp(args: Args, build: () => unknown): Promise<boolean> {
   const path = stringFlag(args, 'otlp-out');
-  if (!path) return;
+  if (!path) return false;
 
   try {
     await writeFile(path, `${JSON.stringify(build(), null, 2)}\n`, 'utf8');
+    return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(c.yellow(`Could not write ${path}: ${message}`));
+    return false;
   }
 }
 

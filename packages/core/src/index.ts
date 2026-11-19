@@ -421,8 +421,27 @@ export {
 } from './maintainers.js';
 export type { DictionaryRecord, DictionaryStanding } from './maintainers.js';
 export { toPromptfoo } from './promptfoo.js';
-export { toOtlpMetrics } from './otlp.js';
-export type { OtlpAttribute, OtlpDataPoint, OtlpInput, OtlpMetric, OtlpPayload } from './otlp.js';
+export {
+  OTLP_COST_BASIS,
+  OTLP_COST_BASIS_KEY,
+  OTLP_TOKEN_TYPES,
+  billOtlpInput,
+  dayIsClosed,
+  toBillOtlpMetrics,
+  toOtlpMetrics,
+} from './otlp.js';
+export type {
+  BillOtlpExcluded,
+  BillOtlpInput,
+  BillOtlpOptions,
+  BillOtlpRow,
+  OtlpAttribute,
+  OtlpDataPoint,
+  OtlpInput,
+  OtlpMetric,
+  OtlpPayload,
+  OtlpTokenType,
+} from './otlp.js';
 export type { PromptfooExport, PromptfooOptions, PromptfooWarning } from './promptfoo.js';
 export type { ProfileOptions, PromptProfile } from './profile.js';
 export { SUGGEST_SYSTEM_PROMPT, applyRewrites, rejectionText, suggestRewrites } from './suggest.js';
