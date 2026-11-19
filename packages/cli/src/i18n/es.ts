@@ -55,6 +55,7 @@ ${bold('USO')}
   trazum receipt <uso.jsonl> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
               [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
+  trazum weekly [<fichero|dir>...] [--until <cuándo>] [--label <nombre>] [--notify] [-o <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-codex <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-gemini-cli <fichero|dir> [--label <nombre>] [-o <fichero>]
@@ -295,6 +296,31 @@ ${bold('OPCIONES DE bill')}
   nombra como ambiguo y se deja en paz; un informe de costes de proveedor se
   remite a reconcile. La línea de cada archivo dice cuántas filas quedaron
   fuera, y el comando from-<forma> dedicado dice por qué.
+
+${bold('OPCIONES DE weekly')}
+  --until <cuándo>            Dónde termina la semana: un día UTC (2026-11-19,
+                              el día entero), una marca de tiempo, una ventana
+                              relativa o "now", el valor por defecto. La semana
+                              son los siete días anteriores, y se compara con
+                              la semana anterior a esa.
+  --label <nombre>            El proyecto al que pertenece este uso, para las
+                              formas que lo admiten.
+  --notify                    Muestra además una notificación de escritorio con
+                              una línea del resumen, la factura y su movimiento,
+                              con lo que tenga la plataforma (como watch
+                              --notify). Se dice, no es fatal, si no hay.
+  -o, --out <archivo>         Escribe el resumen ahí en vez de en stdout.
+
+  La semana en Markdown: la factura, qué se movió respecto a la semana
+  anterior y los tres cambios que conviene hacer primero. Lee lo que lee
+  bill y, sin ruta, las carpetas de sesiones de cada agente. Las dos semanas
+  son medidas, de los mismos logs y con la misma lista de precios. Los
+  cambios son proyecciones y lo dicen, cada uno junto a lo que costó su
+  carga de trabajo esta semana; trazum verify es lo que los mide después.
+  Cada importe en dólares y cada porcentaje se comprueba contra las facturas
+  de las dos semanas antes de escribir nada, y se rechaza un resumen con uno
+  que no esté ahí. No envía nada a ningún sitio: el archivo es la salida, y
+  la GitHub Action es la que lo publica.
 
 ${bold('OPCIONES DE from-openrouter')}
   --label <nombre>            El proyecto al que pertenece este uso.
@@ -2419,6 +2445,47 @@ ${bold('EJEMPLOS')}
     source: () =>
       'Medido solo desde este log, registro a registro. La posición mensual facturada por el proveedor que guarda el almacén es otra medición (la imprime «trazum store») y las dos nunca se funden en una cifra.',
     noLog: () => 'position necesita un log de uso: trazum position uso.jsonl',
+  },
+  weekly: {
+    heading: (firstDay, lastDay) => `Trazum, la semana del ${firstDay} al ${lastDay}`,
+    billHeading: () => 'La factura',
+    billTotal: (usd, calls) => `**${usd}** en ${calls} ${calls === '1' ? 'llamada' : 'llamadas'}, ${calls === '1' ? 'medida' : 'medidas'} de los logs y ${calls === '1' ? 'cobrada' : 'cobradas'} con las tarifas del propio catálogo.`,
+    noCalls: (firstDay, lastDay) =>
+      `Ninguna llamada de los logs cae entre el ${firstDay} y el ${lastDay}, así que no hay factura que declarar. Eso no es una factura de cero: o no se ejecutó nada, o lo que se ejecutó no quedó en un log de los entregados.`,
+    colModel: () => 'Modelo',
+    colCalls: () => 'Llamadas',
+    colUsd: () => 'USD',
+    moreModels: (count) => `${count} modelos más, más pequeños que estos.`,
+    unpriced: (models, calls) =>
+      `Llamadas con modelos que el catálogo no sabe cobrar: ${calls} (${models}). No están en la factura de arriba, que por tanto es un mínimo.`,
+    undated: (count) =>
+      `Llamadas sin marca de tiempo: ${count}. No se pueden situar en ninguna semana y quedan fuera, no adivinadas dentro de esta.`,
+    movedHeading: (firstDay, lastDay) => `Frente a la semana anterior (${firstDay} a ${lastDay})`,
+    noWeekBefore: () =>
+      'Ninguna llamada de los logs cae en la semana anterior, así que no hay con qué comparar. No se imprime un porcentaje de nada.',
+    moved: (delta, pct, now, before, calls) =>
+      `La factura se movió ${delta}${pct === null ? '' : ` (${pct})`} frente a la anterior: ${now} ahora, ${before} entonces en ${calls} ${calls === '1' ? 'llamada' : 'llamadas'}. Las dos son medidas.`,
+    unchanged: (now, before) => `La semana costó lo mismo que la anterior: ${now} ahora, ${before} entonces. Las dos son medidas.`,
+    moversHeading: () => 'Lo que más se movió, por modelo:',
+    mover: (model, before, now, delta) => `${model}: ${before} entonces, ${now} ahora (${delta})`,
+    changesHeading: () => 'Tres cambios para hacer primero',
+    noChanges: () =>
+      'Nada de las llamadas de esta semana da un cambio que proponer: ningún modelo más barato que encaje, ninguna llamada que pueda ir por lotes, ninguna pérdida de caché confirmada ni reintento por truncado.',
+    projected: (usd) => `${usd} de ahorro proyectado sobre las llamadas de esta semana. Proyectado, no medido: aún no ha ocurrido.`,
+    stake: (usd) => `${usd} ya gastados en este problema esta semana. Medido, no proyectado.`,
+    measuredBefore: (usd, calls) => `Medido antes del cambio: esta carga de trabajo en este modelo costó ${usd} en ${calls} ${calls === '1' ? 'llamada' : 'llamadas'} esta semana.`,
+    moreChanges: (count) => `${count} cambios más están en el plan y son más pequeños que estos.`,
+    verifyHow: () =>
+      'Cómo se comprobará cada uno: `trazum plan <log> --out plan.json` antes de cambiar nada, y después `trazum verify plan.json --against <el log más nuevo>`. Dice por cada acción si el cambio llegó, no llegó o no se puede saber, y qué hizo la factura. Hasta entonces un ahorro proyectado es una proyección.',
+    footer: () =>
+      'Escrito por `trazum weekly` a partir de logs de la máquina que lo ejecutó. No se envió nada a ningún sitio para producirlo y no se llamó a ningún modelo.',
+    strayFigures: (figures) =>
+      `No se escribió el resumen: contiene ${figures}, que no está en la factura de ninguna de las dos semanas. Una cifra que nadie encuentra en la factura no se imprime.`,
+    wrote: (path) => `Resumen semanal escrito en ${path}.`,
+    notifyUnavailable: (command) => `--notify pidió una notificación de escritorio y esta máquina no tiene ${command}, así que no se envió ninguna. El resumen se escribió igualmente.`,
+    notifyFailed: (command, why) => `--notify: ${command} la rechazó (${why}), así que no se mostró ninguna notificación. El resumen se escribió igualmente.`,
+    headline: (usd, calls, delta, pct) =>
+      `Trazum, esta semana: ${usd} en ${calls} ${calls === '1' ? 'llamada' : 'llamadas'}${delta === null ? '' : `, ${delta}${pct === null ? '' : ` (${pct})`} frente a la semana anterior`}.`,
   },
   proactive: {
     heading: () => 'Trazum, hablando primero',

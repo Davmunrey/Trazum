@@ -43,7 +43,7 @@ milestone, which holds the same issues.
 <!-- milestones:start -->
 1. **[2.7.13: repeated-task evaluation](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%222.7.13%3A+repeated-task+evaluation%22)**. Validate the instruction policy over repeated experiments on accepted tasks before it becomes a default: cost per accepted task, quality, retries and controller overhead, measured together. Issues: [#638](https://github.com/Davmunrey/Trazum/issues/638).
 2. **[A site that carries the brand](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22A+site+that+carries+the+brand%22)**. The landing as the front door, the documentation, the catalogue of models and prices, the roadmap and the changelog as pages of one site, and a brand page, all in the design system the project already chose and each with a way to GitHub. Issues: [#734](https://github.com/Davmunrey/Trazum/issues/734), [#735](https://github.com/Davmunrey/Trazum/issues/735), [#736](https://github.com/Davmunrey/Trazum/issues/736), [#737](https://github.com/Davmunrey/Trazum/issues/737), [#744](https://github.com/Davmunrey/Trazum/issues/744), [#770](https://github.com/Davmunrey/Trazum/issues/770).
-3. **[Trazum speaks first](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Trazum+speaks+first%22)**. The status line, the watcher and the spend guard exist and are off until somebody wires each by hand. Next: one command that turns them on and off, a watcher that reads the agents' sessions directly and says so on the screen, a weekly summary that arrives on its own, a plan that can open the pull request, and a terminal that carries the brand. Issues: [#755](https://github.com/Davmunrey/Trazum/issues/755), [#756](https://github.com/Davmunrey/Trazum/issues/756), [#757](https://github.com/Davmunrey/Trazum/issues/757), [#758](https://github.com/Davmunrey/Trazum/issues/758).
+3. **[Trazum speaks first](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Trazum+speaks+first%22)**. The status line, the watcher and the spend guard exist and are off until somebody wires each by hand. Next: one command that turns them on and off, a watcher that reads the agents' sessions directly and says so on the screen, a weekly summary that arrives on its own, a plan that can open the pull request, and a terminal that carries the brand. Issues: [#755](https://github.com/Davmunrey/Trazum/issues/755), [#756](https://github.com/Davmunrey/Trazum/issues/756), [#757](https://github.com/Davmunrey/Trazum/issues/757), [#758](https://github.com/Davmunrey/Trazum/issues/758), [#796](https://github.com/Davmunrey/Trazum/issues/796).
 4. **[3.0.0: the release allowed to break](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%223.0.0%3A+the+release+allowed+to+break%22)**. A major is the only release that may remove something. This one removes `tier` from a model in the pricing catalogue, deprecated since 1.8.0 in favour of `capability`, and nothing its changelog entry does not list. Issues: [#764](https://github.com/Davmunrey/Trazum/issues/764).
 5. **[The price anyone can check](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22The+price+anyone+can+check%22)**. Every comparable tool prices from the same community file and calls the figure an estimate, and a model it cannot price counts as zero. Next: the catalogue published as an open dataset with the provider's page and the date read behind every row, and a pull request comment that says what a change does to a prompt's monthly cost against the base branch, each figure with its dated price. Issues: [#784](https://github.com/Davmunrey/Trazum/issues/784), [#785](https://github.com/Davmunrey/Trazum/issues/785).
 6. **[The bill where a team already looks](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22The+bill+where+a+team+already+looks%22)**. The bill is printed, saved or gated. Next: the same measured figures as metrics for the dashboards a team already runs, and what was spent in a repository while a branch was written, said as a time window and never as the cost of the change. Issues: [#776](https://github.com/Davmunrey/Trazum/issues/776), [#777](https://github.com/Davmunrey/Trazum/issues/777), [#789](https://github.com/Davmunrey/Trazum/issues/789).
@@ -68,7 +68,7 @@ closed, not when somebody remembers this page. Live:
 [open to a first contribution](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
-**Ready to be picked up (25).**
+**Ready to be picked up (24).**
 
 | Issue | What | Area |
 | --- | --- | --- |
@@ -80,7 +80,6 @@ closed, not when somebody remembers this page. Live:
 | [#682](https://github.com/Davmunrey/Trazum/issues/682) | Review the Portuguese dictionary: 36 entries nobody who reads Portuguese has agreed to | core |
 | [#683](https://github.com/Davmunrey/Trazum/issues/683) | Review the Italian dictionary: 36 entries nobody who reads Italian has agreed to | core |
 | [#684](https://github.com/Davmunrey/Trazum/issues/684) | Review the Dutch dictionary: 30 entries nobody who reads Dutch has agreed to | core |
-| [#756](https://github.com/Davmunrey/Trazum/issues/756) | watch reads the agents' sessions directly and says so on the screen when a budget is crossed | cli |
 | [#757](https://github.com/Davmunrey/Trazum/issues/757) | A weekly summary that arrives on its own, and a plan that can open the pull request | cli, action |
 | [#763](https://github.com/Davmunrey/Trazum/issues/763) | Nineteen of sixty-nine sampled prices could change and no test would fail | core |
 | [#774](https://github.com/Davmunrey/Trazum/issues/774) | Gemini CLI and Codex users install the MCP server in one line, and the Gemini gallery lists it | mcp |
@@ -96,7 +95,7 @@ closed, not when somebody remembers this page. Live:
 | [#786](https://github.com/Davmunrey/Trazum/issues/786) | bill takes what ccusage already reports, and prices it with dated rates, budgets and the ranked changes | cli |
 | [#787](https://github.com/Davmunrey/Trazum/issues/787) | OpenSSF Scorecard runs on main and its result is on the README | - |
 | [#789](https://github.com/Davmunrey/Trazum/issues/789) | bill sends its receipt to an organisation's endpoint with one flag, and nothing else leaves | cli |
-| [#793](https://github.com/Davmunrey/Trazum/issues/793) | The site says what Trazum Pro is, what it will cost, and that it is not open yet | web |
+| [#796](https://github.com/Davmunrey/Trazum/issues/796) | A plan that opens the pull request for the changes the deterministic rules can make | cli, action |
 
 **Waiting on something outside the repository (11).** Each issue says what.
 

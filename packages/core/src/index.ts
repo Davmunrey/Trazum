@@ -79,6 +79,8 @@ export { buildPlan, planLabelName, parsePlanDocument, PLAN_ACTION_KINDS } from '
 export type { PlanParseFailure, PlanParseResult } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
 export { verifyPlan } from './verify.js';
+export { buildWeeklySummary, billFigures, strayFigures, weekWindows, weeklyMarker, WEEK_MS, WEEKLY_CHANGES, WEEKLY_MODELS, WEEKLY_MOVERS } from './weekly.js';
+export type { BillFigures, WeekWindow, WeeklyChange, WeeklyModelRow, WeeklyMover, WeeklySummary } from './weekly.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
 export { outcomeReport, judgeOutcome, OUTCOME_UNLOCKS } from './outcome.js';
 export {

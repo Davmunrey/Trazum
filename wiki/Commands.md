@@ -2,7 +2,7 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 56 commands
+## The 57 commands
 
 | Command | What it answers |
 |---|---|
@@ -40,6 +40,7 @@
 | [`trazum schema`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#building-on-the-format-trazum-conform) | Which fields must a document of this format carry? *A JSON Schema, for validators that are not Trazum.* |
 | [`trazum conform`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rollup`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
+| [`trazum weekly`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-week-written-down-trazum-weekly) | What did the week cost, what moved, and what should change first? *The bill for seven days, against the seven before, and three ranked changes, each a projection that says so. A file or stdout; the Action posts it where you name.* |
 | [`trazum proactive`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#speaking-first-trazum-proactive) | What speaks without being asked, and is it on? *Turns on the status line, a scheduled watch and the MCP server, one asked-for item at a time, and turns them off again.* |
 | [`trazum pulse`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum position`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |

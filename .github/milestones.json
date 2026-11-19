@@ -12,7 +12,7 @@
   {
     "title": "Trazum speaks first",
     "description": "The status line, the watcher and the spend guard exist and are off until somebody wires each by hand. Next: one command that turns them on and off, a watcher that reads the agents' sessions directly and says so on the screen, a weekly summary that arrives on its own, a plan that can open the pull request, and a terminal that carries the brand.",
-    "issues": [755, 756, 757, 758]
+    "issues": [755, 756, 757, 758, 796]
   },
   {
     "title": "3.0.0: the release allowed to break",

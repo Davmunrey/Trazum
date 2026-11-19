@@ -15,6 +15,32 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **`trazum weekly` writes the week down, and the Action posts it where the owner names.** (#757) `bill` and `plan`
+  answered when somebody asked, and the README's answer to "tell me weekly" was a cron line and a mailbox nobody
+  read. `trazum weekly [<file|dir>...] [--until <when>] [-o <file>] [--notify]` reads what `bill` reads (the agents'
+  own session folders with no path) and writes Markdown: the bill for the seven days before `--until`, what moved
+  against the seven before (both measured, same catalogue, half-open windows so no call is in both), and the three
+  changes `plan` ranks first. A change that has not happened is *projected, not measured* and is printed beside what
+  that workload cost this week, which is measured; a loss already paid is *already spent*; `verify` is named as what
+  measures it afterwards, and nothing is projected beyond the week. Every dollar amount and percentage in the text
+  is read back against the two weeks' reports, worked out from the reports and not from the summary, and a
+  summary holding one that is in neither is refused and not written. A week with no call is said to have none, a
+  week before with no call has no comparison and no percentage, and unpriced and undated calls are counted out
+  loud. `--notify` shows one line of figures (no name, no path) through the notifier `watch --notify` uses. The CLI
+  holds no token and makes no request. For a repository the Action gains `weekly-summary` (`issue` or `comment`)
+  and `weekly-summary-issue`: with `usage-log` it writes the summary and `action/post-weekly.mjs` posts it to the
+  one place named, with the workflow's own token and `issues: write`. A week is posted once: a re-run replaces its
+  own post (found by a marker naming the week, authored by a bot) and never an issue or comment a person wrote. It
+  sets no label or assignee, refuses `target` and every gate in the same run, and never fails the build for not
+  posting. Planted and caught (16): a total in the summary scaled, a movement taken the wrong way round, weeks that
+  overlap, the figure check switched off in the core and in the command, a figure printed that is not in the bill, a
+  projection worded as done, a notification carrying names, the CLI reaching for a token, a second issue for the same
+  week, a comment on an issue the owner did not name, a contributor's issue overwritten, a place the owner did not
+  name accepted, a file that is not a summary posted, a third place for the step, and a gate allowed beside the
+  summary. **Not in this change,
+  and split into #796:** the mode that makes the deterministic edits on a branch and opens one pull request whose
+  body is the plan.
+
 - **`trazum watch --sessions` judges the budgets against the sessions on this machine, with no store, and
   `trazum watch --notify` tells the person at the screen.** (#756) `watch` judged the store, which is empty until
   `trazum connect <provider> --store` fills it, while `trazum bill` reads the sessions Claude Code, Codex and Gemini

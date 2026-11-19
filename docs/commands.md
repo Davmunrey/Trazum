@@ -13,11 +13,11 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 | Read and reconcile spend | [bill](#one-door-trazum-bill) · [profile](#where-the-money-actually-went-trazum-profile) · [connect](#your-bill-without-the-export-trazum-connect) · [reconcile](#what-you-were-actually-billed-trazum-reconcile) · [import OpenTelemetry](#the-universal-cost-lens-trazum-from-otel) |
 | Plan and measure changes | [plan](#the-plan-trazum-plan) · [verify](#did-it-work-trazum-verify) · [switch](#when-does-the-switch-pay-trazum-switch) · [route](#is-the-cheaper-model-good-enough-trazum-route) · [history](#the-long-run-trazum-history) |
 | Review an agent task | [task](#task-efficiency-trazum-task): analyze repetitions, apply a reviewed policy and compare explicit outcomes; since 2.6.0 |
-| Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [proactive](#speaking-first-trazum-proactive) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
+| Set policies and watch budgets | [baseline / check](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) · [configuration](#project-defaults-trazumconfigjson) · [watch](#the-afternoon-it-happened-trazum-watch) · [proactive](#speaking-first-trazum-proactive) · [weekly](#the-week-written-down-trazum-weekly) · [gateway](#in-the-path-of-the-call-trazum-gateway) · [serve](#before-the-call-is-sent-trazum-serve) |
 | Improve prompts | [use measured traffic](#the-multiplication-stops-guessing---from-log) · [reorder](#reordering-for-the-cache---reorder) · [rank](#which-prompt-to-fix-first-trazum-rank) · [prune](#which-few-shot-examples-earn-their-tokens-trazum-prune) · [evaluate](#does-the-shorter-prompt-still-work) |
 | Integrate and report | [MCP](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) · [conform](#building-on-the-format-trazum-conform) · [rollup](#more-than-one-machine-trazum-rollup) · [receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt) · [report](#the-year-from-what-was-already-written-down-trazum-report) |
 
-[All commands](../README.md#the-56-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
+[All commands](../README.md#the-57-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
 
 <details>
 <summary>All chapters on this page</summary>
@@ -37,6 +37,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 - [Keeping it: `trazum store`](#keeping-it-trazum-store)
 - [The afternoon it happened: `trazum watch`](#the-afternoon-it-happened-trazum-watch)
 - [Speaking first: `trazum proactive`](#speaking-first-trazum-proactive)
+- [The week, written down: `trazum weekly`](#the-week-written-down-trazum-weekly)
 - [Before the call is sent: `trazum serve`](#before-the-call-is-sent-trazum-serve)
 - [The counterpart: recording an outcome](#the-counterpart-recording-an-outcome)
 - [What an outcome costs](#what-an-outcome-costs)
@@ -1023,6 +1024,98 @@ does.
 
 The report is one line per item: `on`, `off`, `not ready` (why), `not available`
 (why) or `could not tell` (why). `--json` is [documented](json-output.md#the-proactive-document).
+
+### The week, written down: `trazum weekly`
+
+`bill` answers when somebody asks. `weekly` is the answer to the same question
+once a week, written for somebody to read in an issue: the bill for the week,
+what moved against the week before, and the three changes worth making first.
+
+```bash
+trazum weekly                              # this machine's agent sessions, the last seven days
+trazum weekly usage.jsonl --until 2026-11-19
+trazum weekly -o ~/trazum-week.md --notify # a file, and one line on the desktop
+```
+
+The week is the seven days before `--until` (a UTC day means the whole of it,
+and the default is now), and the week before that is what it is compared with.
+The two are half-open, so a call belongs to one of them and never both. It reads
+what [`bill`](#one-door-trazum-bill) reads, with the same refusals, and prices
+both weeks with the same catalogue.
+
+*Real output of `trazum weekly usage.jsonl --until 2026-11-19` on a made-up
+log: three calls in the week of 2026-11-06 (two `classify`, one `draft`) and
+six in the week of 2026-11-13, all on Claude Sonnet 5.5. `weekly.test.js`
+runs it and holds this block to what it prints.*
+
+```markdown
+## Trazum, the week of 2026-11-13 to 2026-11-19
+
+### The bill
+
+**$12.00** over 6 calls, measured from the logs and priced with the catalogue's own rates.
+
+| Model | Calls | USD |
+| --- | ---: | ---: |
+| `claude-sonnet-5-5` | 6 | $12.00 |
+
+### Against the week before (2026-11-06 to 2026-11-12)
+
+The bill moved +$6.00 (+100.0%) against the week before: $12.00 now, $6.00 then, over 3 calls. Both are measured.
+
+What moved most, by model:
+
+- `claude-sonnet-5-5`: $6.00 then, $12.00 now (+$6.00)
+
+### Three changes to make first
+
+1. **Route and batch `classify` (`claude-sonnet-5-5`) to `Claude Haiku 5.5`, combined with batching where both apply, never summed.** $8.75 projected saving on this week's calls. Projected, not measured: it has not happened.
+   - Measured before the change: this workload on this model cost $10.00 over 5 calls this week.
+   - assumes Claude Haiku 5.5 can do this work, the log prices the move, it cannot judge the answers
+   - assumes these calls can wait for a batch window
+
+2. **Route and batch `draft` (`claude-sonnet-5-5`) to `Claude Haiku 5.5`, combined with batching where both apply, never summed.** $1.75 projected saving on this week's calls. Projected, not measured: it has not happened.
+   - Measured before the change: this workload on this model cost $2.00 over 1 call this week.
+   - assumes Claude Haiku 5.5 can do this work, the log prices the move, it cannot judge the answers
+   - assumes these calls can wait for a batch window
+
+How each will be checked: `trazum plan <log> --out plan.json` before changing anything, then `trazum verify plan.json --against <the newer log>` after. It says for each action whether the change arrived, did not arrive, or cannot be told, and what the bill did. Until then a projected saving is a projection.
+
+_Written by `trazum weekly` from logs on the machine that ran it. Nothing was sent anywhere to produce it, and no model was called._
+
+<!-- trazum-weekly:2026-11-19 -->
+```
+
+**What is measured and what is not.** The bill and the movement are two
+measured reports. The changes are `plan`'s ranked actions over the week's own
+calls, and each is called what it is: a saving not yet made is *projected, not
+measured*, printed beside what that workload and model cost this week, which is
+measured. Where `plan` finds a loss already paid (truncation retries, a cache
+that lost money) it is printed as *already spent*, measured. `trazum verify`
+is what measures a change afterwards, and the summary says how. Nothing is
+projected from one week to a month or a year.
+
+**A figure in it is a figure in the bill.** Before anything is written, every
+dollar amount and percentage in the text is read back against the two weeks'
+reports, worked out from the reports and not from the summary. One that is in
+neither stops the command: nothing is written, the exit code is 1 and the
+message names the figure. Names from the logs (workloads, models) are printed
+as code, which that check does not read and which GitHub does not turn into a
+mention.
+
+**What it leaves out, said.** A week with no call is not a bill of nothing; the
+summary says no call falls in it. A week before with no call has no comparison
+and no percentage. Calls on a model the catalogue cannot price are counted and
+left out of the bill, which is then a floor. Calls with no timestamp cannot be
+placed in a week and are counted, not guessed in.
+
+**It sends nothing and holds no credential.** Output is stdout or `-o <file>`.
+`--notify` shows one line of figures (the bill and its movement, no name and no
+path) through what the platform has, as `watch --notify` does: `osascript` on
+macOS, `notify-send` on Linux, PowerShell on Windows. Where there is none it is
+said and the file stands. Putting the summary into a repository is the
+[GitHub Action](ci.md#a-weekly-summary-in-the-repository)'s business, with its
+own token and its own list of places.
 
 ### Before the call is sent: `trazum serve`
 
