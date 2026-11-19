@@ -316,8 +316,29 @@ It never writes a price: a finding is a reason to re-read the page and change
 unpriced on purpose goes in `DELIBERATELY_UNPRICED` with its reason, and is
 reported as a note on every run. Google, DeepSeek, Moonshot, xAI and Mistral
 publish no page a script reads reliably, so they stay with freshness and a
-person. `--report` never fails; `--anthropic-file` and `--openai-file` run it
-on saved copies.
+person, and with the cross-check below. `--report` never fails;
+`--anthropic-file` and `--openai-file` run it on saved copies.
+
+**For those providers, the weekly run also asks LiteLLM.**
+`node scripts/price-crosscheck.mjs` reads LiteLLM's public
+`model_prices_and_context_window.json` (on `raw.githubusercontent.com`, a host
+`trusted-hosts.test.js` records as public data) and reports, per provider, a
+LiteLLM chat model whose id the catalogue does not price (**missing**), an
+input, output or cache-read rate that differs from the catalogue's (**differs**,
+with the catalogue's source page and the date it was read printed beside it),
+and a LiteLLM file with nothing for a provider (**unread**). A LiteLLM rate that
+equals the row's base, its rate in force or any of its tiers (DeepSeek's peak
+hours) counts as agreement and is a note naming the tier, and a retired row is
+not compared. Names are matched
+exactly, after taking off LiteLLM's own provider prefix, and never by
+resemblance: a catalogue model LiteLLM does not list is a note. **LiteLLM is a
+signal, not a source.** Nothing is copied, the script never writes a price or a
+file, and a finding means re-read the named page. On the schedule a differing
+rate or an unread file fails the run and a missing model does not, because
+LiteLLM lists retired, experimental and free models the catalogue leaves out on
+purpose; on any other run the report is printed without failing. A row a person
+re-read and found right goes in `CONFIRMED_DIFFERENCES` with the page and the
+date, and is reported as a note. `--litellm-file` runs it on a saved copy.
 
 **It also reads each provider's lifecycle.** Anthropic's deprecations page has
 one table of every model's state, and each OpenAI model page opens with a

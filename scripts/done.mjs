@@ -263,6 +263,7 @@ export const LEFT_OUT = {
   'Install dependencies': 'The loop checks the tree you have, with what is installed in it. Installing is how a tree is made, not a thing a change can fail.',
   'Freshness (fails only on the weekly schedule)': 'It reports on every run and fails only on the weekly schedule, so an overdue review never blocks a pull request. A change cannot fail it.',
   "Price drift against the providers' pages (fails only on the weekly schedule)": 'It reads the providers\' pages over the network and fails only on the weekly schedule. A change cannot fail it, and the loop makes no network call.',
+  "Cross-check against LiteLLM's model list (fails only on the weekly schedule)": 'It reads a third party\'s public file over the network and fails only on the weekly schedule. A change cannot fail it, and the loop makes no network call.',
 };
 
 /**

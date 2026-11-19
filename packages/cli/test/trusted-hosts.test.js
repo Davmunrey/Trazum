@@ -127,11 +127,15 @@ const HOSTS = {
   'https://platform.openai.com': 'documentation link',
   'https://www.promptfoo.dev': 'documentation link',
   'https://github.com': 'documentation link',
-  // Where an image in a wiki page has to point. `scripts/build-wiki.mjs`
-  // rewrites relative `<img src>` to this host because a wiki is served from
-  // `/wiki/<Page>` and a repository-relative path is broken there. It is a
-  // destination this repository writes into text, never a request it makes.
-  'https://raw.githubusercontent.com': 'documentation link',
+  // Two uses. `scripts/build-wiki.mjs` rewrites relative `<img src>` to this
+  // host because a wiki is served from `/wiki/<Page>` and a repository-relative
+  // path is broken there: a destination written into text. And, weekly,
+  // `scripts/price-crosscheck.mjs` reads LiteLLM's public
+  // `model_prices_and_context_window.json` from it (#820), a signal to re-read
+  // a provider's page, never copied into the catalogue. A public file, fetched
+  // with no credential, never a prompt. The second use makes it a fetch, so it
+  // is decided as one.
+  'https://raw.githubusercontent.com': 'public data, no credential',
   // The pages each provider's prices were read from, in `PROVIDER_SOURCES`
   // (packages/core/src/pricing.ts) and on every row of the pricing dataset
   // (#784). Written for a reader to open; nothing in this repository fetches
