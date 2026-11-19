@@ -255,6 +255,47 @@ export function runCrontab(args: readonly ['-l'] | readonly ['-'], input?: strin
   };
 }
 
+/** What a desktop notifier said: its exit status and stderr, or the error that kept it from starting. */
+export interface NotifierRun {
+  status: number | null;
+  stderr: string;
+  /** `ENOENT` when this machine has no such program. */
+  errorCode: string | null;
+}
+
+/**
+ * Runs the platform's notifier, for `trazum watch --notify`.
+ *
+ * It is here, beside the other spawns, so the invariant the security suite
+ * asserts, that child_process appears in exactly one file, stays whole. The
+ * same rules: no shell, a timeout so a notifier that hangs cannot hang the
+ * watcher, and output bounded. The command is one of three literals, and the
+ * argument list is built by `watch-notify.ts`, which hands the text over as
+ * data (arguments of a fixed script, an environment variable, or after `--`)
+ * and never splices it into anything a program would run.
+ */
+export function runNotifier(
+  command: 'osascript' | 'notify-send' | 'powershell.exe',
+  args: readonly string[],
+  env: NodeJS.ProcessEnv,
+): NotifierRun {
+  const result = spawnSync(command, [...args], {
+    shell: false,
+    encoding: 'utf8',
+    timeout: TIMEOUT_MS,
+    maxBuffer: MAX_BUFFER,
+    windowsHide: true,
+    stdio: ['ignore', 'ignore', 'pipe'],
+    env,
+  });
+  const code = result.error !== undefined && 'code' in result.error ? String((result.error as { code: unknown }).code) : null;
+  return {
+    status: result.status,
+    stderr: typeof result.stderr === 'string' ? result.stderr : '',
+    errorCode: result.error === undefined ? null : (code ?? 'ERROR'),
+  };
+}
+
 /**
  * Commits that touched `repoPath`, newest first.
  *

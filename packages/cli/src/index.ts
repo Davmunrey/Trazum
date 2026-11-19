@@ -279,6 +279,7 @@ import {
   readWatchState,
   writeWatchState,
 } from './watch-run.js';
+import { notificationFor, sendNotification } from './watch-notify.js';
 import { LOCALE_ENV_VARS, detectLocale, getCliMessages } from './i18n/index.js';
 import {
   MAX_SUMMARY_CHARS,
@@ -849,7 +850,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   history: ['store', 'json', 'markdown-out'],
   connect: ['since', 'until', 'payload', 'store', 'json', 'out', 'markdown-out', 'pricing', 'pricing-live', 'dry-run'],
   store: ['prune', 'keep', 'json', 'pricing', 'pricing-live', 'dry-run'],
-  watch: ['once', 'interval', 'since', 'payload', 'webhook', 'json', 'pricing', 'pricing-live'],
+  watch: ['once', 'interval', 'since', 'payload', 'sessions', 'notify', 'webhook', 'json', 'pricing', 'pricing-live'],
   serve: ['port', 'socket', 'log', 'pricing', 'pricing-live'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
@@ -8375,6 +8376,16 @@ async function commandWatch(
     webhook = checked.url;
   }
 
+  /*
+    One source to a cycle. `--sessions` is the sessions `bill` reads with no
+    path, so the command that needs no setup can alert; refused beside
+    `--payload` before anything is read, because a cycle that quietly picked
+    one of two would be watching the other's silence.
+  */
+  const sessions = boolFlag(args, 'sessions');
+  if (sessions && stringFlag(args, 'payload') !== undefined) throw new Error(t.watch.sessionsAndPayload());
+  const notify = boolFlag(args, 'notify');
+
   const intervalRaw = stringFlag(args, 'interval');
   const once = boolFlag(args, 'once') || intervalRaw === undefined;
   let intervalMs = 0;
@@ -8390,38 +8401,59 @@ async function commandWatch(
   }
 
   const cycle = async (): Promise<number> => {
-    const state = await readWatchState(root);
+    /*
+      What was reported about one source says nothing about the other's
+      figures: a crossing kept quiet because the store had already said it
+      must not keep quiet one that only the sessions show. A state the other
+      source wrote is a first cycle for this one, and writing over it below is
+      what keeps the two from reading each other's record.
+    */
+    const prior = await readWatchState(root);
+    const state = prior !== null && (prior.source === 'sessions') !== sessions ? null : prior;
     const nowMs = Date.now();
 
     /**
-     * Where the measurements come from: a saved payload when one is named
-     * (which is how this is tested and how an air-gapped run works), and the
-     * store otherwise. A cycle that found nothing to measure says so — a
-     * watcher over nothing is a green light nobody earned.
+     * Where the measurements come from: the sessions on this machine when
+     * `--sessions` is given, a saved payload when one is named (which is how
+     * this is tested and how an air-gapped run works), and the store
+     * otherwise. A cycle that found nothing to measure says so — a watcher
+     * over nothing is a green light nobody earned.
      */
     const payloadPath = stringFlag(args, 'payload');
-    let pull;
-    if (payloadPath !== undefined) {
-      pull = normalizeAnthropicUsage(JSON.parse(await readFile(payloadPath, 'utf8')));
+    let report: WatchedReport;
+    let cacheDeltaUsd: number | undefined;
+    let sessionFolders: string[] = [];
+    if (sessions) {
+      const measured = await watchedSessions(pricing, t);
+      report = measured.report;
+      cacheDeltaUsd = measured.cacheDeltaUsd;
+      sessionFolders = measured.folders;
     } else {
-      const { resolved } = await readStore(root);
-      if (resolved.records.length === 0) throw new Error(t.watch.nothingToWatch(STORE_DIR));
-      pull = {
-        provider: 'store',
-        granularity: 'bucketed' as const,
-        buckets: bucketsFromRecords(resolved.records),
-        window: null,
-        gaps: [],
-        unavailable: [],
-      };
-    }
+      let pull;
+      if (payloadPath !== undefined) {
+        pull = normalizeAnthropicUsage(JSON.parse(await readFile(payloadPath, 'utf8')));
+      } else {
+        const { resolved } = await readStore(root);
+        if (resolved.records.length === 0) throw new Error(t.watch.nothingToWatch(STORE_DIR));
+        pull = {
+          provider: 'store',
+          granularity: 'bucketed' as const,
+          buckets: bucketsFromRecords(resolved.records),
+          window: null,
+          gaps: [],
+          unavailable: [],
+        };
+      }
 
-    const report = bucketedProfile(pull, { catalogue: pricing });
-    const cache = bucketedCacheEconomics(report);
+      const bucketed = bucketedProfile(pull, { catalogue: pricing });
+      const cache = bucketedCacheEconomics(bucketed);
+      report = bucketed;
+      cacheDeltaUsd = cache.verdict === 'no-cache' ? undefined : cache.deltaUsd;
+    }
     const result = evaluateWatch({
       report,
       thresholds,
-      cacheDeltaUsd: cache.verdict === 'no-cache' ? undefined : cache.deltaUsd,
+      cacheDeltaUsd,
       nowMs,
       lastCoveredToMs: state?.lastCoveredToMs ?? undefined,
       alreadyFired: new Set(Object.keys(state?.fired ?? {})),
@@ -8430,6 +8462,7 @@ async function commandWatch(
     if (asJson) {
       console.log(JSON.stringify({ schemaVersion: 1, firedAtMs: nowMs, ...result }, null, 2));
     } else {
+      for (const line of sessionFolders) console.log(c.dim(line));
       if (result.gap !== null) {
         console.log(c.yellow(wrap(t.watch.gap(day(result.gap.fromMs), day(result.gap.toMs)), 76, '  ')));
       }
@@ -8505,6 +8538,27 @@ async function commandWatch(
       }
     }
 
+    /*
+      The person at the machine, for what is new this cycle and nothing else:
+      a crossing already reported is `suppressed`, and a notification about it
+      would be the second one. The text is the sentence the terminal printed,
+      built from the same figures, and `notificationFor` takes nothing but
+      sentences, so a prompt, a path or a project name has no way in.
+    */
+    if (notify && result.crossings.length > 0) {
+      const sent = sendNotification(
+        notificationFor(
+          result.crossings.map((crossing) =>
+            t.watch.crossed(crossing.gate, formatUsd(crossing.measuredUsd), formatUsd(crossing.limitUsd), crossing.day),
+          ),
+        ),
+      );
+      // Said on stderr so a `--json` reader's stdout stays the document, and
+      // swallowed for the reason the webhook's failure is.
+      if (sent.outcome === 'unavailable') console.error(c.yellow(t.watch.notifyUnavailable(sent.command)));
+      if (sent.outcome === 'failed') console.error(c.yellow(t.watch.notifyFailed(sent.command, sent.error)));
+    }
+
     const fired = { ...(state?.fired ?? {}) };
     for (const crossing of result.crossings) fired[firedKey(crossing.gate, crossing.day)] = nowMs;
     await writeWatchState(root, {
@@ -8512,6 +8566,7 @@ async function commandWatch(
       lastCycleMs: nowMs,
       lastCoveredToMs: report.span?.toMs ?? state?.lastCoveredToMs ?? null,
       fired,
+      ...(sessions ? { source: 'sessions' as const } : {}),
     });
 
     return result.crossings.length + result.suppressed.length;
@@ -8529,6 +8584,66 @@ async function commandWatch(
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
     await cycle();
   }
+}
+
+/** What a gate is judged against: a connected report has it, and so do the sessions. */
+type WatchedReport = Parameters<typeof evaluateWatch>[0]['report'];
+
+/**
+ * What `trazum watch --sessions` judges: the sessions Claude Code, Codex and
+ * Gemini CLI keep on this machine, read the way `bill` reads them with no
+ * path and priced the way `bill` prices them.
+ *
+ * The folders are `agentSessionFolders`, the walk is `bill`'s, the converters
+ * are the ones `from-claude-code`, `from-codex` and `from-gemini-cli` use, and
+ * the money is `profileUsage`'s, so a total here is the total `bill` prints for
+ * the same folders. Only those three agents' files: a file no agent claims is
+ * not this command's to guess at, and `bill` is where it gets named.
+ *
+ * What comes back is the part of a report a gate is judged against, with no
+ * prompt text in it: the records the converters make carry counts and a model,
+ * and the folders named are the agents' own, never a project.
+ */
+async function watchedSessions(
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<{ report: WatchedReport; cacheDeltaUsd: number | undefined; folders: string[] }> {
+  const { found, tried } = await agentSessionFolders(process.env);
+  if (found.length === 0) throw new Error(t.bill.noPath(tried.join(', ')));
+  const lines: string[] = [];
+  for (const { path } of found) {
+    const entries = await readdir(path, { recursive: true, withFileTypes: true });
+    const files = entries
+      .filter((entry) => entry.isFile() && isUsageLogName(entry.name))
+      .map((entry) => join(entry.parentPath, entry.name))
+      .sort();
+    for (const file of files) {
+      const text = await readUsageLog(file, t);
+      const [shape, ...others] = usageShapesOf(text);
+      if (shape === undefined || others.length > 0) continue;
+      const records =
+        shape === 'claude-code'
+          ? claudeCodeRecords(text, {}).records
+          : shape === 'codex'
+            ? codexRecords(text, {}).records
+            : shape === 'gemini-cli'
+              ? geminiCliRecords(text, {}).records
+              : [];
+      for (const record of records) lines.push(JSON.stringify(record));
+    }
+  }
+  const profile = profileUsage(lines.join('\n'), { catalogue: pricing });
+  if (profile.total.calls === 0) throw new Error(t.watch.noSessionUsage());
+  const cache = cacheEconomics(profile.total);
+  return {
+    report: {
+      span: profile.span === null ? null : { fromMs: profile.span.fromMs, toMs: profile.span.toMs },
+      total: { totalUsd: profile.total.totalUsd },
+      byDay: profile.spendByDay.map((entry) => ({ day: entry.day, usd: entry.usd, calls: entry.calls })),
+    },
+    cacheDeltaUsd: cache.verdict === 'not-attempted' || cache.verdict === 'unpriced' ? undefined : cache.deltaUsd,
+    folders: found.map(({ agent, path }) => t.watch.readingSessions(AGENT_NAMES[agent], path)),
+  };
 }
 
 /**

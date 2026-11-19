@@ -52,7 +52,7 @@ ${bold('USAGE')}
   trazum history <dir-of-stored-reports> [options]
   trazum connect <provider> [options]
   trazum store [--prune] [options]
-  trazum watch [--once | --interval 15m] [options]
+  trazum watch [--once | --interval 15m] [--sessions] [--notify] [options]
   trazum serve [--port <n> | --socket <path>]
   trazum diff <before> <after> [options]
   trazum diff --all <dir> <dir> [options]
@@ -927,6 +927,18 @@ ${bold('OPTIONS FOR watch')}
                               because URLs end up in logs and shell history.
   --payload <file>            Evaluate a usage payload you already have,
                               instead of the store.
+  --sessions                  Watch the sessions Claude Code, Codex and Gemini
+                              CLI keep on this machine, the ones \`bill\` reads
+                              with no path, instead of the store. Needs no
+                              setup. Say \`--sessions\` again on every run: it
+                              keeps its own record of what was reported.
+  --notify                    Also show a desktop notification for what newly
+                              crossed: osascript on macOS, notify-send on
+                              Linux, a PowerShell toast on Windows, nothing
+                              installed. It carries the sentence printed here
+                              and nothing more. Off unless asked for; where the
+                              machine has none it says so and the other
+                              transports carry on.
   --json                      The cycle as data: crossings, abstentions, gap.
 
   Evaluates the spend gates from your config, maxUsd, maxDayUsd,
@@ -3449,6 +3461,15 @@ ${bold('EXAMPLES')}
     webhookFailed: (status) =>
       `The webhook did not deliver (${status}). The crossing is still in the exit code and in the output above: a receiver being down must not be the quietest failure in the room.`,
     watching: (minutes) => `Watching every ${minutes} minutes. Ctrl-C stops it.`,
+    readingSessions: (agent, dir) => `Watching ${agent}'s sessions in ${dir}`,
+    sessionsAndPayload: () =>
+      '--sessions reads the sessions on this machine and --payload reads the file you name. A cycle has one source: give one of them.',
+    noSessionUsage: () =>
+      'The sessions found hold no usage a price can be put on yet. Watching nothing would report that everything is fine, so this is refused rather than passed.',
+    notifyUnavailable: (command) =>
+      `--notify asked for a desktop notification, and this machine has no ${command}, so none was sent. The exit code, the output above and --webhook still carry the crossing.`,
+    notifyFailed: (command, why) =>
+      `${command} would not show the notification (${why}), usually because nobody is logged in at a desktop. The crossing is still in the exit code and in the output above.`,
   },
 
   store: {

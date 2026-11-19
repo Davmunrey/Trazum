@@ -13,6 +13,26 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **`trazum watch --sessions` judges the budgets against the sessions on this machine, with no store, and
+  `trazum watch --notify` tells the person at the screen.** (#756) `watch` judged the store, which is empty until
+  `trazum connect <provider> --store` fills it, while `trazum bill` reads the sessions Claude Code, Codex and Gemini
+  CLI already keep on disk. So the command that needs no setup could not alert, and the one that alerts needed the
+  most. `--sessions` reads the folders `bill` reads with no path, through the same readers and the same catalogue,
+  and judges `spend.maxUsd`, `spend.maxDayUsd` and `spend.maxCacheLossUsd` as it always has: a measured crossing and
+  never a projection, a day still being measured not yet judgeable rather than passed. A crossing is reported once
+  and then prints as `STILL OVER`, and a restart names the stretch nobody was watching, the same as for the store.
+  The two sources keep their record apart in `.trazum/watch.json` (a new optional `source` field, written only by
+  `--sessions`), so what one reported never quiets a crossing only the other shows. `--notify` is a desktop
+  notification through what the platform already has (`osascript`, `notify-send`, a PowerShell toast), nothing
+  installed and no dependency added, off unless asked for. It fires for what is new this cycle, and carries the
+  sentence the terminal prints and nothing else: no prompt text, no file path, no project name. The program is
+  started without a shell and the text is handed over as data, never spliced into a script. Where the machine has
+  no notifier the run says so and the exit code, the output and `--webhook` carry on. What `watch` does with the
+  store, a payload and `--webhook` is unchanged. The notifier was tested here with a stand-in on Linux; the macOS and
+  Windows calls are tested as the arguments they build and were not run on those systems.
+
 ### Removed
 
 - **Breaking, for 3.0.0: `tier` is gone from a model in the pricing catalogue. Use `capability`.** It was

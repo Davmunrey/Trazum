@@ -97,9 +97,20 @@ export interface WatchThresholds {
   maxCacheLossUsd?: number;
 }
 
+/**
+ * The part of a priced report a gate is judged against.
+ *
+ * A connected report (`BucketedReport`) has all of it. So does what is read
+ * out of the sessions a coding agent keeps on disk, which has no buckets and
+ * is shaped to this instead of being made to pretend it has them.
+ */
+export type WatchedReport = Pick<BucketedReport, 'span' | 'byDay'> & {
+  total: Pick<BucketedReport['total'], 'totalUsd'>;
+};
+
 export interface WatchOptions {
   /** Priced measurements for the period being watched. */
-  report: BucketedReport;
+  report: WatchedReport;
   thresholds: WatchThresholds;
   /** The cache verdict over the same report, when the caller computed one. */
   cacheDeltaUsd?: number;

@@ -763,12 +763,38 @@ catching happen at 3pm on a Tuesday:
 ```bash
 trazum watch --once                      # what a cron entry runs
 trazum watch --interval 15m              # or stay in the foreground
+trazum watch --sessions --once           # the sessions on this machine, no store
+trazum watch --sessions --once --notify  # and tell the person at the screen
 ```
 
-**It watches the store, so the store has to have something in it.** On an empty
-one it refuses rather than reporting quiet — *"watching nothing would report
-that everything is fine"* — and names `trazum connect <provider> --store` as
-what fills it. Worth knowing before the cron entry, not after it.
+**By default it watches the store, so the store has to have something in it.**
+On an empty one it refuses rather than reporting quiet — *"watching nothing
+would report that everything is fine"* — and names
+`trazum connect <provider> --store` as what fills it. Worth knowing before the
+cron entry, not after it.
+
+**`--sessions` needs no store and no setup.** It reads what `trazum bill` reads
+when you give it no path: the sessions Claude Code, Codex and Gemini CLI keep on
+this machine, in the same folders, converted by the same readers and priced
+through the same catalogue, so its total is the total `bill` prints for them.
+Each folder it reads is named. It judges the same `spend.maxUsd`,
+`spend.maxDayUsd` and `spend.maxCacheLossUsd` and says the same things, a
+measured crossing and never a projection. `--payload` names a different source
+and the two together are refused: a cycle has one. Say `--sessions` on every
+run, the cron line included: it keeps its own record of what was reported, in
+the same `.trazum/watch.json`, so what the store watch reported never quiets a
+crossing only the sessions show, and the other way round.
+
+```
+$ trazum watch --sessions --once
+Watching Claude Code's sessions in …/home/.claude/projects
+CROSSED, Total spend is $50.00 against a limit of $25.00. Measured, not
+  projected.
+CROSSED, Spend on 2026-08-03 is $30.00 against a limit of $15.00. Measured,
+  not projected.
+```
+
+The same command a second time prints `STILL OVER` for both and exits 1 again.
 
 ```
 CROSSED — Total spend is $50.00 against a limit of $25.00. Measured, not
@@ -787,14 +813,41 @@ the hour, because it does not become less over budget at midnight.
 reported does not alert twice — and it is not called fine either: it prints as
 `STILL OVER` and the run still fails. The stretch nobody was watching gets
 named once, because a watcher that resumes in silence implies coverage it did
-not have.
+not have. That holds for the sessions too: the stretch is named when the sessions
+on disk no longer reach back to where the last cycle got to (an agent prunes its
+old ones), and a crossing that happened while nothing was watching is found by
+the next cycle, because the sessions are still there, and is named by its day.
 
-Three transports, all boring: a non-zero exit code so cron mails it, a JSON
-event so any pipeline can read it, and `--webhook` for wherever your alerts
-already go. A webhook URL carrying credentials is refused (URLs end up in logs
-and shell history) and plain http is refused off loopback (an alert carries
-your spend figures). A receiver that is down is reported and swallowed — the
-crossing already went out through the other two.
+Four transports, all boring: a non-zero exit code so cron mails it, a JSON
+event so any pipeline can read it, `--webhook` for wherever your alerts already
+go, and `--notify` for the person at the machine. A webhook URL carrying
+credentials is refused (URLs end up in logs and shell history) and plain http
+is refused off loopback (an alert carries your spend figures). A receiver that
+is down is reported and swallowed — the crossing already went out through the
+others.
+
+**`--notify` is a desktop notification, through what the platform already
+has, and it is off unless you ask.** `osascript` on macOS, `notify-send` on
+Linux where there is a notification daemon, a PowerShell toast on Windows.
+Nothing is installed and no dependency is added. It fires for what is new this
+cycle and not for a crossing already reported, once per cycle, and its text is
+the sentence the terminal printed:
+
+```
+["--app-name=Trazum","--","Trazum","CROSSED, Total spend is $50.00 against a limit of $25.00. Measured, not projected.\nCROSSED, Spend on 2026-08-03 is $30.00 against a limit of $15.00. Measured, not projected."]
+```
+
+That is what the first run above handed `notify-send` (a stand-in that records
+its arguments, since the machine that produced it has no desktop); the second
+run handed it nothing. **Nothing is in it but the figures, the limit and the day
+a day gate means:** no prompt text, no file path, no project name. The program
+is started without a shell, and the text is handed to it as data and never
+spliced into a script: as arguments to a fixed AppleScript on macOS, in the
+environment of a fixed PowerShell script on Windows, and after `--` on Linux.
+A quote or a newline in a sentence is a character in the sentence. Where the
+machine has none of these, or has one and no desktop session to show it on, the
+run says so on stderr and carries on: the exit code, the output and
+`--webhook` still carry the crossing.
 
 ### Speaking first: `trazum proactive`
 
@@ -950,8 +1003,10 @@ supplies neither.** With either missing the item is `not ready`, naming
 limit. A budget is a policy: when the store holds measured spend the line
 shows the figure, and the limit is yours to choose. The cron line does not run
 `connect`, because that reads from the provider over the network; everything
-`proactive` turns on reads files already on this machine. Reading the agents'
-sessions directly instead of a store is not part of this.
+`proactive` turns on reads files already on this machine. The line it writes is
+the store watch: `trazum watch --sessions` reads the agents' sessions directly,
+and a crontab line for it is one you write yourself, as
+[running.md](running.md) shows.
 
 **MCP clients it knows**, because the repository's documents state their file:
 Claude Code's `.mcp.json` and Cursor's `.cursor/mcp.json`, in the directory it
