@@ -31,7 +31,7 @@ milestone, which holds the same issues.
 9. **[Every agent's sessions](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Every+agent%27s+sessions%22)**. The bill reads what each coding agent already keeps on disk. Next: OpenCode's SQLite sessions, and a reader for Cursor, GitHub Copilot CLI, Cline and Amp as soon as somebody supplies one real session of each. Issues: [#645](https://github.com/Davmunrey/Trazum/issues/645), [#648](https://github.com/Davmunrey/Trazum/issues/648), [#728](https://github.com/Davmunrey/Trazum/issues/728), [#729](https://github.com/Davmunrey/Trazum/issues/729), [#730](https://github.com/Davmunrey/Trazum/issues/730), [#782](https://github.com/Davmunrey/Trazum/issues/782), [#786](https://github.com/Davmunrey/Trazum/issues/786).
 10. **[Every provider, counted and priced exactly](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Every+provider%2C+counted+and+priced+exactly%22)**. The estimator's error measured against each provider's own counter, a tokenizer package where the error is large, retired models marked on the provider's own evidence, and the gateway in front of the providers it does not front yet. Issues: [#641](https://github.com/Davmunrey/Trazum/issues/641), [#642](https://github.com/Davmunrey/Trazum/issues/642), [#643](https://github.com/Davmunrey/Trazum/issues/643), [#647](https://github.com/Davmunrey/Trazum/issues/647), [#775](https://github.com/Davmunrey/Trazum/issues/775).
 11. **[Seven dictionaries, each read by a speaker](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Seven+dictionaries%2C+each+read+by+a+speaker%22)**. Five of the seven trimming dictionaries were never read by somebody who reads the language. Each needs a reviewer; docs/language-maintainer.md says what the role is. Issues: [#680](https://github.com/Davmunrey/Trazum/issues/680), [#681](https://github.com/Davmunrey/Trazum/issues/681), [#682](https://github.com/Davmunrey/Trazum/issues/682), [#683](https://github.com/Davmunrey/Trazum/issues/683), [#684](https://github.com/Davmunrey/Trazum/issues/684).
-12. **[Where people meet Trazum](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Where+people+meet+Trazum%22)**. The editor extension on the VS Code Marketplace, the playground as a Hugging Face Space, and the hosted web app measured for how fast it loads, off unless its operator asks. Issues: [#640](https://github.com/Davmunrey/Trazum/issues/640), [#646](https://github.com/Davmunrey/Trazum/issues/646), [#723](https://github.com/Davmunrey/Trazum/issues/723), [#774](https://github.com/Davmunrey/Trazum/issues/774), [#780](https://github.com/Davmunrey/Trazum/issues/780), [#781](https://github.com/Davmunrey/Trazum/issues/781).
+12. **[Where people meet Trazum](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Where+people+meet+Trazum%22)**. The editor extension on the VS Code Marketplace, the playground as a Hugging Face Space, the hosted web app measured for how fast it loads, off unless its operator asks, and a page that says what Trazum Pro is and that it is not open yet. Issues: [#640](https://github.com/Davmunrey/Trazum/issues/640), [#646](https://github.com/Davmunrey/Trazum/issues/646), [#723](https://github.com/Davmunrey/Trazum/issues/723), [#774](https://github.com/Davmunrey/Trazum/issues/774), [#780](https://github.com/Davmunrey/Trazum/issues/780), [#781](https://github.com/Davmunrey/Trazum/issues/781), [#793](https://github.com/Davmunrey/Trazum/issues/793).
 13. **[The optional model pass](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22The+optional+model+pass%22)**. Choose and test a model-side optimiser candidate, behind the opt-in layer, with the deterministic core unchanged. Issues: [#644](https://github.com/Davmunrey/Trazum/issues/644).
 <!-- milestones:end -->
 
@@ -47,7 +47,7 @@ closed, not when somebody remembers this page. Live:
 [open to a first contribution](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
-**Ready to be picked up (26).**
+**Ready to be picked up (25).**
 
 | Issue | What | Area |
 | --- | --- | --- |
@@ -62,8 +62,6 @@ closed, not when somebody remembers this page. Live:
 | [#756](https://github.com/Davmunrey/Trazum/issues/756) | watch reads the agents' sessions directly and says so on the screen when a budget is crossed | cli |
 | [#757](https://github.com/Davmunrey/Trazum/issues/757) | A weekly summary that arrives on its own, and a plan that can open the pull request | cli, action |
 | [#763](https://github.com/Davmunrey/Trazum/issues/763) | Nineteen of sixty-nine sampled prices could change and no test would fail | core |
-| [#770](https://github.com/Davmunrey/Trazum/issues/770) | The landing's terminal sits in the upper half of its window, and its spacing was never measured | web |
-| [#772](https://github.com/Davmunrey/Trazum/issues/772) | Codacy and DeepSource list nothing that has not been read: every finding fixed, configured away or dismissed with its reason | - |
 | [#774](https://github.com/Davmunrey/Trazum/issues/774) | Gemini CLI and Codex users install the MCP server in one line, and the Gemini gallery lists it | mcp |
 | [#775](https://github.com/Davmunrey/Trazum/issues/775) | bill reads Amazon Bedrock's model invocation logs | cli |
 | [#776](https://github.com/Davmunrey/Trazum/issues/776) | bill writes the measured bill as OTLP metrics, so spend can be charted where a team already looks | cli |
@@ -77,6 +75,7 @@ closed, not when somebody remembers this page. Live:
 | [#786](https://github.com/Davmunrey/Trazum/issues/786) | bill takes what ccusage already reports, and prices it with dated rates, budgets and the ranked changes | cli |
 | [#787](https://github.com/Davmunrey/Trazum/issues/787) | OpenSSF Scorecard runs on main and its result is on the README | - |
 | [#789](https://github.com/Davmunrey/Trazum/issues/789) | bill sends its receipt to an organisation's endpoint with one flag, and nothing else leaves | cli |
+| [#793](https://github.com/Davmunrey/Trazum/issues/793) | The site says what Trazum Pro is, what it will cost, and that it is not open yet | web |
 
 **Waiting on something outside the repository (11).** Each issue says what.
 

@@ -324,9 +324,10 @@ The web app's own tests read modules and rendered components. `scripts/e2e.mjs`
 opens the built page in a real browser and does what a visitor does: pastes a
 log and reads the bill to the cent, optimises and compares a prompt, loads a
 recorded run, changes the theme and the language, and reaches the tabs on a
-phone, follows the landing into the dashboard, and scrolls the landing's
-story from top to bottom and back.
-[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-three flows,
+phone, follows the landing into the dashboard, scrolls the landing's
+story from top to bottom and back, and reads the Pro page without it sending
+anything off the site.
+[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-four flows,
 what they do not check, and the lines that install the browser driver outside
 the workspace.
 
