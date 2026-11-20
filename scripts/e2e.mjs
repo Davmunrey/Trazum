@@ -1195,6 +1195,9 @@ export const FLOWS = [
       const now = await stage(page);
       is(now.outputs.join(' '), 'check', 'the output, at once');
       is(now.allLinesShown, true, 'every line of it, at once');
+      // The lid opens by the next frame, as it shuts below: a read in the same frame as the press can still find the
+      // shut angle, which a slower runner did (CI on #838).
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
       is(await lidAngle(page), 0, 'the lid, open at once');
       await group.getByRole('button', { name: /^The lid/ }).click();
       await page.waitForFunction(() => document.querySelector('.obj[data-obj="lid"]').getAttribute('aria-pressed') === 'true');
