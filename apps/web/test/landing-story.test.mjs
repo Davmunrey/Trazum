@@ -6,27 +6,31 @@ import { before, describe, it } from 'node:test';
 import { render as renderTerminal } from '../../../scripts/draw-landing-terminal.mjs';
 
 /**
- * The landing's desk: one laptop on a desk, one object per capability around
- * it, the arrival told by scrolling, and a lid that closes over what never
- * leaves the machine.
+ * The landing's story: one laptop on a desk, pinned from the desk's arrival to
+ * the end while the chapters scroll past, one object per capability around
+ * it, each taking its turn, and a lid that closes over what never leaves the
+ * machine.
  *
  * What these hold, each because a page like this drifts in exactly that way:
  *
  * - the screen and the receipt are what the built CLI prints, regenerated and
- *   compared, so a figure typed for the page fails here, and the receipt's
- *   total is the bill's;
+ *   compared, so a figure typed for the page fails here; the receipt's total
+ *   is the bill's, and each line's page and date are the core's;
+ * - every chapter's output is a block the generator wrote, the model kept out
+ *   of the total is the one the CLI named, on a file in this repository;
+ * - each chapter lifts its own object and no other, each object once, in the
+ *   order they lie;
  * - there is one laptop on the page, and every object is a button that says
  *   whether it is pressed;
- * - every capability's output and plate is in the page as text, in order, in
- *   every language: what a reader without JavaScript gets;
+ * - every chapter's words and every output are in the page as text, in order,
+ *   in every language: what a reader without JavaScript gets;
  * - the story never takes the scroll from the visitor, only `transform`,
  *   `opacity` and `clip-path` change with it, and nothing moves on a clock
- *   unless a press set it off;
- * - the lid closes onto the deck and the arrival runs in the order told.
+ *   unless a press set it off.
  *
  * The browser half (scrolling it top to bottom and back, the fallback script,
- * pressing every object, the phone, reduced motion, the light-first theme) is
- * in `scripts/e2e.mjs`.
+ * pressing objects in the middle of the story, the phone, reduced motion,
+ * focus, the light-first theme) is in `scripts/e2e.mjs`.
  */
 
 register('./helpers/loader.mjs', import.meta.url);
@@ -37,7 +41,7 @@ const codeOf = (relative) =>
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^[ \t]*\/\/.*$/gm, '');
 
-let React, server, terminal, timeline, landingCopy, locales, motion;
+let React, server, terminal, timeline, landingCopy, locales, motion, pricing;
 
 before(async () => {
   React = await import('react');
@@ -47,7 +51,39 @@ before(async () => {
   landingCopy = await import('../lib/landing-copy.ts');
   locales = await import('../lib/marketing-locales.ts');
   motion = await import('../lib/story-motion.ts');
+  // The core's own record of when each provider's prices were read, and from which pages.
+  pricing = await import('../../../packages/core/dist/pricing.js');
 });
+
+/** The keyframes the page writes. */
+const written = () => motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length);
+
+/**
+ * One `@keyframes` rule's stops, as [fraction of the story, body]: each rule
+ * is written over its element's own stretch of the story, so a stop's percent
+ * is read back through that stretch.
+ */
+function stopsOf(name) {
+  const rule = written().match(new RegExp(`@keyframes ${name} \\{([\\s\\S]*?)\\n\\}`));
+  assert.ok(rule, `no keyframes ${name}`);
+  const [lo, hi] = motion.motionOf(terminal.TERMINAL, terminal.RECEIPT.lines.length).spans.get(name);
+  return rule[1]
+    .split('\n')
+    .filter((line) => /^\s+[\d.]+% /.test(line))
+    .map((line) => [lo + (Number(line.match(/([\d.]+)%/)[1]) / 100) * (hi - lo), line]);
+}
+
+/** A number property of a keyframes rule at a point of the story, read from the stops written: linear between them. */
+function valueAt(name, property, p) {
+  const stops = stopsOf(name).map(([at, line]) => [at, Number(line.match(new RegExp(`${property}: ([\\d.-]+)`))[1])]);
+  // Outside its stretch an element holds its first or its last value.
+  const after = stops.findIndex(([at]) => at >= p);
+  if (after === -1) return stops.at(-1)[1];
+  if (after === 0) return stops[0][1];
+  const [a, va] = stops[after - 1];
+  const [b, vb] = stops[after];
+  return va + ((vb - va) * (p - a)) / (b - a);
+}
 
 /**
  * The markup without its tags. Removed until none is left: one pass over
@@ -115,8 +151,31 @@ describe('the laptop’s screen and the receipt are what the CLI prints', () => 
       ['clock', 'npx @trazum/cli bill examples/claude-projects --agent claude-code --timezone Europe/Madrid --by week'],
       ['optimize', 'npx @trazum/cli optimize examples/support-prompt.txt'],
       ['models', 'npx @trazum/cli models'],
+      ['unpriced', 'npx @trazum/cli bill examples/unpriced-model.jsonl'],
     ]);
-    assert.deepEqual([...new Set(terminal.TERMINAL.map((b) => b.cap))], [...landingCopy.DESK_COMMANDS], 'an object with no output, or output with no object');
+    assert.deepEqual([...new Set(terminal.TERMINAL.map((b) => b.cap))], [...landingCopy.DESK_COMMANDS, 'unpriced'], 'an object with no output, or output with no object');
+  });
+
+  it('every chapter that shows output shows a block the generator wrote, and every block has its chapter', () => {
+    const owners = new Set(terminal.TERMINAL.map((b) => b.cap));
+    const shown = timeline.CHAPTERS.map((chapter) => chapter.screen).filter((screen) => screen !== null && screen !== 'never');
+    for (const screen of shown) assert.ok(owners.has(screen), `the ${screen} chapter shows output the generator did not write`);
+    assert.deepEqual([...new Set(shown)], [...owners], 'output the generator wrote that no chapter shows, or shown out of order');
+    // Each chapter's screen on the page is that block's lines and nothing else.
+    for (const owner of owners) assert.ok(written().includes(`@keyframes st-out-${owner} {`), `nothing shows ${owner} on the screen`);
+  });
+
+  it('the model kept out of the total is the one the CLI named, on an example file in this repository', () => {
+    const { UNPRICED } = terminal;
+    assert.match(UNPRICED.source, /^examples\//, 'the example is not in examples/');
+    assert.ok(readFileSync(new URL(`../../../${UNPRICED.source}`, import.meta.url), 'utf8').length > 0, 'the example file is not in the repository');
+    assert.ok(UNPRICED.models.length > 0 && UNPRICED.calls > 0);
+    const screen = block('unpriced').lines.map(text).join(' ').replace(/\s+/g, ' ');
+    assert.equal(block('unpriced').command, `npx @trazum/cli bill ${UNPRICED.source}`);
+    for (const model of UNPRICED.models) {
+      assert.ok(screen.includes(`Not in the total: ${UNPRICED.calls} call(s) to ${model}`), `the screen does not say ${model} is kept out of the total`);
+      assert.ok(screen.includes('never counted as $0'), 'the screen does not say it is never counted as $0');
+    }
   });
 
   it('every exit status is one the process returned: the gate passes, the breaker warns at 0 and stops at 2', () => {
@@ -154,6 +213,16 @@ describe('the laptop’s screen and the receipt are what the CLI prints', () => 
     assert.equal(terminal.RECEIPT.lines.reduce((sum, line) => sum + line.calls, 0), terminal.RECEIPT.calls);
   });
 
+  it('each line of the receipt carries the page its rate was read from and the date, both the core’s', () => {
+    for (const line of terminal.RECEIPT.lines) {
+      assert.equal(line.reviewedOn, pricing.PROVIDER_REVIEWED[line.provider], `${line.model}: the date is not the core’s for ${line.provider}`);
+      assert.ok(
+        pricing.PROVIDER_SOURCES[line.provider].map((page) => page.replace(/^https:\/\//, '').replace(/\/$/, '')).includes(line.source),
+        `${line.model}: ${line.source} is not a page the core says ${line.provider}’s prices were read from`,
+      );
+    }
+  });
+
   it('the paper receipt on the page shows the receipt’s figures, and its total once, on the acid', async () => {
     const html = await landingHtml('en');
     const paper = html.slice(html.indexOf('class="receipt-paper"'), html.indexOf('class="receipt-curl"'));
@@ -163,6 +232,13 @@ describe('the laptop’s screen and the receipt are what the CLI prints', () => 
       assert.ok(paper.includes(`>${line.usd}</span>`), `the receipt on the page does not show ${line.model} at ${line.usd}`);
       assert.ok(decode(paper).includes(line.reviewedOn), `the receipt on the page does not say when ${line.model}’s rate was read`);
     }
+    // Each line's note: the page and the date, as the data has them.
+    const notes = [...paper.matchAll(/<span class="receipt-note"[^>]*>([\s\S]*?)<\/span><\/li>/g)].map((match) => decode(match[1]));
+    assert.deepEqual(
+      notes,
+      terminal.RECEIPT.lines.map((line) => `${line.source}${landingCopy.COPY.en.desk.receipt.rateRead(line.reviewedOn)}`),
+      'a note on the receipt is not its line’s page and date',
+    );
   });
 
   it('the huge figure behind the laptop is the receipt’s total, the bill’s, and is hidden from assistive technology', async () => {
@@ -174,7 +250,7 @@ describe('the laptop’s screen and the receipt are what the CLI prints', () => 
     // Behind the laptop, the receipt and the plate: lower in the stacking order than each.
     const css = read('app/landing.css');
     const z = (selector) => Number(css.match(new RegExp(`:root\\[data-desk\\] ${selector.replace('.', '\\.')} \\{[^}]*z-index: (\\d+);`))[1]);
-    for (const nearer of ['.desk-scene', '.desk-plate', '.desk-objects']) assert.ok(z('.desk-figure') < z(nearer), `the figure is in front of ${nearer}`);
+    for (const nearer of ['.desk-scene', '.desk-objects']) assert.ok(z('.desk-figure') < z(nearer), `the figure is in front of ${nearer}`);
     assert.ok(z('.desk-plane') < z('.desk-figure'), 'the figure is behind the desk');
   });
 
@@ -195,7 +271,8 @@ describe('one laptop, and one object per capability', () => {
       for (const part of ['lt-device', 'lt-screen', 'lt-lid', 'lt-deck', 'desk-laptop', 'story-3d']) {
         assert.equal((html.match(new RegExp(`class="${part}[" ]`, 'g')) ?? []).length, 1, `${locale}: ${part} is drawn more than once, or not at all`);
       }
-      assert.equal((html.match(/<pre class="term"/g) ?? []).length, landingCopy.DESK_COMMANDS.length, `${locale}: a terminal outside the laptop`);
+      assert.equal((html.match(/<pre class="term"/g) ?? []).length, landingCopy.DESK_COMMANDS.length + 1, `${locale}: a terminal outside the laptop`);
+      assert.equal((html.match(/<section class="lt-screen"/g) ?? []).length, 1, `${locale}: a second screen`);
       assert.match(html, /class="lt-face lt-back"[^>]*><span>Trazum<\/span>/, `${locale}: the lid carries no wordmark`);
     }
   });
@@ -223,10 +300,57 @@ describe('one laptop, and one object per capability', () => {
     assert.equal((html.match(/aria-live="polite"/g) ?? []).length, 1);
     assert.match(html, /<section class="lt-screen" aria-label="[^"]+" aria-live="polite">/);
     for (const id of landingCopy.DESK_COMMANDS) {
-      assert.match(html, new RegExp(`class="cap-out" data-cap="${id}" aria-labelledby="desk-plate-${id}"`));
+      assert.match(html, new RegExp(`class="cap-out" data-cap="${id}"[^>]*aria-labelledby="desk-plate-${id}"`));
       assert.match(html, new RegExp(`<h3 id="desk-plate-${id}" class="plate-title">`));
     }
-    assert.match(html, /<h3 id="desk-plate-lid" class="plate-title">/);
+    assert.match(html, /class="cap-out" data-cap="unpriced"[^>]*aria-labelledby="story-unpriced"/);
+    assert.match(html, /<h3 id="story-unpriced" class="plate-title">/);
+  });
+
+  it('the example’s output is labelled an example on the screen', async () => {
+    for (const locale of locales.MARKETING_LOCALES) {
+      const html = await landingHtml(locale);
+      const out = html.slice(html.indexOf('data-cap="unpriced"'));
+      assert.ok(out.startsWith(`data-cap="unpriced"`) && out.includes(`<p class="screen-tag">${landingCopy.COPY[locale].desk.example}</p>`), `${locale}: the example is not labelled on the screen`);
+      assert.ok(out.indexOf('screen-tag') < out.indexOf('<pre class="term"'), `${locale}: the label is not on the example's output`);
+    }
+  });
+});
+
+describe('each chapter is one object’s turn', () => {
+  const objectChapters = () => timeline.CHAPTERS.filter((chapter) => chapter.object !== null);
+
+  it('each object takes its turn once, in the order the objects lie, the lid last', () => {
+    assert.deepEqual(objectChapters().map((chapter) => chapter.object), [...motion.OBJECTS], 'an object without a turn, with two, or out of order');
+    assert.deepEqual(motion.OBJECTS, [...landingCopy.DESK_COMMANDS, 'lid']);
+    // An object's chapter shows that object's command; the lid's shows what never leaves.
+    for (const chapter of objectChapters()) assert.equal(chapter.screen, chapter.object === 'lid' ? 'never' : chapter.object, `the ${chapter.id} chapter shows another command than its object’s`);
+  });
+
+  it('while a chapter is current, its own object is lifted and pressed, and no other', () => {
+    for (const chapter of timeline.CHAPTERS) {
+      const [start, end] = timeline.chapterWindow(chapter.id);
+      // Past the lift, before the next chapter: the chapter's settled state.
+      const p = start + (end - start) * 0.6;
+      for (const object of motion.OBJECTS) {
+        const pressed = valueAt(`st-skin-${object}`, 'opacity', p);
+        assert.equal(pressed, object === chapter.object ? 1 : 0, `in the ${chapter.id} chapter the ${object} is ${pressed === 1 ? '' : 'not '}pressed`);
+        assert.ok(motion.lifted(object, p) === (object === chapter.object ? 1 : 0), `in the ${chapter.id} chapter the ${object} is lifted wrongly`);
+      }
+    }
+  });
+
+  it('nothing is shown twice: each output is on the screen in one stretch of the story, and the receipt prints once', () => {
+    for (const owner of new Set(terminal.TERMINAL.map((b) => b.cap))) {
+      const values = stopsOf(`st-out-${owner}`).map(([, line]) => Number(line.match(/opacity: ([\d.]+)/)[1]));
+      // On once, off once: once it has started to go, it never comes back.
+      const firstFall = values.findIndex((value, index) => index > 0 && value < values[index - 1]);
+      assert.ok(values.some((value) => value === 1), `${owner} is never on the screen`);
+      if (firstFall !== -1) assert.ok(values.slice(firstFall).every((value, index, after) => index === 0 || value <= after[index - 1]), `${owner} comes back on the screen`);
+    }
+    const receiptOpacity = stopsOf('st-receipt').map(([at, line]) => [at, line.match(/opacity: ([^;]+);/)[1]]);
+    const firstShown = receiptOpacity.findIndex(([, value]) => value !== '0');
+    assert.ok(receiptOpacity.slice(firstShown).every(([, value]) => value !== '0'), 'the receipt goes back into the laptop and prints again');
   });
 });
 
@@ -238,20 +362,29 @@ describe('every capability is there as text, in order, with the laptop', () => {
       const page = decode(html);
       const marks = [
         ['the headline', t.heroTitle],
-        ['the desk’s heading', t.desk.title],
         ['the bill’s total', '$12.70 across 126 priced call(s)'],
         ['the gate’s verdict', 'All 3 within budget.'],
         ['the breaker’s stop', 'Trazum: stopped.'],
         ['the clock’s first week', '2026-W36'],
         ['the trimming’s counts', '326 → 202'],
         ['the calendar’s cut', 'rows shown: the models the receipt priced.'],
+        ['the example’s label', t.desk.example],
+        ['the model kept out', `Not in the total: ${terminal.UNPRICED.calls} call(s) to ${terminal.UNPRICED.models[0]}`],
         ...t.neverItems.map((item) => [`the never item "${item}"`, item]),
+        ['the receipt’s first page', terminal.RECEIPT.lines[0].source],
         ['the receipt’s total', `${t.desk.receipt.total}${terminal.RECEIPT.total}`],
-        ...landingCopy.DESK_COMMANDS.map((id) => [`the ${id} plate`, t.desk.caps[id].title]),
-        ['what never leaves', t.neverTitle],
-        ['what leaves', t.leaves],
+        ['the arrival', t.desk.title],
+        ...landingCopy.DESK_COMMANDS.map((id) => [`the ${id} chapter`, t.desk.caps[id].title]),
         ['why the number holds up', t.reasonsTitle],
+        ['the rates', t.reasons[0][0]],
+        ['the billing', t.reasons[1][0]],
+        ['nothing guessed', t.reasons[2][0]],
+        ['the example, named', t.desk.unpricedNote(terminal.UNPRICED.source, terminal.UNPRICED.models.join(', '), terminal.UNPRICED.calls)],
+        ['what never leaves', t.neverTitle],
+        ['the files stay', t.reasons[3][0]],
         ['the closing', t.closeTitle],
+        ['what leaves', t.leaves],
+        ['the budget check, after the story', t.more.mcp.title],
       ];
       let at = -1;
       for (const [what, mark] of marks) {
@@ -280,6 +413,7 @@ describe('every capability is there as text, in order, with the laptop', () => {
       t.desk.receipt.heading, t.desk.receipt.calls(7), t.desk.receipt.rateRead('2026-01-01'),
       ...landingCopy.DESK_COMMANDS.flatMap((id) => [t.desk.caps[id].object, t.desk.caps[id].title, t.desk.caps[id].body, ...t.desk.caps[id].not]),
       t.neverLabel, t.neverTitle, t.neverLede, ...t.neverItems, t.leavesLabel, t.leaves, t.billCaveat,
+      t.desk.example, t.desk.unpricedNote('examples/x.jsonl', 'model-x', 2),
     ];
     const english = shown(landingCopy.COPY.en);
     for (const locale of ['es', 'fr', 'de', 'pt']) {
@@ -293,6 +427,8 @@ describe('every capability is there as text, in order, with the laptop', () => {
     const html = await landingHtml('en');
     const close = html.slice(html.indexOf('data-landing-close'));
     assert.match(close, /<a href="\/app" data-dashboard-action=""/);
+    // The closing is the story's last chapter: after it, only the quiet band.
+    assert.ok(html.indexOf('data-landing-close') > html.indexOf('data-ch="never"'), 'the closing is not the story’s last chapter');
     assert.ok(html.indexOf('tree/main/examples/claude-projects') > html.indexOf('class="desk-objects"'));
   });
 });
@@ -314,6 +450,10 @@ describe('the story never takes the scroll from the visitor', () => {
   it('the fallback listens passively, draws once a frame, and only while the story is on screen', () => {
     const story = codeOf('components/landing/Story.tsx');
     assert.match(story, /CSS\.supports\('animation-timeline: view\(\)'\)/, 'the script runs where CSS already drives the story');
+    // The current chapter is read by an observer of the slots, never by listening to the scroll.
+    assert.match(story, /new IntersectionObserver\([\s\S]*?rootMargin: '-50% 0px -50% 0px'/, 'the current chapter is not read at the timeline’s line');
+    assert.equal(timeline.LINE, 50);
+    assert.equal(timeline.LEAD, 50);
     assert.match(story, /window\[method\]\('scroll', request, \{ passive: true \}/, 'the scroll listener is not passive');
     assert.equal(/passive: false/.test(story), false, 'a listener that may hold the scroll');
     assert.match(story, /requestAnimationFrame\(write\)/);
@@ -322,25 +462,35 @@ describe('the story never takes the scroll from the visitor', () => {
     assert.match(story, /root\.dataset\.motion !== 'scroll'/, 'the script runs for a reader who asked for less motion');
     assert.match(story, /for \(const animation of animations\) animation\.currentTime = time;/, 'the fallback does not move the story');
     const css = read('app/landing.css');
-    assert.match(css, /\[data-story='script'\] \.story \[data-mv\] \{\s*animation-timeline: auto;\s*animation-duration: 1s;\s*animation-play-state: paused;/);
+    // Paused, the story a second long: each element's stretch is its delay and its duration.
+    assert.match(css, /\[data-story='script'\] \.story \[data-mv\] \{\s*animation-timeline: auto;\s*animation-delay: calc\(var\(--mv-a\) \* 1s\);\s*animation-duration: calc\(\(var\(--mv-b\) - var\(--mv-a\)\) \* 1s\);\s*animation-play-state: paused;/);
   });
 
   it('nothing moves on its own: the scroll is the arrival’s only clock, and a press the only other', () => {
     const css = read('app/landing.css');
     assert.equal(/\banimation\s*:|\btransition\s*:/.test(css), false, 'a shorthand, which hides what it sets');
     assert.match(css, /view-timeline: --story block;/);
-    assert.match(css, /\.story \[data-mv\] \{\s*animation-duration: auto;\s*animation-timing-function: linear;\s*animation-fill-mode: both;\s*animation-timeline: --story;\s*animation-range: contain 0% contain 100%;/);
+    // The story starts half a window before the section's top reaches the top (`LEAD`), as the hero scrolls out.
+    // Each element runs over its own stretch, on the section's cover range; the story itself starts half a window
+    // before the section's top reaches the top (`LEAD`), as the hero scrolls out, and ends as the stage lets go.
+    assert.match(css, /\.story \[data-mv\] \{\s*animation-duration: auto;\s*animation-timing-function: linear;\s*animation-fill-mode: both;\s*animation-timeline: --story;\s*animation-range: cover calc\(var\(--mv-c0\) \* 1%\) cover calc\(var\(--mv-c1\) \* 1%\);/);
+    const H = timeline.STORY_HEIGHT;
+    // cover 0% is the section's top at the window's foot; the story starts with it half a window up, and ends with
+    // the section's foot at the window's foot, H - 100 svh later: (50 + p * (H - 50)) / (H + 100).
+    assert.equal(motion.coverOf(0), (50 / (H + 100)) * 100);
+    assert.equal(motion.coverOf(1), (H / (H + 100)) * 100);
     // Every rule that starts something on a clock is one a press set off, and only for a reader who did not ask for less motion.
     const gate = css.indexOf('@media (prefers-reduced-motion: no-preference)');
     assert.ok(gate !== -1);
     const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((match) => ({ selector: match[1].trim(), body: match[2], at: match.index }));
     let clocks = 0;
     for (const { selector, body, at } of rules) {
-      const starts = /animation-name:\s*(?!none)/.test(body) || /transition-property:/.test(body) || /animation-delay:/.test(body);
+      // A delay on a paused animation is a place in the story, not a clock.
+      const starts = /animation-name:\s*(?!none)/.test(body) || /transition-property:/.test(body) || (/animation-delay:/.test(body) && !/animation-play-state: paused/.test(body));
       if (!starts) continue;
       clocks += 1;
       assert.ok(at > gate, `${selector} moves things for a reader who asked for less motion`);
-      assert.ok(/\[data-used\]|\[data-closed\]|\.obj\b/.test(selector), `${selector} moves things nobody pressed for`);
+      assert.ok(/\[data-pressed\]/.test(selector), `${selector} moves things nobody pressed for`);
     }
     assert.ok(clocks >= 3, 'the press’s reveal, the lid and the receipt are gone');
     // The one clock keyframes the stylesheet holds: a line of output appearing, by opacity.
@@ -348,8 +498,10 @@ describe('the story never takes the scroll from the visitor', () => {
     assert.deepEqual(keyframes.map((match) => match[1]), ['desk-line']);
     assert.equal(/[a-z-]+:/.test(keyframes[0][2].replace(/opacity:/g, '')), false, 'the press reveal changes more than opacity');
     assert.equal(/setTimeout|setInterval/.test(codeOf('components/landing/Story.tsx')), false);
-    // A press or focus inside the desk ends the arrival, so a control is never reached half-arrived.
-    assert.match(css, /\.story\[data-used\] \[data-mv\],\s*:root\[data-motion='scroll'\] \.story:focus-within \[data-mv\] \{\s*animation-name: none !important;/);
+    // A press or focus inside the story completes the arrival, so a control is never reached half-arrived; a press
+    // outranks the scroll's keyframes without stopping them.
+    assert.match(css, /\.story\[data-pressed\] \[data-arrive\],\s*:root\[data-desk\] \.story:focus-within \[data-arrive\] \{\s*transform: none !important;\s*opacity: 1 !important;/);
+    assert.equal(/animation-name: none/.test(css), false, 'a press stops the story instead of standing over it');
   });
 
   it('only the elements that move are animated by the scroll, and never a line of text', async () => {
@@ -361,11 +513,11 @@ describe('the story never takes the scroll from the visitor', () => {
      */
     const css = read('app/landing.css');
     assert.equal(/var\(--p\)|@property/.test(css), false, 'the stylesheet changes with the scroll');
-    const written = motion.storyMotion(terminal.TERMINAL);
+    const written = motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length);
     const defined = new Set([...written.matchAll(/@keyframes ([\w-]+) \{/g)].map((match) => match[1]));
     const html = await landingHtml('en');
     const used = [...html.matchAll(/animation-name:([\w-]+)/g)].map((match) => match[1]);
-    assert.ok(used.length >= 15 && used.length <= 30, `${used.length} moving elements`);
+    assert.ok(used.length >= 40 && used.length <= 120, `${used.length} moving elements`);
     for (const name of used) assert.ok(defined.has(name), `${name} is used and never written`);
     for (const name of defined) assert.ok(used.includes(name), `${name} is written and never used`);
     assert.equal(/class="tl[^"]*" style="[^"]*animation-name/.test(html), false, 'a line of the terminal animates with the scroll');
@@ -375,7 +527,7 @@ describe('the story never takes the scroll from the visitor', () => {
   });
 
   it('only transform, opacity and clip-path change with the scroll', () => {
-    const written = motion.storyMotion(terminal.TERMINAL);
+    const written = motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length);
     const properties = new Set([...written.matchAll(/([a-z-]+): [^;]+;/g)].map((match) => match[1]));
     for (const property of properties) {
       assert.ok(['transform', 'opacity', 'clip-path', 'animation-timing-function'].includes(property), `${property} changes with the scroll`);
@@ -394,6 +546,7 @@ describe('the lid, the depth and the order of the arrival', () => {
     const gap = 180 - DECK_ANGLE + LID_CLOSED;
     assert.ok(gap >= 0 && gap <= 3, `closed, the lid stands ${gap}deg off the deck`);
     assert.match(css, new RegExp(`\\.story\\[data-closed\\] \\.lt-lid \\{\\s*transform: rotateX\\(${LID_CLOSED}deg\\);`), 'the lid does not close to the deck');
+    assert.match(stopsOf('st-lid').at(-1)[1], new RegExp(`rotateX\\(${LID_CLOSED}deg\\)`), 'the story ends with the lid open');
     assert.match(css, /\.lt-back \{[^}]*transform: rotateX\(180deg\)/, 'the wordmark side does not face out when closed');
     assert.match(css, /\.lt-face \{[^}]*backface-visibility: hidden/);
     // Pressed, what never leaves is on the screen as the lid comes down: over the output's ground, under the screen's light going out.
@@ -435,16 +588,16 @@ describe('the lid, the depth and the order of the arrival', () => {
     // layout shift (0.036). The fallback is sized by Next's capsize metrics.
     const css = read('app/landing.css');
     assert.match(css, /@font-face \{\s*font-family: 'Trazum Grotesk Fallback';[^}]*size-adjust: 102\.09%;/);
-    assert.match(css, /#landing-title \{\s*font-family: 'Space Grotesk Variable', 'Trazum Grotesk Fallback', sans-serif;/);
+    assert.match(css, /#landing-title,\s*\.desk-figure,\s*\.chapter-title,\s*\.plate-title \{\s*font-family: 'Space Grotesk Variable', 'Trazum Grotesk Fallback', sans-serif;/);
     assert.match(read('components/Landing.tsx'), /id="landing-title"/);
   });
 
   it('the bill is typed a character at a time and printed a line at a time', () => {
-    const written = motion.storyMotion(terminal.TERMINAL);
+    const written = motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length);
     const bill = block('bill');
-    const typed = written.match(/@keyframes st-type \{[\s\S]*?\n\}/)[0];
+    const typed = written.match(/@keyframes st-type-bill \{[\s\S]*?\n\}/)[0];
     assert.match(typed, new RegExp(`animation-timing-function: steps\\(${bill.command.length}, end\\)`));
-    const printed = written.match(/@keyframes st-print \{[\s\S]*?\n\}/)[0];
+    const printed = written.match(/@keyframes st-print-bill \{[\s\S]*?\n\}/)[0];
     assert.match(printed, /\n {2}0% \{ clip-path: inset\(0 0 calc\(100% - 0 \* 1\.5em\) 0\);/, 'the output is on the screen before it is typed');
     assert.match(printed, /\n {2}100% \{ clip-path: inset\(0 0 0% 0\);/, 'the output is not whole at the end');
     // Measured from the top: the lines shown never outnumber the lines printed, however a narrow screen wraps them.
@@ -452,28 +605,50 @@ describe('the lid, the depth and the order of the arrival', () => {
     for (let at = 1; at < shown.length; at += 1) assert.equal(shown[at], shown[at - 1] + 1, 'the output does not print a line at a time');
   });
 
-  it('the receipt is behind the laptop until it prints, and on the desk at the end', () => {
-    const written = motion.storyMotion(terminal.TERMINAL);
-    const receipt = written.match(/@keyframes st-receipt \{[\s\S]*?\n\}/)[0];
-    const frames = receipt.split('\n').filter((line) => /^\s+[\d.]+% /.test(line)).map((line) => [Number(line.match(/([\d.]+)%/)[1]) / 100, line]);
-    for (const [p, line] of frames) {
-      if (p < timeline.PHASES.receipt[0]) assert.match(line, /opacity: 0;/, `the receipt shows before it prints: ${line}`);
-    }
-    assert.match(frames.at(-1)[1], /translateX\(calc\(0 \* var\(--receipt-from\)\)\); opacity: 1;/);
+  it('the receipt is in the laptop until it prints, forward in its chapter, and on the desk at the end', () => {
+    const frames = stopsOf('st-receipt');
+    const [printed] = timeline.within('bill', timeline.BEATS.receipt);
+    for (const [p, line] of frames) if (p < printed - 1e-6) assert.match(line, /opacity: 0;/, `the receipt shows before it prints: ${line}`);
+    const [start, end] = timeline.chapterWindow('sources');
+    assert.deepEqual(motion.receiptPose(start + (end - start) * 0.5), { out: 1, forward: 1 }, 'the receipt is not forward while its chapter is current');
+    assert.deepEqual(motion.receiptPose(1), { out: 1, forward: 0 }, 'the receipt is not back on the desk at the end');
+    assert.match(frames.at(-1)[1], /translate\(calc\(0 \* var\(--receipt-from-x\) \+ 0 \* var\(--receipt-fwd-x\)\)/);
   });
 
-  it('desk, laptop, objects, plate, typing, printing, receipt', () => {
-    const { PHASES } = timeline;
-    assert.ok(PHASES.desk[0] <= PHASES.land[0], 'the laptop arrives before the desk under it');
-    assert.ok(PHASES.land[1] <= PHASES.type[0], 'the bill is typed before the laptop has landed');
-    assert.ok(PHASES.objects[1] <= PHASES.type[1], 'the objects are still arriving as the bill prints');
-    assert.ok(PHASES.type[1] <= PHASES.print[0] && PHASES.print[0] < PHASES.print[1]);
-    assert.ok(PHASES.print[1] <= PHASES.receipt[0] + 0.03, 'the receipt prints long before the bill has');
-    assert.ok(PHASES.receipt[1] < 1, 'the receipt is still printing when the stage lets go');
+  it('the chapters follow one another without a gap, from the hero to the stage letting go', () => {
+    const windows = timeline.CHAPTERS.map((chapter) => timeline.chapterWindow(chapter.id));
+    assert.equal(windows[0][0], 0, 'the story does not start with the arrival');
+    assert.equal(windows.at(-1)[1], 1, 'the story does not end with the closing');
+    for (let i = 1; i < windows.length; i += 1) {
+      assert.ok(Math.abs(windows[i][0] - windows[i - 1][1]) < 1e-9, `a gap or an overlap before ${timeline.CHAPTERS[i].id}`);
+      assert.ok(windows[i][1] > windows[i][0], `${timeline.CHAPTERS[i].id} has no time`);
+    }
+    assert.deepEqual(timeline.CHAPTERS.map((chapter) => chapter.id), ['arrival', 'bill', 'check', 'guard', 'clock', 'optimize', 'models', 'sources', 'unpriced', 'never', 'close']);
+    // The page sets each slot's height from the same table.
+    assert.match(codeOf('components/landing/Story.tsx'), /'--ch-h': `\$\{chapterOf\(id\)\.height\}svh`/);
+  });
+
+  it('desk, laptop, objects; then in each chapter: clear, lift, type, print', () => {
+    const { BEATS } = timeline;
+    assert.ok(BEATS.desk[0] <= BEATS.land[0], 'the laptop arrives before the desk under it');
     const arrivals = Array.from({ length: motion.OBJECT_COUNT }, (_, i) => timeline.objectArrival(i, motion.OBJECT_COUNT));
     for (let i = 1; i < arrivals.length; i += 1) assert.ok(arrivals[i][0] > arrivals[i - 1][0], 'two objects arrive together: the layers do not pass each other');
-    assert.ok(arrivals.at(-1)[1] <= PHASES.objects[1] + 1e-9);
-    const timed = timeline.timeLines(block('bill'));
-    for (let at = 1; at < timed.lines.length; at += 1) assert.ok(timed.lines[at].at > timed.lines[at - 1].at, 'a line arrives before the one above it');
+    assert.ok(arrivals.at(-1)[1] <= timeline.chapterWindow('arrival')[1] + 1e-9, 'an object is still arriving when the bill runs');
+    assert.ok(BEATS.prompt[1] <= BEATS.type[0] && BEATS.type[1] <= BEATS.print[0] && BEATS.print[1] <= BEATS.receipt[0]);
+    // A chapter clears its screen and settles its object as it ends, after all it shows: at the line between two
+    // chapters the screen is blank and nothing is lifted, so a press let go there gives way to nothing old.
+    assert.ok(BEATS.receipt[1] <= BEATS.clear[0] && BEATS.lift[1] <= BEATS.settle[0] && BEATS.clear[1] === 1 && BEATS.settle[1] === 1);
+    for (const chapter of timeline.CHAPTERS.slice(0, -1)) {
+      const [, end] = timeline.chapterWindow(chapter.id);
+      for (const object of motion.OBJECTS) assert.equal(motion.lifted(object, end), 0, `the ${object} is still lifted as the ${chapter.id} chapter ends`);
+      for (const owner of new Set(terminal.TERMINAL.map((b) => b.cap))) assert.equal(motion.onScreen(owner, end, terminal.TERMINAL), 0, `${owner} is still on the screen as the ${chapter.id} chapter ends`);
+    }
+    for (const owner of new Set(terminal.TERMINAL.map((b) => b.cap))) {
+      const timed = timeline.timeOutput(owner, terminal.TERMINAL);
+      const [start, end] = timeline.chapterWindow(timeline.chapterOf(owner));
+      assert.ok(timed.prompt > start && timed.typed[1] < timed.lines[0].at, `${owner} prints before it is typed`);
+      for (let at = 1; at < timed.lines.length; at += 1) assert.ok(timed.lines[at].at > timed.lines[at - 1].at, `${owner}: a line arrives before the one above it`);
+      assert.ok(timed.lines.at(-1).at < end, `${owner} is still printing when its chapter ends`);
+    }
   });
 });

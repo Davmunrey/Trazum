@@ -47,6 +47,15 @@
  *      with the clock set to the day the newest rates were read (the latest
  *      date in the core's `PROVIDER_REVIEWED`), and the screen says so.
  *
+ * And one block no object shows, for the chapter of the story that says what
+ * happens to a model with no published price: `bill
+ * examples/unpriced-model.jsonl`, a five-call example log in which two calls
+ * went to a self-hosted model the catalogue does not price. The CLI names it
+ * and keeps it out of the total; the page labels the file an example. The
+ * receipt's lines carry the page each rate was read from, the first of the
+ * core's `PROVIDER_SOURCES` for the line's provider, beside the date the
+ * receipt says that rate was read.
+ *
  * The MCP server's `spend_guard` answer is not on the screen: the repository
  * has no example call of it to run, and an answer written for the page would
  * be the invented output this script exists to prevent.
@@ -165,9 +174,32 @@ function sessionGuard() {
   }
 }
 
+/** The first page the core says a provider's prices were read from, without its scheme. */
+function sourceOf(sources, provider) {
+  const page = sources[provider]?.[0];
+  if (page === undefined) throw new Error(`the core names no page for ${provider}'s prices`);
+  return page.replace(/^https:\/\//, '').replace(/\/$/, '');
+}
+
+/**
+ * The example a chapter of the story runs: a log in which some calls went to
+ * a model the catalogue does not price. Its receipt's gaps name the models
+ * and count the calls, and the bill says the same on the screen.
+ */
+const UNPRICED_LOG = 'examples/unpriced-model.jsonl';
+function unpriced() {
+  const result = run(['bill', UNPRICED_LOG, '--receipt', '--locale', 'en']);
+  if (result.status !== 0) throw new Error(`bill --receipt on ${UNPRICED_LOG} exited ${result.status}`);
+  const gaps = JSON.parse(result.stdout).gaps.filter((gap) => gap.kind === 'unpriced');
+  if (gaps.length === 0) throw new Error(`${UNPRICED_LOG} no longer has a model the catalogue does not price`);
+  return { source: UNPRICED_LOG, models: gaps.flatMap((gap) => gap.models), calls: gaps.reduce((sum, gap) => sum + gap.calls, 0) };
+}
+
 /** The receipt `bill --receipt` writes for the example projects, as the paper beside the laptop shows it. */
 async function receipt() {
   const { formatUsd } = await import(pathToFileURL(CORE).href);
+  // Not exported from the core's entry point: read from the module that holds it.
+  const { PROVIDER_SOURCES } = await import(pathToFileURL(join(dirname(CORE), 'pricing.js')).href);
   const result = run(['bill', 'examples/claude-projects', '--receipt', '--locale', 'en']);
   if (result.status !== 0) throw new Error(`bill --receipt exited ${result.status}`);
   const data = JSON.parse(result.stdout);
@@ -184,6 +216,8 @@ async function receipt() {
       calls: line.calls,
       usd: formatUsd(line.usd),
       reviewedOn: line.pricing.reviewedOn,
+      provider: line.pricing.provider,
+      source: sourceOf(PROVIDER_SOURCES, line.pricing.provider),
     })),
     total: formatUsd(data.total.usd),
   };
@@ -267,8 +301,14 @@ export async function transcript() {
       lines: toLines(optimizeReport('examples/support-prompt.txt')),
     },
     await models(paper.lines.map((line) => line.model)),
+    {
+      id: 'unpriced',
+      cap: 'unpriced',
+      command: `${NPX} bill ${UNPRICED_LOG}`,
+      lines: toLines(capture(['bill', UNPRICED_LOG, '--table', '--locale', 'en'])),
+    },
   ];
-  return { receipt: paper, blocks };
+  return { receipt: paper, unpriced: unpriced(), blocks };
 }
 
 const widthOf = (runs) => runs.reduce((n, [text]) => n + text.length, 0);
@@ -293,7 +333,7 @@ function columnsOf(blocks) {
 }
 
 export async function render(data) {
-  const { receipt: paper, blocks } = data ?? (await transcript());
+  const { receipt: paper, unpriced: gap, blocks } = data ?? (await transcript());
   return `/**
  * Written by scripts/draw-landing-terminal.mjs from what the built CLI prints.
  * Do not edit: run \`node scripts/draw-landing-terminal.mjs\`. The web suite
@@ -308,10 +348,12 @@ export async function render(data) {
 
 /** The object on the desk whose press shows a block on the screen. */
 export type CapabilityId = 'bill' | 'check' | 'guard' | 'clock' | 'optimize' | 'models';
+/** What shows a block: an object, or the story's chapter on a model with no published price, which no object shows. */
+export type BlockOwner = CapabilityId | 'unpriced';
 export type TerminalRun = readonly [text: string, style: string];
 export interface TerminalBlock {
   readonly id: ${blocks.map((block) => JSON.stringify(block.id)).join(' | ')};
-  readonly cap: CapabilityId;
+  readonly cap: BlockOwner;
   readonly command: string;
   readonly lines: readonly (readonly TerminalRun[])[];
 }
@@ -332,8 +374,15 @@ ${blocks
   .join('\n')}
 ];
 
-/** The paper receipt beside the laptop: \`bill examples/claude-projects --receipt\`, each figure formatted by the core's \`formatUsd\`. */
+/**
+ * The paper receipt beside the laptop: \`bill examples/claude-projects --receipt\`, each figure formatted by the
+ * core's \`formatUsd\`, each line with the date its rate was read and the page it was read from (the core's
+ * \`PROVIDER_SOURCES\` for the line's provider).
+ */
 export const RECEIPT = ${JSON.stringify(paper, null, 2)} as const;
+
+/** What \`bill --receipt\` on the example log says it kept out of the total: the models it does not price, and their calls. */
+export const UNPRICED = ${JSON.stringify(gap, null, 2)} as const;
 `;
 }
 

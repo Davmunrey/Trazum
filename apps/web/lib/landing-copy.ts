@@ -81,6 +81,10 @@ export interface DeskCopy {
   caps: Record<DeskCommand, DeskCapability>;
   /** The lid's object; its plate is what never leaves the machine. */
   lid: string;
+  /** The tag on the screen while it runs the example log, which is not anybody's real usage. */
+  example: string;
+  /** The chapter on a model with no published price: what the example log is, with the model and the calls the CLI named. */
+  unpricedNote: (file: string, model: string, calls: number) => string;
 }
 
 /** The six objects whose press runs a command, in the order they lie on the desk; the lid comes after them. */
@@ -208,7 +212,7 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
     closeBody: 'Requires Node.js 20 or newer. npx may download Trazum from npm. Or try sample data in your browser first.',
     desk: {
       kicker: 'Everything on the desk',
-      title: 'Press an object. The screen shows what it does.',
+      title: 'Scroll, and each object takes its turn. Press one, and the screen shows what it does.',
       sub: 'Every line on the screen is what the CLI printed, on the example files in this repository.',
       objects: 'What Trazum does, one object each',
       screen: 'The laptop’s screen',
@@ -264,6 +268,9 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
         },
       },
       lid: 'The lid',
+      example: 'Example file',
+      unpricedNote: (file, model, calls) =>
+        `The screen runs bill on ${file}, an example log: ${calls} of its calls went to ${model}, which the catalogue does not price. The bill names it and leaves it out of the total.`,
     },
   },
   es: {
@@ -338,7 +345,7 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
     closeBody: 'Requiere Node.js 20 o posterior. npx puede descargar Trazum de npm. O prueba antes con datos de ejemplo en tu navegador.',
     desk: {
       kicker: 'Todo sobre la mesa',
-      title: 'Pulsa un objeto. La pantalla enseña lo que hace.',
+      title: 'Desplázate y cada objeto tiene su turno. Pulsa uno y la pantalla enseña lo que hace.',
       sub: 'Cada línea de la pantalla es lo que imprimió el CLI, sobre los archivos de ejemplo de este repositorio.',
       objects: 'Lo que hace Trazum, un objeto para cada cosa',
       screen: 'La pantalla del portátil',
@@ -394,6 +401,9 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
         },
       },
       lid: 'La tapa',
+      example: 'Archivo de ejemplo',
+      unpricedNote: (file, model, calls) =>
+        `La pantalla ejecuta bill sobre ${file}, un log de ejemplo: ${calls} de sus llamadas fueron a ${model}, que el catálogo no tiene con precio. La factura lo nombra y lo deja fuera del total.`,
     },
   },
   fr: {
@@ -468,7 +478,7 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
     closeBody: 'Nécessite Node.js 20 ou plus récent. npx peut télécharger Trazum depuis npm. Ou essayez d’abord des données d’exemple dans votre navigateur.',
     desk: {
       kicker: 'Tout sur la table',
-      title: 'Appuyez sur un objet. L’écran montre ce qu’il fait.',
+      title: 'Faites défiler et chaque objet passe à son tour. Appuyez sur l’un d’eux et l’écran montre ce qu’il fait.',
       sub: 'Chaque ligne de l’écran est ce que le CLI a imprimé, sur les fichiers d’exemple de ce dépôt.',
       objects: 'Ce que fait Trazum, un objet pour chaque chose',
       screen: 'L’écran de l’ordinateur',
@@ -524,6 +534,9 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
         },
       },
       lid: 'Le couvercle',
+      example: 'Fichier d’exemple',
+      unpricedNote: (file, model, calls) =>
+        `L’écran lance bill sur ${file}, un journal d’exemple : ${calls} de ses appels sont allés à ${model}, que le catalogue ne tarifie pas. La facture le nomme et le laisse hors du total.`,
     },
   },
   de: {
@@ -598,7 +611,7 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
     closeBody: 'Benötigt Node.js 20 oder neuer. npx kann Trazum von npm laden. Oder probieren Sie zuerst Beispieldaten in Ihrem Browser.',
     desk: {
       kicker: 'Alles auf dem Tisch',
-      title: 'Drücken Sie auf einen Gegenstand. Der Bildschirm zeigt, was er tut.',
+      title: 'Scrollen Sie, und jeder Gegenstand ist an der Reihe. Drücken Sie auf einen, und der Bildschirm zeigt, was er tut.',
       sub: 'Jede Zeile auf dem Bildschirm ist, was das CLI ausgegeben hat, auf den Beispieldateien dieses Repositorys.',
       objects: 'Was Trazum tut, ein Gegenstand für jede Sache',
       screen: 'Der Bildschirm des Laptops',
@@ -654,6 +667,9 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
         },
       },
       lid: 'Der Deckel',
+      example: 'Beispieldatei',
+      unpricedNote: (file, model, calls) =>
+        `Der Bildschirm führt bill auf ${file} aus, einem Beispielprotokoll: ${calls} seiner Aufrufe gingen an ${model}, für das der Katalog keinen Preis hat. Die Rechnung nennt es und lässt es aus der Summe.`,
     },
   },
   pt: {
@@ -728,7 +744,7 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
     closeBody: 'Requer Node.js 20 ou mais recente. O npx pode descarregar o Trazum do npm. Ou experimente primeiro dados de exemplo no seu navegador.',
     desk: {
       kicker: 'Tudo em cima da mesa',
-      title: 'Carregue num objeto. O ecrã mostra o que faz.',
+      title: 'Desloque a página e cada objeto tem a sua vez. Carregue num e o ecrã mostra o que faz.',
       sub: 'Cada linha do ecrã é o que o CLI imprimiu, sobre os ficheiros de exemplo deste repositório.',
       objects: 'O que o Trazum faz, um objeto para cada coisa',
       screen: 'O ecrã do portátil',
@@ -784,6 +800,9 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
         },
       },
       lid: 'A tampa',
+      example: 'Ficheiro de exemplo',
+      unpricedNote: (file, model, calls) =>
+        `O ecrã executa bill sobre ${file}, um registo de exemplo: ${calls} das suas chamadas foram para ${model}, que o catálogo não tem com preço. A fatura nomeia-o e deixa-o fora do total.`,
     },
   },
 };

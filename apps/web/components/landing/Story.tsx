@@ -1,26 +1,33 @@
 'use client';
 
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
 
-import { DESK_COMMANDS, DESK_COMMAND_NAMES, type DeskCommand, type LandingCopy, MORE_LINKS } from '../../lib/landing-copy';
-import { RECEIPT, TERMINAL, TERMINAL_COLUMNS, type TerminalBlock, type TerminalRun } from '../../lib/landing-terminal';
-import { storyMotion } from '../../lib/story-motion';
-import { STORY_BLOCK } from '../../lib/story-timeline';
+import { DESK_COMMANDS, DESK_COMMAND_NAMES, type DeskCommand, ILLUSTRATIVE_BILL, type LandingCopy, MORE_LINKS } from '../../lib/landing-copy';
+import { type BlockOwner, RECEIPT, TERMINAL, TERMINAL_COLUMNS, type TerminalBlock, type TerminalRun, UNPRICED } from '../../lib/landing-terminal';
+import { COMMAND } from '../../lib/site';
+import type { SiteCopy } from '../../lib/site-copy';
+import { coverOf, motionOf } from '../../lib/story-motion';
+import { CHAPTERS, type ChapterId, LEAD, type ObjectId, type ScreenId, STORY_HEIGHT } from '../../lib/story-timeline';
+import { CommandLine } from '../site/CommandLine';
+import { GitHubButton } from '../site/GitHub';
+import { DashboardAction } from '../site/SiteHeader';
 
 /**
- * The landing's desk: one laptop on a desk, and around it one object per
- * thing Trazum does. Pressing an object shows that command's output on the
- * laptop's screen and says, on a plate beside it, what it does and what it
- * does not do. The receipt prints out of the laptop's side; the lid closes
- * over what never leaves the machine.
+ * The landing's story: one laptop on a desk, pinned while the chapters scroll
+ * past, and around it one object per thing Trazum does.
  *
- * There is one laptop on the page, and this is it. The story told by scrolling
- * is how it arrives: the desk comes up, the laptop lands on it, the objects
- * arrive around it, `bill` runs on its screen and the receipt prints. When the
- * stage lets go the same laptop stays, and the desk is the visitor's.
+ * There is one laptop on the page, and this is it. The stage stays pinned
+ * from the desk's arrival to the end of the story while the chapters' words
+ * scroll past beside it (under it, on a phone), and each chapter changes the
+ * stage: the desk arrives; `bill` prints and the receipt comes out of the
+ * laptop's side; each object takes its turn, lifted and pressed, its command's
+ * output on the same screen; the receipt comes forward with each rate's page
+ * and date; a model with no published price is named and kept out of the
+ * total; what never leaves the machine goes on the screen and the lid closes
+ * over it. The chapters and their order are `lib/story-timeline.ts`.
  *
- * ## How scroll drives the arrival
+ * ## How scroll drives it
  *
  * Each element that moves with the scroll (`data-mv`) names its own keyframes,
  * which `lib/story-motion.ts` writes from the timeline and this component puts
@@ -30,28 +37,35 @@ import { STORY_BLOCK } from '../../lib/story-timeline';
  * Where it has not, `useStoryProgress` holds them paused and sets each one's
  * current time to the scroll position: one read and a batch of writes per
  * animation frame, from a passive listener attached only while the section is
- * on screen. Either way the scroll is the only clock, so scrolling back plays
- * the arrival back.
+ * on screen. Either way the scroll is the only clock, so scrolling back walks
+ * the story back.
+ *
+ * Which chapter is current is read by an `IntersectionObserver` on the
+ * chapters' slots, against the same line the timeline uses. It moves nothing:
+ * it says which object is pressed (`aria-pressed`), and it is what a reader
+ * who asked for less motion sees change, each chapter's last state at once
+ * (`data-on`, `data-chapter`).
  *
  * ## What a press does
  *
- * A press is the visitor's, so what it sets off may run on a clock, briefly:
- * the output appears a line at a time and the lid swings shut, both by the
- * stylesheet, from the attributes this component sets (`data-active`,
- * `data-closed`, `data-used`). Nothing moves on its own. Once the visitor has
- * pressed anything, or put focus inside the desk, the arrival is over: every
- * scroll keyframe gives way to the desk as it rests, so a control is never
- * reached half-arrived.
+ * The objects are buttons at every point of the story and after it. A press
+ * puts that command's output on the screen and lifts the object, over
+ * whatever the scroll had there (`data-pressed`, whose rules are `!important`
+ * and so outrank the scroll's keyframes without stopping them); what it sets
+ * off may run on a clock, briefly: the output appears a line at a time, the
+ * lid swings. The scroll keeps its place underneath, and when the visitor
+ * scrolls into the next chapter the press is let go and the story takes over
+ * again. A press or focus inside the story also completes the arrival, so a
+ * control is never reached half-arrived.
  *
  * ## What it is without JavaScript
  *
  * The layout's bootstrap marks the page `data-desk` before the first paint
  * whenever a script runs, and `data-motion="scroll"` unless the reader asked
- * for reduced motion. Without the first, none of the desk's rules apply: every
- * command's output is on the screen one after another, then what never
- * leaves, then the receipt, then every plate, in reading order, and the
- * objects, which would do nothing, are not drawn. With reduced motion the desk
- * works and nothing on it moves: a press shows its output at once.
+ * for reduced motion. Without the first, none of the stage's rules apply: every
+ * output on the screen one after another, what never leaves, the receipt with
+ * each rate's page, then every chapter's words, in reading order. The
+ * objects, which would do nothing, are not drawn.
  *
  * ## What is on the screen
  *
@@ -63,25 +77,42 @@ import { STORY_BLOCK } from '../../lib/story-timeline';
  */
 
 type Vars = CSSProperties & Record<`--${string}`, string | number>;
-type ObjectId = DeskCommand | 'lid';
 
-/** The keyframes, written once per page load from the timeline and the transcript. */
-const MOTION = storyMotion(TERMINAL);
+/** The keyframes, written once per page load from the timeline and the transcript, and the stretch each runs over. */
+const MOTION = motionOf(TERMINAL, RECEIPT.lines.length);
 
-/** An element's own keyframes, by name. */
-const moves = (name: string): CSSProperties => ({ animationName: name });
+/**
+ * An element's own keyframes, by name, and the stretch of the story they run
+ * over: as the section's `cover` range for its scroll timeline (`--mv-c0`,
+ * `--mv-c1`, in percent) and as a fraction of the story for the fallback
+ * script, which sets every animation's time to the story's position in
+ * seconds (`--mv-a`, `--mv-b`). The stylesheet reads them; none changes.
+ */
+const moves = (name: string): Vars => {
+  const span = MOTION.spans.get(name);
+  if (span === undefined) throw new Error(`no keyframes ${name}`);
+  const [a, b] = span;
+  const v = (x: number) => Number(x.toFixed(5));
+  return { animationName: name, '--mv-c0': v(coverOf(a)), '--mv-c1': v(coverOf(b)), '--mv-a': v(a), '--mv-b': v(b) };
+};
 
-/** The output each object shows, in the order the desk lays them out. */
-const BLOCKS_OF = Object.fromEntries(DESK_COMMANDS.map((id) => [id, TERMINAL.filter((block) => block.cap === id)])) as Record<
-  DeskCommand,
-  TerminalBlock[]
->;
+/** Every owner of output on the screen, in the order the story shows them: the objects' commands, then the example. */
+const OWNERS: readonly BlockOwner[] = [...DESK_COMMANDS, 'unpriced'];
+const BLOCKS_OF = Object.fromEntries(OWNERS.map((id) => [id, TERMINAL.filter((block) => block.cap === id)])) as Record<BlockOwner, TerminalBlock[]>;
 
 /** The longest a press's output takes to appear, a line at a time, and the most each line waits. */
 const TYPE_MS = 700;
 const LINE_MS = 22;
 
-/** The story's position, as each moving element's paused animation, where the browser cannot drive it from CSS. */
+/** A chapter's own entry in the timeline. */
+const chapterOf = (id: ChapterId) => CHAPTERS.find((chapter) => chapter.id === id) ?? CHAPTERS[0];
+
+/**
+ * The story's position, as each moving element's paused animation, where the
+ * browser cannot drive it from CSS. The same line as the stylesheet's
+ * `animation-range: entry 50% contain 100%`: 0 when the section's top is
+ * `LEAD` svh below the top of the window, 1 when its foot reaches the window's.
+ */
 function useStoryProgress(ref: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
     const element = ref.current;
@@ -97,8 +128,9 @@ function useStoryProgress(ref: React.RefObject<HTMLElement | null>) {
     const write = () => {
       frame = 0;
       const box = element.getBoundingClientRect();
-      const span = box.height - window.innerHeight;
-      const time = (span > 0 ? Math.min(1, Math.max(0, -box.top / span)) : 0) * 1000;
+      const lead = (window.innerHeight * LEAD) / 100;
+      const span = box.height - window.innerHeight + lead;
+      const time = (span > 0 ? Math.min(1, Math.max(0, (lead - box.top) / span)) : 0) * 1000;
       for (const animation of animations) animation.currentTime = time;
     };
     const request = () => {
@@ -111,11 +143,15 @@ function useStoryProgress(ref: React.RefObject<HTMLElement | null>) {
       window[method]('scroll', request, { passive: true } as AddEventListenerOptions);
       window[method]('resize', request, { passive: true } as AddEventListenerOptions);
     };
-    const observer = new IntersectionObserver(([entry]) => {
-      listen(entry?.isIntersecting ?? false);
-      // One last write on the way out, so the story rests at its start or its end.
-      request();
-    });
+    // On screen from half a window before the section, so the arrival starts as the hero scrolls out.
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        listen(entry?.isIntersecting ?? false);
+        // One last write on the way out, so the story rests at its start or its end.
+        request();
+      },
+      { rootMargin: '50% 0px 0px 0px' },
+    );
     observer.observe(element);
     write();
     return () => {
@@ -127,17 +163,55 @@ function useStoryProgress(ref: React.RefObject<HTMLElement | null>) {
   }, [ref]);
 }
 
+/**
+ * Which chapter is current, and whether the stage is pinned at all: a slot is
+ * current while its top is above the middle of the window and the next one's
+ * is not, the line the timeline uses. Read by an observer of the slots,
+ * never by a scroll listener.
+ */
+function useChapter(ref: React.RefObject<HTMLElement | null>): { chapter: ChapterId; staged: boolean } {
+  const [chapter, setChapter] = useState<ChapterId>('arrival');
+  const [staged, setStaged] = useState(false);
+  useEffect(() => {
+    const element = ref.current;
+    if (element === null || document.documentElement.dataset.desk === undefined) return;
+    const tall = window.matchMedia('(min-height: 560px)');
+    const update = () => setStaged(tall.matches);
+    update();
+    tall.addEventListener('change', update);
+    const crossing = new Set<ChapterId>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const id = (entry.target as HTMLElement).dataset.ch as ChapterId;
+          if (entry.isIntersecting) crossing.add(id);
+          else crossing.delete(id);
+        }
+        const current = CHAPTERS.filter((candidate) => crossing.has(candidate.id)).at(-1);
+        if (current !== undefined) setChapter(current.id);
+      },
+      { rootMargin: '-50% 0px -50% 0px' },
+    );
+    for (const slot of element.querySelectorAll('[data-ch]')) observer.observe(slot);
+    return () => {
+      observer.disconnect();
+      tall.removeEventListener('change', update);
+    };
+  }, [ref]);
+  return { chapter, staged };
+}
+
 function runClass(style: string): string {
   return [...style].map((letter) => `t-${letter}`).join(' ');
 }
 
 const isRuled = (runs: readonly TerminalRun[]) => runs.length > 0 && /^─+$/.test(runs.at(-1)?.[0] ?? '');
 
-function Runs({ runs, bar }: { runs: readonly TerminalRun[]; bar: string | null }) {
+function Runs({ runs, bar }: { runs: readonly TerminalRun[]; bar: string }) {
   return (
     <>
       {runs.map(([text, style], index) =>
-        bar !== null && style.includes('a') && /^█+$/.test(text) ? (
+        style.includes('a') && /^█+$/.test(text) ? (
           // The share bar: the same characters, filled by the story.
           // biome-ignore lint/suspicious/noArrayIndexKey: the transcript is a constant written by a script: its runs and lines never move, and an empty line or a repeated run has no identity of its own but its place
           <span key={index} className={`t-bar ${runClass(style)}`} data-mv="" style={moves(bar)}>
@@ -154,45 +228,42 @@ function Runs({ runs, bar }: { runs: readonly TerminalRun[]; bar: string | null 
   );
 }
 
-/** One object's output: each command it runs, its prompt, and the lines it printed. The story's command moves with the scroll. */
-function Transcript({ blocks }: { blocks: readonly TerminalBlock[] }) {
-  const story = blocks.some((block) => block.id === STORY_BLOCK);
+/** One owner's output: each command it runs, its prompt, and the lines it printed. Its first command is typed; the rest prints a line at a time. */
+function Transcript({ owner }: { owner: BlockOwner }) {
+  const blocks = BLOCKS_OF[owner];
   const count = blocks.reduce((sum, block) => sum + block.command.split('\n').length + block.lines.length, 0);
-  const style: Vars = { '--step': `${Math.min(LINE_MS, TYPE_MS / Math.max(1, count))}ms`, ...(story ? moves('st-print') : {}) };
+  const style: Vars = { '--step': `${Math.min(LINE_MS, TYPE_MS / Math.max(1, count))}ms`, ...moves(`st-print-${owner}`) };
   let at = 0;
   return (
-    <pre className="term" {...(story ? { 'data-mv': '' } : {})} style={style}>
-      {blocks.map((block) => {
-        const scrolled = block.id === STORY_BLOCK;
-        return [
-          ...block.command.split('\n').map((line, j) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: a command's lines are a constant written by a script: they never move, and a line has no identity of its own but its place
-            <span key={`${block.id}-command-${j}`} className="tl tl-command" style={{ '--i': at++ } as Vars}>
-              {j === 0 && (
-                <span aria-hidden="true" className="t-prompt">
-                  ${' '}
+    <pre className="term" data-mv="" style={style}>
+      {blocks.map((block, b) => [
+        ...block.command.split('\n').map((line, j) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: a command's lines are a constant written by a script: they never move, and a line has no identity of its own but its place
+          <span key={`${block.id}-command-${j}`} className="tl tl-command" style={{ '--i': at++ } as Vars}>
+            {j === 0 && (
+              <span aria-hidden="true" className="t-prompt">
+                ${' '}
+              </span>
+            )}
+            {b === 0 && j === 0 ? (
+              <>
+                <span className="t-typed" data-mv="" style={moves(`st-type-${owner}`)}>
+                  {line}
                 </span>
-              )}
-              {scrolled ? (
-                <>
-                  <span className="t-typed" data-mv="" style={moves('st-type')}>
-                    {line}
-                  </span>
-                  <span aria-hidden="true" className="t-cursor" data-mv="" style={moves('st-cursor')} />
-                </>
-              ) : (
-                <span className="t-typed">{line}</span>
-              )}
-            </span>
-          )),
-          ...block.lines.map((runs, j) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: the transcript is a constant written by a script: its runs and lines never move, and an empty line or a repeated run has no identity of its own but its place
-            <span key={`${block.id}-${j}`} className={isRuled(runs) ? 'tl tl-rule' : 'tl'} style={{ '--i': at++ } as Vars}>
-              <Runs runs={runs} bar={scrolled ? `st-bar-${j}` : null} />
-            </span>
-          )),
-        ];
-      })}
+                <span aria-hidden="true" className="t-cursor" data-mv="" style={moves(`st-cursor-${owner}`)} />
+              </>
+            ) : (
+              <span className="t-typed">{line}</span>
+            )}
+          </span>
+        )),
+        ...block.lines.map((runs, j) => (
+          // biome-ignore lint/suspicious/noArrayIndexKey: the transcript is a constant written by a script: its runs and lines never move, and an empty line or a repeated run has no identity of its own but its place
+          <span key={`${block.id}-${j}`} className={isRuled(runs) ? 'tl tl-rule' : 'tl'} style={{ '--i': at++ } as Vars}>
+            <Runs runs={runs} bar={`st-bar-${block.id}-${j}`} />
+          </span>
+        )),
+      ])}
     </pre>
   );
 }
@@ -225,35 +296,49 @@ function Deck() {
   );
 }
 
-/** The one laptop: the screen shows the pressed object's output, or, under the closing lid, what never leaves. */
-function Laptop({ t, active, closed, used, run }: { t: LandingCopy; active: DeskCommand; closed: boolean; used: boolean; run: number }) {
+/** The one laptop: its screen holds every output the story shows and what never leaves, each shown by the scroll or a press. */
+function Laptop({ t, screen, pressed, run, mounted }: { t: LandingCopy; screen: ScreenId; pressed: boolean; run: number; mounted: boolean }) {
+  // Once the page runs, only what the screen shows is read out; before that (and without a script) all of it is.
+  const off = (on: boolean) => (mounted && !on ? { 'aria-hidden': true as const } : {});
   return (
     <div className="lt-device">
       <div className="lt-deck">
         <Deck />
-        <div aria-hidden="true" className="lt-deck-shade" />
+        <div aria-hidden="true" className="lt-deck-shade" data-mv="" style={moves('st-deck-shade')} />
       </div>
-      <div className="lt-lid">
+      <div className="lt-lid" data-mv="" style={moves('st-lid')}>
         <div className="lt-face lt-front">
           <section className="lt-screen" aria-label={t.desk.screen} aria-live="polite">
-            <div className="screen-out" tabIndex={used ? 0 : -1}>
-              {DESK_COMMANDS.map((id) => (
-                <div key={id === active ? `${id}-${run}` : id} className="cap-out" data-cap={id} aria-labelledby={`desk-plate-${id}`} role="group" hidden={id !== active || closed}>
-                  <Transcript blocks={BLOCKS_OF[id]} />
+            <div className="screen-out">
+              {OWNERS.map((owner) => (
+                <div
+                  key={owner === screen && pressed ? `${owner}-${run}` : owner}
+                  className="cap-out"
+                  data-cap={owner}
+                  data-mv=""
+                  style={moves(`st-out-${owner}`)}
+                  {...(owner === screen ? { 'data-on': '' } : {})}
+                  // The output showing can be scrolled from the keyboard, once the page runs.
+                  {...(mounted && owner === screen ? { tabIndex: 0 } : {})}
+                  {...(owner === 'unpriced' ? { 'aria-labelledby': 'story-unpriced' } : { 'aria-labelledby': `desk-plate-${owner}`, role: 'group' })}
+                  {...off(owner === screen)}
+                >
+                  {owner === 'unpriced' && <p className="screen-tag">{t.desk.example}</p>}
+                  <Transcript owner={owner} />
                 </div>
               ))}
             </div>
-            <div className="lt-never" hidden={!closed}>
+            <div className="lt-never" data-mv="" style={moves('st-out-never')} {...(screen === 'never' ? { 'data-on': '' } : {})} {...off(screen === 'never')}>
               <p className="lt-never-label">{t.neverLabel}</p>
               <ul>
                 {t.neverItems.map((item, index) => (
-                  <li key={item} style={{ '--i': index } as Vars}>
+                  <li key={item} data-mv="" style={{ '--i': index, ...moves(`st-never-${index}`) } as Vars}>
                     {item}
                   </li>
                 ))}
               </ul>
             </div>
-            <div aria-hidden="true" className="lt-screen-off" />
+            <div aria-hidden="true" className="lt-screen-off" data-mv="" style={moves('st-screen-off')} />
           </section>
         </div>
         <div aria-hidden="true" className="lt-face lt-back">
@@ -264,12 +349,12 @@ function Laptop({ t, active, closed, used, run }: { t: LandingCopy; active: Desk
   );
 }
 
-/** The paper receipt: `bill --receipt` on the same files, each line with the date its rate was read. */
+/** The paper receipt: `bill --receipt` on the same files, each line with the date its rate was read, and a note of the page it was read from. */
 function Receipt({ t }: { t: LandingCopy }) {
   const r = t.desk.receipt;
   return (
     <div className="receipt-slot" data-mv="" style={moves('st-receipt')}>
-      <div className="receipt">
+      <div className="receipt" data-mv="" style={moves('st-receipt-face')}>
         <div aria-hidden="true" className="receipt-cast" />
         <div className="receipt-paper">
           <p className="receipt-mark">Trazum</p>
@@ -280,7 +365,7 @@ function Receipt({ t }: { t: LandingCopy }) {
             {`${RECEIPT.from} → ${RECEIPT.to}`} · {r.calls(RECEIPT.calls)}
           </p>
           <ul className="receipt-lines">
-            {RECEIPT.lines.map((line) => (
+            {RECEIPT.lines.map((line, index) => (
               <li key={`${line.label}-${line.model}`}>
                 <span className="receipt-row">
                   <span>{line.model}</span>
@@ -288,6 +373,14 @@ function Receipt({ t }: { t: LandingCopy }) {
                 </span>
                 <span className="receipt-src">
                   {r.calls(line.calls)} · {r.rateRead(line.reviewedOn)}
+                </span>
+                <span className="receipt-note" data-mv="" style={moves(`st-note-${index}`)}>
+                  <span className="receipt-note-page">
+                    {/* The page, broken after its host where the note is narrow. */}
+                    <span>{line.source.slice(0, line.source.indexOf('/'))}</span>
+                    <span>{line.source.slice(line.source.indexOf('/'))}</span>
+                  </span>
+                  <span className="receipt-note-date">{r.rateRead(line.reviewedOn)}</span>
                 </span>
               </li>
             ))}
@@ -363,66 +456,89 @@ function Icon({ id }: { id: ObjectId }) {
   );
 }
 
-/** The plate beside the laptop: the pressed object's command, what it does in a sentence, and what it does not do. */
-function Plate({
-  id,
-  eyebrow,
-  title,
-  body,
-  listLabel,
-  list,
-  link,
-  shown,
-}: {
-  id: ObjectId;
-  eyebrow: string;
-  title: string;
-  body: string;
-  listLabel: string;
-  list: readonly string[];
-  link?: { href: string; label: string };
-  shown: boolean;
-}) {
+/** An object's face: its drawing, its name and its command. Drawn twice, the second time pressed, which the story fades in. */
+function Face({ id, name, hint }: { id: ObjectId; name: string; hint: string }) {
   return (
-    <section className="plate" data-plate={id} aria-labelledby={`desk-plate-${id}`} hidden={!shown}>
-      <p className="plate-eyebrow">{eyebrow}</p>
+    <>
+      <Icon id={id} />
+      <span className="obj-words">
+        <span className="obj-name">{name}</span>
+        <span className="obj-hint">{hint}</span>
+      </span>
+    </>
+  );
+}
+
+/** A chapter's slot in the column: as tall as the timeline says, its words near its top. */
+function Slot({ id, children, labelledBy, ...rest }: { id: ChapterId; children: React.ReactNode; labelledBy: string } & Record<`data-${string}`, string>) {
+  return (
+    <section className="chapter" data-ch={id} aria-labelledby={labelledBy} style={{ '--ch-h': `${chapterOf(id).height}svh` } as Vars} {...rest}>
+      <div className="chapter-card">{children}</div>
+    </section>
+  );
+}
+
+/** An object's chapter: its command, a title, what it does in a sentence, and what it does not do. */
+function Plate({ t, id, link, extra }: { t: LandingCopy; id: DeskCommand; link?: { href: string; label: string }; extra?: React.ReactNode }) {
+  const cap = t.desk.caps[id];
+  return (
+    <Slot id={id} labelledBy={`desk-plate-${id}`}>
+      <p className="plate-eyebrow">{DESK_COMMAND_NAMES[id]}</p>
       <h3 id={`desk-plate-${id}`} className="plate-title">
-        {title}
+        {cap.title}
       </h3>
-      <p className="plate-body">{body}</p>
-      <p className="plate-not">{listLabel}</p>
+      <p className="plate-body">{cap.body}</p>
+      <p className="plate-not">{t.desk.notLabel}</p>
       <ul className="plate-list">
-        {list.map((item) => (
+        {cap.not.map((item) => (
           <li key={item}>{item}</li>
         ))}
       </ul>
+      {extra}
       {link && (
         <a href={link.href} className="plate-link">
           {link.label}
           <ArrowRight className="size-4" aria-hidden="true" />
         </a>
       )}
-    </section>
+    </Slot>
   );
 }
 
-export function Story({ t }: { t: LandingCopy }) {
+export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
   const ref = useRef<HTMLElement>(null);
   useStoryProgress(ref);
-  const [active, setActive] = useState<DeskCommand>('bill');
-  const [closed, setClosed] = useState(false);
-  const [used, setUsed] = useState(false);
+  const { chapter, staged } = useChapter(ref);
+  // A press: the object the visitor chose, held over the scroll until the next chapter.
+  const [pressed, setPressed] = useState<ObjectId | null>(null);
+  const [lastCommand, setLastCommand] = useState<DeskCommand>('bill');
   const [run, setRun] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // Scrolling into another chapter lets go of a press, and the story takes over again.
+  const pressedIn = useRef<ChapterId | null>(null);
+  useEffect(() => {
+    if (pressedIn.current !== null && pressedIn.current !== chapter) {
+      pressedIn.current = null;
+      setPressed(null);
+    }
+  }, [chapter]);
+
+  const current = chapterOf(chapter);
+  // What the stage shows: a press, or the current chapter, or, with the stage not pinned, the bill.
+  const object: ObjectId | null = pressed ?? (staged ? current.object : 'bill');
+  const screen: ScreenId = pressed !== null ? (pressed === 'lid' ? 'never' : pressed) : staged ? current.screen : 'bill';
+  const closed = pressed !== null ? pressed === 'lid' : staged && chapter === 'close';
 
   const press = (id: ObjectId) => {
-    setUsed(true);
+    pressedIn.current = chapter;
     if (id === 'lid') {
       // Open again, it shows the last command it showed.
-      setClosed((was) => !was);
-      return;
+      setPressed(closed ? lastCommand : 'lid');
+    } else {
+      setPressed(id);
+      setLastCommand(id);
     }
-    setClosed(false);
-    setActive(id);
     setRun((count) => count + 1);
   };
 
@@ -435,6 +551,7 @@ export function Story({ t }: { t: LandingCopy }) {
     optimize: { href: MORE_LINKS.trim.href, label: t.more.trim.link },
   };
   const world: Vars = { '--cols': TERMINAL_COLUMNS };
+  const [reasonRates, reasonBilled] = t.reasons;
 
   return (
     <section
@@ -442,73 +559,52 @@ export function Story({ t }: { t: LandingCopy }) {
       className="story"
       aria-labelledby="desk-title"
       data-story-root=""
-      data-active={active}
+      data-chapter={chapter}
+      // The story's height, written down, so the scroll timeline has it while the page is still arriving.
+      style={{ '--story-h': `${STORY_HEIGHT}svh` } as Vars}
+      {...(pressed !== null ? { 'data-pressed': pressed } : {})}
       {...(closed ? { 'data-closed': '' } : {})}
-      {...(used ? { 'data-used': '' } : {})}
     >
       {/* biome-ignore lint/security/noDangerouslySetInnerHtml: keyframes written in this repository from the timeline and the CLI's transcript; nothing a visitor sends reaches them, and style-src allows inline styles */}
-      <style dangerouslySetInnerHTML={{ __html: MOTION }} />
+      <style dangerouslySetInnerHTML={{ __html: MOTION.css }} />
       <div className="story-stage">
         <div className="desk" style={world}>
-          <div aria-hidden="true" className="desk-plane" data-mv="" style={moves('st-desk')}>
+          <div aria-hidden="true" className="desk-plane" data-mv="" data-arrive="" style={moves('st-desk')}>
             <div className="desk-top" />
             <div className="desk-edge" />
           </div>
 
           {/* The bill's total, set huge on the far plane behind the laptop, which stands in front of it. The receipt and the screen say it in words. */}
-          <p aria-hidden="true" className="desk-figure" data-mv="" style={moves('st-figure')}>
+          <p aria-hidden="true" className="desk-figure" data-mv="" data-arrive="" style={moves('st-figure')}>
             {RECEIPT.total}
           </p>
 
-          <header className="desk-head" data-mv="" style={moves('st-head')}>
-            <p className="desk-kicker">{t.desk.kicker}</p>
-            <h2 id="desk-title" className="desk-title">
-              {t.desk.title}
-            </h2>
-            <p className="desk-sub">{t.desk.sub}</p>
-          </header>
-
           <div className="desk-scene">
-            <div className="desk-laptop" data-mv="" style={moves('st-laptop')}>
+            <div className="desk-laptop" data-mv="" data-arrive="" style={moves('st-laptop')}>
               <div className="story-3d">
-                <Laptop t={t} active={active} closed={closed} used={used} run={run} />
+                <Laptop t={t} screen={screen} pressed={pressed !== null} run={run} mounted={mounted} />
               </div>
             </div>
             <Receipt t={t} />
           </div>
 
-          <div className="desk-plate" data-mv="" style={moves('st-plate')}>
-            {DESK_COMMANDS.map((id) => (
-              <Plate
-                key={id}
-                id={id}
-                eyebrow={DESK_COMMAND_NAMES[id]}
-                title={t.desk.caps[id].title}
-                body={t.desk.caps[id].body}
-                listLabel={t.desk.notLabel}
-                list={t.desk.caps[id].not}
-                link={links[id]}
-                shown={!closed && id === active}
-              />
-            ))}
-            <Plate id="lid" eyebrow={t.neverLabel} title={t.neverTitle} body={t.neverLede} listLabel={t.leavesLabel} list={[t.leaves]} shown={closed} />
-          </div>
-
           <div className="desk-objects" role="group" aria-label={t.desk.objects}>
             <div className="desk-row">
-              {objects.map((object, index) => (
-                <div key={object.id} className="obj-slot" data-mv="" style={moves(`st-obj-${index}`)}>
+              {objects.map((item, index) => (
+                <div key={item.id} className="obj-slot" data-mv="" data-arrive="" style={moves(`st-obj-${index}`)}>
+                  <span aria-hidden="true" className="obj-cast" />
                   <button
                     type="button"
                     className="obj"
-                    data-obj={object.id}
-                    aria-pressed={object.id === 'lid' ? closed : !closed && object.id === active}
-                    onClick={() => press(object.id)}
+                    data-obj={item.id}
+                    data-mv=""
+                    style={moves(`st-lift-${item.id}`)}
+                    aria-pressed={item.id === object}
+                    onClick={() => press(item.id)}
                   >
-                    <Icon id={object.id} />
-                    <span className="obj-words">
-                      <span className="obj-name">{object.name}</span>
-                      <span className="obj-hint">{object.hint}</span>
+                    <Face {...item} />
+                    <span aria-hidden="true" className="obj-skin" data-mv="" style={moves(`st-skin-${item.id}`)}>
+                      <Face {...item} />
                     </span>
                   </button>
                 </div>
@@ -516,6 +612,76 @@ export function Story({ t }: { t: LandingCopy }) {
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="chapters">
+        <Slot id="arrival" labelledBy="desk-title">
+          <p className="plate-eyebrow">{t.desk.kicker}</p>
+          <h2 id="desk-title" className="chapter-title">
+            {t.desk.title}
+          </h2>
+          <p className="plate-body">{t.desk.sub}</p>
+        </Slot>
+        {DESK_COMMANDS.map((id) => (
+          <Plate
+            key={id}
+            t={t}
+            id={id}
+            link={links[id]}
+            extra={
+              id === 'bill' ? (
+                <p className="plate-note">
+                  {t.billNote}{' '}
+                  <a href={ILLUSTRATIVE_BILL.source} target="_blank" rel="noreferrer noopener" className="plate-source">
+                    {t.billSource}
+                    <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                  </a>
+                </p>
+              ) : undefined
+            }
+          />
+        ))}
+        <Slot id="sources" labelledBy="reasons-title">
+          <h2 id="reasons-title" className="chapter-title">
+            {t.reasonsTitle}
+          </h2>
+          <h3 className="plate-title">{reasonRates[0]}</h3>
+          <p className="plate-body">{reasonRates[1]}</p>
+          <h3 className="plate-title plate-title-next">{reasonBilled[0]}</h3>
+          <p className="plate-body">{reasonBilled[1]}</p>
+        </Slot>
+        <Slot id="unpriced" labelledBy="story-unpriced">
+          <p className="plate-eyebrow">{t.reasonsTitle}</p>
+          <h3 id="story-unpriced" className="plate-title">
+            {t.reasons[2][0]}
+          </h3>
+          <p className="plate-body">{t.reasons[2][1]}</p>
+          <p className="plate-body">{t.desk.unpricedNote(UNPRICED.source, UNPRICED.models.join(', '), UNPRICED.calls)}</p>
+        </Slot>
+        <Slot id="never" labelledBy="story-never">
+          <p className="plate-eyebrow">{t.neverTitle}</p>
+          <h3 id="story-never" className="plate-title">
+            {t.reasons[3][0]}
+          </h3>
+          <p className="plate-body">{t.reasons[3][1]}</p>
+          <p className="plate-body">{t.neverLede}</p>
+        </Slot>
+        <Slot id="close" labelledBy="close-title" data-landing-close="">
+          <h2 id="close-title" className="chapter-title chapter-close">
+            {t.closeTitle}
+          </h2>
+          <p className="plate-body">{t.closeBody}</p>
+          <p className="plate-leaves">
+            <span className="plate-not">{t.leavesLabel}</span> {t.leaves}
+          </p>
+          <div className="chapter-cta">
+            <CommandLine command={COMMAND} copyLabel={copy.copyCommand} copiedLabel={copy.copied} size="small" />
+            <div className="chapter-actions">
+              <DashboardAction label={copy.dashboardCta} className="min-h-12 px-6 text-[16px]" />
+              <GitHubButton label={copy.links.github} opensExternal={copy.opensExternal} className="min-h-12" />
+            </div>
+          </div>
+        </Slot>
       </div>
     </section>
   );

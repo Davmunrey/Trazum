@@ -335,7 +335,7 @@ opens the built page in a real browser and does what a visitor does: pastes a
 log and reads the bill to the cent, optimises and compares a prompt, loads a
 recorded run, changes the theme and the language, and reaches the tabs on a
 phone, follows the landing into the dashboard, scrolls the landing's
-desk from top to bottom and back and presses every object on it, reads the Pro page without it sending
+story from top to bottom and back, chapter by chapter, and presses every object on its desk, reads the Pro page without it sending
 anything off the site, and reads the Download page against the release it names
 and the same way.
 [docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-six flows,

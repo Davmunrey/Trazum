@@ -1,30 +1,36 @@
 /*
- * The landing's desk: one laptop on a desk, one object per capability around
- * it, and the arrival told by scrolling. DESIGN.md, "Landing: the desk", is
- * the rule; `components/landing/Story.tsx` says how the pieces fit.
+ * The landing's story: one laptop on a desk, pinned while the chapters scroll
+ * past, one object per capability around it. DESIGN.md, "Landing: the desk",
+ * is the rule; `components/landing/Story.tsx` says how the pieces fit and
+ * `lib/story-timeline.ts` when each thing happens.
  *
- * Read this file in three parts.
+ * Read this file in four parts.
  *
  * 1. The still page, first and unconditional. It is what a reader gets
- *    without JavaScript: every command's output on the laptop's screen one
- *    after another, then what never leaves, the receipt, and every plate, in
- *    reading order. Nothing in it is hidden and nothing moves.
+ *    without JavaScript: every output on the laptop's screen one after
+ *    another, what never leaves, the receipt with each rate's page, then
+ *    every chapter's words, in reading order. Nothing in it is hidden and
+ *    nothing moves.
  *
  * 2. The desk, under `:root[data-desk]` (set before paint by the layout's
  *    bootstrap whenever a script runs, reduced motion included). The laptop
  *    stands on a desk drawn in perspective, the objects lie in front of it,
- *    the plate stands beside it, and a press changes what the screen shows.
- *    The only things here that run on a clock are what a press sets off, and
- *    only for a reader with `prefers-reduced-motion: no-preference`: the lines
- *    of an output appearing, the lid swinging shut, the receipt going back.
+ *    and the screen shows one thing at a time: what the current chapter
+ *    shows (`data-on`, `data-chapter`), or what a press chose (`data-pressed`,
+ *    whose rules are `!important` and so outrank the scroll's keyframes).
  *
- * 3. The arrival, only under `:root[data-motion='scroll']` (never under
+ * 3. The stage, in a window at least 560px tall: pinned for the whole story,
+ *    the chapters scrolling past beside it (under it, below 1100px), each
+ *    slot as tall as the timeline says. A shorter window gets the desk at
+ *    rest and the chapters after it.
+ *
+ * 4. The motion, only under `:root[data-motion='scroll']` (never under
  *    reduced motion) and only for a reader with
- *    `prefers-reduced-motion: no-preference`. It pins the stage and places
- *    things; it does not move them. What moves is keyframes of `transform`,
- *    `opacity` and `clip-path` that `lib/story-motion.ts` writes from the
- *    timeline, on the section's scroll timeline: no width, height, top or left
- *    changes with scroll, and nothing in this file changes with scroll at all.
+ *    `prefers-reduced-motion: no-preference`. It does not move anything
+ *    itself: it puts each moving element on the section's scroll timeline,
+ *    and the element runs the keyframes of `transform`, `opacity` and
+ *    `clip-path` that `lib/story-motion.ts` writes. No width, height, top or
+ *    left changes with scroll, and nothing in this file changes with scroll.
  *
  * Depth: one light, from the top left, for the whole page. Every shadow falls
  * down and to the right, hard, with no blur: the laptop's, the receipt's on
@@ -57,8 +63,14 @@
   descent-override: 28.6%;
   line-gap-override: 0%;
 }
-#landing-title {
+/* The headline, and the story's display type, which is in the first screen too: the total behind the desk and the arrival's words. */
+#landing-title,
+.desk-figure,
+.chapter-title,
+.plate-title {
   font-family: 'Space Grotesk Variable', 'Trazum Grotesk Fallback', sans-serif;
+}
+#landing-title {
   /* Depth, restrained: the headline's own thickness, a hard offset in the side-face tone, down and to the right. */
   text-shadow: 0.035em 0.035em 0 var(--layer-hover);
 }
@@ -97,20 +109,24 @@
   --dev-rule: #999f8a;
   --dev-shadow: var(--ink);
   --dev-off: #080c07;
+  --pad: 16px;
+  position: relative;
+  border-top: 2px solid var(--foreground);
+  container: story / inline-size;
 }
 :root[data-theme='dark'] .story {
   --dev-shadow: #080c07;
 }
+@media (min-width: 640px) {
+  .story { --pad: 32px; }
+}
+@media (min-width: 1024px) {
+  .story { --pad: 48px; }
+}
 
 /* ---------------------------------------------------------------- still -- */
 
-.story-stage {
-  border-top: 2px solid var(--foreground);
-  container: desk / inline-size;
-}
-
 .desk {
-  --pad: 16px;
   /* The laptop's size, and from it the screen's, the bezel's and the lid's. */
   --L: min(760px, calc(100cqw - 2 * var(--pad)));
   --sw: calc(var(--L) * 0.94);
@@ -121,16 +137,10 @@
   position: relative;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 48px var(--pad) 64px;
+  padding: 48px var(--pad) 32px;
   display: flex;
   flex-direction: column;
   gap: 32px;
-}
-@media (min-width: 640px) {
-  .desk { --pad: 32px; }
-}
-@media (min-width: 1024px) {
-  .desk { --pad: 48px; padding-top: 72px; padding-bottom: 96px; }
 }
 
 .desk-plane,
@@ -139,7 +149,6 @@
   display: none;
 }
 
-.desk-kicker,
 .plate-eyebrow,
 .plate-not {
   font-family: var(--font-mono);
@@ -148,23 +157,6 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--terracotta);
-}
-.desk-title {
-  margin-top: 10px;
-  max-width: 24ch;
-  font-family: var(--font-display);
-  font-size: clamp(28px, 3vw, 44px);
-  line-height: 1.05;
-  font-weight: 700;
-  letter-spacing: -0.04em;
-  text-wrap: balance;
-}
-.desk-sub {
-  margin-top: 10px;
-  max-width: 70ch;
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--muted-foreground);
 }
 
 /* The laptop, still: the bezel round a screen as tall as everything on it. */
@@ -188,10 +180,26 @@
 .screen-out {
   padding: 3.2cqw 3.6cqw;
 }
+.cap-out {
+  position: relative;
+}
 .cap-out + .cap-out {
   margin-top: 1.5em;
   padding-top: 1.5em;
   border-top: 1px solid var(--term-rule);
+}
+/* The example's tag: the screen says the file is an example, not anybody's usage. */
+.screen-tag {
+  display: inline-block;
+  margin-bottom: 0.6em;
+  padding: 1px 6px;
+  background: var(--term-acid);
+  color: var(--term-ink);
+  font-family: var(--font-mono);
+  font-size: clamp(9px, 1.7cqw, 12px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .lt-back,
 .lt-deck,
@@ -258,23 +266,31 @@
 .t-m { background: var(--term-acid); color: var(--term-ink); }
 .t-bar { display: inline-block; }
 
-/* The paper receipt, still: a slip under the laptop. */
+/* The paper receipt, still: a slip under the laptop, each line with a note of the page its rate was read from. */
 .receipt-slot {
-  width: min(300px, 100%);
+  width: min(320px, 100%);
 }
 .receipt {
   position: relative;
 }
 .receipt-paper {
   position: relative;
+  isolation: isolate;
   padding: 18px 18px 26px;
-  background: var(--dev-shell);
   color: var(--dev-ink);
-  border: 2px solid var(--dev-ink);
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;
   font-variant-numeric: tabular-nums;
+}
+/* The paper itself, behind the words, so that a note can reach past its edge. */
+.receipt-paper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--dev-shell);
+  border: 2px solid var(--dev-ink);
 }
 .receipt-cast,
 .receipt-curl {
@@ -296,6 +312,9 @@
   padding-top: 8px;
   border-top: 2px dashed var(--dev-rule);
 }
+.receipt-lines li {
+  position: relative;
+}
 .receipt-lines li + li {
   margin-top: 6px;
 }
@@ -309,6 +328,29 @@
   display: block;
   font-size: 0.88em;
   white-space: nowrap;
+}
+/* The note: a leader rule, then the page the rate was read from and the date. */
+.receipt-note {
+  display: grid;
+  margin-top: 2px;
+  padding-left: 16px;
+  font-size: 0.88em;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.receipt-note::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 10px;
+  margin-top: 0.62em;
+  border-top: 2px solid var(--dev-ink);
+}
+.receipt-note-page {
+  font-weight: 700;
+}
+.receipt-note-page span {
+  display: inline-block;
 }
 /* The tear line, then the total in ink on the acid fill. */
 .receipt-total {
@@ -332,23 +374,42 @@
   text-align: center;
 }
 
-/* The plates, still: one after another, each its own bordered block. */
-.desk-plate {
+/* The chapters, still: one after another, each its own bordered block. */
+.chapters {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 var(--pad) 48px;
   display: grid;
   gap: 16px;
 }
-.plate {
+.chapter-card {
   border: 2px solid var(--foreground);
   background: var(--background);
   padding: 20px 22px;
 }
+.chapter-title {
+  margin-top: 8px;
+  font-size: clamp(24px, 2.4vw, 34px);
+  line-height: 1.06;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
 .plate-title {
   margin-top: 8px;
   font-family: var(--font-display);
-  font-size: clamp(22px, 2.2vw, 30px);
+  font-size: clamp(21px, 1.9vw, 27px);
   line-height: 1.1;
   font-weight: 700;
   letter-spacing: -0.035em;
+}
+.chapter-title + .plate-title {
+  margin-top: 14px;
+}
+.plate-title-next {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 2px solid var(--foreground);
 }
 .plate-body {
   margin-top: 10px;
@@ -357,6 +418,7 @@
   color: var(--muted-foreground);
 }
 .plate-not {
+  display: block;
   margin-top: 16px;
   padding-top: 12px;
   border-top: 2px solid var(--foreground);
@@ -371,6 +433,50 @@
 .plate-list li + li {
   margin-top: 4px;
 }
+.plate-note {
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+.plate-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.plate-leaves {
+  margin-top: 14px;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.plate-leaves .plate-not {
+  display: inline;
+  margin: 0 6px 0 0;
+  padding: 0;
+  border: 0;
+}
+.chapter-close {
+  font-size: clamp(30px, 3.4vw, 48px);
+  letter-spacing: -0.05em;
+}
+.chapter-cta {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.chapter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
 .plate-link {
   margin-top: 16px;
   display: inline-flex;
@@ -381,70 +487,53 @@
   font-size: 15px;
   font-weight: 600;
 }
-.plate-link:hover {
+.plate-link:hover,
+.plate-source:hover {
   color: var(--terracotta);
 }
-.plate-link:focus-visible {
+.plate-link:focus-visible,
+.plate-source:focus-visible {
   outline: 2px solid var(--foreground);
   outline-offset: 2px;
 }
 
-/*
- * Without a script nothing is hidden: every output, what never leaves, and
- * every plate. The reset hides `[hidden]` with an important rule in the `base`
- * layer, and an important rule in a layer outranks every unlayered one, so this
- * one is in that layer too, where the more specific selector wins.
- */
-@layer base {
-  :root:not([data-desk]) .story [hidden] {
-    display: block !important;
-  }
-}
-
 /* ----------------------------------------------------------------- desk -- */
-
-:root[data-desk] .story [hidden] {
-  display: none !important;
-}
 
 :root[data-desk] .desk {
   /* The tilt of the desk, the receipt and the objects lying on it: one plane, seen from above and in front. */
-  --tilt: 26deg;
-  --tilt-obj: 18deg;
-  --plate-w: clamp(280px, 24cqw, 380px);
-  --receipt-w: clamp(200px, 17cqw, 260px);
-  --gap: clamp(20px, 2.2cqw, 32px);
-  /* As wide as the row leaves beside the receipt and the plate, as tall as the window leaves under the words and above the objects. */
-  --L: clamp(
-    340px,
-    min(calc(min(100cqw, 1440px) - 2 * var(--pad) - var(--plate-w) - var(--receipt-w) - 3 * var(--gap)), calc((100svh - 285px) / 1.03)),
-    760px
-  );
-  --receipt-from: calc(-100% - var(--gap));
+  --tilt: 12deg;
+  --tilt-obj: 8deg;
+  --gap: 20px;
+  --receipt-w: min(300px, calc(var(--L) - 24px));
+  /* The receipt's poses (see `st-receipt`): a phone has no room for it on the desk, so it rests out of sight and comes forward over the laptop. */
+  --receipt-rest: 0;
+  --receipt-from-x: 0px;
+  --receipt-from-y: 24px;
+  --receipt-fwd-x: 0px;
+  --receipt-fwd-y: 0px;
+  --receipt-fwd-scale: 1;
+  --L: calc(min(100cqw, 760px) - 2 * var(--pad));
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--plate-w);
-  grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
-    'head head'
-    'scene plate'
-    'objects objects';
-  gap: 20px var(--gap);
-  padding-top: 32px;
-  padding-bottom: 36px;
+    'scene'
+    'objects';
+  gap: 14px;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
 /*
  * The far plane: the bill's total, from the generated receipt, set huge in
- * Space Grotesk behind the laptop. The lid, the receipt and the plate stand in
- * front of it and cover part of it, by their place in the stacking order, so
- * the type reads as the wall and the laptop as nearer. It is a picture of a
- * figure the receipt and the screen already say in words, so it is hidden from
- * assistive technology; it is cut inside its own box, never wider than the desk.
+ * Space Grotesk behind the laptop. The lid and the receipt stand in front of
+ * it and cover part of it, by their place in the stacking order, so the type
+ * reads as the wall and the laptop as nearer. It is a picture of a figure the
+ * receipt and the screen already say in words, so it is hidden from assistive
+ * technology; it is cut inside its own box, never wider than the desk.
  */
 :root[data-desk] .desk-figure {
   display: block;
-  grid-column: 1 / -1;
-  grid-row: 2;
+  grid-area: scene;
   align-self: start;
   justify-self: center;
   position: relative;
@@ -452,28 +541,14 @@
   max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
-  margin-top: -0.1em;
-  font-family: var(--font-display);
-  font-size: clamp(110px, 21cqw, 320px);
+  margin-top: -0.18em;
+  font-size: 26cqw;
   font-weight: 700;
   line-height: 0.86;
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
   color: var(--layer-hover);
   pointer-events: none;
-}
-
-:root[data-desk] .desk-head {
-  grid-area: head;
-  position: relative;
-  z-index: 1;
-}
-:root[data-desk] .desk-title {
-  max-width: none;
-  font-size: clamp(26px, 2.5vw, 40px);
-}
-:root[data-desk] .desk-sub {
-  margin-top: 6px;
 }
 
 /*
@@ -485,10 +560,10 @@
   display: flex;
   flex-direction: column;
   grid-column: 1 / -1;
-  grid-row: 2 / 4;
+  grid-row: 1 / 3;
   position: relative;
   z-index: 0;
-  margin: calc(var(--Hl) * 0.34) calc(var(--pad) * -0.5) -8px;
+  margin: calc(var(--Hl) * 0.5) calc(var(--pad) * -0.5) -8px;
   pointer-events: none;
 }
 :root[data-desk] .desk-top {
@@ -511,6 +586,8 @@
   position: relative;
   z-index: 2;
   align-self: end;
+  justify-self: center;
+  width: var(--L);
   /* The lid, and the deck in perspective in front of it; the objects in front may cover its lip and shadow. */
   height: calc(var(--Hl) + var(--L) * 0.36);
 }
@@ -561,6 +638,8 @@
   top: calc(var(--bt) - var(--L) * 0.006);
   width: var(--sw);
   height: var(--sh);
+  /* Its height too, so the output inside knows how many rows it has (`--rows`, in `cqh`). */
+  container-type: size;
 }
 :root[data-desk] .screen-out {
   position: absolute;
@@ -569,22 +648,45 @@
   overflow: hidden;
   background: var(--term-bg);
 }
-:root[data-desk] .story[data-used] .screen-out,
-:root[data-desk]:not([data-motion]) .screen-out {
-  overflow-y: auto;
-}
-:root[data-desk] .screen-out:focus-visible {
-  outline: 3px solid var(--term-acid);
-  outline-offset: -3px;
-}
-:root[data-desk] .cap-out + .cap-out {
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
+:root[data-desk] .cap-out,
 :root[data-desk] .lt-never {
   position: absolute;
   inset: 0;
+  opacity: 0;
+}
+:root[data-desk] .cap-out {
+  padding: 3.2cqw 3.6cqw;
+  /* The rows the screen has, for the output that scrolls up once it is taller than them. */
+  --rows: calc(100cqh - 6.4cqw);
+  /*
+   * Shown whole (a press, reduced motion, a short window), an output stands
+   * as a terminal leaves it: its last line at the foot of the screen, the rest
+   * a scroll up inside it.
+   */
+  display: flex;
+  flex-direction: column-reverse;
+  overflow-y: auto;
+}
+:root[data-desk] .cap-out:focus-visible {
+  outline: 3px solid var(--term-acid);
+  outline-offset: -3px;
+}
+:root[data-desk] .cap-out[data-on],
+:root[data-desk] .lt-never[data-on] {
+  opacity: 1;
+}
+:root[data-desk] .cap-out + .cap-out {
+  margin: 0;
+  border: 0;
+}
+:root[data-desk] .screen-tag {
+  position: absolute;
+  z-index: 1;
+  top: 3.2cqw;
+  right: 3.6cqw;
+  margin: 0;
+}
+:root[data-desk] .lt-never {
   /* Over the output's ground, which stays drawn while the lid is shut. */
   z-index: 2;
   background: var(--term-bg);
@@ -647,7 +749,7 @@
   opacity: 0;
 }
 
-/* The lid, pressed: what never leaves is on the screen, and the lid closes over it about its hinge. */
+/* The lid, shut: what never leaves is on the screen, and the lid has closed over it about its hinge. */
 :root[data-desk] .story[data-closed] .lt-lid {
   transform: rotateX(-103deg);
 }
@@ -660,26 +762,31 @@
 }
 
 /*
- * The receipt, lying on the desk to the right of the laptop, in the desk's
- * perspective: its far end curls up off the desk where it left the printer,
- * and it casts its own hard shadow on the desk, down and to the right.
+ * The receipt. On a wide desk it lies to the right of the laptop, in the
+ * desk's perspective: its far end curls up where it left the printer, and it
+ * casts its own hard shadow on the desk, down and to the right. On a phone it
+ * stays in the laptop until it comes forward, over the screen.
  */
 :root[data-desk] .receipt-slot {
   position: absolute;
-  z-index: 1;
-  left: calc(var(--L) + var(--gap) * 0.7);
-  top: calc(var(--Hl) * 0.1);
+  z-index: 3;
+  left: calc((var(--L) - var(--receipt-w)) / 2);
+  top: calc(var(--Hl) * 0.04);
   width: var(--receipt-w);
+  opacity: var(--receipt-rest);
 }
 :root[data-desk] .receipt {
   transform-origin: 50% 100%;
   transform: perspective(900px) rotateX(var(--tilt)) rotate(2deg);
 }
 :root[data-desk] .receipt-paper {
-  border: 0;
   padding: 14px 14px 22px;
   font-size: clamp(10px, 0.82cqw, 12px);
-  /* The bottom is torn along a zigzag; the top left the printer. */
+}
+/* The bottom is torn along a zigzag; the top left the printer. */
+:root[data-desk] .receipt-paper::before,
+:root[data-desk] .receipt-cast {
+  border: 0;
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), 90% 100%, 80% calc(100% - 7px), 70% 100%, 60% calc(100% - 7px), 50% 100%, 40% calc(100% - 7px), 30% 100%, 20% calc(100% - 7px), 10% 100%, 0 calc(100% - 7px));
 }
 :root[data-desk] .receipt-cast {
@@ -688,7 +795,6 @@
   inset: 0;
   transform: translate(10px, 12px);
   background: var(--rule);
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), 90% 100%, 80% calc(100% - 7px), 70% 100%, 60% calc(100% - 7px), 50% 100%, 40% calc(100% - 7px), 30% 100%, 20% calc(100% - 7px), 10% 100%, 0 calc(100% - 7px));
 }
 :root[data-desk] .receipt-curl {
   display: block;
@@ -705,68 +811,123 @@
 :root[data-desk] .receipt-mark {
   font-size: 1.6em;
 }
-/* Only the bill prints a receipt: pressed elsewhere, it goes back into the laptop. */
-:root[data-desk] .story:not([data-active='bill']) .receipt-slot,
-:root[data-desk] .story[data-closed] .receipt-slot {
-  transform: translateX(var(--receipt-from));
+@media (max-width: 1099px) {
+  :root[data-desk] .receipt-paper {
+    padding: 10px 12px 18px;
+    font-size: 9.5px;
+  }
+  :root[data-desk] .receipt-caveat {
+    display: none;
+  }
+  :root[data-desk] .receipt-lines li + li {
+    margin-top: 4px;
+  }
+}
+/* The notes, until the receipt comes forward: drawn by the story, or shown whole in their chapter. */
+:root[data-desk] .receipt-note {
+  clip-path: inset(0 100% 0 0);
+}
+/* Forward, in its chapter: upright, nearer, every note drawn. */
+:root[data-desk] .story[data-chapter='sources'] .receipt-slot {
+  transform: translate(var(--receipt-fwd-x), var(--receipt-fwd-y));
+  opacity: 1;
+}
+:root[data-desk] .story[data-chapter='sources'] .receipt {
+  transform: perspective(900px) rotateX(0deg) scale(var(--receipt-fwd-scale));
+}
+:root[data-desk] .story[data-chapter='sources'] .receipt-note {
+  clip-path: inset(0 0 0 0);
+}
+:root[data-desk] .story[data-chapter='arrival'] .receipt-slot {
   opacity: 0;
-  visibility: hidden;
-}
-
-/* The plate beside the laptop: the pressed object's. */
-:root[data-desk] .desk-plate {
-  grid-area: plate;
-  align-self: start;
-  position: relative;
-  z-index: 2;
-}
-:root[data-desk] .plate {
-  padding: clamp(16px, 1.6cqw, 24px);
 }
 
 /*
  * The objects, lying on the desk in front of the laptop, in its perspective:
  * each with a side face toward the bottom right and a hard shadow on the
- * desk. The pressed one is in the acid fill, lifted off the desk, its shadow
- * longer and its edge in ink.
+ * desk. The pressed one is the acid face (`.obj-skin`, a second drawing of
+ * the same object), lifted off the desk, so its shadow shows longer, its edge
+ * in ink.
  */
 :root[data-desk] .desk-objects {
   display: block;
   grid-area: objects;
   position: relative;
   z-index: 3;
+  padding: 4px 0 18px;
 }
 :root[data-desk] .desk-row {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
   transform-origin: 50% 100%;
-  transform: perspective(1600px) rotateX(var(--tilt-obj));
+  transform: perspective(2400px) rotateX(var(--tilt-obj));
   transform-style: preserve-3d;
 }
+:root[data-desk] .obj {
+  width: 100%;
+  min-height: 52px;
+  justify-content: center;
+  padding: 6px 4px;
+}
+:root[data-desk] .obj-skin {
+  justify-content: center;
+}
+@media (max-width: 1099px) {
+  :root[data-desk] .obj-words {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 :root[data-desk] .obj-slot {
+  position: relative;
   transform-style: preserve-3d;
+}
+.obj-cast {
+  position: absolute;
+  inset: 0;
+  transform: translate(9px, 10px);
+  background: var(--rule);
 }
 .obj {
   --side: var(--layer-hover);
-  --extrude: 1px 1px 0 var(--side), 2px 2px 0 var(--side), 3px 3px 0 var(--side), 4px 4px 0 var(--side), 5px 5px 0 var(--side);
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 64px;
-  padding: 10px 12px;
+  gap: 8px;
+  width: 172px;
+  min-height: 56px;
+  padding: 8px 10px;
   border: 2px solid var(--foreground);
   background: var(--paper-raised);
   color: var(--foreground);
   text-align: left;
   cursor: pointer;
-  box-shadow: var(--extrude), 6px 6px 0 var(--rule), 11px 12px 0 var(--rule);
+  box-shadow: 1px 1px 0 var(--side), 2px 2px 0 var(--side), 3px 3px 0 var(--side), 4px 4px 0 var(--side), 5px 5px 0 var(--side);
 }
-.obj[aria-pressed='true'] {
+.obj-skin {
+  position: absolute;
+  inset: -2px;
+  display: flex;
+  align-items: center;
+  gap: inherit;
+  padding: inherit;
+  border: 2px solid var(--term-ink);
   background: var(--primary);
-  color: var(--primary-foreground);
-  box-shadow: var(--extrude), 6px 6px 0 var(--foreground), 16px 20px 0 var(--rule);
+  color: var(--term-ink);
+  opacity: 0;
+  pointer-events: none;
+}
+.obj-skin .obj-icon .ic-paper { fill: var(--dev-shell); }
+.obj[aria-pressed='true'] {
+  transform: translate3d(-3px, -4px, 16px);
+}
+.obj[aria-pressed='true'] .obj-skin {
+  opacity: 1;
 }
 .obj:focus-visible {
   outline: 3px solid var(--foreground);
@@ -774,8 +935,8 @@
 }
 .obj-icon {
   flex: none;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -789,7 +950,7 @@
   min-width: 0;
 }
 .obj-name {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -801,71 +962,294 @@
   overflow-wrap: anywhere;
 }
 
-/* A phone, or any window narrower than the row: one column, the laptop at the width of the window, the objects a row of their own that scrolls inside itself. */
-@media (max-width: 899px) {
+/* The wide desk: the laptop and the receipt side by side, the objects in a row under both, and room on the right for the chapters. */
+@media (min-width: 1100px) {
+  :root[data-desk] .story {
+    --col-w: clamp(320px, 24cqw, 400px);
+  }
   :root[data-desk] .desk {
-    --tilt: 12deg;
-    --tilt-obj: 8deg;
-    --L: calc(min(100cqw, 760px) - 2 * var(--pad));
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto auto;
+    --tilt: 26deg;
+    --tilt-obj: 18deg;
+    --gap: clamp(20px, 2.2cqw, 32px);
+    --receipt-w: clamp(190px, 16cqw, 250px);
+    /* As wide as the row leaves beside the receipt and the chapters, as tall as the window leaves above the objects. */
+    --L: clamp(
+      320px,
+      min(calc(min(100cqw, 1440px) - 2 * var(--pad) - var(--col-w) - var(--receipt-w) - 2.4 * var(--gap)), calc((100svh - 190px) / 1.03)),
+      760px
+    );
+    --receipt-rest: 1;
+    --receipt-from-x: calc(-100% - var(--gap));
+    --receipt-from-y: 0px;
+    /* Forward: off the desk to the left by its own width, over the laptop's right side, so its notes lie where it was. */
+    --receipt-fwd-x: calc(-1.08 * var(--receipt-w) - var(--gap) * 0.7);
+    --receipt-fwd-y: calc(var(--Hl) * 0.06);
+    --receipt-fwd-scale: 1.08;
+    grid-template-columns: minmax(0, 1fr) var(--col-w);
+    /* The objects' row as tall as its objects, written down: the scene's place does not wait for them to arrive. */
+    grid-template-rows: minmax(0, 1fr) 120px;
     grid-template-areas:
-      'head'
-      'scene'
-      'objects'
-      'plate';
-    gap: 14px;
+      'scene .'
+      'objects .';
+    gap: 16px var(--gap);
     padding-top: 24px;
-    padding-bottom: 28px;
+    padding-bottom: 24px;
   }
-  :root[data-desk] .desk-title {
-    font-size: 24px;
-  }
-  :root[data-desk] .desk-sub {
-    font-size: 13px;
-  }
-  :root[data-desk] .desk-plane {
-    grid-row: 2 / 4;
-    margin-top: calc(var(--Hl) * 0.5);
+  :root[data-desk] .desk-scene {
+    justify-self: start;
   }
   :root[data-desk] .desk-figure {
-    font-size: 26cqw;
-    margin-top: -0.18em;
+    font-size: clamp(110px, 17cqw, 280px);
+    margin-top: -0.1em;
   }
-  /* No room beside the laptop: the receipt stays in it, and the bill's total is on the screen. */
+  :root[data-desk] .desk-plane {
+    margin-top: calc(var(--Hl) * 0.3);
+  }
   :root[data-desk] .receipt-slot {
-    display: none;
+    left: calc(var(--L) + var(--gap) * 0.7);
+    top: calc(var(--Hl) * 0.1);
+  }
+  /* Forward, the notes reach to the right, into the space the receipt left, each a leader rule from its line. */
+  :root[data-desk] .receipt-note {
+    position: absolute;
+    left: calc(100% + 14px);
+    top: 0;
+    width: calc((var(--receipt-w) + var(--gap) * 1.6) / 1.08);
+    margin: 0;
+    padding: 0 0 0 24px;
+    font-size: 0.86em;
+    line-height: 1.3;
+  }
+  :root[data-desk] .receipt-note::before {
+    left: 2px;
+    width: 18px;
   }
   :root[data-desk] .desk-objects {
-    margin-inline: calc(var(--pad) * -1);
-    padding: 6px var(--pad) 22px;
-    overflow-x: auto;
-    overflow-y: hidden;
+    padding: 4px 0 14px;
   }
   :root[data-desk] .desk-row {
-    display: flex;
-    width: max-content;
+    display: grid;
+    width: auto;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 12px;
-    transform: perspective(2400px) rotateX(var(--tilt-obj));
+    transform: perspective(1600px) rotateX(var(--tilt-obj));
   }
   :root[data-desk] .obj {
-    width: 172px;
-    min-height: 56px;
-    gap: 8px;
+    height: 102px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px;
     padding: 8px 10px;
   }
-  :root[data-desk] .obj-icon {
-    width: 30px;
-    height: 30px;
+  :root[data-desk] .obj-skin {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
   }
-  :root[data-desk] .obj-name {
-    font-size: 14px;
+}
+
+/*
+ * What a press puts over the story, `!important` so that it outranks the
+ * scroll's keyframes without stopping them: the pressed command's output,
+ * whole and scrollable, the lid open or shut as pressed, and only the pressed
+ * object lifted. When the next chapter comes the press is let go and the
+ * keyframes, which kept their place, show again.
+ */
+:root[data-desk] .story[data-pressed] .cap-out,
+:root[data-desk] .story[data-pressed] .lt-never {
+  opacity: 0 !important;
+}
+:root[data-desk] .story[data-pressed] .cap-out[data-on],
+:root[data-desk] .story[data-pressed] .lt-never[data-on],
+:root[data-desk] .story[data-pressed] .lt-never li {
+  opacity: 1 !important;
+}
+:root[data-desk] .story[data-pressed] .cap-out .term,
+:root[data-desk] .story[data-pressed] .t-typed,
+:root[data-desk] .story[data-pressed] .t-bar {
+  clip-path: none !important;
+  transform: none !important;
+}
+:root[data-desk] .story[data-pressed] .t-cursor {
+  display: none !important;
+}
+:root[data-desk] .story[data-pressed] .lt-lid {
+  transform: rotateX(0deg) !important;
+}
+:root[data-desk] .story[data-pressed] .lt-screen-off {
+  opacity: 0 !important;
+}
+:root[data-desk] .story[data-pressed] .lt-deck-shade {
+  transform: scaleY(0) !important;
+  opacity: 0 !important;
+}
+:root[data-desk] .story[data-pressed][data-closed] .lt-lid {
+  transform: rotateX(-103deg) !important;
+}
+:root[data-desk] .story[data-pressed][data-closed] .lt-screen-off {
+  opacity: 0.92 !important;
+}
+:root[data-desk] .story[data-pressed][data-closed] .lt-deck-shade {
+  transform: scaleY(1) !important;
+  opacity: 0.18 !important;
+}
+:root[data-desk] .story[data-pressed] .obj {
+  transform: none !important;
+}
+:root[data-desk] .story[data-pressed] .obj[aria-pressed='true'] {
+  transform: translate3d(-3px, -4px, 16px) !important;
+}
+:root[data-desk] .story[data-pressed] .obj-skin {
+  opacity: 0 !important;
+}
+:root[data-desk] .story[data-pressed] .obj[aria-pressed='true'] .obj-skin {
+  opacity: 1 !important;
+}
+/* A press, or focus inside the story, completes the arrival: a control is never reached half-arrived. */
+:root[data-desk] .story[data-pressed] [data-arrive],
+:root[data-desk] .story:focus-within [data-arrive] {
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+/*
+ * What a press sets off, on a clock, for a reader who has not asked for less
+ * motion: the output appears a line at a time, what never leaves likewise, the
+ * lid swings, and the pressed object lifts. Each starts from the visitor's
+ * press (`data-pressed`), never on its own.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-desk] .story[data-pressed] .cap-out[data-on] .tl,
+  :root[data-desk] .story[data-pressed][data-closed] .lt-never li {
+    animation-name: desk-line;
+    animation-duration: 1ms;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-delay: calc(var(--i) * var(--step, 70ms));
   }
-  :root[data-desk] .plate {
+  @keyframes desk-line {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  :root[data-desk] .story[data-pressed] .lt-lid,
+  :root[data-desk] .story[data-pressed] .lt-screen-off,
+  :root[data-desk] .story[data-pressed] .lt-deck-shade {
+    transition-property: transform, opacity;
+    transition-duration: 650ms;
+    transition-timing-function: cubic-bezier(0.55, 0, 0.3, 1);
+  }
+  /* Closing waits for what never leaves to be on the screen; opening does not wait. */
+  :root[data-desk] .story[data-pressed][data-closed] .lt-lid,
+  :root[data-desk] .story[data-pressed][data-closed] .lt-screen-off,
+  :root[data-desk] .story[data-pressed][data-closed] .lt-deck-shade {
+    transition-delay: 450ms;
+  }
+  :root[data-desk] .story[data-pressed] .obj,
+  :root[data-desk] .story[data-pressed] .obj-skin {
+    transition-property: transform, opacity;
+    transition-duration: 180ms;
+    transition-timing-function: ease-out;
+  }
+}
+
+/* ---------------------------------------------------------------- stage -- */
+
+/*
+ * The stage, pinned for the whole story in a window tall enough to hold it:
+ * the desk and the chapters in one grid cell, the desk sticky at the top of
+ * the window, each chapter's slot as tall as the timeline says.
+ */
+@media (min-height: 560px) {
+  :root[data-desk] .story {
+    display: grid;
+    grid-template-areas: 'all';
+    /*
+     * As tall as its chapters, from the first paint: while the page is still
+     * arriving the chapters are not all there yet, and a shorter section
+     * would put the scroll timeline past its end, drawing the desk at rest
+     * for a moment before the story starts it.
+     */
+    min-height: var(--story-h);
+    border-top: 0;
+  }
+  :root[data-desk] .story-stage {
+    grid-area: all;
+    align-self: start;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    height: 100svh;
+    overflow: clip;
+    pointer-events: none;
+  }
+  :root[data-desk] .desk {
+    --L: clamp(220px, min(calc(min(100cqw, 760px) - 2 * var(--pad)), calc((58svh - 150px) / 1.03)), 760px);
+    height: 58svh;
+    /* The objects' row as tall as its objects, written down: the scene's place does not wait for them to arrive. */
+    grid-template-rows: minmax(0, 1fr) 74px;
+    overflow: clip;
+    pointer-events: auto;
+    border-top: 2px solid var(--foreground);
+    border-bottom: 2px solid var(--foreground);
+    background: var(--background);
+  }
+  :root[data-desk] .chapters {
+    grid-area: all;
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    display: block;
+    padding: 0 var(--pad);
+    pointer-events: none;
+  }
+  /*
+   * Under the desk, on a phone, a chapter's words scroll up through the part
+   * of the window the desk leaves: a slot's top crosses the middle of the
+   * window as its chapter begins, and its card, half a window lower, comes
+   * into view as the stage changes.
+   */
+  :root[data-desk] .chapter {
+    height: var(--ch-h);
+    padding-top: 50svh;
+  }
+  :root[data-desk] .chapter-card {
+    max-width: 640px;
+    margin: 0 auto;
+    pointer-events: auto;
     padding: 14px 16px;
   }
+  /* A link or a button in a chapter is never reached behind the stage: focus brings it below it. */
+  :root[data-desk] .chapter-card :is(a, button) {
+    scroll-margin-top: 64svh;
+  }
+  /* The last chapter rests at the foot of its slot, so its call to action is in view when the stage lets go. */
+  :root[data-desk] .chapter[data-ch='close'] {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding-top: 0;
+    padding-bottom: 1svh;
+  }
+  :root[data-desk] .chapter-close + .plate-body {
+    font-size: 13px;
+  }
+  :root[data-desk] .plate-leaves {
+    margin-top: 8px;
+    font-size: 13.5px;
+  }
+  :root[data-desk] .chapter-cta {
+    margin-top: 10px;
+    gap: 10px;
+  }
+  :root[data-desk] .chapter-title {
+    font-size: 23px;
+  }
+  :root[data-desk] .chapter-close {
+    font-size: 26px;
+  }
   :root[data-desk] .plate-title {
-    font-size: 21px;
+    font-size: 20px;
   }
   :root[data-desk] .plate-body {
     margin-top: 6px;
@@ -879,123 +1263,131 @@
   :root[data-desk] .plate-list {
     font-size: 13px;
   }
+
+  @media (min-width: 1100px) {
+    :root[data-desk] .desk {
+      --L: clamp(
+        320px,
+        min(calc(min(100cqw, 1440px) - 2 * var(--pad) - var(--col-w) - var(--receipt-w) - 2.4 * var(--gap)), calc((100svh - 190px) / 1.03)),
+        760px
+      );
+      height: 100svh;
+      border-bottom: 0;
+      background: transparent;
+    }
+    :root[data-desk] .story-stage {
+      z-index: 1;
+      background: var(--background);
+    }
+    :root[data-desk] .chapters {
+      z-index: 2;
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    /*
+     * Beside the desk, a chapter's words stay in view while it is current: the
+     * card holds near the top until its slot ends and the next card, rising
+     * under it, takes its place.
+     */
+    :root[data-desk] .chapter {
+      width: var(--col-w);
+      padding-top: 8svh;
+    }
+    :root[data-desk] .chapter-card {
+      position: sticky;
+      top: 7svh;
+      max-width: none;
+      padding: clamp(16px, 1.5cqw, 24px);
+    }
+    :root[data-desk] .chapter-card :is(a, button) {
+      scroll-margin-top: 0;
+    }
+    :root[data-desk] .chapter[data-ch='close'] {
+      justify-content: flex-start;
+      padding-top: 40svh;
+      padding-bottom: 0;
+    }
+    :root[data-desk] .chapter[data-ch='close'] .chapter-card {
+      top: 18svh;
+    }
+    :root[data-desk] .chapter-title {
+      font-size: clamp(24px, 2.1cqw, 32px);
+    }
+    :root[data-desk] .chapter-close {
+      font-size: clamp(30px, 2.8cqw, 42px);
+    }
+    :root[data-desk] .plate-title {
+      font-size: clamp(20px, 1.7cqw, 26px);
+    }
+    :root[data-desk] .plate-body {
+      font-size: 14.5px;
+      line-height: 1.55;
+    }
+    :root[data-desk] .plate-list {
+      font-size: 13.5px;
+    }
+  }
 }
 
-/*
- * What a press sets off, on a clock, for a reader who has not asked for less
- * motion: the output appears a line at a time, what never leaves likewise, the
- * lid swings shut once it has, and the pressed object lifts. Each starts from
- * the visitor's press (`data-used`, `data-closed`), never on its own.
- */
-@media (prefers-reduced-motion: no-preference) {
-  :root[data-desk] .story[data-used] .cap-out .tl,
-  :root[data-desk] .story[data-closed] .lt-never li {
-    animation-name: desk-line;
-    animation-duration: 1ms;
-    animation-timing-function: linear;
-    animation-fill-mode: both;
-    animation-delay: calc(var(--i) * var(--step, 70ms));
-  }
-  @keyframes desk-line {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  :root[data-desk] .story[data-used] .lt-lid,
-  :root[data-desk] .story[data-used] .lt-screen-off,
-  :root[data-desk] .story[data-used] .lt-deck-shade {
-    transition-property: transform, opacity;
-    transition-duration: 650ms;
-    transition-timing-function: cubic-bezier(0.55, 0, 0.3, 1);
-  }
-  /* Closing waits for what never leaves to be on the screen; opening does not wait. */
-  :root[data-desk] .story[data-closed] .lt-lid,
-  :root[data-desk] .story[data-closed] .lt-screen-off,
-  :root[data-desk] .story[data-closed] .lt-deck-shade {
-    transition-delay: 450ms;
-  }
-  :root[data-desk] .story[data-used] .receipt-slot {
-    transition-property: transform, opacity, visibility;
-    transition-duration: 450ms, 300ms, 0s;
-    transition-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
-  }
-  :root[data-desk] .story[data-used]:not([data-active='bill']) .receipt-slot,
-  :root[data-desk] .story[data-used][data-closed] .receipt-slot {
-    transition-delay: 0s, 150ms, 450ms;
-  }
-  :root[data-desk] .obj {
-    transition-property: transform, box-shadow;
-    transition-duration: 180ms;
-    transition-timing-function: ease-out;
-  }
-  :root[data-desk] .obj[aria-pressed='true'] {
-    transform: translateZ(16px) translate(-3px, -4px);
-  }
-}
-
-/* ---------------------------------------------------------------- story -- */
+/* -------------------------------------------------------------- motion -- */
 
 @media (prefers-reduced-motion: no-preference) and (min-height: 560px) {
   /*
    * Each moving element (`[data-mv]`) runs its own keyframes, written from the
    * timeline by `lib/story-motion.ts` and named on the element, over the
-   * section's view timeline: 0% when the stage pins, 100% when it lets go.
-   * They animate `transform`, `opacity` and `clip-path` and nothing else.
+   * section's view timeline, and only over its own stretch of the story
+   * (`--mv-c0` to `--mv-c1`, on the section's `cover` range): the story runs
+   * from the hero scrolling out (the section's top half a window below the
+   * top) to the stage letting go. They animate `transform`, `opacity` and
+   * `clip-path` and nothing else.
    *
    * Where the browser has no scroll timeline, `Story.tsx` says so with
-   * `data-story="script"`: the same keyframes then sit paused, a second
-   * long, and the script sets each one's current time to the scroll position.
-   *
-   * A window shorter than 560 px has no room to pin the desk: it gets the
-   * desk as it rests, as reduced motion does.
+   * `data-story="script"`: the same keyframes then sit paused, the story a
+   * second long and each element's stretch its delay and duration, and the
+   * script sets each one's current time to the scroll position.
    */
   :root[data-motion='scroll'] .story {
     view-timeline: --story block;
-    position: relative;
-    height: 280vh;
-  }
-  @media (max-width: 899px) {
-    :root[data-motion='scroll'] .story { height: 230vh; }
   }
   :root[data-motion='scroll'] .story [data-mv] {
     animation-duration: auto;
     animation-timing-function: linear;
     animation-fill-mode: both;
     animation-timeline: --story;
-    animation-range: contain 0% contain 100%;
+    animation-range: cover calc(var(--mv-c0) * 1%) cover calc(var(--mv-c1) * 1%);
   }
   :root[data-motion='scroll'][data-story='script'] .story [data-mv] {
     animation-timeline: auto;
-    animation-duration: 1s;
+    animation-delay: calc(var(--mv-a) * 1s);
+    animation-duration: calc((var(--mv-b) - var(--mv-a)) * 1s);
     animation-play-state: paused;
-  }
-  /*
-   * Once the visitor has pressed an object, or put focus inside the desk, the
-   * arrival is over: every element rests where the desk has it, so a control
-   * is never reached half-arrived and nothing the visitor chose is undone by
-   * the scroll.
-   */
-  :root[data-motion='scroll'] .story[data-used] [data-mv],
-  :root[data-motion='scroll'] .story:focus-within [data-mv] {
-    animation-name: none !important;
-  }
-
-  :root[data-motion='scroll'] .story-stage {
-    position: sticky;
-    top: 0;
-    min-height: 100svh;
-    border-top: 0;
-    background: var(--background);
   }
 
   :root[data-motion='scroll'] .desk {
     /* How far each layer rises as it arrives: the desk least, the laptop most, the objects between. */
-    --rise-head: 5svh;
     --rise-figure: 9svh;
     --rise-desk: 20svh;
     --rise-laptop: 46svh;
     --rise-obj: 30svh;
-    --rise-plate: 18px;
-    min-height: 100svh;
+  }
+  /*
+   * Where the arrival starts, as each layer's own style: a scroll timeline
+   * is resolved only once the section has been laid out, and until then the
+   * page is drawn without its keyframes. Drawn from here, a layer is already
+   * where the story starts it, and does not show at rest and then drop.
+   */
+  :root[data-motion='scroll'] .desk-figure { transform: translateY(var(--rise-figure)); }
+  :root[data-motion='scroll'] .desk-plane { transform: translateY(var(--rise-desk)); }
+  :root[data-motion='scroll'] .desk-laptop { transform: translateY(var(--rise-laptop)) scale(0.92); }
+  :root[data-motion='scroll'] .obj-slot { transform: translateY(var(--rise-obj)); }
+
+  /* Printed by the scroll, an output is drawn from the top and moved up by its own keyframes. */
+  :root[data-motion='scroll'] .story:not([data-pressed]) .cap-out {
+    display: block;
+    overflow: hidden;
   }
 
   /* A command is typed: the text is all there, and a clip shows it a character at a time. */
@@ -1014,9 +1406,5 @@
     height: 1.2em;
     background: var(--term-acid);
     opacity: 0;
-  }
-  :root[data-motion='scroll'] .story[data-used] .t-cursor,
-  :root[data-motion='scroll'] .story:focus-within .t-cursor {
-    display: none;
   }
 }

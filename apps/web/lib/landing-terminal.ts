@@ -12,10 +12,12 @@
 
 /** The object on the desk whose press shows a block on the screen. */
 export type CapabilityId = 'bill' | 'check' | 'guard' | 'clock' | 'optimize' | 'models';
+/** What shows a block: an object, or the story's chapter on a model with no published price, which no object shows. */
+export type BlockOwner = CapabilityId | 'unpriced';
 export type TerminalRun = readonly [text: string, style: string];
 export interface TerminalBlock {
-  readonly id: "bill" | "check" | "status" | "guard-cd" | "guard-warn" | "guard-warn-status" | "guard-stop" | "guard-stop-status" | "clock" | "optimize" | "models";
-  readonly cap: CapabilityId;
+  readonly id: "bill" | "check" | "status" | "guard-cd" | "guard-warn" | "guard-warn-status" | "guard-stop" | "guard-stop-status" | "clock" | "optimize" | "models" | "unpriced";
+  readonly cap: BlockOwner;
   readonly command: string;
   readonly lines: readonly (readonly TerminalRun[])[];
 }
@@ -229,9 +231,37 @@ export const TERMINAL: readonly TerminalBlock[] = [
       [["  ",""],["Run with the clock set to 2026-11-16, the day the newest rates were read.","d"]],
     ],
   },
+  {
+    id: "unpriced",
+    cap: "unpriced",
+    command: "npx @trazum/cli bill examples/unpriced-model.jsonl",
+    lines: [
+      [["Your bill","b"],[" ",""],["────────────────────────────────────────────────────────────────","d"]],
+      [["  ",""],["$0.0145","bm"],[" across 3 priced call(s)","b"]],
+      [],
+      [["  ",""],["workload","d"],["  ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  triage        3  $0.0145  ",""],["██████████","a"],["  100.0%",""]],
+      [],
+      [["  ",""],["model","d"],["             ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  claude-haiku-5-5      3  $0.0145  ",""],["██████████","a"],["  100.0%",""]],
+      [],
+      [["  ",""],["This log covers 2026-09-02 → 2026-09-02 (0.1 days): stated, never","d"]],
+      [["  ",""],["extrapolated. Scale it to a month yourself, now that you know what it","d"]],
+      [["  ",""],["covers.","d"]],
+      [["  ",""],["!","y"],[" Not in the total: 2 call(s) to llama-3.3-70b-instruct, which the",""]],
+      [["    catalogue does not price. Named, never counted as $0.",""]],
+      [],
+      [["  ",""],["The receipt as data: --receipt, or -o receipt.json. The document for","d"]],
+      [["  ",""],["whoever pays: --pdf-out bill.pdf.","d"]],
+    ],
+  },
 ];
 
-/** The paper receipt beside the laptop: `bill examples/claude-projects --receipt`, each figure formatted by the core's `formatUsd`. */
+/**
+ * The paper receipt beside the laptop: `bill examples/claude-projects --receipt`, each figure formatted by the
+ * core's `formatUsd`, each line with the date its rate was read and the page it was read from (the core's
+ * `PROVIDER_SOURCES` for the line's provider).
+ */
 export const RECEIPT = {
   "source": "examples/claude-projects",
   "from": "2026-09-01",
@@ -243,29 +273,46 @@ export const RECEIPT = {
       "label": "home-me-etl-pipeline",
       "calls": 28,
       "usd": "$9.00",
-      "reviewedOn": "2026-11-16"
+      "reviewedOn": "2026-11-16",
+      "provider": "anthropic",
+      "source": "platform.claude.com/docs/en/about-claude/pricing"
     },
     {
       "model": "claude-opus-5-5",
       "label": "home-me-webapp",
       "calls": 56,
       "usd": "$2.95",
-      "reviewedOn": "2026-11-16"
+      "reviewedOn": "2026-11-16",
+      "provider": "anthropic",
+      "source": "platform.claude.com/docs/en/about-claude/pricing"
     },
     {
       "model": "claude-sonnet-5-5",
       "label": "home-me-webapp",
       "calls": 28,
       "usd": "$0.7077",
-      "reviewedOn": "2026-11-16"
+      "reviewedOn": "2026-11-16",
+      "provider": "anthropic",
+      "source": "platform.claude.com/docs/en/about-claude/pricing"
     },
     {
       "model": "claude-haiku-5-5",
       "label": "home-me-etl-pipeline",
       "calls": 14,
       "usd": "$0.0456",
-      "reviewedOn": "2026-11-16"
+      "reviewedOn": "2026-11-16",
+      "provider": "anthropic",
+      "source": "platform.claude.com/docs/en/about-claude/pricing"
     }
   ],
   "total": "$12.70"
+} as const;
+
+/** What `bill --receipt` on the example log says it kept out of the total: the models it does not price, and their calls. */
+export const UNPRICED = {
+  "source": "examples/unpriced-model.jsonl",
+  "models": [
+    "llama-3.3-70b-instruct"
+  ],
+  "calls": 2
 } as const;

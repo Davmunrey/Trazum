@@ -141,30 +141,51 @@ const RUN = [['00', 100_000, 1_000], ['05', 200_000, 2_000]]
  */
 
 /**
- * The landing's desk, read the way a visitor sees it.
+ * The landing's story, read the way a visitor sees it.
  *
- * `toStory(page, p)` scrolls to a point of the story (0 when its stage pins,
- * 1 when it lets go) and waits two frames, so the scroll timeline or the
- * fallback script has drawn it. `seen(page, text)` says whether an element
- * holding exactly that text is on screen: inside the viewport and, with every
- * ancestor's opacity multiplied in, at least 0.9 opaque, and not cut away by
- * a clip (it is found by a hit test at its middle). `lidAngle(page)` is
- * the lid's rotation about its hinge, in degrees, read back from the computed
- * transform: 0 open, about -103 closed.
+ * `toStory(page, p)` scrolls to a point of the story (0 as the hero scrolls
+ * out, half a window before the section's top reaches the top of the window,
+ * and 1 when the stage lets go: the stylesheet's `entry 50% contain 100%`)
+ * and waits two frames, so the scroll timeline or the fallback script has
+ * drawn it. `toChapter(page, id, f)` scrolls to a fraction `f` of a chapter:
+ * a chapter is current while its slot's top is above the middle of the
+ * window, the line the timeline uses. `seen(page, text)` says whether an
+ * element holding exactly that text, or a line of the screen holding it, is
+ * on screen: inside the viewport and, with every ancestor's opacity
+ * multiplied in, at least 0.9 opaque, and not cut away by a clip or hidden
+ * behind something (it is found by a hit test at its middle). `lidAngle(page)`
+ * is the lid's rotation about its hinge, in degrees, read back from the
+ * computed transform: 0 open, about -103 closed.
  */
 async function toStory(page, p) {
   await page.evaluate(async (p) => {
     const story = document.querySelector('.story');
     const top = story.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo(0, top + p * (story.offsetHeight - window.innerHeight));
+    const lead = window.innerHeight / 2;
+    window.scrollTo(0, top - lead + p * (story.offsetHeight - window.innerHeight + lead));
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
   }, p);
+}
+
+async function toChapter(page, id, f = 0.6) {
+  await page.evaluate(
+    async ([id, f]) => {
+      const slot = document.querySelector(`.story [data-ch="${id}"]`);
+      const top = slot.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, top - window.innerHeight / 2 + f * slot.offsetHeight);
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    },
+    [id, f],
+  );
+  // The chapter is read by an observer, which reports after the frame; then two frames for what it changed to be drawn.
+  await page.waitForFunction((id) => document.querySelector('.story').dataset.chapter === id, id);
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
 
 const seen = (page, text) =>
   page.evaluate((text) => {
     const owners = [...document.querySelectorAll('.story .tl, .story li, .story p, .story h2, .story h3, .story span')].filter(
-      (element) => element.textContent.trim() === text,
+      (element) => element.textContent.trim() === text || (element.classList.contains('tl') && element.textContent.includes(text)),
     );
     for (const element of owners) {
       const box = element.getBoundingClientRect();
@@ -172,8 +193,8 @@ const seen = (page, text) =>
       let opacity = 1;
       for (let at = element; at !== null; at = at.parentElement) opacity *= Number(getComputedStyle(at).opacity);
       if (opacity < 0.9 || getComputedStyle(element).visibility !== 'visible') continue;
-      // Not cut away: a clip removes what it hides from hit testing, so the
-      // element must be found at the middle of its visible part.
+      // Not cut away and not behind anything: a clip removes what it hides from hit testing, so the element must be
+      // found at the middle of its visible part.
       const x = (Math.max(box.left, 0) + Math.min(box.right, window.innerWidth)) / 2;
       const y = (Math.max(box.top, 0) + Math.min(box.bottom, window.innerHeight)) / 2;
       if (document.elementsFromPoint(x, y).includes(element)) return true;
@@ -191,74 +212,113 @@ const lidAngle = (page) =>
   });
 
 /**
- * What the arrival shows, in the order it shows it, by scroll alone: the
- * desk's words, the bill's total on the laptop's screen, and the receipt on
- * the desk beside it (on a wide screen; a phone keeps the receipt in the
- * laptop and the total on the screen).
+ * What the story shows, in the order it shows it, by scroll alone, each
+ * worked out from the commands the generator runs
+ * (`scripts/draw-landing-terminal.mjs`) or the copy: the arrival's words, the
+ * bill's total on the screen, the receipt's total on the desk (on a wide
+ * screen; a phone keeps the receipt in the laptop until it comes forward),
+ * each object's own output, the page the receipt's first rate was read from,
+ * the model the example keeps out of the total, what never leaves, and the
+ * closing.
  */
 const STORY_MARKS = [
-  ['the desk’s heading', 'Press an object. The screen shows what it does.'],
+  ['the arrival’s words', 'Scroll, and each object takes its turn. Press one, and the screen shows what it does.'],
   ['the bill’s total, on the screen', '$12.70 across 126 priced call(s)'],
   ['the receipt’s total, on the desk', 'Total'],
+  ['the gate’s verdict', 'All 3 within budget.'],
+  ['the breaker’s stop', 'Trazum: stopped.'],
+  ['the clock’s first week', '2026-W36'],
+  ['the trimming’s counts', '326 → 202'],
+  ['the calendar’s cut', 'rows shown: the models the receipt priced.'],
+  ['the page a rate was read from', 'platform.claude.com'],
+  ['the model kept out of the total', 'Not in the total: 2 call(s) to llama-3.3-70b-instruct'],
+  ['what never leaves', 'Credentials'],
+  ['the closing', 'No provider key needed to get started.'],
 ];
 
-/** Scroll the story from top to bottom a percent at a time; return where each mark was first seen. */
-async function readStory(page, marks) {
+/** Scroll the story from top to bottom a step at a time; return where each mark was first seen. */
+async function readStory(page, marks, steps = 200) {
   const first = new Map();
-  for (let step = 0; step <= 100; step += 1) {
-    await toStory(page, step / 100);
+  for (let step = 0; step <= steps; step += 1) {
+    await toStory(page, step / steps);
     for (const [what, text] of marks) if (!first.has(what) && (await seen(page, text))) first.set(what, step);
   }
   return first;
 }
 
-/** The arrival, top to bottom and back: each mark in its turn, and gone again on the way back up. */
+/** The story, top to bottom and back: each mark in its turn, and gone again on the way back up. */
 async function storyInOrder({ page, is }, marks = STORY_MARKS) {
   const first = await readStory(page, marks);
   for (const [what] of marks) if (!first.has(what)) throw new Error(`scrolled the whole story and never saw ${what}`);
   const order = marks.map(([what]) => first.get(what));
   for (let at = 1; at < order.length; at += 1) {
-    if (order[at] <= order[at - 1]) throw new Error(`${marks[at][0]} appeared at ${order[at]}%, not after ${marks[at - 1][0]} at ${order[at - 1]}%`);
+    if (order[at] <= order[at - 1]) throw new Error(`${marks[at][0]} appeared at step ${order[at]}, not after ${marks[at - 1][0]} at ${order[at - 1]}`);
   }
-  await toStory(page, 0.3);
-  for (const [what, text] of marks.slice(1)) is(await seen(page, text), false, `${what}, gone again on the way back up`);
+  // Back up: the lid open again, and nothing after the bill on the screen.
+  await toStory(page, 0.12);
+  for (const [what, text] of marks.slice(3)) is(await seen(page, text), false, `${what}, gone again on the way back up`);
   await toStory(page, 0);
   is(await lidAngle(page), 0, 'the lid at the top of the story');
 }
 
 /**
- * What each object puts on the screen and the plate, worked out from the
- * commands each runs (`scripts/draw-landing-terminal.mjs`): a line only that
- * object's output has, and the command its plate names.
+ * Each chapter that is an object's turn, the object it lifts, and a line from
+ * the end of its output (worked out from the commands each runs), which is
+ * on the screen once it has printed: the screen scrolls up as a terminal does,
+ * so the first lines of a long output have gone by then. The bill and the
+ * clock end alike; which of them is showing is read from the screen itself.
  */
-const DESK_OBJECTS = [
-  ['bill', 'The receipt', '$12.70 across 126 priced call(s)', 'trazum bill'],
-  ['check', 'The CI gate', 'All 3 within budget.', 'trazum check'],
-  ['guard', 'The breaker', 'Trazum: stopped.', 'trazum session-guard'],
-  ['clock', 'The clock', '2026-W36', 'bill --agent --timezone'],
-  ['optimize', 'The pencil', '326 → 202', 'trazum optimize'],
-  ['models', 'The calendar', 'rows shown: the models the receipt priced.', 'trazum models'],
+const CHAPTER_TURNS = [
+  ['bill', 'bill', 'whoever pays: --pdf-out bill.pdf.'],
+  ['check', 'check', 'Monthly cost $11.88 → $11.88 ($0)'],
+  ['guard', 'guard', 'Trazum: stopped.'],
+  ['clock', 'clock', 'whoever pays: --pdf-out bill.pdf.'],
+  ['optimize', 'optimize', 'and it never contains prompt text.'],
+  ['models', 'models', 'rows shown: the models the receipt priced.'],
 ];
 
-/** The screen and the plate as a visitor reads them: the output that is showing, whole, and the plate's command. */
-const desk = (page) =>
+/** The stage as a visitor reads it: the outputs showing, the objects pressed, and how many laptops. */
+const stage = (page) =>
   page.evaluate(() => {
-    const shown = [...document.querySelectorAll('.story .cap-out')].filter((element) => element.getClientRects().length > 0);
+    const shown = [...document.querySelectorAll('.story .cap-out')].filter((element) => Number(getComputedStyle(element).opacity) > 0.99);
     const lines = shown.flatMap((element) => [...element.querySelectorAll('.tl')]);
-    const plates = [...document.querySelectorAll('.story .plate')].filter((element) => element.getClientRects().length > 0);
     return {
       outputs: shown.map((element) => element.dataset.cap),
       text: shown.map((element) => element.textContent).join('\n'),
       allLinesShown: lines.length > 0 && lines.every((line) => getComputedStyle(line).opacity === '1'),
-      plates: plates.map((element) => element.querySelector('.plate-eyebrow').textContent),
       pressed: [...document.querySelectorAll('.story .obj')].filter((button) => button.getAttribute('aria-pressed') === 'true').map((button) => button.dataset.obj),
-      receipt: getComputedStyle(document.querySelector('.story .receipt-slot')).visibility,
+      // The pressed look a visitor sees: the acid face, fully shown.
+      lifted: [...document.querySelectorAll('.story .obj')].filter((button) => Number(getComputedStyle(button.querySelector('.obj-skin')).opacity) > 0.99).map((button) => button.dataset.obj),
       laptops: document.querySelectorAll('.lt-device').length,
     };
   });
 
-/** Press every object in turn, by keyboard, and read what the one laptop and the plate show. */
-async function pressEveryObject({ page, is }, { wide }) {
+/** Walk the story's chapters forward, then back: each object's chapter lifts it and only it, and puts its output on the one screen. */
+async function chaptersTakeTurns({ page, is }) {
+  const walk = async (turns) => {
+    for (const [chapter, object, mark] of turns) {
+      // The chapter and what it presses are drawn together: by the frame after the observer reports, both are there.
+      await toChapter(page, chapter);
+      const now = await stage(page);
+      is(now.pressed.join(' '), object, `the ${chapter} chapter: the object pressed`);
+      is(now.lifted.join(' '), object, `the ${chapter} chapter: the object lifted, as seen`);
+      is(now.outputs.join(' '), object, `the ${chapter} chapter: the output on the screen`);
+      is(await seen(page, mark), true, `the ${chapter} chapter: "${mark}" on the screen`);
+      is(now.laptops, 1, 'the laptops on the page');
+    }
+  };
+  await walk(CHAPTER_TURNS);
+  await toChapter(page, 'close', 0.9);
+  is((await stage(page)).pressed.join(' '), 'lid', 'the closing: the lid pressed');
+  is((await lidAngle(page)) < -95, true, 'the closing: the lid shut');
+  // Scrolling back walks back.
+  await walk(CHAPTER_TURNS.toReversed());
+  await toChapter(page, 'arrival', 0.3);
+  is((await stage(page)).pressed.join(' '), '', 'the arrival: nothing pressed yet');
+}
+
+/** Press every object in turn, by keyboard, and read what the one laptop shows. */
+async function pressEveryObject({ page, is }) {
   const group = page.getByRole('group', { name: 'What Trazum does, one object each' });
   is(await group.getByRole('button').count(), 7, 'the objects on the desk');
   await group.getByRole('button', { name: /^The receipt/ }).focus();
@@ -268,26 +328,23 @@ async function pressEveryObject({ page, is }, { wide }) {
     if (step < 6) await page.keyboard.press('Tab');
   }
   is(order.join(' '), 'bill check guard clock optimize models lid', 'the order the keyboard reaches the objects in');
-  for (const [id, name, mark, command] of DESK_OBJECTS) {
-    const button = group.getByRole('button', { name: new RegExp(`^${name}`) });
+  for (const [, id, mark] of CHAPTER_TURNS) {
+    const button = group.locator(`[data-obj="${id}"]`);
     await button.focus();
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => {
-      const shown = [...document.querySelectorAll('.story .cap-out')].find((element) => element.getClientRects().length > 0);
-      return shown !== undefined && [...shown.querySelectorAll('.tl')].every((line) => getComputedStyle(line).opacity === '1');
+      const shown = document.querySelector('.story[data-pressed] .cap-out[data-on]');
+      return shown !== null && [...shown.querySelectorAll('.tl')].every((line) => getComputedStyle(line).opacity === '1');
     });
-    const now = await desk(page);
-    is(now.outputs.join(' '), id, `the output on the screen after pressing ${name}`);
-    is(now.text.includes(mark), true, `${name}: the screen shows "${mark}"`);
-    is(now.plates.join(' '), command, `${name}: the plate's command`);
-    is(now.pressed.join(' '), id, `${name}: the one object pressed`);
+    const now = await stage(page);
+    is(now.outputs.join(' '), id, `the output on the screen after pressing ${id}`);
+    is(now.text.includes(mark), true, `${id}: the screen shows "${mark}"`);
+    is(now.pressed.join(' '), id, `${id}: the one object pressed`);
     is(now.laptops, 1, 'the laptops on the page');
-    if (wide) {
-      await page.waitForFunction((id) => getComputedStyle(document.querySelector('.story .receipt-slot')).visibility === (id === 'bill' ? 'visible' : 'hidden'), id);
-    }
+    is(await lidAngle(page), 0, `${id}: the lid open`);
   }
   // The lid closes over what never leaves; opened again, the screen has the last command it showed.
-  const lid = group.getByRole('button', { name: /^The lid/ });
+  const lid = group.locator('[data-obj="lid"]');
   await lid.press('Enter');
   is(await lid.getAttribute('aria-pressed'), 'true', 'the lid, pressed');
   await page.waitForFunction(() => {
@@ -296,13 +353,30 @@ async function pressEveryObject({ page, is }, { wide }) {
     const v = m[1].split(',').map(Number);
     return (Math.atan2(v[6], v[5]) * 180) / Math.PI < -95;
   });
-  is((await desk(page)).plates.join(' '), 'Never crosses the line', 'the plate under the closed lid');
-  if (wide) is(await seen(page, 'A receipt, a report, a gate verdict.'), true, 'what leaves, beside the closed machine');
   await lid.press('Enter');
   // Open again: no turn about the hinge left in the lid's transform.
   await page.waitForFunction(() => !/matrix3d/.test(getComputedStyle(document.querySelector('.lt-lid')).transform));
   is(await lidAngle(page), 0, 'the lid, open again');
-  is((await desk(page)).outputs.join(' '), 'models', 'the screen, open again on the last command');
+  is((await stage(page)).outputs.join(' '), 'models', 'the screen, open again on the last command');
+}
+
+/** Every link and button in the chapters, focused one by one: none of them is behind the pinned stage. */
+async function focusNeverBehindTheStage({ page, is }) {
+  const count = await page.locator('.story .chapter-card :is(a, button)').count();
+  is(count > 4, true, 'the links and buttons in the chapters');
+  for (let index = 0; index < count; index += 1) {
+    await page.locator('.story .chapter-card :is(a, button)').nth(index).focus();
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const found = await page.evaluate(() => {
+      const element = document.activeElement;
+      const box = element.getBoundingClientRect();
+      const x = Math.min(Math.max(box.left + box.width / 2, 0), window.innerWidth - 1);
+      const y = Math.min(Math.max(box.top + box.height / 2, 0), window.innerHeight - 1);
+      const top = document.elementFromPoint(x, y);
+      return element === top || element.contains(top);
+    });
+    is(found, true, `focus on the chapters' control ${index + 1} of ${count}, in view and not behind the stage`);
+  }
 }
 
 /**
@@ -822,7 +896,7 @@ export const FLOWS = [
     },
   },
   {
-    name: 'landing: scrolling brings the laptop onto the desk, bill runs and the receipt prints, in order, and the last action leads to /app',
+    name: 'landing: scrolling tells the whole story on one pinned stage, in order and back, and the last action leads to /app',
     covers: [],
     viewport: { width: 1440, height: 900 },
     async run({ page, open, is, noSidewaysScroll }) {
@@ -832,6 +906,7 @@ export const FLOWS = [
       is(await page.locator('.lt-device').count(), 1, 'the laptops on the page');
       await storyInOrder({ page, is });
       await noSidewaysScroll('at the top of the story');
+      await chaptersTakeTurns({ page, is });
       const close = page.locator('[data-landing-close] [data-dashboard-action]');
       await close.focus();
       is(await close.evaluate((element) => element === document.activeElement), true, 'the last call to action, reached by focus');
@@ -840,16 +915,27 @@ export const FLOWS = [
     },
   },
   {
-    name: 'landing: every object on the desk puts its own output on the one laptop, by keyboard, and the lid closes and opens on the last command',
+    name: 'landing: every object puts its own output on the one laptop, by keyboard, after the story and in the middle of it, and the next chapter takes over again',
     covers: [],
     viewport: { width: 1440, height: 900 },
     async run({ page, open, is }) {
       await open('/');
       await toStory(page, 1);
-      await pressEveryObject({ page, is }, { wide: true });
-      // Pressed, the desk is the visitor's: scrolling back does not take the laptop away again.
-      await toStory(page, 0);
-      is(await seen(page, 'Press an object. The screen shows what it does.'), true, 'the desk, still there at the top of the story');
+      await pressEveryObject({ page, is });
+      // In the middle of the breaker's chapter, the calendar pressed: its output over the story's.
+      await toChapter(page, 'guard');
+      await page.locator('.obj[data-obj="models"]').click();
+      await page.waitForFunction(() => document.querySelector('.story').dataset.pressed === 'models');
+      let now = await stage(page);
+      is(now.outputs.join(' '), 'models', 'pressed mid-story: the output on the screen');
+      is(now.pressed.join(' '), 'models', 'pressed mid-story: the one object pressed');
+      // Into the next chapter: the press is let go and the story shows the clock.
+      await toChapter(page, 'clock');
+      await page.waitForFunction(() => document.querySelector('.story').dataset.pressed === undefined);
+      now = await stage(page);
+      is(now.outputs.join(' '), 'clock', 'the next chapter, taking over again: the output');
+      is(now.pressed.join(' '), 'clock', 'the next chapter, taking over again: the object pressed');
+      is(await seen(page, 'whoever pays: --pdf-out bill.pdf.'), true, 'the next chapter, taking over again: its output, seen');
     },
   },
   {
@@ -864,10 +950,11 @@ export const FLOWS = [
       await open('/');
       is(await page.locator('html').getAttribute('data-story'), 'script', 'the fallback, in charge');
       await storyInOrder({ page, is });
+      await chaptersTakeTurns({ page, is });
     },
   },
   {
-    name: 'landing: on a phone the same desk, the objects a row that scrolls inside itself, and nothing scrolls sideways',
+    name: 'landing: on a phone the same story, the chapters under the stage, focus never behind it, and nothing scrolls sideways',
     covers: [],
     viewport: PHONE,
     async run({ page, open, see, is, noSidewaysScroll }) {
@@ -875,40 +962,52 @@ export const FLOWS = [
       await page.locator('[data-site-header]').getByRole('button', { name: 'Menu' }).click();
       await see(page.locator('[data-site-header]').getByRole('link', { name: /^Docs/ }), 'the phone menu, above the story');
       await page.locator('[data-site-header]').getByRole('button', { name: 'Close' }).click();
-      for (const p of [0, 0.15, 0.4, 0.8, 1]) {
+      for (const p of [0, 0.1, 0.25, 0.5, 0.7, 0.9, 1]) {
         await toStory(page, p);
         await noSidewaysScroll(`at ${p * 100}% of the story`);
       }
-      const row = await page.locator('.desk-objects').evaluate((element) => [element.scrollWidth, element.clientWidth, getComputedStyle(element).overflowX]);
-      is(row[0] > row[1] && row[2] === 'auto', true, 'the objects, a row wider than the window that scrolls inside itself');
+      const row = await page.locator('.story .obj').evaluateAll((all) => all.map((button) => button.getBoundingClientRect()).every((box) => box.left >= 0 && box.right <= window.innerWidth));
+      is(row, true, 'the seven objects, all inside the window');
       const laptop = await page.locator('.lt-device').boundingBox();
-      is(laptop.width >= 390 - 2 * 16 - 1 && laptop.width <= 390, true, `the laptop at the window's width (${laptop.width}px)`);
+      is(laptop.width >= 280 && laptop.width <= 390 - 2 * 16, true, `the laptop inside the window's gutters (${laptop.width}px)`);
       await toStory(page, 0);
-      // A phone keeps the receipt in the laptop: the bill's total stays on the screen.
-      await storyInOrder({ page, is }, STORY_MARKS.slice(0, 2));
+      // A phone keeps the receipt in the laptop until it comes forward.
+      await storyInOrder({ page, is }, STORY_MARKS.filter(([what]) => what !== 'the receipt’s total, on the desk'));
+      await chaptersTakeTurns({ page, is });
+      await focusNeverBehindTheStage({ page, is });
       await toStory(page, 1);
-      await pressEveryObject({ page, is }, { wide: false });
+      await pressEveryObject({ page, is });
       await noSidewaysScroll('after pressing every object');
     },
   },
   {
-    name: 'landing: reduced motion gets the desk at rest, and a press shows its output and shuts the lid at once',
+    name: 'landing: reduced motion gets each chapter’s last state at once, in order, and a press shows its output and shuts the lid at once',
     covers: [],
     context: { reducedMotion: 'reduce' },
     async run({ page, open, is }) {
       await open('/');
       is(await page.locator('html').getAttribute('data-motion'), null, 'the story mode, which reduced motion never gets');
       is(await page.locator('html').getAttribute('data-desk'), 'on', 'the desk, which reduced motion keeps');
-      is(await page.locator('.story .tl').evaluateAll((lines) => lines.every((line) => getComputedStyle(line).opacity === '1')), true, 'every line of output, fully shown');
-      is(await lidAngle(page), 0, 'the laptop, open and still');
+      is(await page.evaluate(() => document.querySelector('.story').getAnimations({ subtree: true }).length), 0, 'animations running');
+      // Each chapter, as it becomes current: its object pressed and its output whole, with nothing moving.
+      for (const [chapter, object, mark] of CHAPTER_TURNS) {
+        await toChapter(page, chapter);
+        const now = await stage(page);
+        is(now.pressed.join(' '), object, `${chapter}: the object pressed`);
+        is(now.outputs.join(' '), object, `${chapter}: the output on the screen`);
+        is(now.allLinesShown, true, `${chapter}: every line of it, at once`);
+        is(await seen(page, mark), true, `${chapter}: "${mark}" on the screen`);
+      }
+      await toChapter(page, 'close');
+      is((await lidAngle(page)) < -95, true, 'the closing: the lid shut, at once');
       const group = page.getByRole('group', { name: 'What Trazum does, one object each' });
-      const gate = group.getByRole('button', { name: /^The CI gate/ });
-      await gate.click();
+      await group.getByRole('button', { name: /^The CI gate/ }).click();
       await page.waitForFunction(() => document.querySelector('.obj[data-obj="check"]').getAttribute('aria-pressed') === 'true');
       // No wait beyond the press itself: nothing is animated, so what it shows is there in the same frame.
-      const now = await desk(page);
+      const now = await stage(page);
       is(now.outputs.join(' '), 'check', 'the output, at once');
       is(now.allLinesShown, true, 'every line of it, at once');
+      is(await lidAngle(page), 0, 'the lid, open at once');
       await group.getByRole('button', { name: /^The lid/ }).click();
       await page.waitForFunction(() => document.querySelector('.obj[data-obj="lid"]').getAttribute('aria-pressed') === 'true');
       // At once: by the next frame (the site's own rule for reduced motion leaves every transition a hundredth of a millisecond).
@@ -917,7 +1016,7 @@ export const FLOWS = [
     },
   },
   {
-    name: 'landing: without JavaScript every output, what never leaves and every plate are on the page, in reading order',
+    name: 'landing: without JavaScript every output, the receipt and every chapter are on the page, in reading order',
     covers: [],
     context: { javaScriptEnabled: false },
     async run({ page, read, is }) {
@@ -925,12 +1024,25 @@ export const FLOWS = [
       is(await page.locator('html').getAttribute('data-desk'), null, 'the desk, which needs a script');
       const text = (await page.locator('.story').allInnerTexts()).join('\n');
       let at = -1;
-      for (const [id, , mark] of DESK_OBJECTS) {
+      for (const [id, , mark] of CHAPTER_TURNS) {
         const found = text.indexOf(mark, at + 1);
         if (found === -1) throw new Error(`the ${id} output is not on the still page after the one before it`);
         at = found;
       }
-      for (const mark of ['Credentials', 'TOTAL', 'What never leaves the machine', 'A receipt, a report, a gate verdict.']) {
+      for (const mark of [
+        'EXAMPLE FILE',
+        'Not in the total',
+        'Credentials',
+        'platform.claude.com',
+        'TOTAL',
+        'Scroll, and each object takes its turn.',
+        'What your agents cost, by project and by model.',
+        'Why the number holds up',
+        'Nothing is guessed.',
+        'Your files stay where they are.',
+        'No provider key needed to get started.',
+        'A receipt, a report, a gate verdict.',
+      ]) {
         const found = text.indexOf(mark, at + 1);
         if (found === -1) throw new Error(`"${mark}" is not on the still page, in its place`);
         at = found;
