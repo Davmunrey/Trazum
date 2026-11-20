@@ -1,4 +1,5 @@
 import { PROVIDER_REVIEWED, modelFrom } from './pricing.js';
+import type { ModelPricing } from './types.js';
 import type { PricingCatalogue } from './pricing.js';
 import { UNLABELLED } from './usage.js';
 import type { UsageBreakdown, UsageProfileReport } from './usage.js';
@@ -86,7 +87,8 @@ export interface ReceiptPricing {
   outputPerMTok: number;
   /**
    * The date this provider's rates were last read off its own page, `null`
-   * when the catalogue carries no date for that provider.
+   * when the catalogue carries no date for that provider. For a model a pricing
+   * overlay set or added, the overlay's date: its rates came from there.
    *
    * Per provider rather than per catalogue, because that is how the prices are
    * actually reviewed: looking at one page and finding nothing changed is not
@@ -343,6 +345,18 @@ export const RECEIPT_LINE_FIELDS: readonly string[] = Object.freeze(
   Object.keys(RECEIPT_LINE_FIELD_MAP),
 );
 
+/**
+ * The date behind a line's rates. A row an overlay set or added was read on the
+ * overlay's date, not on the day the bundled table read the provider's page:
+ * contracted rates from `trazum model-pricing` (#856) carried the catalogue's
+ * date until then, which said the provider's page was read when the contract
+ * was. `reviewedForModels` already answered this way for a whole report.
+ */
+const reviewedOnOf = (model: ModelPricing, catalogue: PricingCatalogue): string | null =>
+  catalogue.overriddenModels.includes(model.id) || catalogue.addedModels.includes(model.id)
+    ? catalogue.lastReviewed
+    : (PROVIDER_REVIEWED[model.provider ?? ''] ?? null);
+
 const lineFrom = (
   label: string,
   model: string,
@@ -383,7 +397,7 @@ const lineFrom = (
       provider: priced.provider ?? 'unknown',
       inputPerMTok: priced.inputPerMTok,
       outputPerMTok: priced.outputPerMTok,
-      reviewedOn: PROVIDER_REVIEWED[priced.provider ?? ''] ?? null,
+      reviewedOn: reviewedOnOf(priced, catalogue),
     },
     /* Copied, never derived. Neither can be recovered from the aggregates
        above: a maximum is not a mean, and how many calls were silent about

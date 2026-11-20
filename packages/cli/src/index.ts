@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'no
 import type { FileHandle } from 'node:fs/promises';
 import { cpus, homedir, tmpdir } from 'node:os';
 import { createInterface } from 'node:readline/promises';
-import { dirname, join, resolve as resolvePath } from 'node:path';
+import { basename, dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createGunzip, gunzipSync } from 'node:zlib';
 import { Readable } from 'node:stream';
@@ -185,6 +185,7 @@ import {
   toPromptfoo,
   UNLABELLED,
   withExactTokenCounts,
+  overlayFromClaudeModelPricing,
 } from '@trazum/core';
 import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
 import { OPTIONAL_COUNTERS } from './optional-counters.js';
@@ -249,6 +250,7 @@ import {
   SAFE_FETCH_INIT,
   applyPricingOverlay,
   catalogueFromOverlay,
+  MAX_PRICING_BYTES,
   checkedEndpoint,
   openrouterOverlay,
   detectHost,
@@ -480,6 +482,8 @@ const VALUE_FLAGS = new Set([
   'gpu-usd-hour',
   'tokens-per-second',
   'utilization',
+  // `model-pricing --reviewed <date>`: when the contracted rates were last checked (#856).
+  'reviewed',
   'state',
 ]);
 
@@ -940,6 +944,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
   ownrate: ['gpu-usd-hour', 'tokens-per-second', 'utilization'],
+  'model-pricing': ['reviewed', 'out', 'o'],
   pulse: ['json', 'max-stale-hours'],
   bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
@@ -4789,6 +4794,62 @@ async function commandSwitch(args: Args, pricing: PricingCatalogue, t: CliMessag
   console.log(
     `  ${wrap(t.switchCmd.quality(`trazum route ${file} --prompt-file <prompt> --cases <cases> --yes`), 74, '  ')}`,
   );
+}
+
+/**
+ * `trazum model-pricing` — the contracted rates an organisation already gave
+ * Claude Code in its `modelPricing` managed setting, as a pricing overlay for
+ * `--pricing` (#856). The conversion is `overlayFromClaudeModelPricing` in the
+ * core; this reads the file, writes the overlay, and says on stderr what the
+ * table could not say, model by model.
+ */
+async function commandModelPricing(args: Args, t: CliMessages): Promise<void> {
+  const file = args.positional[0];
+  if (file === undefined) throw new Error(t.modelPricing.noFile());
+  const reviewed = stringFlag(args, 'reviewed');
+  if (reviewed === undefined) throw new Error(t.modelPricing.noReviewed());
+
+  /*
+    One open file, measured and read through the same handle, as
+    `readUsageLog` does: a stat by name and a read by name could see two
+    different files. At most one byte past the ceiling is read, so a file
+    that grew after the stat is refused rather than read whole.
+  */
+  const handle = await open(file, 'r').catch(() => undefined);
+  if (handle === undefined) throw new Error(t.modelPricing.notFound(file));
+  let raw: string;
+  try {
+    if (!(await handle.stat()).isFile()) throw new Error(t.modelPricing.notFound(file));
+    // A settings file, not a dataset: the same ceiling as an overlay.
+    const buffer = Buffer.alloc(MAX_PRICING_BYTES + 1);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    if (bytesRead > MAX_PRICING_BYTES) throw new Error(t.modelPricing.tooLarge(file, MAX_PRICING_BYTES));
+    raw = buffer.subarray(0, bytesRead).toString('utf8');
+  } finally {
+    await handle.close();
+  }
+  let document: unknown;
+  try {
+    document = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(t.modelPricing.notJson(file, error instanceof Error ? error.message : String(error)));
+  }
+
+  const result = overlayFromClaudeModelPricing(document, { reviewed, source: basename(file) });
+  for (const skipped of result.skipped) console.error(`  ${t.modelPricing.skipped(skipped.key, skipped.reason, skipped.detail)}`);
+  const priced = Object.keys(result.overlay.models).length;
+  if (priced === 0) throw new Error(t.modelPricing.empty());
+
+  const text = `${JSON.stringify(result.overlay, null, 2)}\n`;
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) await writeFile(out, text, 'utf8');
+  else process.stdout.write(text);
+
+  console.error(t.modelPricing.summary(result.fromRows.length, result.fromMultiplier.length, result.multiplier));
+  if (result.batchFromRatio.length > 0) console.error(`  ${t.modelPricing.batch(result.batchFromRatio.length)}`);
+  if (result.fastKept.length > 0) console.error(`  ${t.modelPricing.fastKept(result.fastKept.join(', '))}`);
+  if (result.usOnlyDropped.length > 0) console.error(`  ${t.modelPricing.usOnly(result.usOnlyDropped.join(', '))}`);
+  if (out !== undefined) console.error(t.modelPricing.written(out, priced));
 }
 
 /**
@@ -15419,6 +15480,9 @@ async function main(): Promise<void> {
       break;
     case 'ownrate':
       commandOwnrate(args, t);
+      break;
+    case 'model-pricing':
+      await commandModelPricing(args, t);
       break;
     case 'pulse':
       await commandPulse(args, t);

@@ -70,6 +70,7 @@ ${bold('USO')}
   trazum from-langsmith <fichero|dir> [-o <fichero>]
   trazum switch <uso.jsonl> --to <modelo> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
+  trazum model-pricing <managed-settings.json> --reviewed <AAAA-MM-DD> [-o <fichero>]
   trazum pulse [--max-stale-hours <n>]
   trazum proactive [status|on|off] [--only <item,...>] [--dry-run | --yes] [--json]
   trazum session-guard [status|install|uninstall] --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed> [--dry-run | --yes]
@@ -221,6 +222,17 @@ ${bold('OPCIONES DE ownrate')}
   supuesta. Imprime la cifra y el snippet de overlay de precios para pegar
   en trazum.config.json, de modo que el modelo que tú mismo sirves sea una
   fila de primera en cada informe, tasado por ti y marcado como tal.
+
+${bold('OPCIONES DE model-pricing')}
+  --reviewed <AAAA-MM-DD>     Cuándo se comprobaron las tarifas contra el
+                              contrato por última vez. Obligatorio.
+  -o, --out <fichero>         Escribe el overlay ahí en vez de en stdout.
+
+  Las tarifas contratadas que tu organización dio a Claude Code en su ajuste
+  gestionado modelPricing, como overlay para --pricing, para que las cifras
+  de Trazum coincidan con las que muestra Claude Code. Lo que la tabla no
+  puede decir, lotes y modo rápido, conserva la cifra del catálogo y se
+  nombra por modelo.
 
 ${bold('OPCIONES DE reconcile')}
   --against <archivo>         El informe de costes del proveedor: el
@@ -2138,6 +2150,39 @@ ${bold('EJEMPLOS')}
     evalCostHint: () => 'Pasa --cases <n> para tasar la evaluación que el cambio exige.',
     quality: (routeCommand) =>
       `Nada de lo de arriba dice si el candidato puede hacer el trabajo. Eso es una evaluación, no aritmética: ${routeCommand}`,
+  },
+
+  modelPricing: {
+    noFile: () =>
+      'Nombra el fichero de ajustes que contiene modelPricing: trazum model-pricing <managed-settings.json> --reviewed AAAA-MM-DD',
+    noReviewed: () =>
+      '--reviewed AAAA-MM-DD es obligatorio: la fecha en que alguien comprobó estas tarifas contra el contrato por última vez. Un overlay de edad desconocida es peor que el catálogo incluido, cuya edad imprime cada informe.',
+    notFound: (file) => `${file} no es un fichero.`,
+    tooLarge: (file, bytes) => `${file} pasa de ${bytes} bytes, más de lo que cabe en un fichero de ajustes.`,
+    notJson: (file, detail) => `${file} no es JSON: ${detail}`,
+    skipped: (key, reason, detail) => {
+      switch (reason) {
+        case 'invalid':
+          return `"${key}" queda fuera: ${detail}. Claude Code también la descarta y conserva el resto.`;
+        case 'zero':
+          return `"${key}" queda fuera: tiene una tarifa de cero, y Trazum no tasa nada a cero. Sus llamadas siguen a precio de lista aquí.`;
+        case 'unknown-model':
+          return `"${key}" no es un modelo que el catálogo conozca, así que no se tasa nada con él. Si es un id de proveedor o de pasarela de un modelo Claude, añade la fila de ese modelo con el id del catálogo.`;
+        case 'duplicate':
+          return `"${key}" queda fuera: es el mismo modelo que "${detail}", cuya fila se usa. Trazum no puede tasar un modelo de dos maneras.`;
+      }
+    },
+    empty: () => 'Nada de la tabla llega a un modelo que Trazum tase, así que no se escribió ningún overlay.',
+    summary: (fromRows, fromMultiplier, multiplier) =>
+      `${fromRows} modelo(s) a las tarifas de tu tabla${multiplier === undefined ? '' : `, por ${multiplier}`}` +
+      (fromMultiplier > 0 ? `; ${fromMultiplier} modelo(s) Claude más a precio de lista por ${multiplier}.` : '.'),
+    batch: (models) =>
+      `Lotes: la tabla no tiene tarifa de lotes, así que ${models} modelo(s) conservan el descuento de lotes del catálogo sobre la nueva tarifa de entrada.`,
+    fastKept: (models) =>
+      `Modo rápido: un overlay no puede llevar una tarifa de modo rápido, así que estos conservan la publicada, sin tu tabla ni tu multiplicador: ${models}. Claude Code sí los aplica a los turnos rápidos.`,
+    usOnly: (models) =>
+      `Inferencia solo en EE. UU.: sin recargo sobre una fila, como lo aplica Claude Code: ${models}.`,
+    written: (file, models) => `Escrito un overlay de ${models} modelo(s) en ${file}. Úsalo con --pricing ${file}.`,
   },
 
   ownrate: {
