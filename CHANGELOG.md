@@ -5,7 +5,7 @@ major line, and 2.0.0 broke nothing either. A patch here can add a feature,
 and the policy says why. Below 1.0, minor versions could contain breaking
 changes, and said so in their first line.
 
-What is merged into `main` but not yet tagged is in [`changes/`](changes/), one
+What is merged into `main` but not yet tagged is in [`changes/`](changes/README.md), one
 file per change, and a release folds it in under its version. A change that
 alters nothing installable — a test, a document — still gets a file rather than
 nothing: the changelog is the record of what happened to this repository, and a
@@ -14,7 +14,7 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Pending changes are files in [`changes/`](changes/), one per change, and a release folds them in under its version. See [changes/README.md](changes/README.md).
+Pending changes are files in [`changes/`](changes/README.md), one per change, and a release folds them in under its version.
 
 ## 3.0.1 — 2026-11-19
 

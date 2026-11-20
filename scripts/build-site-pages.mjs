@@ -64,7 +64,7 @@ import { BRAND_FILES, pngSize } from './brand-files.mjs';
 import { fontPath } from './wordmark.mjs';
 import { assetNames, assetUrl, clients as installClients, mcpPackage, releaseUrl } from './install-snippets.mjs';
 import { recordedVersion } from './npm-channel.mjs';
-import { fold, readFragments } from './changes.mjs';
+import { POINTER, fold, readFragments } from './changes.mjs';
 import { DELIBERATELY_UNPRICED } from './price-drift.mjs';
 import { FILE as MILESTONES_FILE, milestoneUrl, problemsWithFile } from './milestones.mjs';
 
@@ -154,6 +154,10 @@ function withPending(text, root) {
   const start = text.indexOf('\n## Unreleased\n');
   if (start === -1) return text;
   const end = text.indexOf('\n## ', start + 1);
+  // Only the pointer is replaced. Anything else written there is the file's
+  // own text, and is drawn, or refused, as the file has it.
+  const written = text.slice(start + '\n## Unreleased\n'.length, end === -1 ? text.length : end).trim();
+  if (written !== POINTER) return text;
   const pending = fold(readFragments(root));
   const body = pending === '' ? 'No changes yet.' : pending;
   return `${text.slice(0, start)}\n## Unreleased\n\n${body}\n${end === -1 ? '' : text.slice(end)}`;

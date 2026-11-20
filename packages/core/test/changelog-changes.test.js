@@ -27,6 +27,12 @@ describe('a change file is named <issue>.<kind>.md', () => {
     assert.deepEqual(parseName('session-hook.fixed.md'), { name: 'session-hook.fixed.md', kind: 'fixed', issue: null, nth: 1, slug: 'session-hook' });
   });
 
+  it('accepts exactly the kinds in KINDS: the literal pattern and the list agree', () => {
+    for (const [kind] of KINDS) assert.ok(FRAGMENT.test(`1.${kind}.md`), kind);
+    const named = /\(([a-z|]+)\)\\\.md\$/.exec(FRAGMENT.source)?.[1].split('|') ?? [];
+    assert.deepEqual([...named].sort(), KINDS.map(([kind]) => kind).sort());
+  });
+
   it('refuses anything else in the folder by name, and says what to call it', () => {
     for (const name of ['847.md', '847.improved.md', 'Fix.added.md', '847.added.txt', '-x.added.md', '847.added.md.bak']) {
       assert.match(fragmentProblem(`changes/${name}`), /name it <issue>\.<kind>\.md/, name);

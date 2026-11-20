@@ -37,12 +37,16 @@ export const KINDS = [
 
 const KIND_NAMES = KINDS.map(([kind]) => kind);
 
-/** A fragment's file name: an issue number or a slug, an optional `-n`, a kind, `.md`. */
-export const FRAGMENT = new RegExp(`^(?:(\\d+)(?:-(\\d+))?|([a-z][a-z0-9-]*))\\.(${KIND_NAMES.join('|')})\\.md$`);
+/**
+ * A fragment's file name: an issue number or a slug, an optional `-n`, a kind,
+ * `.md`. A literal, so no pattern is ever built from text; the kinds in it are
+ * held to `KINDS` by changelog-changes.test.js.
+ */
+export const FRAGMENT = /^(?:(\d+)(?:-(\d+))?|([a-z][a-z0-9-]*))\.(added|changed|deprecated|removed|fixed|security)\.md$/;
 
 /** What `CHANGELOG.md` says under `## Unreleased`, instead of the entries themselves. */
 export const POINTER =
-  'Pending changes are files in [`changes/`](changes/), one per change, and a release folds them in under its version. See [changes/README.md](changes/README.md).';
+  'Pending changes are files in [`changes/`](changes/README.md), one per change, and a release folds them in under its version.';
 
 /**
  * Whether a path in the repository is a fragment, and if not, why.

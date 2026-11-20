@@ -32,12 +32,13 @@ const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 const web = (relative) => readFileSync(new URL(`../${relative}`, import.meta.url), 'utf8');
 
-let core, pages, builder, md, view, locales, copy, site, metadata, manifest, React, server, built;
+let core, pages, changesModule, builder, md, view, locales, copy, site, metadata, manifest, React, server, built;
 let ModelsPage, RoadmapPage, ChangelogIndexPage, ReleasePage, DocBody, DocsIndex, BrandPage, brandModule, brandFiles;
 
 before(async () => {
   core = await import('@trazum/core');
   pages = await import('../../../scripts/build-site-pages.mjs');
+  changesModule = await import('../../../scripts/changes.mjs');
   builder = await import('../../../scripts/build-docs-site.mjs');
   md = await import('../../../scripts/docs-markdown.mjs');
   view = await import('../lib/models/view.ts');
@@ -562,7 +563,7 @@ describe('/changelog is CHANGELOG.md, newest first, one anchor per release', () 
   it('shows what changes/ holds as Unreleased, the way the release will fold it (#847)', () => {
     const root = mkdtempSync(join(tmpdir(), 'changelog-847-'));
     try {
-      writeFileSync(join(root, 'CHANGELOG.md'), '# Changelog\n\n## Unreleased\n\nPending changes are in changes/.\n\n## 1.0.0\n\n- old\n');
+      writeFileSync(join(root, 'CHANGELOG.md'), `# Changelog\n\n## Unreleased\n\n${changesModule.POINTER}\n\n## 1.0.0\n\n- old\n`);
       const empty = pages.buildChangelog({ root, docs: { resolve() {} } });
       assert.deepEqual(empty.errors, [], empty.errors.join('; '));
       assert.ok(indexHtml(empty).includes('No changes yet.'), 'an empty folder is not said to be empty');
@@ -573,7 +574,7 @@ describe('/changelog is CHANGELOG.md, newest first, one anchor per release', () 
       assert.deepEqual(built.errors, [], built.errors.join('; '));
       const html = indexHtml(built);
       assert.ok(html.includes('A pending fix.'), 'a file in changes/ is not on the page');
-      assert.ok(!html.includes('Pending changes are in changes/'), 'the pointer was shown instead of the changes');
+      assert.ok(!html.includes('Pending changes are files in'), 'the pointer was shown instead of the changes');
       assert.ok(!html.includes('How to add one'), 'the folder README was shown as a change');
     } finally {
       rmSync(root, { recursive: true, force: true });
