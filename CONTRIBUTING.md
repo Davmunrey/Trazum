@@ -220,6 +220,15 @@ names it. Run `node scripts/record-recommendations.mjs` after `npm run build`,
 read the diff of the fixture, and say in the commit which answers moved and
 why.
 
+Every published price is also in `packages/core/test/fixtures/price-snapshot.json`,
+one row to a line, written from the catalogue by `scripts/price-snapshot.mjs`
+(#763). An edit to `pricing.ts` that the file does not repeat fails
+`price-snapshot.test.js`. Run `node scripts/price-snapshot.mjs write` after
+`npm run build`, and the pull request shows each moved price twice: once in the
+catalogue and once as a row a reviewer reads beside the page and the date. The
+file says a price did not move by accident. It does not say the price is right:
+that is the page it was read from, and `scripts/price-drift.mjs`.
+
 **Nobody has to wait for that release.** A user can correct a price from their own
 repository with a pricing overlay, which is why the bundled numbers are not part
 of the frozen API and the overlay schema is. If you are fixing a price because
