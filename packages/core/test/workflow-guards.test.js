@@ -103,7 +103,7 @@ describe('mirror-to-n0.yml pushes main and only main, and only when configured',
     assert.doesNotMatch(push, /persist-credentials: true/);
     assert.match(text, /persist-credentials: false/);
     // The token reaches git as part of one argument, and nowhere else.
-    assert.equal(text.split('${TOKEN}').length - 1, 1);
+    assert.equal((text.match(/\$\{TOKEN\}/g) ?? []).length, 1);
   });
 
   it('pushes HEAD to main and nothing else', () => {
