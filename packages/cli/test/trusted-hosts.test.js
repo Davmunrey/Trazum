@@ -127,6 +127,8 @@ const HOSTS = {
   'https://platform.openai.com': 'documentation link',
   'https://www.promptfoo.dev': 'documentation link',
   'https://github.com': 'documentation link',
+  // The Prometheus text exposition format, named in `packages/core/src/prometheus.ts` for whoever reads the writer.
+  'https://prometheus.io': 'documentation link',
   // Two uses. `scripts/build-wiki.mjs` rewrites relative `<img src>` to this
   // host because a wiki is served from `/wiki/<Page>` and a repository-relative
   // path is broken there: a destination written into text. And, weekly,

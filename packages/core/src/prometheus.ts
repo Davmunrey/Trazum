@@ -40,8 +40,11 @@ function metricName(name: string, unit: string): string {
   return unit === 'USD' && !base.endsWith('_usd') ? `${base}_usd` : base;
 }
 
-/** An ISO 8601 instant, as `toISOString` writes one. */
-const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
+/** Whether a text is an instant exactly as `toISOString` writes one: read back and written again, it is the same text. */
+function isInstant(text: string): boolean {
+  const at = Date.parse(text);
+  return Number.isFinite(at) && new Date(at).toISOString() === text;
+}
 
 const labelValue = (value: string): string => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
 const helpText = (value: string): string => value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n');
@@ -106,7 +109,7 @@ export function toPrometheusText(payload: OtlpPayload): string {
     seconds since the epoch, and only text that stays the same for a day or
     more (the open days) is a label.
   */
-  const instants = resource.filter((a) => 'stringValue' in a.value && ISO_INSTANT.test(a.value.stringValue));
+  const instants = resource.filter((a) => 'stringValue' in a.value && isInstant(a.value.stringValue));
   for (const attribute of instants) {
     const name = `${prometheusName(attribute.key)}_seconds`;
     out.push(
