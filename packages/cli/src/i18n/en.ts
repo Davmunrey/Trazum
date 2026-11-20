@@ -67,7 +67,7 @@ ${bold('USAGE')}
   trazum position <usage.jsonl>
   trazum receipt <usage.jsonl> [--stamp] [--since <when>] [--until <when>] [-o <file>]
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
-              [--since <when>] [--until <when>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <file>]
+              [--since <when>] [--until <when>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out|--prom-out <file>]
               [--agent <name>] [--timezone <zone>] [--git-range <range> [--delivery]]
   trazum weekly [<file|dir>...] [--until <when>] [--label <name>] [--notify] [-o <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
@@ -253,7 +253,7 @@ ${bold('OPTIONS FOR bill')}
   --timezone <zone>           Cut those days, and a bare --since/--until day, in
                               this IANA zone (Europe/Madrid) instead of UTC. The
                               statement says which. Not with --otlp-out,
-                              --markdown-out, --html-out, --pdf-out or a
+                              --prom-out, --markdown-out, --html-out, --pdf-out or a
                               --csv-shape other than slice: they cut days in UTC.
   --agent <name>              Bill only one coding agent's records: claude-code,
                               codex or gemini-cli. A plain log or a provider
@@ -281,6 +281,10 @@ ${bold('OPTIONS FOR bill')}
                               the --since/--until window cuts, are not points: the
                               resource says which and what they held. Trazum writes
                               the file; your pipeline sends it.
+  --prom-out <file>           Also write the same metrics in the Prometheus text
+                              format, for the node exporter's textfile collector:
+                              one series per closed UTC day (its trazum_day label),
+                              no timestamps, nothing pushed.
   --stamp                     Stamp the receipt with the time it was written.
   -o, --out <file>            Write the receipt there instead of stdout.
 

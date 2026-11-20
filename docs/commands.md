@@ -4291,6 +4291,44 @@ move a figure to another day:
   `asDouble`, through the same `otlp.ts`. A failed write is reported and does
   not fail the bill, as for `doctor`; the success line goes to stderr.
 
+**The bill in Prometheus: `--prom-out`.** The same metrics in the Prometheus
+text format, for a team that already runs Prometheus and Grafana. Trazum writes
+the file and pushes nothing: the node exporter's
+[textfile collector](https://github.com/prometheus/node_exporter#textfile-collector)
+reads it from its directory, and Prometheus scrapes it with everything else.
+
+```bash
+npx @trazum/cli bill --prom-out /var/lib/node_exporter/textfile/trazum.prom
+```
+
+- **It is the OTLP payload, written as text.** Each point of `--otlp-out` is one
+  sample here, with the same value and its attributes as labels, a `.` in a
+  name becoming `_`: `trazum_bill_cost_usd`, `trazum_bill_tokens`,
+  `trazum_bill_calls`, `trazum_bill_unpriced_calls` and
+  `trazum_bill_unpriced_tokens`, labelled `trazum_day`, `trazum_project`,
+  `trazum_model`, `trazum_agent`, and on a cost `trazum_cost_basis="api-equivalent"`.
+  `bill-prom.test.js` holds that sample for point, and that the samples add to
+  the bill.
+- **No timestamps.** A point of the bill is one closed day, and Prometheus
+  refuses a scraped sample stamped that far back. So each day is its own series,
+  told apart by `trazum_day`, and its value is that day's total: chart it by
+  summing by that label, not over time.
+- **What a day still being measured held** is a gauge of its own, from the
+  payload's resource: `trazum_bill_open_calls`, `trazum_bill_open_cost_usd`,
+  `trazum_bill_open_tokens`, `trazum_bill_open_unpriced_calls` and the
+  `trazum_bill_undated_*` four, each written at zero when nothing was left out.
+  The instant the days were judged against is `trazum_bill_measured_at_seconds`,
+  a number rather than a label, because a label that changes on every write
+  starts a new series on every write; the open days are the label of one
+  `trazum_info` sample.
+- **A dashboard to start from:**
+  [`docs/grafana/trazum-bill.json`](grafana/trazum-bill.json), imported into
+  Grafana with your Prometheus as its data source: the closed days' cost, what
+  is still being measured, the calls no price covers, cost by day, model and
+  project, and tokens by kind. Every panel that shows money says it is
+  API-equivalent, and the test above fails if the dashboard queries a metric or
+  a label the file does not write.
+
 **The receipt, sent to your own endpoint: `--receipt --send <url>`.** One flag
 posts the receipt the run writes to an HTTPS endpoint you name, for an
 organisation that collects its teams' bills in one place.

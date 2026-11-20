@@ -54,7 +54,7 @@ ${bold('USO')}
   trazum position <uso.jsonl>
   trazum receipt <uso.jsonl> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
-              [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out <fichero>]
+              [--since <cuándo>] [--until <cuándo>] [--by day|week|month] [--pdf-out|--html-out|--markdown-out|--csv-out|--otlp-out|--prom-out <fichero>]
               [--agent <nombre>] [--timezone <zona>] [--git-range <rango> [--delivery]]
   trazum weekly [<fichero|dir>...] [--until <cuándo>] [--label <nombre>] [--notify] [-o <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
@@ -285,7 +285,7 @@ ${bold('OPCIONES DE bill')}
   --timezone <zona>           Corta esos días, y un día suelto de --since/--until,
                               en esta zona IANA (Europe/Madrid) en vez de UTC. El
                               extracto dice cuál. No con --otlp-out,
-                              --markdown-out, --html-out, --pdf-out ni un
+                              --prom-out, --markdown-out, --html-out, --pdf-out ni un
                               --csv-shape distinto de slice: cortan los días en UTC.
   --agent <nombre>            Factura solo los registros de un agente de código:
                               claude-code, codex o gemini-cli. Un log suelto o una
@@ -314,6 +314,10 @@ ${bold('OPCIONES DE bill')}
                               Hoy, y un día que corta la ventana --since/--until, no
                               son puntos: el recurso dice cuáles y qué contenían.
                               Trazum escribe el fichero; tu pipeline lo envía.
+  --prom-out <fichero>        Escribe además las mismas métricas en el formato de
+                              texto de Prometheus, para el textfile collector del
+                              node exporter: una serie por día UTC cerrado (su
+                              etiqueta trazum_day), sin timestamps, sin enviar nada.
   --stamp                     Sella el recibo con la hora en que se escribió.
   -o, --out <archivo>         Escribe el recibo ahí en vez de en stdout.
 

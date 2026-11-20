@@ -1,0 +1,103 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROMETHEUS",
+      "label": "Prometheus",
+      "description": "The Prometheus that scrapes the node exporter reading trazum bill --prom-out",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "title": "Trazum: the bill",
+  "description": "The bill trazum bill --prom-out writes, one series per closed UTC day. Every cost here is API-equivalent: the tokens at the provider's list rates, not what a subscription paid. Calls to a model the catalogue does not price are in no cost figure; they are counted on their own.",
+  "uid": "trazum-bill",
+  "tags": ["trazum", "ai-cost"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "",
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "API-equivalent cost, closed days",
+      "description": "The sum of every closed UTC day in the file. API-equivalent: the tokens at the provider's list rates. A day still being measured is not in it; see the panel beside it.",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "sum(trazum_bill_cost_usd)", "instant": true }],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "none", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Still being measured (API-equivalent)",
+      "description": "What today, and any day the window cut, held when the file was written. API-equivalent cost; it is not a point in any series until its day closes.",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "trazum_bill_open_cost_usd", "instant": true }],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "none", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Calls to a model with no published price",
+      "description": "Counted, and in no cost figure: the catalogue does not price the model, and Trazum does not guess.",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "sum(trazum_bill_unpriced_calls) or vector(0)", "instant": true }],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "colorMode": "none", "graphMode": "none", "textMode": "value" }
+    },
+    {
+      "id": 4,
+      "type": "barchart",
+      "title": "API-equivalent cost by day",
+      "description": "One bar per closed UTC day, from its trazum_day label.",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "sum by (trazum_day) (trazum_bill_cost_usd)", "instant": true, "format": "table" }],
+      "transformations": [{ "id": "organize", "options": { "excludeByName": { "Time": true }, "renameByName": { "trazum_day": "Day", "Value": "Cost" } } }, { "id": "sortBy", "options": { "sort": [{ "field": "Day" }] } }],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 }, "overrides": [] },
+      "options": { "xField": "Day", "orientation": "vertical", "showValue": "never", "legend": { "showLegend": false } }
+    },
+    {
+      "id": 5,
+      "type": "bargauge",
+      "title": "API-equivalent cost by model",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "sort_desc(sum by (trazum_model) (trazum_bill_cost_usd))", "instant": true, "legendFormat": "{{trazum_model}}" }],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "basic", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 6,
+      "type": "bargauge",
+      "title": "API-equivalent cost by project",
+      "description": "A record with no project is in no bar here, and still in the totals.",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "sort_desc(sum by (trazum_project) (trazum_bill_cost_usd))", "instant": true, "legendFormat": "{{trazum_project}}" }],
+      "fieldConfig": { "defaults": { "unit": "currencyUSD", "decimals": 2 }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "basic", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 7,
+      "type": "bargauge",
+      "title": "Tokens by kind",
+      "description": "Input, cache reads, cache writes and output, over the closed days.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "refId": "A", "expr": "sum by (trazum_token_type) (trazum_bill_tokens)", "instant": true, "legendFormat": "{{trazum_token_type}}" }],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 }, "overrides": [] },
+      "options": { "orientation": "horizontal", "displayMode": "basic", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    }
+  ]
+}
