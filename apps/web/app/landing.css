@@ -1416,8 +1416,17 @@
         760px
       );
       height: 100svh;
-      /* The same rows and room as the wide desk's, over the phone's, which the pinned stage sets after it. */
-      grid-template-rows: calc(var(--L) * var(--scene-k)) 74px minmax(0, 1fr);
+      /*
+       * The same rows and room as the wide desk's, over the phone's, which the pinned stage sets after it, with
+       * what the window leaves over shared above the laptop and under the objects: in a tall window (1788x1176,
+       * recorded on 2026-11-20) all of it under them left the stage's lower half empty.
+       */
+      grid-template-rows: minmax(0, 1fr) calc(var(--L) * var(--scene-k)) 74px minmax(0, 1fr);
+      grid-template-areas:
+        '. .'
+        'scene .'
+        'objects .'
+        '. .';
       gap: 10px var(--gap);
       padding-top: 16px;
       padding-bottom: 22px;

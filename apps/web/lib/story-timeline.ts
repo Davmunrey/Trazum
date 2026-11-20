@@ -159,8 +159,12 @@ export const BEATS = {
  */
 export const CROSSFADE = 0.004;
 
-/** How much of `BEATS.objects` each object takes to arrive; the rest is how far behind the one before it each starts. */
-export const OBJECT_ARRIVAL = 0.3;
+/**
+ * How much of `BEATS.objects` each object takes to arrive; the rest is how far behind the one before it each starts.
+ * Most of it, so the row comes up nearly as one: at 0.3 a recording at 1788x1176 (2026-11-20) showed the seven
+ * strung out down a diagonal, which read as a broken staircase, not as layers.
+ */
+export const OBJECT_ARRIVAL = 0.9;
 /** How much of `BEATS.notes` each line's leader takes. */
 export const NOTE_DRAW = 0.4;
 
