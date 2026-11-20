@@ -1129,8 +1129,12 @@ export const FLOWS = [
         );
         is(drawn, true, `at ${p * 100}% of the story, the laptop drawn inside the window`);
       }
-      // The first screen: the top of the laptop under the hero.
-      await page.evaluate(() => window.scrollTo(0, 0));
+      // The first screen: the top of the laptop under the hero, read once the story has drawn the first screen (from the
+      // end of the story, where the laptop has left the stage, the frame after the scroll is not yet drawn).
+      await page.evaluate(async () => {
+        window.scrollTo(0, 0);
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      });
       const lidTop = await page.evaluate(() => document.querySelector('.lt-lid').getBoundingClientRect().top);
       is(lidTop < 844 - 40, true, `the top of the laptop in the first screen (at ${Math.round(lidTop)}px)`);
       // The screen shows the CLI's 60-column transcript, at a size that can be read, a table row on one line.
