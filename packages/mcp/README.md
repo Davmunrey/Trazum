@@ -204,7 +204,7 @@ been driven by every MCP client in existence.
 
 Token counts are estimates (±4% on CJK, ±6% on Latin prose, ±26% on code,
 ±33% on tabular numbers, measured against Claude's tokenizer over 47 samples in
-ten languages). Prompt tools report this uncertainty; usage tools instead
+10 languages). Prompt tools report this uncertainty; usage tools instead
 price recorded token counts and identify missing evidence. A prompt
 within a few percent of its budget should be treated as uncertain rather than as
 passing. `--exact-tokens` settles it against the counting endpoint, which is free.

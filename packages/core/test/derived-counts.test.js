@@ -96,6 +96,50 @@ function playgroundCommandCount() {
 }
 
 /**
+ * The entries of a top-level array, counted by the lines that open one at two
+ * spaces: an object literal, or a call that builds one (`ciStep(...)` in
+ * `scripts/done.mjs`). Read as text, because importing either script would
+ * load what it runs.
+ */
+function entryCount(path, declaration, floor) {
+  const source = read(path);
+  const start = source.indexOf(declaration);
+  assert.notEqual(start, -1, `${declaration} is no longer in ${path}`);
+  const block = source.slice(start, source.indexOf('\n];', start));
+  const count = [...block.matchAll(/^ {2}(?:\{$|[a-zA-Z]\w*\()/gm)].length;
+  assert.ok(count >= floor, `only ${count} entries parsed out of ${declaration}`);
+  return count;
+}
+
+/** The tools the MCP server lists, from the one array it lists them from. */
+function toolCount() {
+  const line = read('packages/mcp/src/tools.ts')
+    .split('\n')
+    .find((candidate) => candidate.startsWith('export const TOOLS: readonly ToolDefinition[] = ['));
+  assert.ok(line !== undefined, 'TOOLS is no longer a one-line array in packages/mcp/src/tools.ts');
+  const names = new Set(line.slice(line.indexOf('= [') + 3, line.lastIndexOf(']')).split(',').map((name) => name.trim()));
+  assert.ok(names.size >= 8, `only ${names.size} tools parsed out of TOOLS`);
+  return names.size;
+}
+
+/**
+ * The languages of the ground-truth corpus, read off the names of its prose
+ * samples (`spanish-technical.txt`, `cjk-korean.txt`). A prose sample whose
+ * name does not say its language fails here, so the count cannot skip one.
+ */
+function languageCount() {
+  const languages = new Set();
+  for (const { file, type } of groundTruth()) {
+    if (type !== 'prose-latin' && type !== 'cjk') continue;
+    const language = /^(?:cjk-)?([a-z]+)(?:-[a-z]+)?\.txt$/.exec(file)?.[1];
+    assert.ok(language !== undefined, `${file} is prose and its name does not say its language`);
+    languages.add(language);
+  }
+  assert.ok(languages.size >= 5, `only ${languages.size} languages found in the corpus`);
+  return languages.size;
+}
+
+/**
  * What each countable noun counts, and where the number comes from.
  *
  * Two nouns are ambiguous, and both are disambiguated the way a reader does
@@ -131,11 +175,15 @@ const COUNTED = [
   { noun: 'commands', of: playgroundCommandCount, only: /playground/i },
   { noun: 'commands', of: commandCount, unless: /playground/i },
   { noun: 'contracts', of: () => listCount('packages/core/src/conform.ts', 'export const CONTRACT_NAMES', 10) },
+  { noun: 'criteria', of: () => entryCount('scripts/done.mjs', 'export const CRITERIA = [', 10) },
+  { noun: 'flows', of: () => entryCount('scripts/e2e.mjs', 'export const FLOWS = [', 10) },
+  { noun: 'languages', of: languageCount, only: /\bsamples\b/ },
   { noun: 'providers', of: providerCount },
   { noun: 'rules', of: doctrineRuleCount, only: /doctrine/i },
   { noun: 'rules', of: optimisationRuleCount, unless: /doctrine/i },
   { noun: 'samples', of: () => groundTruth().length, unless: SUPERSEDED },
   { noun: 'text types', of: () => new Set(groundTruth().map((sample) => sample.type)).size },
+  { noun: 'tools', of: toolCount, only: /\bMCP\b/ },
 ];
 
 /** Number words that have stood in for a figure in this repository's prose. */
@@ -228,6 +276,16 @@ describe('every count this repository states about itself', () => {
       commandCount(),
       `the README diagram says ${line.trim()}; COMMAND_FLAGS dispatches ${commandCount()}`,
     );
+  });
+
+  it('matches the MCP line of the README architecture diagram', () => {
+    const line = read('README.md')
+      .split('\n')
+      .find((candidate) => candidate.startsWith('packages/mcp/ '));
+    assert.ok(line !== undefined, 'the README diagram no longer has a line for packages/mcp/');
+    const stated = /(\d+) tools\b/.exec(line)?.[1];
+    assert.ok(stated !== undefined, `the README diagram's MCP line states no tool count in digits:\n  ${line.trim()}`);
+    assert.equal(Number(stated), toolCount(), `the README diagram says ${stated} tools; TOOLS lists ${toolCount()}`);
   });
 
   it('matches what the product actually has', () => {

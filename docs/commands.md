@@ -5030,7 +5030,7 @@ prose and exactly one each of code, numeric and punctuation — and those single
 files were the set the estimator's constants had been fitted to. It was not a
 measurement of the estimator. It was a measurement of its own calibration set.
 
-Extending the corpus to **47 samples in ten languages** put the same estimator at
+Extending the corpus to **47 samples in 10 languages** put the same estimator at
 32.5% on a CSV ledger and 25.1% on a run of identifiers. So the band is now a
 property of the text:
 
