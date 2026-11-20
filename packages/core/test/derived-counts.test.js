@@ -97,8 +97,8 @@ function playgroundCommandCount() {
 
 /**
  * The entries of a top-level array, counted by the lines that open one at two
- * spaces: an object literal, or a call that builds one (`ciStep(...)` in
- * `scripts/done.mjs`). Read as text, because importing either script would
+ * spaces: an object literal, whole on one line or not, or a call that builds
+ * one (`ciStep(...)` in `scripts/done.mjs`). Read as text, because importing either script would
  * load what it runs.
  */
 function entryCount(path, declaration, floor) {
@@ -106,7 +106,7 @@ function entryCount(path, declaration, floor) {
   const start = source.indexOf(declaration);
   assert.notEqual(start, -1, `${declaration} is no longer in ${path}`);
   const block = source.slice(start, source.indexOf('\n];', start));
-  const count = [...block.matchAll(/^ {2}(?:\{$|[a-zA-Z]\w*\()/gm)].length;
+  const count = [...block.matchAll(/^ {2}(?:\{|[a-zA-Z]\w*\()/gm)].length;
   assert.ok(count >= floor, `only ${count} entries parsed out of ${declaration}`);
   return count;
 }
@@ -117,7 +117,7 @@ function toolCount() {
     .split('\n')
     .find((candidate) => candidate.startsWith('export const TOOLS: readonly ToolDefinition[] = ['));
   assert.ok(line !== undefined, 'TOOLS is no longer a one-line array in packages/mcp/src/tools.ts');
-  const names = new Set(line.slice(line.indexOf('= [') + 3, line.lastIndexOf(']')).split(',').map((name) => name.trim()));
+  const names = new Set(line.slice(line.indexOf('= [') + 3, line.lastIndexOf(']')).split(',').map((name) => name.trim()).filter(Boolean));
   assert.ok(names.size >= 8, `only ${names.size} tools parsed out of TOOLS`);
   return names.size;
 }
