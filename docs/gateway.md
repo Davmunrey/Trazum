@@ -347,6 +347,76 @@ the same rule as everywhere else here: **not-recorded is not not-happened**, and
 a figure that swallowed the difference would be wrong in the flattering
 direction.
 
+## Counts for Prometheus: `--metrics-port`
+
+```bash
+trazum gateway anthropic --on-cannot-tell fail-closed --metrics-port 9318
+```
+
+Adds one line to what the gateway prints at start:
+
+```
+  Counts for Prometheus at http://127.0.0.1:9318/metrics, since this
+    process started: calls, tokens, list-rate cost, refusals and what could
+    not be measured. Nothing is pushed, and no prompt is in it.
+```
+
+Point a Prometheus scrape job at that address. A measured call on
+`claude-opus-5`, 12,000 input tokens, 800 output and 40,000 cache reads, labelled
+`nightly-review`, reads:
+
+```
+trazum_gateway_calls_measured_total{trazum_provider="anthropic",trazum_model="claude-opus-5",trazum_label="nightly-review",substituted="false"} 1
+trazum_gateway_tokens_total{trazum_provider="anthropic",trazum_model="claude-opus-5",trazum_label="nightly-review",kind="input"} 12000
+trazum_gateway_tokens_total{trazum_provider="anthropic",trazum_model="claude-opus-5",trazum_label="nightly-review",kind="output"} 800
+trazum_gateway_tokens_total{trazum_provider="anthropic",trazum_model="claude-opus-5",trazum_label="nightly-review",kind="cache_read"} 40000
+trazum_gateway_tokens_total{trazum_provider="anthropic",trazum_model="claude-opus-5",trazum_label="nightly-review",kind="cache_write"} 0
+trazum_gateway_cost_usd_total{trazum_provider="anthropic",trazum_model="claude-opus-5",trazum_label="nightly-review",trazum_cost_basis="api-equivalent"} 0.1
+```
+
+$0.06 of input, $0.02 of output and $0.02 of cache reads, at the catalogue's
+rates for Claude Opus 5.
+
+| Metric | What it counts |
+| --- | --- |
+| `trazum_gateway_calls_measured_total` | Calls whose usage the provider reported, by model, label and whether the model was substituted |
+| `trazum_gateway_tokens_total` | The provider's own counts, by `kind`: `input`, `output`, `cache_read`, `cache_write` |
+| `trazum_gateway_cost_usd_total` | Those calls at the catalogue's list rates, the same figure the live budget charges, with `trazum_cost_basis="api-equivalent"` |
+| `trazum_gateway_calls_unpriced_total` | Measured calls with no list price: in no cost sample |
+| `trazum_gateway_calls_unmeasured_total` | Calls forwarded whose cost could not be measured, by `cause`: `stream-broke`, `no-usage-event`, `no-usage-in-body` |
+| `trazum_gateway_calls_refused_total` | Calls answered 402, by the `reason` the refusal body gave |
+| `trazum_gateway_calls_substituted_total` | Calls forwarded with the model `spend.substitute` names, `from_model` and `to_model` |
+| `trazum_gateway_calls_free_total` | Calls to a path that spends nothing, by `path` |
+| `trazum_gateway_upstream_unreachable_total` | Calls the provider could not be reached for, answered 502 |
+| `trazum_gateway_calls_dropped_total` | Calls left out of every figure above, past the label limit below |
+| `trazum_gateway_start_time_seconds` | When this process started |
+
+`docs/grafana/trazum-gateway.json` is a Grafana dashboard over these: the cost
+by model and by label, refusals by reason, unmeasured calls by cause and tokens
+by kind. Every panel with money says it is API-equivalent.
+
+**A second port, not a path on the first.** The proxy's port answers the paths
+in the table at the top of this page and nothing else, and one function decides
+what it forwards. A `/metrics` beside `/v1/messages` would be a second opinion
+about that. The scrape port forwards nothing: it has no upstream and no
+credential in reach. It binds to `127.0.0.1` like the proxy, and refuses a page
+that rebound its own hostname to it, like the proxy and `serve`.
+
+**Counts, never text.** The labels are the provider, the model, your own
+`metadata.trazum_label`, a refusal's reason and an unmeasured call's cause.
+`trazum_session` judges a call and is not recorded, here or anywhere.
+
+**The counters are this process's.** They start at zero when the gateway
+starts, as the live budget does, and Prometheus reads the fall at a restart as a
+reset. For the month, use the bill: `trazum bill --prom-out` covers it.
+
+**The label set is bounded.** A model name and a label are your callers' text,
+so a caller that sent a new one on every call would grow the series without
+limit, here and in Prometheus. Past 1,000 distinct model and label pairs, a call
+naming a new one is left out of every figure and counted in
+`trazum_gateway_calls_dropped_total`, so the totals say they are short instead
+of looking complete.
+
 ## The refusal body
 
 Documented field by field, with a two-direction parity test, in

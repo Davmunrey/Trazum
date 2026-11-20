@@ -46,7 +46,8 @@ function isInstant(text: string): boolean {
   return Number.isFinite(at) && new Date(at).toISOString() === text;
 }
 
-const labelValue = (value: string): string => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+/** A label value as the format reads it: `\`, `"` and a line break escaped. */
+export const prometheusLabelValue = (value: string): string => value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
 const helpText = (value: string): string => value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n');
 
 /** An attribute's value as text, whichever of the three OTLP encodings it has. */
@@ -58,7 +59,7 @@ function attributeText(attribute: OtlpAttribute): string {
 }
 
 const labels = (attributes: readonly OtlpAttribute[]): string =>
-  attributes.length === 0 ? '' : `{${attributes.map((a) => `${prometheusName(a.key)}="${labelValue(attributeText(a))}"`).join(',')}}`;
+  attributes.length === 0 ? '' : `{${attributes.map((a) => `${prometheusName(a.key)}="${prometheusLabelValue(attributeText(a))}"`).join(',')}}`;
 
 /** A number as Prometheus reads it: finite numbers as JavaScript writes them, the rest by name. */
 function sampleValue(value: number | string): string {

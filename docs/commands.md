@@ -2018,6 +2018,13 @@ never in a refusal. Structural rather than disciplinary — the decision functio
 is handed a description and never the body, and the recording callback has no
 parameter that could carry text.
 
+**`--metrics-port <n>` shows what it counted, for Prometheus to scrape.** On a
+second loopback port, `GET /metrics` and nothing else: calls, tokens, cost at
+the catalogue's list rates, refusals by reason, and the calls it could not
+measure. Off unless given; nothing is pushed, and no prompt is in it.
+`docs/grafana/trazum-gateway.json` charts it. See
+[docs/gateway.md](gateway.md#counts-for-prometheus---metrics-port).
+
 [docs/gateway.md](gateway.md) covers all of it, and the refusal body is
 [contracted](json-output.md#the-gateway-refusal-document).
 

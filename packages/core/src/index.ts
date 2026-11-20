@@ -453,7 +453,7 @@ export type {
   OtlpPayload,
   OtlpTokenType,
 } from './otlp.js';
-export { prometheusName, toPrometheusText } from './prometheus.js';
+export { prometheusLabelValue, prometheusName, toPrometheusText } from './prometheus.js';
 export type { PromptfooExport, PromptfooOptions, PromptfooWarning } from './promptfoo.js';
 export type { ProfileOptions, PromptProfile } from './profile.js';
 export { SUGGEST_SYSTEM_PROMPT, applyRewrites, rejectionText, suggestRewrites } from './suggest.js';
