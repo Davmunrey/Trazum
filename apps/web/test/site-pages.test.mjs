@@ -559,6 +559,27 @@ describe('/changelog is CHANGELOG.md, newest first, one anchor per release', () 
     }
   });
 
+  it('shows what changes/ holds as Unreleased, the way the release will fold it (#847)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'changelog-847-'));
+    try {
+      writeFileSync(join(root, 'CHANGELOG.md'), '# Changelog\n\n## Unreleased\n\nPending changes are in changes/.\n\n## 1.0.0\n\n- old\n');
+      const empty = pages.buildChangelog({ root, docs: { resolve() {} } });
+      assert.deepEqual(empty.errors, [], empty.errors.join('; '));
+      assert.ok(indexHtml(empty).includes('No changes yet.'), 'an empty folder is not said to be empty');
+      mkdirSync(join(root, 'changes'));
+      writeFileSync(join(root, 'changes', 'README.md'), 'How to add one.\n');
+      writeFileSync(join(root, 'changes', '5.fixed.md'), '**A pending fix.** (#5) It works.\n');
+      const built = pages.buildChangelog({ root, docs: { resolve() {} } });
+      assert.deepEqual(built.errors, [], built.errors.join('; '));
+      const html = indexHtml(built);
+      assert.ok(html.includes('A pending fix.'), 'a file in changes/ is not on the page');
+      assert.ok(!html.includes('Pending changes are in changes/'), 'the pointer was shown instead of the changes');
+      assert.ok(!html.includes('How to add one'), 'the folder README was shown as a change');
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('holds a version to a strict shape before it becomes a file name or a key', () => {
     for (const bad of ['../1.0.0', '1.0', '1.0.0.0', '01.0.0', '1.0.0/x', '__proto__', 'constructor', '1.0.0\n', 'v1.0.0']) assert.ok(!pages.VERSION.test(bad), bad);
     for (const good of ['0.1.0', '2.7.12', '10.20.30']) assert.ok(pages.VERSION.test(good), good);
@@ -696,9 +717,9 @@ describe('the build is wired in, and ignored', () => {
     for (const hook of ['predev', 'prebuild', 'pretest', 'pretypecheck']) assert.match(pkg.scripts[hook], /build-site-pages\.mjs/, hook);
     assert.ok(read('.gitignore').includes('/apps/web/lib/history/generated/'));
     const docker = read('Dockerfile');
-    for (const file of ['CHANGELOG.md', 'ROADMAP.md', '.github/milestones.json', 'build-site-pages.mjs', 'milestones.mjs', 'ruleset.mjs', 'price-drift.mjs']) assert.ok(docker.includes(file), `the image build lacks ${file}`);
+    for (const file of ['CHANGELOG.md', 'changes', 'changes.mjs', 'ROADMAP.md', '.github/milestones.json', 'build-site-pages.mjs', 'milestones.mjs', 'ruleset.mjs', 'price-drift.mjs']) assert.ok(docker.includes(file), `the image build lacks ${file}`);
     const ignore = read('.dockerignore');
-    for (const exception of ['!CHANGELOG.md', '!ROADMAP.md', '!.github/milestones.json']) assert.ok(ignore.includes(exception), exception);
+    for (const exception of ['!CHANGELOG.md', '!changes', '!ROADMAP.md', '!.github/milestones.json']) assert.ok(ignore.includes(exception), exception);
   });
 
   it('adds no dependency', () => {

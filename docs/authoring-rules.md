@@ -280,7 +280,7 @@ npm run verify
 Build, tests, typecheck across all four workspaces, and the web build — in the
 order CI runs them. Read the exit code, not the output.
 
-Then add a `CHANGELOG.md` entry under `Unreleased`, and say in the pull request
+Then add a changelog entry as a file in `changes/` (changes/README.md), and say in the pull request
 what the rule leaves alone. A reviewer's first question about a new rule is
 always "what does this break", and answering it unprompted is the fastest way
 through review.

@@ -208,13 +208,16 @@ describe('the criteria that read the branch say what they read', () => {
     assert.equal((await byId('signed-off').check({ commits: null })).state, 'not run');
   });
 
-  it('changelog: no new line under Unreleased fails it, in the words CI uses', async () => {
+  it('changelog: no change file fails it, in the words CI uses', async () => {
     const before = unreleased('');
-    assert.equal((await byId('changelog').check({ changelog: { before, after: unreleased('- A new thing.\n\n') } })).state, 'passed');
-    const none = await byId('changelog').check({ changelog: { before, after: before } });
+    const added = ['changes/694.added.md'];
+    assert.equal((await byId('changelog').check({ changelog: { before, after: before, added } })).state, 'passed');
+    const none = await byId('changelog').check({ changelog: { before, after: before, added: [] } });
     assert.equal(none.state, 'failed');
-    assert.match(none.reason, /^CHANGELOG\.md: add a line under `## Unreleased`\./);
-    const misplaced = await byId('changelog').check({ changelog: { before, after: before.replace('- First.', '- First.\n- Slipped in.') } });
+    assert.match(none.reason, /^Add the changelog entry as a file in `changes\/`/);
+    const written = await byId('changelog').check({ changelog: { before, after: unreleased('- A new thing.\n\n'), added } });
+    assert.match(written.reason, /added under `## Unreleased`\. Put the entry in a file in `changes\/` instead/);
+    const misplaced = await byId('changelog').check({ changelog: { before, after: before.replace('- First.', '- First.\n- Slipped in.'), added } });
     assert.match(misplaced.reason, /added inside `## 1\.0\.0`, a released version/);
   });
 

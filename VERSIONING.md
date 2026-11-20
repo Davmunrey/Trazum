@@ -239,19 +239,20 @@ never were.
 
 ## Merging, and then releasing
 
-Every merge to `main` gets a `CHANGELOG.md` entry — under the version it is
-going out in, or under **`Unreleased`** if no release is being cut. That
+Every merge to `main` gets a changelog entry, as a file in
+[`changes/`](changes/README.md) until a release folds it into `CHANGELOG.md`
+under its version. That
 includes changes to nothing installable: a test, a document, a workflow. The
 changelog is the record of what happened to this repository, and a merged commit
 with no entry is a change only `git log` remembers.
 
-`Unreleased` is not a version. It is where work waits, and cutting a release
+`changes/` is not a version. It is where work waits, and cutting a release
 means giving that work a number.
 
 To release:
 
-1. Fold `Unreleased` into a new version heading, or leave anything genuinely
-   not-shipping-yet behind. Breaking changes go first, with the migration.
+1. Fold `changes/` into a new version heading (`prepare-release.mjs` does it),
+   after setting aside anything genuinely not shipping yet. Breaking changes go first, with the migration.
    **Which number**: a patch, unless this release is the one that lands the
    current arc's thesis — then the minor. There is no rule about how many
    chapters an arc has; there is a rule that the minor is not spent on

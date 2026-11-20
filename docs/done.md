@@ -51,7 +51,7 @@ some changes bring into play.
 | --- | --- | --- |
 | `staged` | every new file is tracked, so CI and the tests that read the file list can see it | `git add` the files it names |
 | `signed-off` | every commit on the branch carries a Signed-off-by line | commit with `-s`; amend the ones it names |
-| `changelog` | CHANGELOG.md gains a line under Unreleased, and none inside a released version | add the line; after a release was merged in, move it back under `## Unreleased` |
+| `changelog` | the change adds its changelog entry as a file in changes/, and edits no entry in CHANGELOG.md | add `changes/<issue>.<kind>.md` (changes/README.md); move any line you added to `CHANGELOG.md` into it |
 | `issue` | the pull request names the issue it resolves | open the issue, and put `Fixes #<n>` in the description |
 | `lint` | the linter finds nothing | fix the finding; a rule is switched off only in `biome.jsonc`, with its reason |
 | `build` | every package builds | read the compiler's first error, not its last |

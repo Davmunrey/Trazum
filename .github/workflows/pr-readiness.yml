@@ -2,9 +2,9 @@ name: PR readiness
 
 # Three rules every pull request keeps, checked by scripts/pr-readiness.mjs:
 # it names the issue it resolves, that issue was accepted by a maintainer,
-# and its changelog line lands under `## Unreleased` rather than inside a
-# released version. The ruleset in .github/rulesets/main-branch.json requires
-# this job by its name.
+# and it adds its changelog entry as a file in changes/ and edits no entry in
+# CHANGELOG.md. The ruleset in .github/rulesets/main-branch.json requires this
+# job by its name.
 #
 # What this is not. On a pull request GitHub runs the workflow and the script
 # as the pull request has them, so a pull request can rewrite both. This

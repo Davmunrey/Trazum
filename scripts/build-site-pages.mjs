@@ -64,6 +64,7 @@ import { BRAND_FILES, pngSize } from './brand-files.mjs';
 import { fontPath } from './wordmark.mjs';
 import { assetNames, assetUrl, clients as installClients, mcpPackage, releaseUrl } from './install-snippets.mjs';
 import { recordedVersion } from './npm-channel.mjs';
+import { fold, readFragments } from './changes.mjs';
 import { DELIBERATELY_UNPRICED } from './price-drift.mjs';
 import { FILE as MILESTONES_FILE, milestoneUrl, problemsWithFile } from './milestones.mjs';
 
@@ -143,6 +144,22 @@ export function sectionText(markdown, depth, heading) {
 /* ------------------------------------------------------------------ */
 
 /**
+ * The changelog with what `changes/` holds folded under `## Unreleased`, the
+ * way the next release will fold it (#847). The file itself says only where
+ * pending changes are; the page shows them.
+ * @param {string} text
+ * @param {string} root
+ */
+function withPending(text, root) {
+  const start = text.indexOf('\n## Unreleased\n');
+  if (start === -1) return text;
+  const end = text.indexOf('\n## ', start + 1);
+  const pending = fold(readFragments(root));
+  const body = pending === '' ? 'No changes yet.' : pending;
+  return `${text.slice(0, start)}\n## Unreleased\n\n${body}\n${end === -1 ? '' : text.slice(end)}`;
+}
+
+/**
  * Every release of `CHANGELOG.md`, newest first as the file has them.
  * @param {{ root?: string, docs: ReturnType<typeof buildDocs> }} options
  */
@@ -152,7 +169,7 @@ export function buildChangelog({ root = ROOT, docs }) {
   const path = 'CHANGELOG.md';
   let parsed;
   try {
-    parsed = parseMarkdown(readFileSync(join(root, path), 'utf8'), { file: path });
+    parsed = parseMarkdown(withPending(readFileSync(join(root, path), 'utf8'), root), { file: path });
   } catch (error) {
     if (error instanceof UnknownConstruct) return { errors: [error.message], intro: [], releases: [] };
     throw error;

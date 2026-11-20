@@ -34,7 +34,8 @@ COPY apps/web apps/web
 COPY README.md CONTRIBUTING.md VERSIONING.md CHANGELOG.md ROADMAP.md DESIGN.md ./
 COPY docs docs
 COPY .github/milestones.json .github/
-COPY scripts/build-docs-site.mjs scripts/docs-markdown.mjs scripts/build-site-pages.mjs scripts/milestones.mjs scripts/ruleset.mjs scripts/price-drift.mjs scripts/brand.mjs scripts/brand-files.mjs scripts/wordmark.mjs scripts/
+COPY changes changes
+COPY scripts/build-docs-site.mjs scripts/docs-markdown.mjs scripts/build-site-pages.mjs scripts/changes.mjs scripts/milestones.mjs scripts/ruleset.mjs scripts/price-drift.mjs scripts/brand.mjs scripts/brand-files.mjs scripts/wordmark.mjs scripts/
 
 # Analytics keys are NEXT_PUBLIC_* and bake into the bundle at build time.
 # Empty defaults keep the build working with no analytics configured.

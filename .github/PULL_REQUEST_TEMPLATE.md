@@ -24,7 +24,7 @@ Fixes #
 
 - [ ] The issue is named above with `Fixes #`
 - [ ] `npm run verify` is green
-- [ ] `CHANGELOG.md` has an entry under `Unreleased`
+- [ ] The changelog entry is a file in `changes/`, named `<issue>.<kind>.md` (changes/README.md)
 - [ ] New machine-readable output is contracted in `docs/json-output.md` with a
       two-direction parity test **bounded to its own section**
 - [ ] Any new guard was proven by planting the violation and watching it fail

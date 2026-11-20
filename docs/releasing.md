@@ -272,7 +272,8 @@ node scripts/prepare-release.mjs 2.7.0             # change it
 It moves every version that has to move in lockstep (the root, the six
 workspaces, each workspace's `@trazum/core` pin, the lockfile,
 `packages/mcp/server.json`, the plugin manifest and the MCP handshake),
-turns `Unreleased` into the version's heading in `CHANGELOG.md`, moves the
+folds the files in `changes/` under the version's heading in `CHANGELOG.md`
+and deletes them, moves the
 "on npm at" line at the top of `RELEASES.md`, writes the version's
 [pricing dataset](pricing-dataset.md) with its changelog and schema into
 `apps/web/public/datasets/pricing/` from the catalogue as built (so run
@@ -359,9 +360,11 @@ patch, and the changelog entry is what tells the two apart. The full reasoning,
 including what it costs a reader pinning with a tilde, is in
 [VERSIONING.md](../VERSIONING.md#what-the-three-numbers-mean-here).
 
-1. **Move `Unreleased` in `CHANGELOG.md`** under the new version heading. Per
-   [CONTRIBUTING.md](../CONTRIBUTING.md), a change that alters nothing installable
-   still has an entry, so this is usually just a rename.
+1. **Fold `changes/` into `CHANGELOG.md`** under the new version heading, and
+   delete the files: `prepare-release.mjs` does it. Per
+   [CONTRIBUTING.md](../CONTRIBUTING.md), a change that alters nothing
+   installable still has an entry, so this is every change since the last
+   release.
 2. **Move the `ROADMAP.md` entry** from `Next` to `Released` in `HISTORY.md`,
    and say what actually shipped rather than what was planned — they differ more often than
    they should.

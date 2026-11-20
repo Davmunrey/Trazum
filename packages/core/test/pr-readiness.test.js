@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 import { SPAWN_ENV } from '../../cli/test/env.mjs';
 import { sectionOf } from '../../../test-utils/section.mjs';
+import { POINTER } from '../../../scripts/changes.mjs';
 
 import {
   ACCEPTED,
@@ -24,10 +25,11 @@ import {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /**
- * The merge gate's decision: does a pull request name its issue, and does its
- * changelog line land under `## Unreleased`? scripts/pr-readiness.mjs explains
- * why each rule exists; this holds the decision, including the case that
- * prompted it (#666).
+ * The merge gate's decision: does a pull request name its issue, and does it
+ * add its changelog entry as a file in `changes/` without editing an entry of
+ * `CHANGELOG.md`? scripts/pr-readiness.mjs explains why each rule exists; this
+ * holds the decision, including the case that prompted it (#666) and the
+ * folder that ended it (#847).
  */
 
 /** A changelog in the shape the 2.7.10 release left `main` in. */
@@ -54,8 +56,11 @@ const RELEASED = [
 
 const ENTRY = "- **Google's prices were re-read, and `gemini-2.5-pro` bills at Gemini 3.8 Flash's rates.**";
 
-/** The same file with `ENTRY` where it belongs: under Unreleased, replacing the placeholder. */
+/** The same file with `ENTRY` written under Unreleased, where an entry went until #847. */
 const WITH_ENTRY = RELEASED.replace('No changes yet.\n', `### Fixed\n\n${ENTRY}\n`);
+
+/** Where the entry goes since #847. */
+const FRAGMENT = 'changes/639.fixed.md';
 
 /** Issue #639 as GitHub describes it once a maintainer has agreed to the work. */
 const AGREED = { ref: '#639', labels: ['bug', 'accepted', 'area:core'], pullRequest: false };
@@ -67,7 +72,8 @@ const ready = (overrides = {}) =>
     labels: [],
     issues: [AGREED],
     changelogBefore: RELEASED,
-    changelogAfter: WITH_ENTRY,
+    changelogAfter: RELEASED,
+    added: [FRAGMENT],
     ...overrides,
   });
 
@@ -140,7 +146,7 @@ describe('the issue it names was accepted', () => {
 
   it('an issue that was not read is not taken as accepted', () => {
     assert.match(ready({ issues: [] }).problems[0], /^Issue #639 was not read, so nothing says it was accepted\./);
-    assert.match(readiness({ body: 'Fixes #639', author: 'somebody', changelogBefore: RELEASED, changelogAfter: WITH_ENTRY }).problems[0], /was not read/);
+    assert.match(readiness({ body: 'Fixes #639', author: 'somebody', changelogBefore: RELEASED, changelogAfter: RELEASED, added: [FRAGMENT] }).problems[0], /was not read/);
   });
 
   it('every issue a merge would close has to be accepted, not just the first', () => {
@@ -304,7 +310,7 @@ describe('a changelog of any size is read, and one that cannot be read is not ju
   const big = (extra = '') =>
     `# Changelog\n\n## Unreleased\n\n${extra}- **Something earlier.** It happened.\n\n## 1.0.0\n\n${'- A line of a released version, long enough to count for something.\n'.repeat(18_000)}`;
 
-  function repository(before, after) {
+  function repository(before, after, files = {}) {
     const dir = mkdtempSync(join(tmpdir(), 'readiness-'));
     const git = (...args) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', '-c', 'commit.gpgsign=false', ...args], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
     git('init', '-q');
@@ -314,6 +320,10 @@ describe('a changelog of any size is read, and one that cannot be read is not ju
     git('commit', '-q', '--no-verify', '-m', 'base');
     const base = git('rev-parse', 'HEAD');
     writeFileSync(join(dir, 'CHANGELOG.md'), after);
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(dirname(join(dir, path)), { recursive: true });
+      writeFileSync(join(dir, path), text);
+    }
     git('add', '-A');
     git('commit', '-q', '--no-verify', '-m', 'head');
     return { dir, base, head: git('rev-parse', 'HEAD') };
@@ -331,9 +341,9 @@ describe('a changelog of any size is read, and one that cannot be read is not ju
     return { status, out };
   }
 
-  it('finds the line a pull request added under Unreleased in a changelog over 1 MiB', async () => {
+  it('reads a changelog over 1 MiB, and finds the change file beside it', async () => {
     assert.ok(Buffer.byteLength(big()) > 1024 * 1024 + 100_000, 'the changelog made for this is not over the limit');
-    const made = repository(big(), big('- **Something new.** It was added (#1).\n'));
+    const made = repository(big(), big(), { 'changes/1.added.md': '**Something new.** It was added (#1).\n' });
     try {
       const { status, out } = await judge(made);
       assert.equal(status, 0, out);
@@ -343,8 +353,8 @@ describe('a changelog of any size is read, and one that cannot be read is not ju
     }
   });
 
-  it('still refuses one that adds nothing there, in the same changelog', async () => {
-    const made = repository(big(), big().replace('## 1.0.0\n\n', '## 1.0.0\n\n- A line slipped into a released version.\n'));
+  it('still refuses a line slipped into a released version, in the same changelog', async () => {
+    const made = repository(big(), big().replace('## 1.0.0\n\n', '## 1.0.0\n\n- A line slipped into a released version.\n'), { 'changes/1.added.md': '**Something new.** It was added (#1).\n' });
     try {
       const { status, out } = await judge(made);
       assert.equal(status, 1, out);
@@ -355,7 +365,7 @@ describe('a changelog of any size is read, and one that cannot be read is not ju
   });
 
   it('reads a changelog the base did not have as an empty one', async () => {
-    const made = repository(null, '# Changelog\n\n## Unreleased\n\n- **The first line.** It was added (#1).\n');
+    const made = repository(null, '# Changelog\n\n## Unreleased\n\nNo changes yet.\n', { 'changes/1.added.md': '**The first line.** It was added (#1).\n' });
     try {
       const { status, out } = await judge(made);
       assert.equal(status, 0, out);
@@ -376,50 +386,69 @@ describe('a changelog of any size is read, and one that cannot be read is not ju
   });
 });
 
-describe('its changelog line lands under Unreleased', () => {
-  it('a line under Unreleased is ready', () => {
-    const changes = changelogChanges(RELEASED, WITH_ENTRY);
-    assert.deepEqual(changes.misplaced, []);
-    assert.deepEqual(changes.underUnreleased, ['### Fixed', ENTRY]);
+describe('its changelog entry is a file in changes/, and CHANGELOG.md gains no entry', () => {
+  it('a change file, and no edit to CHANGELOG.md, is ready', () => {
     assert.deepEqual(ready().problems, []);
+    assert.deepEqual(ready({ added: ['changes/639-2.changed.md'] }).problems, []);
+    assert.deepEqual(ready({ added: ['changes/session-hook.fixed.md'] }).problems, []);
   });
 
-  it('the 2.7.9 misplacement is refused: a line inside a released version', () => {
+  it('a pull request that adds no change file is refused, and told where it goes', () => {
+    const { problems } = ready({ added: [] });
+    assert.equal(problems.length, 1, problems.join('\n'));
+    assert.match(problems[0], /Add the changelog entry as a file in `changes\/`, named <issue>\.<kind>\.md/);
+    // The folder's README is not an entry.
+    assert.match(ready({ added: ['changes/README.md'] }).problems[0], /Add the changelog entry as a file in `changes\/`/);
+  });
+
+  it('a file in changes/ that is not named as one is refused by name', () => {
+    for (const path of ['changes/639.md', 'changes/639.improved.md', 'changes/Fix-it.added.md', 'changes/notes/639.added.md']) {
+      const { problems } = ready({ added: [FRAGMENT, path] });
+      assert.equal(problems.length, 1, `${path}: ${problems.join('\n')}`);
+      assert.ok(problems[0].startsWith(`${path}: `), problems[0]);
+    }
+  });
+
+  it('a line written under Unreleased, where entries went until #847, is refused and pointed at changes/', () => {
+    const changes = changelogChanges(RELEASED, WITH_ENTRY);
+    assert.deepEqual(changes.underUnreleased, ['### Fixed', ENTRY]);
+    const { problems } = ready({ changelogAfter: WITH_ENTRY });
+    assert.equal(problems.length, 1, problems.join('\n'));
+    assert.match(problems[0], /2 line\(s\) added under `## Unreleased`\. Put the entry in a file in `changes\/` instead/);
+  });
+
+  it('the 2.7.9 misplacement is still refused: a line inside a released version', () => {
     const after = RELEASED.replace(
       '## 2.7.9 — 2026-11-17\n\n### Added\n\n',
       `## 2.7.9 — 2026-11-17\n\n### Added\n\n${ENTRY}\n\n`,
     );
     const { problems } = ready({ changelogAfter: after });
-    assert.equal(problems.length, 2, problems.join('\n'));
+    assert.equal(problems.length, 1, problems.join('\n'));
     assert.match(problems[0], /inside `## 2\.7\.9`, a released version/);
-    assert.match(problems[1], /add a line under `## Unreleased`/);
   });
 
-  it('a maintainer correcting a released entry labels it changelog-history', () => {
+  it('a maintainer correcting a released entry labels it changelog-history, and still adds a change file', () => {
     const after = RELEASED.replace('Flash-Lite are priced.**', 'Flash-Lite are priced, at last.**');
-    const corrected = ready({ changelogAfter: after, labels: ['changelog-history'] }).problems;
-    assert.equal(corrected.length, 1, 'still needs its own line under Unreleased');
-    assert.match(corrected[0], /add a line under `## Unreleased`/);
+    assert.deepEqual(ready({ changelogAfter: after, labels: ['changelog-history'] }).problems, []);
     assert.match(ready({ changelogAfter: after }).problems[0], /inside `## 2\.7\.9`/);
+    assert.match(ready({ changelogAfter: after, labels: ['changelog-history'], added: [] }).problems[0], /Add the changelog entry/);
   });
 
-  it('a pull request that adds no line at all is refused', () => {
-    const { problems } = ready({ changelogAfter: RELEASED });
-    assert.equal(problems.length, 1);
-    assert.match(problems[0], /add a line under `## Unreleased`/);
-  });
-
-  it('"No changes yet." is not a line the pull request added', () => {
+  it('neither "No changes yet." nor the pointer to changes/ is a line the pull request added', () => {
     const before = RELEASED.replace('No changes yet.\n', '');
     assert.deepEqual(changelogChanges(before, RELEASED).underUnreleased, []);
+    assert.deepEqual(changelogChanges(before, RELEASED.replace('No changes yet.', POINTER)).underUnreleased, []);
   });
 
-  it('a release pull request, which adds a version heading, is exempt', () => {
-    const before = RELEASED.replace('No changes yet.', ENTRY);
+  it('a release pull request, which adds a version heading and deletes the change files, is exempt', () => {
     const after = RELEASED.replace('## 2.7.10', `## 2.7.11 — 2026-11-18\n\n### Fixed\n\n${ENTRY}\n\n## 2.7.10`);
-    const changes = changelogChanges(before, after);
+    const changes = changelogChanges(RELEASED, after);
     assert.equal(changes.release, true);
-    assert.deepEqual(ready({ changelogBefore: before, changelogAfter: after, labels: ['no-issue'] }).problems, []);
+    assert.deepEqual(ready({ changelogAfter: after, labels: ['no-issue'], added: [] }).problems, []);
+  });
+
+  it('Dependabot is not asked for a change file', () => {
+    assert.deepEqual(ready({ body: '', author: 'dependabot[bot]', added: [] }).problems, []);
   });
 
   it('counts a repeated line once for each time it is added', () => {

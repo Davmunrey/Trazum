@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Prepare a release in one step: every version that moves in lockstep, the
- * changelog heading, the pricing dataset and the Action pin.
+ * changelog (the files in `changes/`, folded under the new version and
+ * deleted), the pricing dataset and the Action pin.
  *
  *   node scripts/prepare-release.mjs 2.7.0            # write
  *   node scripts/prepare-release.mjs 2.7.0 --dry-run  # say what would change, change nothing
@@ -43,10 +44,11 @@
  * pin keep describing the release on `latest`, and this leaves them alone.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { POINTER, fold, readFragments } from './changes.mjs';
 import { replaceBlock } from './install-snippets.mjs';
 import { baseOf, channelOf, recordedVersion } from './npm-channel.mjs';
 import { npmTokenStanding, recordedNpmTokenExpiry } from './npm-token-expiry.mjs';
@@ -96,6 +98,9 @@ process.on('uncaughtException', (error) => {
   console.error(`prepare-release: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
 });
+
+/** Files the release deletes: the changes it folded into the changelog. */
+const removals = [];
 
 function replace(path, from, to, expected) {
   const text = edits.get(path) ?? read(path);
@@ -197,11 +202,32 @@ if (!pinOnly) {
 
 /** CHANGELOG.md, RELEASES.md and the pricing dataset: what a release on `latest` adds to the record. */
 async function recordTheRelease() {
-  // The changelog: Unreleased becomes the version, and a fresh Unreleased opens above it.
+  /*
+    The changelog: the files in changes/ are folded under the new version's
+    heading, below Unreleased, and deleted (#847). Unreleased keeps only its
+    pointer to the folder; an entry written there instead is refused, since a
+    release would otherwise publish it under the wrong version or drop it.
+  */
   const changelog = read('CHANGELOG.md');
-  if (!changelog.includes('\n## Unreleased\n')) throw new Error('CHANGELOG.md has no "## Unreleased" heading.');
+  const start = changelog.indexOf('\n## Unreleased\n');
+  if (start === -1) throw new Error('CHANGELOG.md has no "## Unreleased" heading.');
+  const end = changelog.indexOf('\n## ', start + 1);
+  const body = changelog.slice(start + '\n## Unreleased\n'.length, end === -1 ? changelog.length : end).trim();
+  if (body !== POINTER) {
+    throw new Error('CHANGELOG.md has text under "## Unreleased" besides the pointer to changes/. Move each entry to a file in changes/ (changes/README.md) and run this again.');
+  }
+  const fragments = readFragments(ROOT);
   const day = new Date().toISOString().slice(0, 10);
-  replace('CHANGELOG.md', '\n## Unreleased\n', `\n## Unreleased\n\nNo changes yet.\n\n## ${next} — ${day}\n`, 1);
+  const notes = fragments.length === 0 ? 'No change was recorded in `changes/` for this release.' : fold(fragments);
+  edits.set(
+    'CHANGELOG.md',
+    `${changelog.slice(0, start)}\n## Unreleased\n\n${POINTER}\n\n## ${next} — ${day}\n\n${notes}\n${end === -1 ? '' : changelog.slice(end)}`,
+  );
+  touched.push(`CHANGELOG.md (${fragments.length} change(s) from changes/ under ## ${next})`);
+  for (const fragment of fragments) {
+    removals.push(fragment.path);
+    touched.push(`${fragment.path} (folded into CHANGELOG.md, deleted)`);
+  }
 
   // The first line a stranger reads in the release notes names the version on npm.
   // From a next's tree the line names the release on latest, not the prerelease.
@@ -247,7 +273,7 @@ if (prerelease) {
   const label = newest.slice(1);
   const files = execFileSync('git', ['ls-files', '*.md'], { cwd: ROOT, encoding: 'utf8' })
     .split('\n')
-    .filter((path) => path !== '' && path !== 'CHANGELOG.md' && path !== 'RELEASES.md' && !path.startsWith('wiki/'));
+    .filter((path) => path !== '' && path !== 'CHANGELOG.md' && path !== 'RELEASES.md' && !path.startsWith('wiki/') && !path.startsWith('changes/'));
   const PIN = /Davmunrey\/Trazum@([0-9a-f]{40})( {2}# )(\d+\.\d+\.\d+)/g;
   let moved = 0;
   for (const path of files) {
@@ -274,6 +300,7 @@ if (!dryRun) {
     mkdirSync(dirname(join(ROOT, path)), { recursive: true });
     writeFileSync(join(ROOT, path), text, 'utf8');
   }
+  for (const path of removals) rmSync(join(ROOT, path));
 }
 
 if (!pinOnly && prerelease) {

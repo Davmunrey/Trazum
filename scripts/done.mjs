@@ -165,14 +165,14 @@ export const CRITERIA = [
   },
   {
     id: 'changelog',
-    what: 'CHANGELOG.md gains a line under Unreleased, and none inside a released version',
+    what: 'the change adds its changelog entry as a file in changes/, and edits no entry in CHANGELOG.md',
     source: { workflow: '.github/workflows/pr-readiness.yml', contributing: 'Pull requests' },
     needs: [],
     async check({ changelog }) {
       if (changelog === null) return notRun('there is no base to compare with: fetch it, or name one with --base');
       // Excused from the issue rules, the way a `no-issue` pull request is, so
       // the only problems left are the changelog's, in CI's own words.
-      const { problems, release } = readiness({ body: '', author: '', labels: ['no-issue'], changelogBefore: changelog.before, changelogAfter: changelog.after });
+      const { problems, release } = readiness({ body: '', author: '', labels: ['no-issue'], changelogBefore: changelog.before, changelogAfter: changelog.after, added: changelog.added });
       if (problems.length > 0) return failed(problems.join(' '));
       return passed(release ? 'a release: it adds a version heading' : '');
     },
@@ -354,7 +354,12 @@ async function main(argv) {
     } catch {
       // The base has no changelog: everything in it is new.
     }
-    changelog = { before, after: read('CHANGELOG.md') };
+    // What the branch adds, committed or not: a change file not yet committed still counts.
+    const added = [
+      ...git('diff', '--name-only', '--diff-filter=A', base).trim().split('\n'),
+      ...git('ls-files', '--others', '--exclude-standard').trim().split('\n'),
+    ].filter(Boolean);
+    changelog = { before, after: read('CHANGELOG.md'), added };
   }
   const changed = [
     ...(base === null ? [] : git('diff', '--name-only', base).trim().split('\n')),
