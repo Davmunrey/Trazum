@@ -112,6 +112,7 @@ const moves = (name: string): Vars => {
 
 /** Every owner of output on the screen, in the order the story shows them: the objects' commands, then the example. */
 const OWNERS: readonly BlockOwner[] = [...DESK_COMMANDS, 'unpriced'];
+/** A transcript's blocks grouped by the owner whose output they are, in `OWNERS` order. */
 const blocksOf = (source: readonly TerminalBlock[]) =>
   Object.fromEntries(OWNERS.map((id) => [id, source.filter((block) => block.cap === id)])) as Record<BlockOwner, TerminalBlock[]>;
 const BLOCKS_OF = blocksOf(TERMINAL);
@@ -225,12 +226,15 @@ function useChapter(ref: React.RefObject<HTMLElement | null>): { chapter: Chapte
   return { chapter, staged };
 }
 
+/** The classes for a run's style letters, one `t-<letter>` each (bold, dim, a hue, the acid mark). */
 function runClass(style: string): string {
   return [...style].map((letter) => `t-${letter}`).join(' ');
 }
 
+/** Whether a line ends in a rule of box-drawing dashes, which may be cut at the screen's edge. */
 const isRuled = (runs: readonly TerminalRun[]) => runs.length > 0 && /^─+$/.test(runs.at(-1)?.[0] ?? '');
 
+/** One line of a transcript as styled runs; a share bar's blocks are filled by the story under the name `bar`. */
 function Runs({ runs, bar }: { runs: readonly TerminalRun[]; bar: string }) {
   return (
     <>
@@ -594,6 +598,7 @@ function PressCard({ t, id }: { t: LandingCopy; id: ObjectId }) {
   );
 }
 
+/** The story: the pinned stage with the laptop, the receipt and the objects, and the chapters that scroll past it. */
 export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
   const ref = useRef<HTMLElement>(null);
   useStoryProgress(ref);

@@ -119,6 +119,7 @@ function styleOf({ bold, dim, colour, mark }) {
   return `${bold ? 'b' : ''}${dim ? 'd' : ''}${hue}${mark ? 'm' : ''}`;
 }
 
+/** The CLI's coloured output as lines of `[text, style]` runs. */
 const toLines = (ansi) => styledLines(ansi).map((runs) => runs.map((run) => [run.text, styleOf(run)]));
 
 /**
@@ -249,6 +250,7 @@ function sourceOf(sources, provider) {
  * and count the calls, and the bill says the same on the screen.
  */
 const UNPRICED_LOG = 'examples/unpriced-model.jsonl';
+/** What `bill --receipt` on the example log reports as unpriced: the file, the models and their calls. */
 function unpriced() {
   const result = run(['bill', UNPRICED_LOG, '--receipt', '--locale', 'en']);
   if (result.status !== 0) throw new Error(`bill --receipt on ${UNPRICED_LOG} exited ${result.status}`);
@@ -392,6 +394,7 @@ export async function transcript() {
   return { receipt: paper, unpriced: unpriced(), blocks: await blocksAt(paper), narrow: await blocksAt(paper, NARROW) };
 }
 
+/** A line's width in columns: the length of its runs' text. */
 const widthOf = (runs) => runs.reduce((n, [text]) => n + text.length, 0);
 /** A heading ruled out to the width: the rule may be cut at the screen's edge, so it does not set the width. */
 const isRuled = (runs) => runs.length > 0 && /^─+$/.test(runs.at(-1)[0]);
@@ -422,6 +425,7 @@ const blockSource = (block) => `  {
     lines: [${block.lines.length === 0 ? '' : `\n${block.lines.map((runs) => `      ${JSON.stringify(runs)},`).join('\n')}\n    `}],
   },`;
 
+/** Writes `lib/landing-terminal.ts` from the transcripts, refusing a narrow line wider than the narrow screen. */
 export async function render(data) {
   const { receipt: paper, unpriced: gap, blocks, narrow } = data ?? (await transcript());
   const narrowColumns = columnsOf(narrow, { wrapped: ['guard'] });

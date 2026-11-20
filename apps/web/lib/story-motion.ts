@@ -58,8 +58,11 @@ import {
 export const DECK_ANGLE = 76;
 export const LID_CLOSED = -(180 - DECK_ANGLE - 1);
 
+/** Smoothstep: eases a 0 to 1 progress in and out. */
 const smooth = (t: number) => t * t * (3 - 2 * t);
+/** Smootherstep: the same, with a flatter start and end. */
 const smoother = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+/** A number as CSS text, rounded to five places so the keyframes stay short. */
 const n = (value: number) => Number(value.toFixed(5)).toString();
 
 /** Points through a range: its two ends and `count` between. */
@@ -197,6 +200,7 @@ export function onScreen(screen: BlockOwner | 'never', p: number, blocks: readon
   return progress(p, comesOn(screen, blocks)) * (1 - (off === null ? 0 : progress(p, off)));
 }
 
+/** The points of the story at which a screen's opacity changes: where it comes on and, if it goes off, where. */
 function screenStops(screen: BlockOwner | 'never', blocks: readonly TerminalBlock[]): number[] {
   const off = goesOff(screen, blocks);
   const on = comesOn(screen, blocks);

@@ -35,6 +35,7 @@ import { SiteFrame } from './site/SiteFrame';
 
 const WRAP = 'mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12';
 
+/** The landing in one language: the hero, the story on the desk, what else Trazum does, and the footer. */
 function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
   return (
     <>
@@ -98,6 +99,7 @@ function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
   );
 }
 
+/** The landing inside the site's frame, which chooses the language and passes its copy down. */
 export function Landing({ initialLocale }: { initialLocale: MarketingLocale }) {
   return <SiteFrame initialLocale={initialLocale}>{(locale, copy) => <Page t={COPY[locale]} copy={copy} />}</SiteFrame>;
 }

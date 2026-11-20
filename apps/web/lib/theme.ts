@@ -21,6 +21,7 @@ export function surfaceDefault(): Theme {
   return typeof document !== 'undefined' && document.documentElement.dataset.surface === 'site' ? 'light' : 'system';
 }
 
+/** Puts a theme on the document, resolving `system` from the reader's colour-scheme preference. */
 export function applyTheme(theme: Theme): void {
   const resolved = theme === 'system'
     ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
@@ -29,6 +30,7 @@ export function applyTheme(theme: Theme): void {
   document.documentElement.style.colorScheme = resolved;
 }
 
+/** Applies a theme and remembers the choice; where storage is refused, the choice still holds for this page. */
 export function saveTheme(theme: Theme): void {
   applyTheme(theme);
   try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* Current choice still works. */ }
