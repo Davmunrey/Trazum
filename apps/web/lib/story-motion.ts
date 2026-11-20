@@ -50,8 +50,10 @@ import {
  * output a line at a time, the screen scrolling up as a terminal does once
  * the output is taller than it; as it ends it settles the object back. Only
  * the receipt moves sideways: out of the laptop's side, never over its screen
- * while it prints, forward in front of it with a note of each rate's page,
- * and back onto the desk. The lid closes last.
+ * while it prints, and forward in front of it with a note of each rate's
+ * page; then it leaves. The lid closes last, and in the last chapter, which
+ * has no words, the closing card, the objects and the shut laptop leave in
+ * turn, so the stage is empty when it lets go.
  */
 
 /** The lid's angle, closed: onto the deck, which lies at `DECK_ANGLE`, short of touching it by a degree. */
@@ -145,8 +147,8 @@ export function chapterOfObject(object: ObjectId): ChapterId {
 
 /**
  * How far an object is lifted, from 0 on the desk to 1 lifted and pressed:
- * up through its chapter's lift, held, and down as its chapter ends (the last
- * chapter's, the lid's, stays up).
+ * up through its chapter's lift, held, and down as its chapter ends (an
+ * object of the last chapter would stay up; the last has none).
  */
 export function lifted(object: ObjectId, p: number): number {
   const chapter = chapterOfObject(object);
@@ -216,11 +218,24 @@ function screenStops(screen: BlockOwner | 'never', blocks: readonly TerminalBloc
   return [...on, ...(off === null ? [] : through(off, 2))];
 }
 
-/** Where the receipt is: 0 still in the laptop, 1 on the desk, 2 forward in front of the laptop. */
-export function receiptPose(p: number): { out: number; forward: number } {
+/**
+ * Where the receipt is, each from 0 to 1: out of the laptop and onto the desk (`out`), forward in front of the laptop
+ * (`forward`), and gone, down and out of sight, once its chapter is over (`gone`).
+ */
+export function receiptPose(p: number): { out: number; forward: number; gone: number } {
   const out = smooth(progress(p, within('bill', BEATS.receipt)));
-  const forward = smooth(progress(p, within('sources', BEATS.forward))) * (1 - smooth(progress(p, within('sources', BEATS.back))));
-  return { out, forward };
+  const forward = smooth(progress(p, within('sources', BEATS.forward)));
+  const gone = smooth(progress(p, within('sources', BEATS.leave)));
+  return { out, forward, gone };
+}
+
+/**
+ * A frame that ends hidden: at the last point of `range` the element is also `visibility: hidden`, so what has left
+ * the stage is neither reached by a pointer nor read out. Only that frame says so: before it the element keeps the
+ * visibility the stylesheet gives it.
+ */
+function hiddenAtEnd(range: Range, p: number, frame: Frame): Frame {
+  return p >= range[1] - 1e-9 ? { ...frame, visibility: 'hidden' } : frame;
 }
 
 /** Every keyframe set the story uses, by the element that uses it, and the stretch of the story each runs over. */
@@ -347,19 +362,20 @@ export function motionOf(
   // inside the laptop is cut away at the laptop's side (`--receipt-from-x` is the slot's own width and a gap to the
   // left, and the slot rests 0.7 of a gap right of the laptop): it never lies over the screen while text is on it.
   const [r0] = within('bill', BEATS.receipt);
-  const poseStops = [r0 - 0.001, ...through(within('bill', BEATS.receipt), 10), ...through(within('sources', BEATS.forward), 10), ...through(within('sources', BEATS.back), 10)];
+  const leave = within('sources', BEATS.leave);
+  const poseStops = [r0 - 0.001, ...through(within('bill', BEATS.receipt), 10), ...through(within('sources', BEATS.forward), 10), ...through(leave, 10)];
   rules.push(
     keyframes('st-receipt', poseStops, (p) => {
-      const { out, forward } = receiptPose(p);
+      const { out, forward, gone } = receiptPose(p);
       const x = `calc(${n(1 - out)} * var(--receipt-from-x) + ${n(forward)} * var(--receipt-fwd-x))`;
-      const y = `calc(${n(1 - out)} * var(--receipt-from-y) + ${n(forward)} * var(--receipt-fwd-y))`;
-      const shown = p >= r0 ? `calc(${n(1 - forward)} * var(--receipt-rest) + ${n(forward)})` : '0';
+      const y = `calc(${n(1 - out)} * var(--receipt-from-y) + ${n(forward)} * var(--receipt-fwd-y) + ${n(gone)} * var(--away-receipt))`;
+      const shown = p >= r0 ? `calc((${n(1 - forward)} * var(--receipt-rest) + ${n(forward)}) * ${n(1 - gone)})` : '0';
       const inside = `max(-24px, calc(${n(1 - out)} * (100% + var(--gap)) - 0.7 * var(--gap)))`;
-      return { transform: `translate(${x}, ${y})`, opacity: shown, 'clip-path': `inset(-80px -400% -80px ${inside})` };
+      return hiddenAtEnd(leave, p, { transform: `translate(${x}, ${y})`, opacity: shown, 'clip-path': `inset(-80px -400% -80px ${inside})` });
     }),
   );
   rules.push(
-    keyframes('st-receipt-face', [...through(within('sources', BEATS.forward), 10), ...through(within('sources', BEATS.back), 10)], (p) => {
+    keyframes('st-receipt-face', through(within('sources', BEATS.forward), 10), (p) => {
       const { forward } = receiptPose(p);
       const back = 1 - forward;
       return {
@@ -368,9 +384,9 @@ export function motionOf(
     }),
   );
   // A note from each line, with a leader rule, of the page its rate was read from and the date: each shown whole,
-  // one after another, and gone as the receipt goes back.
+  // one after another, and gone before the receipt leaves.
   const notes = within('sources', BEATS.notes);
-  const gone = within('sources', [BEATS.back[0] - 0.06, BEATS.back[0]]);
+  const gone = within('sources', [BEATS.leave[0] - 0.06, BEATS.leave[0]]);
   for (let k = 0; k < receiptLines; k += 1) {
     const draw = staggered(notes, k, receiptLines, NOTE_DRAW);
     rules.push(
@@ -390,6 +406,31 @@ export function motionOf(
     keyframes('st-deck-shade', through(lid, 6), (p) => {
       const e = smooth(progress(p, lid));
       return { transform: `scaleY(${n(e)})`, opacity: n(0.18 * e) };
+    }),
+  );
+
+  // The last chapter: the closing card goes up and out, the objects leave the desk, and the shut laptop after them,
+  // each down and out of sight, so the stage is empty when it lets go and nothing of it is left against the band
+  // after the story.
+  const card = within('away', BEATS.card);
+  rules.push(
+    keyframes('st-away-card', through(card, 6), (p) => {
+      const e = smooth(progress(p, card));
+      return hiddenAtEnd(card, p, { transform: `translateY(${n(-24 * e)}px)`, opacity: n(1 - e) });
+    }),
+  );
+  const clear = within('away', BEATS.clear);
+  rules.push(
+    keyframes('st-away-objects', through(clear, 8), (p) => {
+      const e = smooth(progress(p, clear));
+      return hiddenAtEnd(clear, p, { transform: `translateY(calc(${n(e)} * var(--away-obj)))`, opacity: n(1 - e) });
+    }),
+  );
+  const stow = within('away', BEATS.stow);
+  rules.push(
+    keyframes('st-away-scene', through(stow, 10), (p) => {
+      const e = smooth(progress(p, stow));
+      return hiddenAtEnd(stow, p, { transform: `translateY(calc(${n(e)} * var(--away-laptop))) scale(${n(1 - 0.06 * e)})`, opacity: n(1 - e) });
     }),
   );
 

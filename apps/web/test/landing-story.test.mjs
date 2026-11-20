@@ -330,7 +330,7 @@ describe('one laptop, and one object per capability', () => {
       ['true', 'false', 'false', 'false', 'false', 'false', 'false'],
       'the bill is not the object pressed when the page arrives',
     );
-    assert.match(html, /<div class="desk-objects" role="group" aria-label="[^"]+">/, 'the objects are not a named group');
+    assert.match(html, /<div class="desk-objects" role="group" aria-label="[^"]+"[^>]*>/, 'the objects are not a named group');
   });
 
   it('the screen is one live region, named, and each output is labelled by its plate', async () => {
@@ -498,7 +498,7 @@ describe('every capability is there as text, in order, with the laptop', () => {
     const html = await landingHtml('en');
     const close = html.slice(html.indexOf('data-landing-close'));
     assert.match(close, /<a href="\/app" data-dashboard-action=""/);
-    // The closing is the story's last chapter: after it, only the quiet band.
+    // The closing is the story's last chapter with words: after it, only the stage clearing and the quiet band.
     assert.ok(html.indexOf('data-landing-close') > html.indexOf('data-ch="never"'), 'the closing is not the story’s last chapter');
     assert.ok(html.indexOf('tree/main/examples/claude-projects') > html.indexOf('class="desk-objects"'));
   });
@@ -601,8 +601,11 @@ describe('the story never takes the scroll from the visitor', () => {
     const written = motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length, terminal.TERMINAL_NARROW);
     const properties = new Set([...written.matchAll(/([a-z-]+): [^;]+;/g)].map((match) => match[1]));
     for (const property of properties) {
-      assert.ok(['transform', 'opacity', 'clip-path', 'animation-timing-function'].includes(property), `${property} changes with the scroll`);
+      assert.ok(['transform', 'opacity', 'clip-path', 'animation-timing-function', 'visibility'].includes(property), `${property} changes with the scroll`);
     }
+    // One exception, which does not change from frame to frame: what has left the stage is hidden at the last stop of
+    // its leaving, once, so it is neither reached nor read out. It is never said anywhere else.
+    for (const line of written.split('\n').filter((line) => line.includes('visibility'))) assert.match(line, /^  100% \{.*visibility: hidden; \}$/, `visibility changes mid-way: ${line}`);
     assert.ok(properties.has('transform') && properties.has('opacity') && properties.has('clip-path'));
     assert.equal(/--[a-z-]+:/.test(written.replace(/var\(--[a-z-]+\)/g, '')), false, 'a keyframe animates a custom property');
   });
@@ -712,14 +715,53 @@ describe('the lid, the depth and the order of the arrival', () => {
     for (let at = 1; at < shown.length; at += 1) assert.equal(shown[at], shown[at - 1] + 1, 'the output does not print a line at a time');
   });
 
-  it('the receipt is in the laptop until it prints, forward in its chapter, and on the desk at the end', () => {
+  it('the receipt is in the laptop until it prints, forward in its chapter, and gone once its chapter is over', () => {
     const frames = stopsOf('st-receipt');
     const [printed] = timeline.within('bill', timeline.BEATS.receipt);
     for (const [p, line] of frames) if (p < printed - 1e-6) assert.match(line, /opacity: 0;/, `the receipt shows before it prints: ${line}`);
     const [start, end] = timeline.chapterWindow('sources');
-    assert.deepEqual(motion.receiptPose(start + (end - start) * 0.5), { out: 1, forward: 1 }, 'the receipt is not forward while its chapter is current');
-    assert.deepEqual(motion.receiptPose(1), { out: 1, forward: 0 }, 'the receipt is not back on the desk at the end');
-    assert.match(frames.at(-1)[1], /translate\(calc\(0 \* var\(--receipt-from-x\) \+ 0 \* var\(--receipt-fwd-x\)\)/);
+    assert.deepEqual(motion.receiptPose(start + (end - start) * 0.5), { out: 1, forward: 1, gone: 0 }, 'the receipt is not forward while its chapter is current');
+    // Nothing after the sources' chapter uses it: it leaves before the next chapter, and is not there to be reached.
+    assert.deepEqual(motion.receiptPose(end), { out: 1, forward: 1, gone: 1 }, 'the receipt is still on the stage after its chapter');
+    assert.ok(frames.at(-1)[0] <= end + 1e-9, 'the receipt is still leaving in the next chapter');
+    assert.match(frames.at(-1)[1], /opacity: calc\([^;]*\* 0\);/, 'the receipt is still drawn after it has left');
+    assert.match(frames.at(-1)[1], /visibility: hidden;/, 'the receipt can still be reached after it has left');
+    assert.equal(frames.slice(0, -1).some(([, line]) => /visibility/.test(line)), false, 'the receipt is hidden before it has left');
+    // Without the keyframes (reduced motion), it is gone at once after its chapter.
+    assert.match(read('app/landing.css'), /\.story:is\(\[data-chapter='unpriced'\], \[data-chapter='never'\], \[data-chapter='close'\], \[data-chapter='away'\]\) \.receipt-slot \{\s*visibility: hidden;/);
+  });
+
+  it('after the closing, the closing card, the objects and the shut laptop leave, and the stage is empty when it lets go', () => {
+    const { BEATS } = timeline;
+    // The lid is shut before anything leaves, and the last chapter has no words of its own.
+    assert.equal(timeline.CHAPTERS.at(-1).id, 'away');
+    assert.equal(timeline.CHAPTERS.at(-1).object, null);
+    assert.ok(timeline.within('close', BEATS.lid)[1] < timeline.chapterWindow('away')[0], 'the lid is still closing as things leave');
+    for (const [name, beat] of [
+      ['st-away-card', BEATS.card],
+      ['st-away-objects', BEATS.clear],
+      ['st-away-scene', BEATS.stow],
+    ]) {
+      const frames = stopsOf(name);
+      const range = timeline.within('away', beat);
+      assert.ok(Math.abs(frames[0][0] - range[0]) < 1e-6 && Math.abs(frames.at(-1)[0] - range[1]) < 1e-6, `${name} does not run over its beat`);
+      assert.ok(range[1] < 1, `${name} is still leaving as the stage lets go`);
+      assert.equal(valueAt(name, 'opacity', range[0]), 1, `${name} is not whole before it leaves`);
+      assert.equal(valueAt(name, 'opacity', 1), 0, `${name} is still drawn at the end`);
+      assert.match(frames.at(-1)[1], /visibility: hidden;/, `${name} can still be reached once it has left`);
+      assert.equal(frames.slice(0, -1).some(([, line]) => /visibility/.test(line)), false, `${name} is hidden before it has left`);
+    }
+    // The card goes first, then the objects, then the laptop.
+    assert.ok(BEATS.card[0] < BEATS.clear[0] && BEATS.clear[0] < BEATS.stow[0] && BEATS.card[1] < BEATS.stow[1]);
+    // Each is on the element that leaves; a press or focus inside the story brings them back, and without the
+    // keyframes they are gone at once.
+    const story = codeOf('components/landing/Story.tsx');
+    assert.match(story, /className="desk-scene" data-mv="" data-away="" style=\{moves\('st-away-scene'\)\}/);
+    assert.match(story, /className="desk-objects"[^>]*data-away="" style=\{moves\('st-away-objects'\)\}/);
+    assert.match(story, /<Slot id="close" labelledBy="close-title" leaves="st-away-card"/);
+    const css = read('app/landing.css');
+    assert.match(css, /\.story:focus-within \[data-away\] \{[^}]*visibility: visible !important;/);
+    assert.match(css, /:root\[data-desk\]:not\(\[data-motion='scroll'\]\) \.story\[data-chapter='away'\] \[data-away\] \{\s*visibility: hidden;/);
   });
 
   it('the chapters follow one another without a gap, from the hero to the stage letting go', () => {
@@ -730,7 +772,7 @@ describe('the lid, the depth and the order of the arrival', () => {
       assert.ok(Math.abs(windows[i][0] - windows[i - 1][1]) < 1e-9, `a gap or an overlap before ${timeline.CHAPTERS[i].id}`);
       assert.ok(windows[i][1] > windows[i][0], `${timeline.CHAPTERS[i].id} has no time`);
     }
-    assert.deepEqual(timeline.CHAPTERS.map((chapter) => chapter.id), ['arrival', 'bill', 'check', 'guard', 'clock', 'optimize', 'models', 'sources', 'unpriced', 'never', 'close']);
+    assert.deepEqual(timeline.CHAPTERS.map((chapter) => chapter.id), ['arrival', 'bill', 'check', 'guard', 'clock', 'optimize', 'models', 'sources', 'unpriced', 'never', 'close', 'away']);
     // The page sets each slot's height from the same table.
     assert.match(codeOf('components/landing/Story.tsx'), /'--ch-h': `\$\{chapterOf\(id\)\.height\}svh`/);
   });

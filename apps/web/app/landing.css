@@ -106,6 +106,9 @@
   --dev-deck: #eeeee0;
   --dev-side: #e6e8d5;
   --dev-rule: #999f8a;
+  /* The laptop's aluminium, and its edge: a cool grey of the paper's green, on either theme. */
+  --dev-alu: #dcded6;
+  --dev-alu-edge: #b4b8ac;
   --dev-shadow: var(--ink);
   --dev-off: #080c07;
   --pad: 16px;
@@ -126,12 +129,17 @@
 /* ---------------------------------------------------------------- still -- */
 
 .desk {
-  /* The laptop's size, and from it the screen's, the bezel's and the lid's. */
+  /*
+   * The laptop's size, and from it the screen's, the bezel's and the lid's:
+   * thin bezels, nearly even, round a screen 1.54 times as wide as it is tall,
+   * as a thin laptop's is. The lid stands as tall as it did with a 16:10
+   * screen and a tall chin, so its top is where the first screen holds it.
+   */
   --L: min(760px, calc(100cqw - 2 * var(--pad)));
-  --sw: calc(var(--L) * 0.94);
-  --sh: calc(var(--sw) / 1.6);
-  --bt: calc(var(--L) * 0.035);
-  --chin: calc(var(--L) * 0.05);
+  --sw: calc(var(--L) * 0.95);
+  --sh: calc(var(--sw) / 1.54);
+  --bt: calc(var(--L) * 0.026);
+  --chin: calc(var(--L) * 0.034);
   --Hl: calc(var(--sh) + var(--bt) + var(--chin));
   position: relative;
   max-width: 1440px;
@@ -161,11 +169,26 @@
   max-width: 100%;
 }
 .lt-front {
+  position: relative;
   background: var(--dev-ink);
-  border: calc(var(--L) * 0.006) solid var(--dev-rule);
+  border: calc(var(--L) * 0.006) solid var(--dev-alu-edge);
+  /* Rounder at the top than at the hinge, as a laptop's lid is. */
+  border-radius: calc(var(--L) * 0.022) calc(var(--L) * 0.022) calc(var(--L) * 0.008) calc(var(--L) * 0.008);
   padding: var(--bt) calc((var(--L) - var(--sw)) / 2) var(--chin);
   /* The lid's own thickness in the rim's grey, a step at a time, then its hard shadow, down and to the right. */
   box-shadow: 1px 1px 0 var(--dev-rule), 2px 2px 0 var(--dev-rule), 3px 3px 0 var(--dev-rule), calc(var(--L) * 0.014) calc(var(--L) * 0.014) 0 var(--dev-shadow);
+}
+/* The camera, in the middle of the top bezel. */
+.lt-front::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: calc(var(--bt) / 2 - var(--L) * 0.006);
+  width: calc(var(--L) * 0.008);
+  height: calc(var(--L) * 0.008);
+  border-radius: 50%;
+  background: #3d443a;
+  transform: translate(-50%, -50%);
 }
 .lt-screen {
   position: relative;
@@ -713,8 +736,10 @@
   display: grid;
   transform: rotateX(180deg);
   place-items: center;
-  background: var(--dev-shell);
+  background: var(--dev-alu);
   border: calc(var(--L) * 0.004) solid var(--dev-ink);
+  /* Turned over, its top is the hinge: the same outline as the front's. */
+  border-radius: calc(var(--L) * 0.008) calc(var(--L) * 0.008) calc(var(--L) * 0.022) calc(var(--L) * 0.022);
 }
 :root[data-desk] .lt-back span {
   font-family: var(--font-display);
@@ -733,7 +758,10 @@
   transform-origin: 50% 0;
   transform: rotateX(76deg);
   border: calc(var(--L) * 0.004) solid var(--dev-ink);
-  background: var(--dev-deck);
+  /* Rounded at the front, where the lip is. */
+  border-radius: 0 0 calc(var(--L) * 0.03) calc(var(--L) * 0.03);
+  overflow: hidden;
+  background: var(--dev-alu);
   box-shadow: calc(var(--L) * 0.016) calc(var(--L) * 0.016) 0 var(--dev-shadow);
 }
 .lt-deck-art {
@@ -1216,6 +1244,17 @@
   transform: none !important;
   opacity: 1 !important;
 }
+/* ...and brings back what has left the stage at the end: a control is never reached on its way out, nor after. */
+:root[data-desk] .story[data-pressed] [data-away],
+:root[data-desk] .story:focus-within [data-away] {
+  transform: none !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+/* Except the closing card while a press has put another card in its place. */
+:root[data-desk] .story[data-swapped] .chapter-card[data-away] {
+  visibility: hidden !important;
+}
 /* stylelint-enable declaration-no-important */
 
 /*
@@ -1320,7 +1359,27 @@
     width: 100%;
     display: block;
     padding: 0 var(--pad);
+    /* Slot after slot, nothing between them: a gap put each chapter 16px further from its moment on the stage. */
+    gap: 0;
     pointer-events: none;
+  }
+  /*
+   * The band after the story comes up over the stage while the last chapter
+   * clears it, so the stage is never a window of nothing before the band.
+   */
+  :root[data-desk] [data-after-story] {
+    position: relative;
+    z-index: 3;
+    margin-top: calc(-1 * var(--clearing));
+    /* Its ground as wide as the window, as the stage's is, and no taller than the band. */
+    background: var(--background);
+    box-shadow: 0 0 0 100vmax var(--background);
+    clip-path: inset(0 -100vmax);
+  }
+  /* And the footer after it, which the band's lift brings up into the stage's last window too. */
+  :root[data-desk]:has([data-after-story]) [data-site-footer] {
+    position: relative;
+    z-index: 3;
   }
   /*
    * Under the desk, on a phone, a chapter's card holds just under the desk
@@ -1336,6 +1395,29 @@
   }
   :root[data-desk] .chapter[data-ch='arrival'] {
     padding-top: calc(var(--desk-h) + 12px);
+  }
+  /*
+   * Once the story is done with a thing, it is not on the stage: the receipt
+   * after its chapter, and in the last chapter the shut laptop, the objects
+   * and the closing card. The scroll takes each out by its keyframes; without
+   * them (reduced motion) it is gone at once.
+   */
+  :root[data-desk] .story:is([data-chapter='unpriced'], [data-chapter='never'], [data-chapter='close'], [data-chapter='away']) .receipt-slot {
+    visibility: hidden;
+  }
+  :root[data-desk]:not([data-motion='scroll']) .story[data-chapter='away'] [data-away] {
+    visibility: hidden;
+  }
+  /*
+   * In the last chapter the stage is only the ground things leave from: it
+   * keeps no ground, frame or pointer of its own, so the band after the
+   * story, which comes up over it, and the page after that band show whole
+   * and take a press.
+   */
+  :root[data-desk] .story[data-chapter='away'] :is(.story-stage, .desk) {
+    border-color: transparent;
+    background: transparent;
+    pointer-events: none;
   }
   :root[data-desk] .chapter-card,
   :root[data-desk] .press-card {
@@ -1548,11 +1630,18 @@
      */
     --rise-laptop: 5svh;
     --rise-obj: 18svh;
+    /* How far each thing drops as it leaves the stage, once the story is done with it. */
+    --away-receipt: 8svh;
+    --away-obj: 12svh;
+    --away-laptop: 10svh;
   }
   @media (max-width: 1099px) {
     :root[data-motion='scroll'] .desk {
       --rise-laptop: 4svh;
       --rise-obj: 10svh;
+      --away-receipt: 6svh;
+      --away-obj: 8svh;
+      --away-laptop: 6svh;
     }
   }
   /*
