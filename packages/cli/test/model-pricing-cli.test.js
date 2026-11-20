@@ -86,4 +86,15 @@ describe('model-pricing, run', () => {
     assert.equal(none.status, 1);
     assert.match(none.stderr, /no "modelPricing"/);
   });
+
+  it('refuses a directory, and a file past the overlay ceiling without reading it whole', async () => {
+    const dir = await workspace();
+    assert.match(run(['model-pricing', dir, '--reviewed', '2026-11-20']).stderr, /is not a file/);
+    // Valid JSON, one byte past 64 KiB: refused for its size, never parsed.
+    const big = join(dir, 'big.json');
+    await writeFile(big, `{"modelPricing":{"multiplier":0.9},"pad":"${'x'.repeat(64 * 1024)}"}`);
+    const refused = run(['model-pricing', big, '--reviewed', '2026-11-20']);
+    assert.equal(refused.status, 1);
+    assert.match(refused.stderr, /larger than 65536 bytes/);
+  });
 });

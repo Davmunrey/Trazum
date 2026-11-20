@@ -4809,13 +4809,28 @@ async function commandModelPricing(args: Args, t: CliMessages): Promise<void> {
   const reviewed = stringFlag(args, 'reviewed');
   if (reviewed === undefined) throw new Error(t.modelPricing.noReviewed());
 
-  const info = await stat(file).catch(() => undefined);
-  if (info === undefined || !info.isFile()) throw new Error(t.modelPricing.notFound(file));
-  // A settings file, not a dataset: the same ceiling as an overlay.
-  if (info.size > MAX_PRICING_BYTES) throw new Error(t.modelPricing.tooLarge(file, MAX_PRICING_BYTES));
+  /*
+    One open file, measured and read through the same handle, as
+    `readUsageLog` does: a stat by name and a read by name could see two
+    different files. At most one byte past the ceiling is read, so a file
+    that grew after the stat is refused rather than read whole.
+  */
+  const handle = await open(file, 'r').catch(() => undefined);
+  if (handle === undefined) throw new Error(t.modelPricing.notFound(file));
+  let raw: string;
+  try {
+    if (!(await handle.stat()).isFile()) throw new Error(t.modelPricing.notFound(file));
+    // A settings file, not a dataset: the same ceiling as an overlay.
+    const buffer = Buffer.alloc(MAX_PRICING_BYTES + 1);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    if (bytesRead > MAX_PRICING_BYTES) throw new Error(t.modelPricing.tooLarge(file, MAX_PRICING_BYTES));
+    raw = buffer.subarray(0, bytesRead).toString('utf8');
+  } finally {
+    await handle.close();
+  }
   let document: unknown;
   try {
-    document = JSON.parse(await readFile(file, 'utf8'));
+    document = JSON.parse(raw);
   } catch (error) {
     throw new Error(t.modelPricing.notJson(file, error instanceof Error ? error.message : String(error)));
   }
