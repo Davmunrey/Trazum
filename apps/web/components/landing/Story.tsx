@@ -269,12 +269,10 @@ function Transcript({ owner, narrow = false }: { owner: BlockOwner; narrow?: boo
   let at = 0;
   return (
     <pre className={narrow ? 'term term-narrow' : 'term'} data-mv="" style={style}>
-      {/* skipcq: JS-0437 -- each key is the block's id and the line's place in a constant transcript; see below. */}
       {blocks.map((block, b) => [
-        // skipcq: JS-0437
         ...block.command.split('\n').map((line, j) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: a command's lines are a constant written by a script: they never move, and a line has no identity of its own but its place
-          <span key={`${block.id}-command-${j}`} className="tl tl-command" style={{ '--i': at++ } as Vars}>
+          <span /* skipcq: JS-0437 */ key={`${block.id}-command-${j}`} className="tl tl-command" style={{ '--i': at++ } as Vars}>
             {j === 0 && (
               <span aria-hidden="true" className="t-prompt">
                 ${' '}
@@ -292,10 +290,9 @@ function Transcript({ owner, narrow = false }: { owner: BlockOwner; narrow?: boo
             )}
           </span>
         )),
-        // skipcq: JS-0437
         ...block.lines.map((runs, j) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: the transcript is a constant written by a script: its runs and lines never move, and an empty line or a repeated run has no identity of its own but its place
-          <span key={`${block.id}-${j}`} className={isRuled(runs) ? 'tl tl-rule' : 'tl'} style={{ '--i': at++ } as Vars}>
+          <span /* skipcq: JS-0437 */ key={`${block.id}-${j}`} className={isRuled(runs) ? 'tl tl-rule' : 'tl'} style={{ '--i': at++ } as Vars}>
             <Runs runs={runs} bar={`st-bar-${prefix}${block.id}-${j}`} />
           </span>
         )),
@@ -662,9 +659,8 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
       {...(closed ? { 'data-closed': '' } : {})}
       {...(swapped ? { 'data-swapped': '' } : {})}
     >
-      {/* skipcq: JS-0440 -- the same reason as the line under it. */}
       {/* biome-ignore lint/security/noDangerouslySetInnerHtml: keyframes written in this repository from the timeline and the CLI's transcript; nothing a visitor sends reaches them, and style-src allows inline styles */}
-      <style dangerouslySetInnerHTML={{ __html: MOTION.css }} />
+      <style /* skipcq: JS-0440 */ /* nosemgrep */ dangerouslySetInnerHTML={{ __html: MOTION.css }} />
       <div className="story-stage">
         <div className="desk" style={world}>
           <div className="desk-scene">

@@ -1156,8 +1156,10 @@
  * scroll's keyframes without stopping them: the pressed command's output,
  * whole and scrollable, the lid open or shut as pressed, and only the pressed
  * object lifted. When the next chapter comes the press is let go and the
- * keyframes, which kept their place, show again.
+ * keyframes, which kept their place, show again. Only `!important` outranks
+ * an animation; nothing else in this file uses it.
  */
+/* stylelint-disable declaration-no-important */
 :root[data-desk] .story[data-pressed] .cap-out,
 :root[data-desk] .story[data-pressed] .lt-never {
   opacity: 0 !important;
@@ -1214,6 +1216,7 @@
   transform: none !important;
   opacity: 1 !important;
 }
+/* stylelint-enable declaration-no-important */
 
 /*
  * What a press sets off, on a clock, for a reader who has not asked for less
