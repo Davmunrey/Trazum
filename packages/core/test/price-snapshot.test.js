@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { ROOT, loadCatalogue } from '../../../scripts/pricing-dataset.mjs';
-import { SNAPSHOT, differences, snapshotOf, snapshotText } from '../../../scripts/price-snapshot.mjs';
+import { SNAPSHOT, differences, problems, snapshotOf, snapshotText } from '../../../scripts/price-snapshot.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -45,5 +47,54 @@ describe('the committed price snapshot', () => {
     const before = { defaults: { a: 1 }, providers: { p: 1 }, rows: { kept: 1, moved: 2, gone: 3 } };
     const after = { defaults: { a: 1 }, providers: { p: 2 }, rows: { kept: 1, moved: 2.5, added: 4 } };
     assert.deepEqual(differences(before, after), { rows: ['moved', 'gone', 'added'], rest: ['providers'] });
+  });
+});
+
+describe('node scripts/price-snapshot.mjs', () => {
+  const run = (...args) => spawnSync(process.execPath, [join(ROOT, 'scripts/price-snapshot.mjs'), ...args], { encoding: 'utf8' });
+
+  it('writes a file that check then passes, and fails it once a row moves or the order changes', () => {
+    const work = mkdtempSync(join(tmpdir(), 'trazum-snapshot-'));
+    const file = join(work, 'snapshot.json');
+    try {
+      const write = run('write', '--file', file);
+      assert.equal(write.status, 0, write.stderr);
+      assert.equal(readFileSync(file, 'utf8'), readFileSync(join(ROOT, SNAPSHOT), 'utf8'));
+      const check = run('--file', file);
+      assert.equal(check.status, 0, check.stderr);
+      assert.match(check.stdout, /is what the catalogue builds: \d+ rows/);
+
+      const text = readFileSync(file, 'utf8');
+      const snapshot = JSON.parse(text);
+      const [first] = Object.keys(snapshot.rows);
+      snapshot.rows[first] += 1;
+      writeFileSync(file, snapshotText(snapshot));
+      const moved = run('check', '--file', file);
+      assert.equal(moved.status, 1);
+      assert.ok(moved.stderr.includes(`  ${first}: `), moved.stderr);
+
+      // The same rows in another order: the test refuses it byte for byte, and so does check.
+      const lines = text.split('\n');
+      const at = lines.findIndex((line) => line.startsWith(`    "${first}"`));
+      [lines[at], lines[at + 1]] = [lines[at + 1], lines[at]];
+      writeFileSync(file, lines.join('\n'));
+      const reordered = run('check', '--file', file);
+      assert.equal(reordered.status, 1);
+      assert.match(reordered.stderr, /the rows are the same, but the text is not what the script writes/);
+    } finally {
+      rmSync(work, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a command it does not know', () => {
+    const wrong = run('rewrite');
+    assert.equal(wrong.status, 2);
+    assert.match(wrong.stderr, /usage:/);
+  });
+
+  it('names a file that is not JSON', async () => {
+    const built = snapshotOf(await loadCatalogue(ROOT));
+    assert.deepEqual(problems(snapshotText(built), built), []);
+    assert.match(problems('{', built)[0], /^the file is not JSON/);
   });
 });

@@ -3,8 +3,11 @@
  * that an edit to `packages/core/src/pricing.ts` is also an edit to that file
  * (#763).
  *
- *   node scripts/price-snapshot.mjs          exit 1 unless the file is what the catalogue builds, naming each row that differs
+ *   node scripts/price-snapshot.mjs          exit 1 unless the file is what the catalogue builds, byte for byte, naming each row that differs
  *   node scripts/price-snapshot.mjs write    write the file from the catalogue
+ *
+ * `--file <path>` reads or writes another file in place of the committed one,
+ * so the test can run both commands without touching it.
  *
  * Both read the built `@trazum/core`: run `npm run build` first.
  *
@@ -62,34 +65,55 @@ export function differences(committed, built) {
   return { rows, rest };
 }
 
-async function main() {
-  const [command = 'check'] = process.argv.slice(2);
-  const built = snapshotOf(await loadCatalogue(ROOT));
-  const path = join(ROOT, SNAPSHOT);
-  if (command === 'write') {
-    writeFileSync(path, snapshotText(built));
-    console.log(`wrote ${SNAPSHOT}: ${Object.keys(built.rows).length} rows`);
-    return;
+/**
+ * What stops a committed text from being the built snapshot, one line each.
+ * Empty when they are equal byte for byte, which is what the test asks: a row
+ * out of order or a changed `about` is named too, not only a moved price.
+ */
+export function problems(text, built) {
+  if (text === snapshotText(built)) return [];
+  let committed;
+  try {
+    committed = JSON.parse(text);
+  } catch (error) {
+    return [`the file is not JSON: ${error instanceof Error ? error.message : String(error)}`];
   }
-  if (command !== 'check') {
-    console.error('usage: node scripts/price-snapshot.mjs [check | write]');
+  const { rows, rest } = differences(committed, built);
+  const lines = [
+    ...rows.map((id) => `${id}: ${committed.rows?.[id] ?? 'absent'} in the file, ${built.rows[id] ?? 'absent'} in the catalogue`),
+    ...rest.map((key) => `${key} differ`),
+  ];
+  return lines.length > 0 ? lines : ['the rows are the same, but the text is not what the script writes (order, spacing or about)'];
+}
+
+async function main(args) {
+  const at = args.indexOf('--file');
+  const file = at === -1 ? join(ROOT, SNAPSHOT) : args[at + 1];
+  const [command = 'check', ...extra] = at === -1 ? args : [...args.slice(0, at), ...args.slice(at + 2)];
+  if (!file || extra.length > 0 || !['check', 'write'].includes(command)) {
+    console.error('usage: node scripts/price-snapshot.mjs [check | write] [--file <path>]');
     process.exitCode = 2;
     return;
   }
-  const committed = JSON.parse(readFileSync(path, 'utf8'));
-  const { rows, rest } = differences(committed, built);
-  if (rows.length === 0 && rest.length === 0) {
-    console.log(`${SNAPSHOT} is what the catalogue builds: ${Object.keys(built.rows).length} rows`);
+  const built = snapshotOf(await loadCatalogue(ROOT));
+  const count = Object.keys(built.rows).length;
+  if (command === 'write') {
+    writeFileSync(file, snapshotText(built));
+    console.log(`wrote ${file}: ${count} rows`);
     return;
   }
-  for (const id of rows) console.error(`  ${id}: ${committed.rows?.[id] ?? 'absent'} in the file, ${built.rows[id] ?? 'absent'} in the catalogue`);
-  for (const key of rest) console.error(`  ${key} differ`);
-  console.error(`${SNAPSHOT} is not what the catalogue builds. If the catalogue moved on purpose, run node scripts/price-snapshot.mjs write and commit both.`);
+  const found = problems(readFileSync(file, 'utf8'), built);
+  if (found.length === 0) {
+    console.log(`${file} is what the catalogue builds: ${count} rows`);
+    return;
+  }
+  for (const line of found) console.error(`  ${line}`);
+  console.error(`${file} is not what the catalogue builds. If the catalogue moved on purpose, run node scripts/price-snapshot.mjs write and commit both.`);
   process.exitCode = 1;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error) => {
+  main(process.argv.slice(2)).catch((error) => {
     console.error(`price snapshot: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;
   });
