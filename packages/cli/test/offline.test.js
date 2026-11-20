@@ -344,6 +344,10 @@ function workspace() {
     }),
   );
   write(
+    'managed-settings.json',
+    JSON.stringify({ modelPricing: { multiplier: 0.9 } }),
+  );
+  write(
     'helicone.json',
     JSON.stringify([
       {
@@ -464,6 +468,7 @@ const INVOCATION = {
   'from-langsmith': ['langsmith.json', '-o', 'c5.jsonl'],
   switch: ['usage.jsonl', '--to', 'claude-haiku-4-5'],
   ownrate: ['--gpu-usd-hour', '3', '--tokens-per-second', '900'],
+  'model-pricing': ['managed-settings.json', '--reviewed', '2026-11-20', '-o', 'mp.json'],
   pulse: [],
   models: [],
   rules: [],

@@ -2,7 +2,7 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 59 commands
+## The 60 commands
 
 | Command | What it answers |
 |---|---|
@@ -61,6 +61,7 @@
 | [`trazum from-langsmith`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-tree-that-is-not-a-list-trazum-from-langsmith) | What did the model calls in my LangSmith traces cost? *Only the llm runs, because a trace is a tree and summing it bills the same tokens twice — and it refuses to price a call by the client class that made it.* |
 | [`trazum switch`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#when-does-the-switch-pay-trazum-switch) | Should we move this traffic, and when does moving pay? *Measured delta, declared migration cost, break-even as division on the past — and the required evaluation itself priced.* |
 | [`trazum ownrate`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-model-you-run-yourself-trazum-ownrate) | What does my self-hosted model cost per million tokens? *Your GPU rate over your measured throughput — derived from your declaration, never guessed.* |
+| [`trazum model-pricing`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-rates-your-organisation-already-gave-claude-code-trazum-model-pricing) | Why does Trazum's figure differ from the one Claude Code shows us? *Reads the contracted rates you already gave Claude Code in `modelPricing` and writes them as an overlay for `--pricing`; what the table cannot say is named, never filled in.* |
 | [`trazum bench`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#this-machine-measured-trazum-bench) | How fast is Trazum here, and on what? *One shot per workload, no judgement — run it before and after a change.* |
 | [`trazum write`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#you-describe-it-it-asks-trazum-write) | What should this prompt say, and what will it cost before I ever send it? *Asks; nothing is generated.* |
 | [`trazum rules`](https://github.com/Davmunrey/Trazum/blob/main/README.md#what-it-actually-does) | Which rules exist, and what does each one do? |

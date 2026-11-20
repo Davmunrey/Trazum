@@ -231,7 +231,7 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
     ┌────────────┬─────────────┼─────────────┬─────────────┐
  @trazum/cli  @trazum/mcp  trazum-vscode  @trazum/web    action/
- 59 commands   MCP server    the editor      Next.js    comments on
+ 60 commands   MCP server    the editor      Next.js    comments on
               for your agents  status bar               pull requests
 
               @trazum/tokenizer-openai   optional: exact counts for OpenAI
@@ -328,8 +328,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 59 commands — [the table
-above](#the-59-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 60 commands — [the table
+above](#the-60-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -351,7 +351,7 @@ from the exit codes it is supposed to relay.
 <a id="the-57-commands"></a>
 <a id="the-58-commands"></a>
 
-## The 59 commands
+## The 60 commands
 
 | Command | What it answers |
 |---|---|
@@ -410,6 +410,7 @@ from the exit codes it is supposed to relay.
 | [`trazum from-langsmith`](docs/commands.md#the-tree-that-is-not-a-list-trazum-from-langsmith) | What did the model calls in my LangSmith traces cost? *Only the llm runs, because a trace is a tree and summing it bills the same tokens twice — and it refuses to price a call by the client class that made it.* |
 | [`trazum switch`](docs/commands.md#when-does-the-switch-pay-trazum-switch) | Should we move this traffic, and when does moving pay? *Measured delta, declared migration cost, break-even as division on the past — and the required evaluation itself priced.* |
 | [`trazum ownrate`](docs/commands.md#the-model-you-run-yourself-trazum-ownrate) | What does my self-hosted model cost per million tokens? *Your GPU rate over your measured throughput — derived from your declaration, never guessed.* |
+| [`trazum model-pricing`](docs/commands.md#the-rates-your-organisation-already-gave-claude-code-trazum-model-pricing) | Why does Trazum's figure differ from the one Claude Code shows us? *Reads the contracted rates you already gave Claude Code in `modelPricing` and writes them as an overlay for `--pricing`; what the table cannot say is named, never filled in.* |
 | [`trazum bench`](docs/commands.md#this-machine-measured-trazum-bench) | How fast is Trazum here, and on what? *One shot per workload, no judgement — run it before and after a change.* |
 | [`trazum write`](docs/commands.md#you-describe-it-it-asks-trazum-write) | What should this prompt say, and what will it cost before I ever send it? *Asks; nothing is generated.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |

@@ -17,7 +17,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 | Improve prompts | [use measured traffic](#the-multiplication-stops-guessing---from-log) · [reorder](#reordering-for-the-cache---reorder) · [rank](#which-prompt-to-fix-first-trazum-rank) · [prune](#which-few-shot-examples-earn-their-tokens-trazum-prune) · [evaluate](#does-the-shorter-prompt-still-work) |
 | Integrate and report | [MCP](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) · [conform](#building-on-the-format-trazum-conform) · [rollup](#more-than-one-machine-trazum-rollup) · [receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt) · [report](#the-year-from-what-was-already-written-down-trazum-report) |
 
-[All commands](../README.md#the-59-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
+[All commands](../README.md#the-60-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
 
 <details>
 <summary>All chapters on this page</summary>
@@ -93,6 +93,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 - [What the router says: `trazum from-openrouter`](#what-the-router-says-trazum-from-openrouter)
 - [When does the switch pay: `trazum switch`](#when-does-the-switch-pay-trazum-switch)
 - [The model you run yourself: `trazum ownrate`](#the-model-you-run-yourself-trazum-ownrate)
+- [The rates your organisation already gave Claude Code: `trazum model-pricing`](#the-rates-your-organisation-already-gave-claude-code-trazum-model-pricing)
 - [What would actually move this bill](#what-would-actually-move-this-bill)
 - [What re-sending the conversation costs](#what-re-sending-the-conversation-costs)
 - [Is the cheaper model good enough: `trazum route`](#is-the-cheaper-model-good-enough-trazum-route)
@@ -4593,6 +4594,44 @@ invented price wearing arithmetic's clothes. It prints the figure and the
 pricing-overlay snippet ready to paste into `trazum.config.json`, so a
 self-hosted Qwen or Llama becomes a first-class row in every report —
 priced by you, and marked as priced by you everywhere the figure travels.
+
+### The rates your organisation already gave Claude Code: `trazum model-pricing`
+
+An organisation that pays contracted rates can give them to Claude Code in the
+`modelPricing` managed setting, so `/usage`, the status line and OpenTelemetry
+show what the bill will say. Trazum priced the same sessions at list price, so
+the same work had two figures. This reads that table and writes it as a pricing
+overlay:
+
+```bash
+trazum model-pricing /etc/claude-code/managed-settings.json --reviewed 2026-11-20 -o contract.json
+trazum bill ~/.claude/projects --pricing contract.json
+```
+
+**What it reads.** `modelPricing` and nothing else in the file: an optional
+`multiplier` (above 0, at most 10) and an optional `overrides` map of model id
+to `input`, `output`, `cacheRead` and `cacheWrite` in dollars per million
+tokens, as [the settings reference](https://code.claude.com/docs/en/settings-reference#modelpricing)
+describes it (read 2026-11-20). A whole settings file or the bare object both
+work.
+
+**How it is applied, as Claude Code applies it.** A row sets its model's input
+and output, and its cache rates as ratios of the new input, so a dated snapshot
+of that model prices at the row too. The multiplier scales a row, and alone
+scales every Claude model at list price. A row carries no US-only rate on top,
+because Claude Code uses a row as written.
+
+**What the table cannot say, said.** It has no batch rate and no fast-mode rate.
+Batch keeps the catalogue's discount on the new input; a published fast-mode
+rate stays as published, without the table or the multiplier. Both are named
+per model on stderr, and every row's notes carry the file and the date.
+
+**What it leaves out, by name.** A key the catalogue cannot place (a Bedrock or
+gateway id: which model it means is yours to say), a row Claude Code would drop
+(a missing or out-of-range rate), a rate of zero (Trazum prices nothing at
+zero), and a second row for one model. `--reviewed` is required: an overlay of
+unknown age is worse than the bundled catalogue, whose age every report prints.
+A receipt line priced by the overlay carries the overlay's date.
 
 ### What would actually move this bill
 
