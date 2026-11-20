@@ -274,10 +274,7 @@ export function motionOf(
     }
   };
 
-  // The desk and the laptop: each from its own distance, at its own rate.
-  // The desk rises by its transform alone: an opacity over its tilted plane measured a dropped frame in five at 4x
-  // CPU throttle, for the whole of the scroll.
-  rules.push(rise('st-desk', arrival(BEATS.desk), '--rise-desk'));
+  // The laptop comes down onto the floor and lands.
   rules.push(
     keyframes('st-laptop', through(arrival(BEATS.land), 12), (p) => {
       const e = smoother(progress(p, arrival(BEATS.land)));

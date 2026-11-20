@@ -731,9 +731,12 @@ describe('the lid, the depth and the order of the arrival', () => {
     assert.match(codeOf('components/landing/Story.tsx'), /'--ch-h': `\$\{chapterOf\(id\)\.height\}svh`/);
   });
 
-  it('desk, laptop, objects; then in each chapter: clear, lift, type, print', () => {
+  it('laptop, objects; then in each chapter: clear, lift, type, print', () => {
     const { BEATS } = timeline;
-    assert.ok(BEATS.desk[0] <= BEATS.land[0], 'the laptop arrives before the desk under it');
+    // No table is drawn: the floor is the shadows' and the perspective's. The owner asked on 2026-11-20 for it to go.
+    const page = `${codeOf('components/landing/Story.tsx')}${read('app/landing.css')}`;
+    assert.equal(/desk-plane|desk-top|desk-edge/.test(page), false, 'a drawn desk is back');
+    assert.equal('desk' in BEATS, false, 'a drawn desk still has a beat to arrive on');
     const arrivals = Array.from({ length: motion.OBJECT_COUNT }, (_, i) => timeline.objectArrival(i, motion.OBJECT_COUNT));
     for (let i = 1; i < arrivals.length; i += 1) assert.ok(arrivals[i][0] > arrivals[i - 1][0], 'two objects arrive together: the layers do not pass each other');
     assert.ok(arrivals.at(-1)[1] <= timeline.chapterWindow('arrival')[1] + 1e-9, 'an object is still arriving when the bill runs');

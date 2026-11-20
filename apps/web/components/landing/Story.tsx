@@ -663,11 +663,6 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
       <style dangerouslySetInnerHTML={{ __html: MOTION.css }} />
       <div className="story-stage">
         <div className="desk" style={world}>
-          <div aria-hidden="true" className="desk-plane" data-mv="" data-arrive="" style={moves('st-desk')}>
-            <div className="desk-top" />
-            <div className="desk-edge" />
-          </div>
-
           <div className="desk-scene">
             <div className="desk-laptop" data-mv="" data-arrive="" style={moves('st-laptop')}>
               <div className="story-3d">

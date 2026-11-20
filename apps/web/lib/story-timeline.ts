@@ -122,8 +122,6 @@ export function chapterAt(p: number): ChapterId {
  * nothing is lifted.
  */
 export const BEATS = {
-  /** The desk rises under where the laptop will stand. */
-  desk: [0, 0.7],
   /** The laptop comes down onto the desk and lands, as the arrival ends: the bill is typed as soon as it has. */
   land: [0, 0.92],
   /** The objects arrive on the desk, each a little after the one before it. */

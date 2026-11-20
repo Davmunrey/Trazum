@@ -453,12 +453,20 @@ async function deskFitsTheWindow({ page, is }, size) {
   await toStory(page, 1);
   const end = await page.evaluate(() => {
     const lid = document.querySelector('.lt-lid').getBoundingClientRect();
-    const receipt = document.querySelector('.receipt-paper').getBoundingClientRect();
-    const desk = document.querySelector('.desk-top').getBoundingClientRect();
-    return { lid: [lid.left, lid.right], width: window.innerWidth, receiptTop: receipt.top, deskTop: desk.top };
+    const paper = document.querySelector('.receipt-paper');
+    const receipt = paper.getBoundingClientRect();
+    const deck = document.querySelector('.lt-deck').getBoundingClientRect();
+    // The highest object, the lifted one included, and the foot of the deck's hard shadow under it.
+    const rowTop = Math.min(...[...document.querySelectorAll('.obj')].map((object) => object.getBoundingClientRect().top));
+    const shadow = Number.parseFloat(getComputedStyle(document.querySelector('.lt-deck')).boxShadow.match(/\)\s+-?[\d.]+px\s+(-?[\d.]+)px/)?.[1] ?? '0');
+    return { lid: [lid.left, lid.right], width: window.innerWidth, drawn: receipt.height, tall: paper.offsetHeight, receiptBottom: receipt.bottom, deckBottom: deck.bottom + shadow, rowTop };
   });
   is(end.lid[0] >= 0 && end.lid[1] <= end.width, true, `${size}: the shut laptop inside the window (${Math.round(end.lid[0])} to ${Math.round(end.lid[1])})`);
-  is(end.receiptTop >= end.deskTop, true, `${size}: the receipt lying on the desk, below its back edge`);
+  // Paper lies down: drawn at less than half its own height, it is foreshortened on the floor, not propped up beside the laptop.
+  is(end.drawn < end.tall * 0.5, true, `${size}: the receipt lying flat with the lid shut (${Math.round(end.drawn)}px of ${end.tall}px)`);
+  // The objects lie in front of the laptop, on the floor, and cover none of its deck or the deck's shadow, a lifted one
+  // included; the receipt is behind them.
+  is(end.rowTop >= end.deckBottom && end.receiptBottom <= end.rowTop, true, `${size}: the objects in front of the laptop's deck and the receipt (objects from ${Math.round(end.rowTop)}, deck and its shadow to ${Math.round(end.deckBottom)}, receipt to ${Math.round(end.receiptBottom)})`);
   // On into the band after the story: its heading is never under the stage.
   for (let step = 0; step <= 12; step += 1) {
     await page.evaluate((f) => {
