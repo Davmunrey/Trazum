@@ -266,7 +266,8 @@ describe('the laptop’s screen and the receipt are what the CLI prints', () => 
   it('the paper receipt on the page shows the receipt’s figures, and its total once, on the acid', async () => {
     const html = await landingHtml('en');
     const paper = html.slice(html.indexOf('class="receipt-paper"'), html.indexOf('class="receipt-curl"'));
-    assert.match(paper, new RegExp(`<span class="receipt-figure">${terminal.RECEIPT.total.replace('$', '\\$')}</span>`), 'the receipt’s total on the page is not the CLI’s');
+    // Compared as text: the total is money, whose `$` and `.` a pattern would read as its own.
+    assert.ok(paper.includes(`<span class="receipt-figure">${terminal.RECEIPT.total}</span>`), 'the receipt’s total on the page is not the CLI’s');
     assert.equal((paper.match(/class="receipt-figure"/g) ?? []).length, 1);
     for (const line of terminal.RECEIPT.lines) {
       assert.ok(paper.includes(`>${line.usd}</span>`), `the receipt on the page does not show ${line.model} at ${line.usd}`);
