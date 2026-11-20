@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Every published price in the catalogue, written to one committed file, so
  * that an edit to `packages/core/src/pricing.ts` is also an edit to that file
@@ -74,7 +73,8 @@ async function main() {
   }
   if (command !== 'check') {
     console.error('usage: node scripts/price-snapshot.mjs [check | write]');
-    process.exit(2);
+    process.exitCode = 2;
+    return;
   }
   const committed = JSON.parse(readFileSync(path, 'utf8'));
   const { rows, rest } = differences(committed, built);
@@ -85,12 +85,12 @@ async function main() {
   for (const id of rows) console.error(`  ${id}: ${committed.rows?.[id] ?? 'absent'} in the file, ${built.rows[id] ?? 'absent'} in the catalogue`);
   for (const key of rest) console.error(`  ${key} differ`);
   console.error(`${SNAPSHOT} is not what the catalogue builds. If the catalogue moved on purpose, run node scripts/price-snapshot.mjs write and commit both.`);
-  process.exit(1);
+  process.exitCode = 1;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error) => {
     console.error(`price snapshot: ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
+    process.exitCode = 1;
   });
 }
