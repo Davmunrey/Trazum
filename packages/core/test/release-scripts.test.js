@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -8,6 +8,7 @@ import { describe, it } from 'node:test';
 import { SPAWN_ENV } from '../../cli/test/env.mjs';
 import { CREDENTIALS_FILE, WARN_DAYS, npmTokenStanding, recordedNpmTokenExpiry } from '../../../scripts/npm-token-expiry.mjs';
 import { baseOf, recordedVersion } from '../../../scripts/npm-channel.mjs';
+import { POINTER } from '../../../scripts/changes.mjs';
 
 /**
  * The two scripts that keep a release from being cut with something left
@@ -70,6 +71,13 @@ describe('prepare-release', () => {
       const lock = JSON.parse(readFileSync(join(dir, 'package-lock.json'), 'utf8'));
       lock.packages['node_modules/planted-dependency'] = { version: current, license: 'MIT' };
       writeFileSync(join(dir, 'package-lock.json'), `${JSON.stringify(lock, null, 2)}\n`);
+      // #847: what is pending is a file per change, whatever this checkout has in changes/.
+      rmSync(join(dir, 'changes'), { recursive: true, force: true });
+      mkdirSync(join(dir, 'changes'));
+      writeFileSync(join(dir, 'changes', 'README.md'), 'How to add one.\n');
+      writeFileSync(join(dir, 'changes', '12.fixed.md'), '**An older fix.** (#12) It works now.\n');
+      writeFileSync(join(dir, 'changes', '30.added.md'), '**A newer thing.** (#30) It is here.\n- with a detail\n');
+      writeFileSync(join(dir, 'changes', '30-2.fixed.md'), '**A newer fix.** (#30) Also.\n');
       // No tags in the copy, so the pin step says so and leaves the documents alone.
       execFileSync('git', ['init', '-q'], { cwd: dir, env: SPAWN_ENV });
 
@@ -101,10 +109,14 @@ describe('prepare-release', () => {
       assert.ok(!agents.includes(`@trazum/mcp@${current}`), 'the install table still names the previous version');
       const changelog = readFileSync(join(dir, 'CHANGELOG.md'), 'utf8');
       // Plain text, not a pattern built from the version: nothing to escape.
-      const heading = `\n## Unreleased\n\nNo changes yet.\n\n## ${nextPatch} — `;
+      const heading = `\n## Unreleased\n\n${POINTER}\n\n## ${nextPatch} — `;
       const at = changelog.indexOf(heading);
-      assert.ok(at >= 0, 'the changelog has no fresh Unreleased above the new version');
+      assert.ok(at >= 0, 'the changelog has no Unreleased pointer above the new version');
       assert.match(changelog.slice(at + heading.length, at + heading.length + 11), /^\d{4}-\d{2}-\d{2}\n$/);
+      // The changes, folded under it by kind and newest issue first, then the version before.
+      const notes = changelog.slice(at + heading.length + 11, changelog.indexOf(`\n## ${recordedRelease}`, at));
+      assert.equal(notes, '\n### Added\n\n- **A newer thing.** (#30) It is here.\n  - with a detail\n\n### Fixed\n\n- **A newer fix.** (#30) Also.\n- **An older fix.** (#12) It works now.\n');
+      assert.deepEqual(readdirSync(join(dir, 'changes')), ['README.md'], 'a folded change file was left behind, or the README went with them');
       assert.ok(readFileSync(join(dir, 'RELEASES.md'), 'utf8').includes(`**All four packages are on npm at ${nextPatch}**`));
       // #784: the dataset of the new version, compared with the one published before it, and the old one untouched.
       const written = JSON.parse(readFileSync(join(dir, dataset, `${nextPatch}.json`), 'utf8'));

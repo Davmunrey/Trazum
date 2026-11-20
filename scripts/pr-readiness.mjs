@@ -16,7 +16,13 @@
  *    An issue that cannot be read is not taken as accepted: the check refuses
  *    to judge.
  *
- * 3. **Its changelog line lands under `## Unreleased`, and it has one.**
+ * 3. **It adds its changelog entry as a file in `changes/`, and edits no
+ *    entry in `CHANGELOG.md`.** Since #847 an entry is one file per change,
+ *    `changes/<issue>.<kind>.md`, and the release folds them in. The history
+ *    below is why the rule exists at all; the folder is how it stopped
+ *    conflicting.
+ *
+ *    Before #847, the line went under `## Unreleased`.
  *    `changelog-coverage.test.js` can only ask whether `Unreleased` is empty
  *    after the newest tag. On 2026-11-17 a branch merged `main` after the 2.7.9
  *    and 2.7.10 releases, git applied the merge without a conflict, and the
@@ -37,6 +43,8 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
+import { CHANGES_DIR, POINTER, fragmentProblem } from './changes.mjs';
 
 const CLOSING = /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+((?:[\w.-]+\/[\w.-]+)?#\d+)/gi;
 const VERSION_HEADING = /^\d+\.\d+\.\d+\b/;
@@ -146,7 +154,7 @@ export function changelogChanges(before, after) {
     if (added.length > 0) misplaced.push({ version, lines: added });
   }
   const underUnreleased = addedLines(unreleasedBefore, unreleasedAfter).filter(
-    (line) => line.trim() !== 'No changes yet.',
+    (line) => line.trim() !== 'No changes yet.' && line.trim() !== POINTER,
   );
   return { release, misplaced, underUnreleased };
 }
@@ -155,7 +163,7 @@ export function changelogChanges(before, after) {
  * The verdict for one pull request. Returns the problems, each a sentence that
  * says what to do; an empty list means ready.
  */
-export function readiness({ body, author, labels = [], issues = [], changelogBefore, changelogAfter }) {
+export function readiness({ body, author, labels = [], issues = [], changelogBefore, changelogAfter, added = [] }) {
   const problems = [];
   const bot = BOTS.has(author);
   const excused = exempt(author, labels);
@@ -173,9 +181,17 @@ export function readiness({ body, author, labels = [], issues = [], changelogBef
       );
     }
   }
-  if (!changes.release && !bot && changes.underUnreleased.length === 0) {
+  if (!changes.release && !labels.includes('changelog-history') && changes.underUnreleased.length > 0) {
     problems.push(
-      'CHANGELOG.md: add a line under `## Unreleased`. Every merged change gets one, a test or a document included (CONTRIBUTING.md › Pull requests).',
+      `CHANGELOG.md: ${changes.underUnreleased.length} line(s) added under \`## Unreleased\`. Put the entry in a file in \`${CHANGES_DIR}/\` instead, named <issue>.<kind>.md; the release folds it in (${CHANGES_DIR}/README.md). First line: ${changes.underUnreleased[0].trim()}`,
+    );
+  }
+  const misnamed = added.map(fragmentProblem).filter((problem) => typeof problem === 'string');
+  problems.push(...misnamed);
+  const fragments = added.filter((path) => fragmentProblem(path) === null);
+  if (!changes.release && !bot && fragments.length === 0) {
+    problems.push(
+      `Add the changelog entry as a file in \`${CHANGES_DIR}/\`, named <issue>.<kind>.md (for example ${CHANGES_DIR}/847.added.md). Every merged change gets one, a test or a document included (CONTRIBUTING.md › Pull requests, ${CHANGES_DIR}/README.md).`,
     );
   }
   return { problems, release: changes.release, linked: linkedIssues(body) };
@@ -259,11 +275,12 @@ async function main() {
     issues,
     changelogBefore: fileAt(mergeBase, 'CHANGELOG.md'),
     changelogAfter: fileAt(HEAD_SHA, 'CHANGELOG.md'),
+    added: git('diff', '--name-only', '--diff-filter=A', mergeBase, HEAD_SHA).split('\n').filter(Boolean),
   });
   console.log(`Linked issue: ${verdict.linked.join(', ') || 'none'}`);
   console.log(`Release pull request: ${verdict.release ? 'yes' : 'no'}`);
   if (verdict.problems.length === 0) {
-    console.log('Ready: the issue is named and accepted, and the changelog line is under Unreleased.');
+    console.log(`Ready: the issue is named and accepted, and the changelog entry is a file in ${CHANGES_DIR}/.`);
     return 0;
   }
   for (const problem of verdict.problems) console.log(`::error::${problem}`);

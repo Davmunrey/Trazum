@@ -536,8 +536,9 @@ CI and the release workflow require it. For an existing packed install, set
 
 Say what changed and why, and be explicit about anything you did not do.
 
-Add a `CHANGELOG.md` entry under `Unreleased`. Not only for user-visible
-changes — for a test or a document too. This paragraph used to say "if a change
+Add a changelog entry as a file in [`changes/`](changes/README.md), named
+`<issue>.<kind>.md`, and leave `CHANGELOG.md` alone: the release folds the files
+in. Not only for user-visible changes — for a test or a document too. This paragraph used to say "if a change
 is user-visible", and the result was a fix to a broken security guardrail
 sitting in `main` recorded nowhere but the commit history. If a change was worth
 merging it was worth a line.
@@ -663,11 +664,12 @@ An approval with nothing in it is not one.
   *Update branch* button. `dco.yml` skips merge commits, so either way the
   sign-off check still passes. Rebasing works too, but never on a branch somebody
   else has pushed to.
-- **After a release, look at your changelog line.** A release moves `Unreleased`
-  into a version and leaves `No changes yet.` behind. Merging that into your
-  branch can put your line inside the released version without a conflict; it
-  happened on 2026-11-17 (#666). `PR readiness` refuses a line added inside a
-  released version, and the fix is to move it back under `## Unreleased`.
+- **Your changelog entry is a file, so a release cannot move it.** Until #847 a
+  release turned `Unreleased` into a version, and merging that into a branch
+  could put the branch's line inside the released version without a conflict;
+  it happened on 2026-11-17 (#666). An entry in `changes/` is a file of its own:
+  the release folds in the ones on `main` and yours stays pending. `PR
+  readiness` refuses a line added to `CHANGELOG.md` outside a release.
 - **Required checks:** `Build and tests`, both `GitHub Action self-test` jobs,
   `CodeQL`, `npm audit`, `PR readiness`, `Signed-off-by on every commit` and
   `cla`, listed in `.github/rulesets/main-branch.json`. The `pr-guide` comment

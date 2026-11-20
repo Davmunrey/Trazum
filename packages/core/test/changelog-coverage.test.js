@@ -5,6 +5,8 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { POINTER, readFragments } from '../../../scripts/changes.mjs';
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /**
@@ -95,7 +97,7 @@ describe('every merge is in the changelog', () => {
     assert.ok(released.includes('reviewedForModels'), 'the section reader found the wrong body');
   });
 
-  it('Unreleased is not empty while commits sit on top of the newest tag', () => {
+  it('changes/ is not empty while commits sit on top of the newest tag', () => {
     const tag = newestTag();
     assert.notEqual(
       tag,
@@ -120,11 +122,16 @@ describe('every merge is in the changelog', () => {
     const preparing = tag !== `v${manifest}` && changelog.includes(`\n## ${manifest} `);
     if (preparing) return;
 
-    const unreleased = sectionBody(changelog, '## Unreleased').trim();
+    /*
+      Since #847 what waits for a release is a file per change in changes/,
+      and Unreleased holds only a pointer to the folder: a guard reading
+      Unreleased would pass forever. So it counts the files.
+    */
+    assert.equal(sectionBody(changelog, '## Unreleased').trim(), POINTER, 'Unreleased holds something besides the pointer to changes/');
     assert.notEqual(
-      unreleased,
-      '',
-      `${since.length} commit(s) sit on top of ${tag} and Unreleased is empty:\n  `
+      readFragments(ROOT).length,
+      0,
+      `${since.length} commit(s) sit on top of ${tag} and changes/ is empty:\n  `
         + since.join('\n  '),
     );
   });
