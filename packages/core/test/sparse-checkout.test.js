@@ -30,7 +30,8 @@ function jobs(text) {
     const list = /sparse-checkout: \|\n((?: {12}.+\n)+)/.exec(`${block}\n`)?.[1]
       ?? /sparse-checkout: ([^\n|]+)\n/.exec(`${block}\n`)?.[1];
     const sparse = list === undefined ? null : list.split('\n').map((line) => line.trim()).filter(Boolean);
-    const scripts = [...new Set([...block.matchAll(/node (scripts\/[A-Za-z0-9_.-]+\.mjs)/g)].map((m) => m[1]))];
+    // Options may come before the script (`node --no-warnings scripts/x.mjs`).
+    const scripts = [...new Set([...block.matchAll(/\bnode(?:[ \t]+-\S+)*[ \t]+(scripts\/[A-Za-z0-9_.-]+\.mjs)/g)].map((m) => m[1]))];
     out.push({ name, sparse, scripts });
   }
   return out;
@@ -49,7 +50,15 @@ function loads(entry, seen = new Set()) {
   return seen;
 }
 
-/** Whether a path is kept by a sparse list in non-cone mode: the path itself or a directory above it. */
+/**
+ * Whether a path is kept by a sparse list in non-cone mode: the path itself or
+ * a directory above it.
+ *
+ * Only literal paths are read. Git's non-cone patterns also take globs and
+ * `!` exclusions, matched in order, and reading those by hand is where a guard
+ * would start answering wrongly, so a list that uses one is refused below
+ * rather than guessed at.
+ */
 const kept = (path, sparse) => sparse.some((entry) => {
   const clean = entry.replace(/^\/+|\/+$/g, '');
   return path === clean || path.startsWith(`${clean}/`);
@@ -68,12 +77,19 @@ describe('a sparse checkout holds every file the scripts it runs load', () => {
 
   for (const job of sparseJobs) {
     it(`${job.file} › ${job.name}`, () => {
+      const unread = job.sparse.filter((entry) => /[!*?[\\]/.test(entry));
+      assert.deepEqual(unread, [], `${job.file} › ${job.name} has sparse patterns this test does not read: ${unread.join(', ')}. List literal paths, or teach kept() Git's pattern rules first.`);
       const missing = job.scripts
         .flatMap((script) => [...loads(script)])
         .filter((path, i, all) => all.indexOf(path) === i && !kept(path, job.sparse));
       assert.deepEqual(missing, [], `${job.file} › ${job.name} runs a script that loads files its checkout leaves out: ${missing.join(', ')}`);
     });
   }
+
+  it('finds a script run with options before its path', () => {
+    const [job] = jobs('on: push\njobs:\n  one:\n    steps:\n      - run: node --no-warnings --max-old-space-size=512 scripts/triage.mjs issue\n');
+    assert.deepEqual(job.scripts, ['scripts/triage.mjs']);
+  });
 
   it('reads an import the way node resolves it, and a directory entry as keeping what is under it', () => {
     assert.ok(loads('scripts/triage.mjs').has('scripts/pr-readiness.mjs'));
