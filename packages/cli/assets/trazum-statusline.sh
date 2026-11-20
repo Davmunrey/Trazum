@@ -60,6 +60,49 @@ session="$(field session_id)"
 model="$(field model.display_name '?')"
 cache="$cache_dir/${session:-unknown}.txt"
 
+# The plan's own limits, as Claude Code hands them to the status line in
+# `rate_limits`: how much of the five-hour and the seven-day window is used and
+# when each resets, and a spend limit where a gateway sets one. Only a window
+# Claude Code sent, with a percentage and a reset still ahead, is shown: there
+# is no table of plan limits here and no counter worked out from tokens. On an
+# API key, and before a session's first response, Claude Code sends none, and
+# the line shows no plan figure at all.
+# The program is JavaScript in single quotes on purpose: its ${...} are
+# template literals, and the shell must leave them alone.
+# shellcheck disable=SC2016
+limits() { printf '%s' "$json" | node -e '
+  let raw = "";
+  process.stdin.on("data", (c) => { raw += c; });
+  process.stdin.on("end", () => {
+    let r;
+    try { r = JSON.parse(raw).rate_limits; } catch { r = undefined; }
+    if (r === null || typeof r !== "object") return;
+    const now = Date.now() / 1000;
+    const live = (w) => w !== null && typeof w === "object" && Number.isFinite(w.used_percentage) && Number.isFinite(w.resets_at) && w.resets_at > now;
+    const pad = (n) => String(n).padStart(2, "0");
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const clock = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const at = (s, how) => {
+      const d = new Date(s * 1000);
+      if (how === "time") return clock(d);
+      if (how === "day") return `${days[d.getDay()]} ${clock(d)}`;
+      return `${months[d.getMonth()]} ${d.getDate()}`;
+    };
+    // Down, never up: a window at 99.6% is not shown as used up.
+    const used = (w) => `${Math.floor(w.used_percentage)}%`;
+    const parts = [];
+    if (live(r.five_hour)) parts.push(`5h ${used(r.five_hour)}, resets ${at(r.five_hour.resets_at, "time")}`);
+    if (live(r.seven_day)) parts.push(`7d ${used(r.seven_day)}, resets ${at(r.seven_day.resets_at, "day")}`);
+    const s = r.spend_limit;
+    if (live(s)) {
+      const per = { daily: "/day", weekly: "/week", monthly: "/month" }[s.period] ?? "";
+      const of = Number.isFinite(s.limit_usd) ? ` of $${s.limit_usd}${per}` : "";
+      parts.push(`spend ${used(s)}${of}, resets ${at(s.resets_at, "date")}`);
+    }
+    process.stdout.write(parts.join(" · "));
+  });'; }
+
 if [ "${1-}" != "--refresh" ]; then
   # The status line. Reads, never computes. A missing cache is the normal
   # state of the first turn and of an install without the hook, so it is not
@@ -71,6 +114,8 @@ if [ "${1-}" != "--refresh" ]; then
   else
     printf '%s  $%s (Claude Code)' "$model" "$(field cost.total_cost_usd 0)"
   fi
+  plan="$(limits)"
+  [ -n "$plan" ] && printf '  |  %s' "$plan"
   exit 0
 fi
 
