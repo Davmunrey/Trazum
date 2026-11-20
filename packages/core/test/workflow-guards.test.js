@@ -65,9 +65,9 @@ describe('pr-guide.yml runs a fetched script only as the pin says', () => {
     assert.match(fetch, /echo "\$\{PR_GUIDE_SHA256\} {2}\$RUNNER_TEMP\/pr_guide\.py" \| sha256sum --check --strict -/);
     // The check is the last command of the step, so a mismatch is the step's
     // outcome. Read as commands: a commented-out check is no check.
-    assert.equal(
+    assert.match(
       commands(script(fetch)).at(-1),
-      'echo "${PR_GUIDE_SHA256}  $RUNNER_TEMP/pr_guide.py" | sha256sum --check --strict -',
+      /^echo "\$\{PR_GUIDE_SHA256\} {2}\$RUNNER_TEMP\/pr_guide\.py" \| sha256sum --check --strict -$/,
       'the digest check is not the last command the fetch step runs',
     );
     const run = step(text, 'Update the guide comment');
