@@ -561,6 +561,8 @@ export interface CliMessages {
     listening(where: string, provider: string): string;
     unmeasured(cause: 'stream-broke' | 'no-usage-event' | 'no-usage-in-body', sofar: number): string;
     pointYourSdk(where: string): string;
+    metrics(where: string): string;
+    badMetricsPort(given: string): string;
     credential(): string;
     neverSubstitutes(): string;
     standing(consumed: string, limit: string): string;

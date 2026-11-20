@@ -36,6 +36,7 @@ import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { estimateTokens, gatewayDecision, streamingUsageReader, usageFromResponse } from '@trazum/core';
 import { GatewaySpend } from './gateway-spend.js';
+import type { GatewayUsage } from './gateway-spend.js';
 import { refuseContentType, refuseHost } from './loopback-guard.js';
 import type {
   GatewayDecision,
@@ -265,6 +266,18 @@ export function route(
 /** Why a forwarded call's cost could not be measured. */
 export type UnmeasuredCause = 'stream-broke' | 'no-usage-event' | 'no-usage-in-body';
 
+/**
+ * Something the gateway did with a call, other than measure it: refused it,
+ * substituted its model, forwarded it free, or could not reach the provider.
+ * A reason, two model ids or a path from `UPSTREAMS`, and never any text of
+ * the call's.
+ */
+export type GatewayCount =
+  | { kind: 'refused'; reason: string }
+  | { kind: 'substituted'; from: string; to: string }
+  | { kind: 'free'; path: string }
+  | { kind: 'unreachable' };
+
 const HOP_BY_HOP = new Set([
   'connection',
   'keep-alive',
@@ -305,12 +318,8 @@ export interface GatewayContext {
   record: (measured: {
     model: string;
     label: string | null;
-    inputTokens: number;
-    outputTokens: number;
-    cacheReadTokens: number;
-    cacheWriteTokens: number;
     substituted: boolean;
-  }) => void;
+  } & GatewayUsage) => void;
   /**
    * A call that was forwarded and whose cost could not be measured.
    *
@@ -331,6 +340,8 @@ export interface GatewayContext {
    *   quietly missing most of their traffic.
    */
   unmeasured?: (cause: UnmeasuredCause) => void;
+  /** What happened to a call that was not measured, for `--metrics-port`. Counts only. */
+  count?: (event: GatewayCount) => void;
   /** A line for the operator's terminal. Never given a body, ever. */
   note: (line: string) => void;
   /** Injected so the proxy is testable against a stub upstream. */
@@ -572,6 +583,7 @@ export function buildGateway(context: GatewayContext): Server {
             ...(request.method === 'GET' ? {} : { body: sent ?? '' }),
           });
         } catch (error) {
+          context.count?.({ kind: 'unreachable' });
           response.writeHead(502, { 'content-type': 'application/json' });
           response.end(
             `${JSON.stringify({
@@ -587,6 +599,7 @@ export function buildGateway(context: GatewayContext): Server {
         free.headers.forEach((value, name) => {
           if (!HOP_BY_HOP.has(name.toLowerCase())) headers[name] = value;
         });
+        context.count?.({ kind: 'free', path: routed.path });
         response.writeHead(free.status, headers);
         response.end(Buffer.from(await free.arrayBuffer()));
         return;
@@ -639,6 +652,7 @@ export function buildGateway(context: GatewayContext): Server {
          * every time. 402 Payment Required is both literally correct and in
          * nobody's default retry list.
          */
+        context.count?.({ kind: 'refused', reason: decision.reason });
         response.writeHead(402, { 'content-type': 'application/json' });
         response.end(refusalBody(decision));
         context.note(`refused ${described.model}: ${decision.reason}`);
@@ -648,6 +662,7 @@ export function buildGateway(context: GatewayContext): Server {
       if (spend !== null) {
         const admission = spend.reserve(call, decision, standing, context.policy.onCannotTell === 'fail-closed');
         if (admission.refusal !== undefined) {
+          context.count?.({ kind: 'refused', reason: String(admission.refusal.reason) });
           response.writeHead(402, { 'content-type': 'application/json' });
           response.end(`${JSON.stringify(admission.refusal)}\n`);
           return;
@@ -671,6 +686,7 @@ export function buildGateway(context: GatewayContext): Server {
         const parsed = JSON.parse(body) as Record<string, unknown>;
         parsed.model = decision.to.id;
         forwarded = JSON.stringify(parsed);
+        context.count?.({ kind: 'substituted', from: described.model, to: decision.to.id });
         context.note(`substituted ${described.model} → ${decision.to.id}: ${decision.configuredReason}`);
       } else if (decision.unjudged !== null) {
         context.note(`forwarded unjudged (${decision.unjudged}): fail-open`);
@@ -686,6 +702,7 @@ export function buildGateway(context: GatewayContext): Server {
       } catch (error) {
         // A transport failure does not prove the provider did no billable work.
         if (ticket !== undefined) spend?.settle(ticket, described.model, null);
+        context.count?.({ kind: 'unreachable' });
         /**
          * The upstream is unreachable. This is **not** a budget refusal and
          * must not look like one: the caller needs to tell "your provider is

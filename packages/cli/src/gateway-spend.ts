@@ -1,7 +1,49 @@
 import { indexUsage, parseUsageLine, usageFromResponse } from '@trazum/core';
 import type { GatewayCall, GatewayDecision, GatewayStanding, MeasuredPosition, PricingCatalogue } from '@trazum/core';
 
-type GatewayUsage = NonNullable<ReturnType<typeof usageFromResponse>>;
+export type GatewayUsage = NonNullable<ReturnType<typeof usageFromResponse>>;
+
+/**
+ * One measured call's cost at the catalogue's list rates, or `null` when it
+ * cannot be priced honestly: a model the catalogue does not carry, a count
+ * that is not a finite non-negative number, or a flat cache-write count with
+ * no TTL split (assuming 5m would undercharge a 1h write).
+ *
+ * The live budget and `--metrics-port` both price from here, so the figure a
+ * refusal rests on and the figure Prometheus shows cannot disagree.
+ */
+export function priceGatewayUsage(catalogue: PricingCatalogue, model: string, usage: GatewayUsage, nowMs: number): number | null {
+  const writesKnown = usage.cacheWriteTokens === 0 ||
+    (usage.cacheWrite5mTokens !== undefined && usage.cacheWrite1hTokens !== undefined &&
+     usage.cacheWrite5mTokens + usage.cacheWrite1hTokens === usage.cacheWriteTokens);
+  if (!writesKnown ||
+      Object.values(usage).some((value) => typeof value === 'number' && (!Number.isFinite(value) || value < 0))) {
+    return null;
+  }
+  const record = parseUsageLine(JSON.stringify({
+    model, ts: new Date(nowMs).toISOString(),
+    input_tokens: usage.inputTokens, output_tokens: usage.outputTokens,
+    cache_read_input_tokens: usage.cacheReadTokens,
+    cache_creation_input_tokens: usage.cacheWriteTokens,
+    cache_creation: {
+      ephemeral_5m_input_tokens: usage.cacheWrite5mTokens ?? 0,
+      ephemeral_1h_input_tokens: usage.cacheWrite1hTokens ?? 0,
+    },
+    // Fast mode bills at a multiple of standard; the response said which ran.
+    ...(usage.speed === undefined ? {} : { speed: usage.speed }),
+    // So does OpenAI's service tier, each priced from its own table.
+    ...(usage.serviceTier === undefined ? {} : { service_tier: usage.serviceTier }),
+    // And US-only inference, 1.1x on Claude 4.6 and later.
+    ...(usage.inferenceGeo === undefined ? {} : { inference_geo: usage.inferenceGeo }),
+    // And the searches, $10 per 1,000 on top of the tokens.
+    ...(usage.webSearchRequests === undefined
+      ? {}
+      : { server_tool_use: { web_search_requests: usage.webSearchRequests } }),
+  }));
+  const index = record === null ? null : indexUsage([record], { catalogue, on: new Date(nowMs) });
+  if (index === null || index.unpriced > 0 || index.dayUsd === null) return null;
+  return index.dayUsd;
+}
 
 type Admitted = Exclude<GatewayDecision, { kind: 'refuse' }>;
 const DAY_MS = 86_400_000;
@@ -83,42 +125,12 @@ export class GatewaySpend {
     const pending = this.pending.get(ticket);
     if (pending === undefined) return;
     this.pending.delete(ticket);
-    const writesKnown = usage !== null && (usage.cacheWriteTokens === 0 ||
-      (usage.cacheWrite5mTokens !== undefined && usage.cacheWrite1hTokens !== undefined &&
-       usage.cacheWrite5mTokens + usage.cacheWrite1hTokens === usage.cacheWriteTokens));
-    if (usage === null || !writesKnown ||
-        Object.values(usage).some((value) => typeof value === 'number' && (!Number.isFinite(value) || value < 0))) {
-      // A flat write count has no TTL. Assuming 5m undercharges a 1h write.
-      this.unknown = true;
-      return;
-    }
     const now = Date.now();
-    const record = parseUsageLine(JSON.stringify({
-      model, ts: new Date(now).toISOString(),
-      input_tokens: usage.inputTokens, output_tokens: usage.outputTokens,
-      cache_read_input_tokens: usage.cacheReadTokens,
-      cache_creation_input_tokens: usage.cacheWriteTokens,
-      cache_creation: {
-        ephemeral_5m_input_tokens: usage.cacheWrite5mTokens ?? 0,
-        ephemeral_1h_input_tokens: usage.cacheWrite1hTokens ?? 0,
-      },
-      // Fast mode bills at a multiple of standard; the response said which ran.
-      ...(usage.speed === undefined ? {} : { speed: usage.speed }),
-      // So does OpenAI's service tier, each priced from its own table.
-      ...(usage.serviceTier === undefined ? {} : { service_tier: usage.serviceTier }),
-      // And US-only inference, 1.1x on Claude 4.6 and later.
-      ...(usage.inferenceGeo === undefined ? {} : { inference_geo: usage.inferenceGeo }),
-      // And the searches, $10 per 1,000 on top of the tokens.
-      ...(usage.webSearchRequests === undefined
-        ? {}
-        : { server_tool_use: { web_search_requests: usage.webSearchRequests } }),
-    }));
-    const index = record === null ? null : indexUsage([record], { catalogue: this.catalogue, on: new Date(now) });
-    if (index === null || index.unpriced > 0 || index.dayUsd === null) {
+    const usd = usage === null ? null : priceGatewayUsage(this.catalogue, model, usage, now);
+    if (usd === null) {
       this.unknown = true;
       return;
     }
-    const usd = index.dayUsd;
     this.usd += usd;
     const day = Math.floor(now / DAY_MS) * DAY_MS;
     this.days.set(day, (this.days.get(day) ?? 0) + usd);

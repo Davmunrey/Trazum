@@ -292,6 +292,9 @@ import {
   buildGateway,
   listenGateway,
 } from './gateway-server.js';
+import type { GatewayCount } from './gateway-server.js';
+import { GatewayMetrics, buildMetricsServer } from './gateway-metrics.js';
+import { priceGatewayUsage } from './gateway-spend.js';
 import {
   WATCH_STATE_VERSION,
   checkWebhook,
@@ -414,6 +417,8 @@ const VALUE_FLAGS = new Set([
   'send',
   'port',
   'socket',
+  // `gateway`: the loopback port its counts are scraped from, off unless given.
+  'metrics-port',
   // `route` takes a path here, and the flag is deliberately not `--prompt`:
   // everywhere else in this tool `--prompt` names a marked prompt *inside* a
   // source file, and reusing it for a path would be a trap laid for the reader.
@@ -939,7 +944,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
   feedback: [],
-  gateway: ['on-cannot-tell', 'port', 'socket', 'log', 'pricing', 'pricing-live'],
+  gateway: ['on-cannot-tell', 'port', 'socket', 'metrics-port', 'log', 'pricing', 'pricing-live'],
   ladder: ['pricing', 'pricing-live', 'since', 'until', 'label'],
   experiment: ['a', 'b', 'min-outcomes', 'pricing', 'pricing-live'],
   quality: ['label', 'at', 'gate', 'pricing', 'pricing-live'],
@@ -6206,6 +6211,16 @@ async function commandGateway(
    * would be the flattering direction.
    */
   let unmeasured = 0;
+  /**
+   * The scrape port, checked before anything listens: a typo here should not
+   * leave a gateway running with no counts behind it.
+   */
+  const metricsRaw = stringFlag(args, 'metrics-port');
+  const metricsPort = metricsRaw === undefined ? null : Number(metricsRaw);
+  if (metricsPort !== null && (!Number.isInteger(metricsPort) || metricsPort < 0 || metricsPort > 65_535)) {
+    throw new Error(t.gateway.badMetricsPort(String(metricsRaw)));
+  }
+  const metrics = metricsPort === null ? null : new GatewayMetrics(provider, Date.now());
   const server = buildGateway({
     liveBudget: true,
     provider,
@@ -6220,6 +6235,7 @@ async function commandGateway(
     standing: () => standing,
     record: (call) => {
       measured.calls += 1;
+      metrics?.measured(call, priceGatewayUsage(pricing, call.model, call, Date.now()));
       console.error(
         c.dim(
           t.gateway.measured(
@@ -6234,11 +6250,13 @@ async function commandGateway(
     },
     unmeasured: (cause) => {
       unmeasured += 1;
+      metrics?.unmeasured(cause);
       console.error(c.yellow(`  ${t.gateway.unmeasured(cause, unmeasured)}`));
     },
     note: (line) => {
       console.error(c.yellow(`  ${line}`));
     },
+    ...(metrics === null ? {} : { count: (event: GatewayCount) => metrics.count(event) }),
   });
 
   const socket = stringFlag(args, 'socket');
@@ -6251,6 +6269,10 @@ async function commandGateway(
   const where = await listenGateway(server, socket !== undefined ? { socket } : { port });
   console.log(c.bold(t.gateway.listening(where, provider)));
   console.log(`  ${c.dim(wrap(t.gateway.pointYourSdk(where), 74, '    '))}`);
+  if (metrics !== null && metricsPort !== null) {
+    const scrape = await listenGateway(buildMetricsServer(metrics), { port: metricsPort });
+    console.log(`  ${c.dim(wrap(t.gateway.metrics(scrape), 74, '    '))}`);
+  }
   console.log(`  ${c.dim(wrap(t.gateway.credential(), 74, '    '))}`);
   console.log(`  ${c.dim(wrap(t.gateway.neverSubstitutes(), 74, '    '))}`);
   console.log(

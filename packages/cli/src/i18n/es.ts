@@ -78,7 +78,7 @@ ${bold('USO')}
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
   trazum models
   trazum rules [--measure <dir>] [--level <safe|aggressive>]
-  trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
+  trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed> [--metrics-port <n>]
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]
@@ -635,6 +635,11 @@ ${bold('OPCIONES DE gateway')}
                               juzgar una llamada: sin presupuesto, sin nada
                               medido, un modelo sin precio.
   --port <n> | --socket <p>   Dónde escuchar. Solo loopback, siempre.
+  --metrics-port <n>          Sirve lo que la pasarela ha contado desde que
+                              arrancó, en texto de Prometheus, en GET /metrics
+                              de este segundo puerto loopback. Apagado si no se
+                              da. Solo recuentos y coste a tarifa de lista,
+                              nunca un prompt.
   --log <uso.jsonl>           El log de uso contra el que se mide la política
                               de limits, leído una vez al arrancar, el mismo
                               flag que en serve, por la misma razón: el gasto
@@ -1986,6 +1991,9 @@ ${bold('EJEMPLOS')}
     },
     pointYourSdk: (where) =>
       `Apunta la URL base de tu SDK a ${where} y no cambies nada más. Habla el formato del propio proveedor, así que no hay cambios de código ni cliente nuevo.`,
+    badMetricsPort: (given) => `--metrics-port es "${given}". Da un número entero de 0 a 65535: el puerto loopback del que lee Prometheus.`,
+    metrics: (where) =>
+      `Recuentos para Prometheus en ${where}/metrics, desde que arrancó este proceso: llamadas, tokens, coste a tarifa de lista, rechazos y lo que no se pudo medir. No se envía nada y no lleva ningún prompt.`,
     credential: () =>
       'Tu credencial se reenvía intacta y nunca se lee, ni se guarda, ni se registra, ni se pone en una URL. Trazum no tiene ninguna clave aquí y no puede hacer una llamada propia a través de esto.',
     neverSubstitutes: () =>

@@ -91,7 +91,7 @@ ${bold('USAGE')}
   trazum write [--answers <file>] [--json] [-o <file>]
   trazum models
   trazum rules [--measure <dir>] [--level <safe|aggressive>]
-  trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
+  trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed> [--metrics-port <n>]
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]
@@ -621,6 +621,10 @@ ${bold('OPTIONS FOR gateway')}
                               What happens when the gateway cannot judge a call:
                               no budget, nothing measured, an unpriced model.
   --port <n> | --socket <p>   Where to listen. Loopback only, always.
+  --metrics-port <n>          Serve what the gateway has counted since it
+                              started, in Prometheus text, at GET /metrics on
+                              this second loopback port. Off unless given. Counts
+                              and list-rate cost only, never a prompt.
   --log <usage.jsonl>         The usage log the limits policy is measured
                               against, read once at start, same flag as
                               serve's, same reason: label and session spend
@@ -1933,6 +1937,9 @@ ${bold('EXAMPLES')}
     },
     pointYourSdk: (where) =>
       `Point your SDK's base URL at ${where} and change nothing else. It speaks the provider's own wire format, so no code changes and no new client.`,
+    badMetricsPort: (given) => `--metrics-port is "${given}". Give a whole number from 0 to 65535: the loopback port Prometheus scrapes.`,
+    metrics: (where) =>
+      `Counts for Prometheus at ${where}/metrics, since this process started: calls, tokens, list-rate cost, refusals and what could not be measured. Nothing is pushed, and no prompt is in it.`,
     credential: () =>
       'Your credential is forwarded untouched and never read, never stored, never logged and never put in a URL. Trazum holds no key here and cannot make a call of its own through this.',
     neverSubstitutes: () =>

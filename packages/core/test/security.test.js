@@ -684,6 +684,51 @@ describe('the gateway, which stands between somebody and their provider', () => 
   });
 });
 
+describe('the gateway\'s scrape port, which shows what the gateway counted', () => {
+  /**
+   * `--metrics-port` opens a second loopback port beside the proxy. It is safe
+   * only while it stays a reader of counts: no upstream, no fetch, no file, the
+   * same host guard as every other loopback port here, and nothing about a
+   * call but numbers and the few names the gateway already prints.
+   */
+  const source = () =>
+    readFileSync(join(repoRoot, 'packages/cli/src/gateway-metrics.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  it('forwards nothing and writes nothing down', () => {
+    const text = source();
+    assert.doesNotMatch(text, /\bfetch\(|doFetch|UPSTREAMS|https?:\/\//);
+    assert.doesNotMatch(text, /writeFile|appendFile|createWriteStream/);
+    assert.doesNotMatch(text, /authorization|x-api-key|process\.env/i);
+  });
+
+  it('guards the host before it reads the path', () => {
+    const text = source();
+    const guard = text.indexOf('refuseHost(server, request)');
+    const path = text.indexOf('request.url');
+    assert.ok(guard > 0, 'the scrape port has no host guard, so a rebound page could read it');
+    assert.ok(guard < path, 'the scrape port reads the path before it checks the host');
+  });
+
+  it('records counts and names, and never a session', () => {
+    // `trazum_session` is used to judge and never recorded; a scrape is a record.
+    assert.doesNotMatch(source(), /session/i);
+    const shape = /export interface MeasuredCall \{([^}]*)\}/.exec(source());
+    assert.ok(shape, 'MeasuredCall is gone, so this guard watches nothing');
+    const fields = [...shape[1].matchAll(/(\w+):/g)].map((m) => m[1]).sort();
+    assert.deepEqual(fields, [
+      'cacheReadTokens', 'cacheWriteTokens', 'inputTokens', 'label', 'model', 'outputTokens', 'substituted',
+    ]);
+  });
+
+  it('listens on loopback, through the one function that binds the gateway', () => {
+    const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
+    assert.match(cli, /listenGateway\(buildMetricsServer\(metrics\), \{ port: metricsPort \}\)/);
+    assert.doesNotMatch(source(), /\.listen\(/);
+  });
+});
+
 describe('there is no telemetry, and the feedback command is not an exception', () => {
   /**
    * `trazum feedback` prints where to write and a prefilled link. That is
