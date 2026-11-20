@@ -60,10 +60,13 @@ type Labels = Readonly<Record<string, string>>;
 class Counter {
   private values = new Map<string, { labels: Labels; value: number }>();
 
-  constructor(
-    readonly name: string,
-    readonly help: string,
-  ) {}
+  readonly name: string;
+  readonly help: string;
+
+  constructor(name: string, help: string) {
+    this.name = name;
+    this.help = help;
+  }
 
   add(labels: Labels, by: number): void {
     const key = JSON.stringify(labels);
@@ -98,10 +101,12 @@ export class GatewayMetrics {
   private readonly free = new Counter('trazum_gateway_calls_free_total', 'Calls to a path that spends nothing, forwarded without a budget decision.');
   private readonly unreachable = new Counter('trazum_gateway_upstream_unreachable_total', 'Calls the provider could not be reached for, answered 502.');
 
-  constructor(
-    private readonly provider: string,
-    private readonly startedMs: number,
-  ) {
+  private readonly provider: string;
+  private readonly startedMs: number;
+
+  constructor(provider: string, startedMs: number) {
+    this.provider = provider;
+    this.startedMs = startedMs;
     // Present at zero: nothing went wrong and nothing was counted are different statements.
     for (const cause of UNMEASURED_CAUSES) this.unmeasuredCalls.add({ trazum_provider: provider, cause }, 0);
     this.unreachable.add({ trazum_provider: provider }, 0);
