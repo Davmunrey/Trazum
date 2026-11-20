@@ -317,7 +317,7 @@ is still exported and is the widest of the four, for callers that have to print 
 figure without holding the text.
 
 That band is measured, against the official counting endpoint, over 47 samples in
-ten languages and 6 text types. The margin between each bucket and its own worst
+10 languages and 6 text types. The margin between each bucket and its own worst
 sample is a point or less, and no bucket is allowed to overlap the next: a sample
 sorted into a friendlier bucket gets a smaller band and fails the test.
 

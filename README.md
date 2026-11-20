@@ -670,7 +670,7 @@ not told you what it knows.
 
 A dependency-free estimator with a **band measured per kind of text** — ±4% on
 CJK, ±6% on Latin prose, ±26% on code and markup, ±33% on tabular numbers —
-measured over 47 samples in ten languages, where the worst error in each bucket
+measured over 47 samples in 10 languages, where the worst error in each bucket
 is 3.2%, 5.6%, 25.1% and 32.5%. Language-aware because one English divisor was
 37% wrong on German. `--exact-tokens` settles any doubt
 against the provider's free counting endpoint. The measurement story is in
@@ -730,7 +730,7 @@ packages/core/     dependency-free library (rules, tokens, pricing, LLM)
 packages/cli/      dependency-free CLI
   src/markdown.ts    the report as markdown, and the three escapers
   src/git.ts         the only module here that runs another program
-packages/mcp/      dependency-free MCP server — twelve tools over stdio in this checkout
+packages/mcp/      dependency-free MCP server — 12 tools over stdio in this checkout
   src/rpc.ts         JSON-RPC 2.0 by hand; the invariant beat the SDK
   src/tools.ts       the whole surface an agent can reach, in one file
 packages/tokenizer-openai/   optional exact counter, and the only dependency here

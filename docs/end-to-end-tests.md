@@ -13,7 +13,7 @@ page.
 
 ## What is checked
 
-Twenty-six flows, each from an empty browser. Most drive the application at
+28 flows, each from an empty browser. Most drive the application at
 `/app`, where it has lived since the landing took `/`; thirteen start on the
 landing:
 

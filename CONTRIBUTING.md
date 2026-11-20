@@ -338,7 +338,7 @@ phone, follows the landing into the dashboard, scrolls the landing's
 story from top to bottom and back, chapter by chapter, and presses every object on its desk, reads the Pro page without it sending
 anything off the site, and reads the Download page against the release it names
 and the same way.
-[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the twenty-six flows,
+[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the 28 flows,
 what they do not check, and the lines that install the browser driver outside
 the workspace.
 
@@ -687,7 +687,7 @@ An approval with nothing in it is not one.
 ## Measuring the token band
 
 There is no single published band: it is ±4% on CJK, ±6% on Latin prose, ±26%
-on code and markup, ±33% on tabular numbers. 47 samples, ten languages, six text
+on code and markup, ±33% on tabular numbers. 47 samples, 10 languages, 6 text
 types, and the worst measured error in each bucket is **3.2%**, **5.6%**,
 **25.1%** and **32.5%** — the margin between each band and its own worst sample
 is a point or less, and it is deliberate that the buckets do not overlap,

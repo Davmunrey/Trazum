@@ -31,7 +31,7 @@ Then, if you want to know whether to trust the numbers:
   never meant to see, and the seeded fuzz suite in CI that holds each promise:
   never throws, never grows, idempotent, masks intact, money never negative.
 - **[When a change is done](done.md)**: the loop a change goes through, the
-  sixteen criteria `npm run done` checks before a push and where each comes
+  16 criteria `npm run done` checks before a push and where each comes
   from, what each verdict means, and what only CI can say.
 - **[Coverage](coverage.md)**: which lines the tests run, as measured and by
   package, what a covered line does not mean, and how the report reaches
@@ -39,7 +39,7 @@ Then, if you want to know whether to trust the numbers:
   each run's test results, to find the test that fails now and then, and the
   size of the web app's built files.
 - **[End-to-end tests](end-to-end-tests.md)**: the web app in a real browser,
-  doing what a visitor does: the twenty-five flows, the figures they expect and
+  doing what a visitor does: the 28 flows, the figures they expect and
   where those come from, and what a green run does not say.
 - **[Mutation testing](mutation-testing.md)**: whether the tests would notice
   if the code stopped doing what they check: the files it runs on, the score as
