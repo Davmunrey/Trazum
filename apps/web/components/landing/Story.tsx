@@ -305,30 +305,46 @@ function Transcript({ owner, narrow = false }: { owner: BlockOwner; narrow?: boo
   );
 }
 
-/** The keyboard deck, drawn on a 100 by 68 grid: well, keys, trackpad, the hinge and the lip. */
+/**
+ * The keyboard deck, drawn on a 100 by 68 grid, as a thin aluminium laptop's: dark keys in a well, the function row
+ * half as tall as the rest with the power key at its end, a speaker grille on each side, a wide trackpad, the hinge
+ * along the back and the lip at the front.
+ */
 function Deck() {
   const keys: React.ReactElement[] = [];
+  const step = 5.9;
+  const left = 9.4;
+  // The function row, half height; its last key is the power key.
+  for (let col = 0; col < 14; col += 1) {
+    keys.push(<rect key={`f-${col}`} x={left + col * step} y={7.6} width={5.2} height={2.6} rx={0.4} />);
+  }
   for (let row = 0; row < 5; row += 1) {
-    const y = 8.4 + row * 6.2;
+    const y = 11.2 + row * 5.6;
     for (let col = 0; col < 14; col += 1) {
       // The bottom row's middle keys are one space bar.
-      if (row === 4 && col > 4 && col < 10) {
-        if (col === 5) keys.push(<rect key={`${row}-${col}`} x={9.6 + col * 5.9} y={y} width={5.9 * 5 - 0.9} height={5.2} />);
+      if (row === 4 && col > 3 && col < 9) {
+        if (col === 4) keys.push(<rect key={`${row}-${col}`} x={left + col * step} y={y} width={step * 5 - 0.7} height={4.9} rx={0.5} />);
         continue;
       }
-      keys.push(<rect key={`${row}-${col}`} x={9.6 + col * 5.9} y={y} width={5} height={5.2} />);
+      keys.push(<rect key={`${row}-${col}`} x={left + col * step} y={y} width={5.2} height={4.9} rx={0.5} />);
+    }
+  }
+  const grille: React.ReactElement[] = [];
+  for (const x0 of [2.6, 93.4]) {
+    for (let row = 0; row < 16; row += 1) {
+      for (let col = 0; col < 4; col += 1) grille.push(<rect key={`${x0}-${row}-${col}`} x={x0 + col * 1.1} y={8 + row * 1.95} width={0.55} height={0.9} />);
     }
   }
   return (
     <svg className="lt-deck-art" viewBox="0 0 100 68" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-      <rect x="0" y="0" width="100" height="68" fill="#eeeee0" />
-      <rect x="7.6" y="6.4" width="84.8" height="33.2" fill="#e6e8d5" stroke="#999f8a" strokeWidth="0.35" />
-      <g fill="#fbf9f1" stroke="#999f8a" strokeWidth="0.3">
-        {keys}
-      </g>
-      <rect x="33" y="43.5" width="34" height="19" fill="#fbf9f1" stroke="#20231e" strokeWidth="0.5" />
-      <rect x="0" y="0" width="100" height="2.6" fill="#20231e" />
-      <rect x="43" y="65.4" width="14" height="2.6" fill="#999f8a" />
+      <rect x="0" y="0" width="100" height="68" fill="#dcded6" />
+      <rect x="8.6" y="6.6" width="82.8" height="33.4" rx="0.8" fill="#c9ccc2" />
+      <g fill="#262a24">{keys}</g>
+      <rect x={left + 13 * step + 1.2} y={8.1} width={2.8} height={1.6} rx={0.8} fill="#454b41" />
+      <g fill="#8d9285">{grille}</g>
+      <rect x="27" y="42.6" width="46" height="21.6" rx="1.4" fill="#e3e5de" stroke="#a6aa9d" strokeWidth="0.4" />
+      <rect x="0" y="0" width="100" height="2.2" fill="#20231e" />
+      <rect x="42" y="65.8" width="16" height="2.2" rx="1" fill="#b4b8ac" />
     </svg>
   );
 }
@@ -508,10 +524,18 @@ function Face({ id, name, hint }: { id: ObjectId; name: string; hint: string }) 
 }
 
 /** A chapter's slot in the column: as tall as the timeline says, its words near its top. */
-function Slot({ id, children, labelledBy, ...rest }: { id: ChapterId; children: React.ReactNode; labelledBy: string } & Record<`data-${string}`, string>) {
+function Slot({
+  id,
+  children,
+  labelledBy,
+  leaves,
+  ...rest
+}: { id: ChapterId; children: React.ReactNode; labelledBy: string; leaves?: string } & Record<`data-${string}`, string>) {
   return (
     <section className="chapter" data-ch={id} aria-labelledby={labelledBy} style={{ '--ch-h': `${chapterOf(id).height}svh` } as Vars} {...rest}>
-      <div className="chapter-card">{children}</div>
+      <div className="chapter-card" {...(leaves === undefined ? {} : { 'data-mv': '', 'data-away': '', style: moves(leaves) })}>
+        {children}
+      </div>
     </section>
   );
 }
@@ -622,7 +646,7 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
   // What the stage shows: a press, or the current chapter, or, with the stage not pinned, the bill.
   const object: ObjectId | null = pressed ?? (staged ? current.object : 'bill');
   const screen: ScreenId = pressed !== null ? (pressed === 'lid' ? 'never' : pressed) : staged ? current.screen : 'bill';
-  const closed = pressed !== null ? pressed === 'lid' : staged && chapter === 'close';
+  const closed = pressed !== null ? pressed === 'lid' : staged && (chapter === 'close' || chapter === 'away');
   // A press of an object whose chapter is not the one current puts that object's card where the chapter's was: the
   // lid's is what never leaves, which its own chapter and the one before it already show.
   const cardOf = (id: ObjectId): ChapterId => (id === 'lid' ? 'never' : id);
@@ -668,7 +692,7 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
       <style /* skipcq: JS-0440 */ /* nosemgrep */ dangerouslySetInnerHTML={{ __html: MOTION.css }} />
       <div className="story-stage">
         <div className="desk" style={world}>
-          <div className="desk-scene">
+          <div className="desk-scene" data-mv="" data-away="" style={moves('st-away-scene')}>
             <div className="desk-laptop" data-mv="" data-arrive="" style={moves('st-laptop')}>
               <div className="story-3d">
                 <Laptop t={t} screen={screen} pressed={pressed !== null} run={run} mounted={mounted} />
@@ -677,7 +701,7 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
             <Receipt t={t} />
           </div>
 
-          <div className="desk-objects" role="group" aria-label={t.desk.objects}>
+          <div className="desk-objects" role="group" aria-label={t.desk.objects} data-mv="" data-away="" style={moves('st-away-objects')}>
             <div className="desk-row">
               {objects.map((item, index) => (
                 <div key={item.id} className="obj-slot" data-mv="" data-arrive="" style={moves(`st-obj-${index}`)}>
@@ -753,7 +777,7 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
         <Slot id="never" labelledBy="story-never">
           <NeverWords t={t} headingId="story-never" />
         </Slot>
-        <Slot id="close" labelledBy="close-title" data-landing-close="">
+        <Slot id="close" labelledBy="close-title" leaves="st-away-card" data-landing-close="">
           <h2 id="close-title" className="chapter-title chapter-close">
             {t.closeTitle}
           </h2>
@@ -769,6 +793,8 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
             </div>
           </div>
         </Slot>
+        {/* The last chapter has no words: what is left on the stage leaves in it. */}
+        <div aria-hidden="true" className="chapter" data-ch="away" style={{ '--ch-h': `${chapterOf('away').height}svh` } as Vars} />
       </div>
     </section>
   );

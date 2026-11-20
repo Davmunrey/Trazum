@@ -390,9 +390,10 @@ const plateTitle = (page, id) => page.evaluate((id) => document.querySelector(id
  * under the hero; through the story the seven objects and their names inside
  * the window, and the receipt never over the screen while the screen has
  * text (the sources' chapter brings it forward over the screen on purpose);
- * in that chapter each note whole, inside the window, on its own paper; at
- * the end the shut laptop inside the window and the receipt lying on the
- * desk; and the band after the story never under the stage.
+ * in that chapter each note whole, inside the window, on its own paper; as
+ * the closing ends the shut laptop inside the window, in front of nothing;
+ * after it the receipt, and at the end the laptop, the objects and the closing
+ * card, gone from the stage; and the band after the story never under it.
  */
 async function deskFitsTheWindow({ page, is }, size) {
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -426,7 +427,8 @@ async function deskFitsTheWindow({ page, is }, size) {
         text,
       };
     });
-    if (now.chapter === 'arrival') continue;
+    // The arrival brings them in, and the last chapter takes them away.
+    if (now.chapter === 'arrival' || now.chapter === 'away') continue;
     is(now.objectsInside && now.names, true, `${size}, ${now.chapter}: the seven objects and their names inside the window`);
     if (now.chapter === 'sources' || !now.text) continue;
     const [, top, right, bottom] = now.screen;
@@ -450,23 +452,43 @@ async function deskFitsTheWindow({ page, is }, size) {
     // On its own paper: what is at its middle and near its right end is the note, not a line of the desk or the screen.
     is((await hit((left + right) / 2, (top + bottom) / 2, '.receipt-note')) && (await hit(right - 4, (top + bottom) / 2, '.receipt-note')), true, `${size}: the note on line ${index + 1}, with nothing over it`);
   }
-  await toStory(page, 1);
-  const end = await page.evaluate(() => {
+  // Gone: what the story is done with is neither drawn nor reached.
+  const gone = (selector) =>
+    page.evaluate((selector) => {
+      const element = document.querySelector(selector);
+      let opacity = 1;
+      for (let at = element; at !== null; at = at.parentElement) opacity *= Number(getComputedStyle(at).opacity);
+      return opacity < 0.01 && getComputedStyle(element).visibility === 'hidden';
+    }, selector);
+  await toChapter(page, 'unpriced', 0.3);
+  is(await gone('.receipt-slot'), true, `${size}: the receipt gone once its chapter is over`);
+  await toChapter(page, 'close', 0.95);
+  const shut = await page.evaluate(() => {
     const lid = document.querySelector('.lt-lid').getBoundingClientRect();
-    const paper = document.querySelector('.receipt-paper');
-    const receipt = paper.getBoundingClientRect();
     const deck = document.querySelector('.lt-deck').getBoundingClientRect();
     // The highest object, the lifted one included, and the foot of the deck's hard shadow under it.
     const rowTop = Math.min(...[...document.querySelectorAll('.obj')].map((object) => object.getBoundingClientRect().top));
     const shadow = Number.parseFloat(getComputedStyle(document.querySelector('.lt-deck')).boxShadow.match(/\)\s+-?[\d.]+px\s+(-?[\d.]+)px/)?.[1] ?? '0');
-    return { lid: [lid.left, lid.right], width: window.innerWidth, drawn: receipt.height, tall: paper.offsetHeight, receiptBottom: receipt.bottom, deckBottom: deck.bottom + shadow, rowTop };
+    return { lid: [lid.left, lid.right], width: window.innerWidth, deckBottom: deck.bottom + shadow, rowTop };
   });
-  is(end.lid[0] >= 0 && end.lid[1] <= end.width, true, `${size}: the shut laptop inside the window (${Math.round(end.lid[0])} to ${Math.round(end.lid[1])})`);
-  // Paper lies down: drawn at less than half its own height, it is foreshortened on the floor, not propped up beside the laptop.
-  is(end.drawn < end.tall * 0.5, true, `${size}: the receipt lying flat with the lid shut (${Math.round(end.drawn)}px of ${end.tall}px)`);
+  is(shut.lid[0] >= 0 && shut.lid[1] <= shut.width, true, `${size}: the shut laptop inside the window (${Math.round(shut.lid[0])} to ${Math.round(shut.lid[1])})`);
   // The objects lie in front of the laptop, on the floor, and cover none of its deck or the deck's shadow, a lifted one
-  // included; the receipt is behind them.
-  is(end.rowTop >= end.deckBottom && end.receiptBottom <= end.rowTop, true, `${size}: the objects in front of the laptop's deck and the receipt (objects from ${Math.round(end.rowTop)}, deck and its shadow to ${Math.round(end.deckBottom)}, receipt to ${Math.round(end.receiptBottom)})`);
+  // included.
+  is(shut.rowTop >= shut.deckBottom, true, `${size}: the objects in front of the laptop's deck (objects from ${Math.round(shut.rowTop)}, deck and its shadow to ${Math.round(shut.deckBottom)})`);
+  // Each slot starts where the timeline says: nothing between two slots, so no chapter's words drift from its moment.
+  const column = await page.evaluate(() => {
+    const slots = [...document.querySelectorAll('.story .chapters > [data-ch]')];
+    return { tall: document.querySelector('.story .chapters').offsetHeight, slots: slots.reduce((sum, slot) => sum + slot.offsetHeight, 0) };
+  });
+  is(Math.abs(column.tall - column.slots) <= 1, true, `${size}: the column as tall as its slots (${column.tall}px, slots ${column.slots}px)`);
+  await toStory(page, 1);
+  for (const [what, selector] of [
+    ['the laptop', '.desk-scene'],
+    ['the objects', '.desk-objects'],
+    ['the closing card', '[data-landing-close] .chapter-card'],
+  ]) {
+    is(await gone(selector), true, `${size}: ${what} gone from the stage at the end`);
+  }
   // On into the band after the story: its heading is never under the stage.
   for (let step = 0; step <= 12; step += 1) {
     await page.evaluate((f) => {
@@ -1041,12 +1063,13 @@ export const FLOWS = [
     },
   },
   {
-    name: 'landing: every object puts its own output on the one laptop, by keyboard, after the story and in the middle of it, and the next chapter takes over again',
+    name: 'landing: every object puts its own output on the one laptop, by keyboard, as the story closes and in the middle of it, and the next chapter takes over again',
     covers: [],
     viewport: { width: 1440, height: 900 },
     async run({ page, open, is }) {
       await open('/');
-      await toStory(page, 1);
+      // The last moment the objects are on the stage: after the closing they leave it.
+      await toChapter(page, 'close', 0.95);
       await pressEveryObject({ page, is });
       // In the middle of the breaker's chapter, the calendar pressed: its output over the story's.
       await toChapter(page, 'guard');
@@ -1145,7 +1168,7 @@ export const FLOWS = [
       await storyInOrder({ page, is }, STORY_MARKS.filter(([what]) => what !== 'the receipt’s total, on the desk'));
       await chaptersTakeTurns({ page, is });
       await focusNeverBehindTheStage({ page, is });
-      await toStory(page, 1);
+      await toChapter(page, 'close', 0.95);
       await pressEveryObject({ page, is });
       await noSidewaysScroll('after pressing every object');
     },

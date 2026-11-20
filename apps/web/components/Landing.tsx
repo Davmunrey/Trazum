@@ -1,11 +1,13 @@
 'use client';
 
 import { ArrowRight } from 'lucide-react';
+import type { CSSProperties } from 'react';
 
 import { COPY, MORE_LINKS, type LandingCopy } from '../lib/landing-copy';
 import type { MarketingLocale } from '../lib/marketing-locales';
 import { COMMAND } from '../lib/site';
 import type { SiteCopy } from '../lib/site-copy';
+import { CLEARING } from '../lib/story-timeline';
 import { Story } from './landing/Story';
 import { CommandLine } from './site/CommandLine';
 import { GitHubButton } from './site/GitHub';
@@ -72,7 +74,12 @@ function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
         The one thing the desk cannot show: the budget check has no chapter (the repository has no example call of it
         to run), so it is one compact band after the story, its name, its command, a sentence and the way in.
       */}
-      <section aria-labelledby="more-title" className={`${WRAP} border-t-2 border-foreground py-6 lg:py-7`}>
+      <section
+        aria-labelledby="more-title"
+        className={`${WRAP} border-t-2 border-foreground py-6 lg:py-7`}
+        data-after-story=""
+        style={{ '--clearing': `${CLEARING}svh` } as CSSProperties}
+      >
         <div className="grid gap-x-8 gap-y-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-baseline">
           <h2 id="more-title" className="font-display text-[clamp(20px,1.7vw,24px)] leading-[1.15] font-bold tracking-[-0.03em]">
             {t.moreTitle}

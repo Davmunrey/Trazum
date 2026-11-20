@@ -10,9 +10,11 @@ import type { BlockOwner, TerminalBlock } from './landing-terminal';
  * a phone), and each chapter changes the stage: the desk arrives; `bill`
  * prints and the receipt comes out of the laptop's side; each object takes
  * its turn, lifts and puts its command's output on the screen; the receipt
- * comes forward with each rate's page and date; a model with no published
- * price is named and kept out; what never leaves the machine goes on the
- * screen; the lid closes over it. Nothing runs on a clock: the scroll position
+ * comes forward with each rate's page and date, and leaves; a model with no
+ * published price is named and kept out; what never leaves the machine goes
+ * on the screen; the lid closes over it; and the shut laptop, the objects and
+ * the closing card leave the stage, so the story ends on an empty desk and
+ * nothing of it is left against the band after it. Nothing runs on a clock: the scroll position
  * is the story's only time, so scrolling back walks it back, and nothing is
  * shown twice.
  *
@@ -55,7 +57,11 @@ export interface Chapter {
 
 /**
  * The chapters, in order. Each object takes its turn once, in the order the
- * objects lie, and the lid last; the receipt's chapter is the bill's.
+ * objects lie, and the lid last; the receipt's chapter is the bill's. The
+ * last, `away`, has no words: what is left on the stage leaves in it. Without
+ * it the stage let go with everything still on it, and the closing card ended
+ * with its foot on the rule of the band after the story (1440x900, recorded on
+ * 2026-11-20).
  */
 export const CHAPTERS = [
   { id: 'arrival', object: null, screen: null, height: 60 },
@@ -69,6 +75,7 @@ export const CHAPTERS = [
   { id: 'unpriced', object: null, screen: 'unpriced', height: 110 },
   { id: 'never', object: null, screen: 'never', height: 90 },
   { id: 'close', object: 'lid', screen: 'never', height: 120 },
+  { id: 'away', object: null, screen: 'never', height: 125 },
 ] as const satisfies readonly Chapter[];
 
 export type ChapterId = (typeof CHAPTERS)[number]['id'];
@@ -77,6 +84,13 @@ export type ChapterId = (typeof CHAPTERS)[number]['id'];
 export const LEAD = 50;
 /** The line a slot's top crosses to make its chapter current, in `svh` from the top of the window. */
 export const LINE = 50;
+
+/**
+ * How far the band after the story comes up over the stage, in `svh`: by as much scroll as the last chapter lasts,
+ * so it starts to come up from the foot of the window as things start to leave, and the stage is never left as a
+ * window of nothing before the band (1440x900, 2026-11-20: a whole empty window, the band at its foot).
+ */
+export const CLEARING = CHAPTERS[CHAPTERS.length - 1].height - LINE;
 
 /** The column's height, in `svh`: the story's. */
 export const STORY_HEIGHT = CHAPTERS.reduce((sum, chapter) => sum + chapter.height, 0);
@@ -142,14 +156,23 @@ export const BEATS = {
   forward: [0.04, 0.22],
   /** A note from each of its lines of the page the rate was read from and the date, one after another, each whole. */
   notes: [0.24, 0.56],
-  /** The notes go, and the receipt goes back to the desk as the chapter ends: it is never over the screen's text after it... */
-  back: [0.86, 0.98],
+  /** The notes go, and the receipt leaves as the chapter ends, down and out of sight: nothing after it uses it... */
+  leave: [0.86, 0.98],
   /** ...and the example's command runs at once in the next chapter (the unpriced model's). */
   run: [0.02, 0.6],
   /** What never leaves goes on the screen a line at a time. */
   never: [0.04, 0.3],
   /** The lid closes over it, about its hinge. */
   lid: [0.14, 0.72],
+  /**
+   * The closing card goes (the last chapter, which has no words), while the band after the story comes up over the
+   * stage from the foot of the window (`CLEARING`)...
+   */
+  card: [0, 0.3],
+  /** ...the objects, which it reaches first, leave the desk before it does... */
+  clear: [0.02, 0.26],
+  /** ...and the shut laptop after them, before the band is halfway up. */
+  stow: [0.1, 0.42],
 } as const satisfies Record<string, Range>;
 
 /**
