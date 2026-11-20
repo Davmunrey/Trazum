@@ -2,6 +2,7 @@ import type { BlockOwner, TerminalBlock } from './landing-terminal';
 import {
   BEATS,
   CHAPTERS,
+  CROSSFADE,
   LEAD,
   STORY_HEIGHT,
   type ChapterId,
@@ -44,12 +45,13 @@ import {
  *
  * The arrival brings the desk, the laptop and each object in over their own
  * stretch and from their own distance, so they pass each other as layers.
- * Then each chapter lifts its own object, types its command and prints the
+ * Then each chapter lifts its own object, types its command over what the
+ * chapter before left on the screen, which gives way to it, and prints the
  * output a line at a time, the screen scrolling up as a terminal does once
- * the output is taller than it; as it ends it clears the screen and settles
- * the object back. Only the receipt moves sideways:
- * out of the laptop's side, forward in front of it with a leader to each
- * rate's page, and back onto the desk. The lid closes last.
+ * the output is taller than it; as it ends it settles the object back. Only
+ * the receipt moves sideways: out of the laptop's side, never over its screen
+ * while it prints, forward in front of it with a note of each rate's page,
+ * and back onto the desk. The lid closes last.
  */
 
 /** The lid's angle, closed: onto the deck, which lies at `DECK_ANGLE`, short of touching it by a degree. */
@@ -156,59 +158,130 @@ function liftStops(object: ObjectId): number[] {
   return [...through(within(chapter, BEATS.lift), 8), ...(next(chapter) === null ? [] : through(within(chapter, BEATS.settle), 8))];
 }
 
+/** The chapters that show a screen, in order. */
+const showingOf = (screen: BlockOwner | 'never') => CHAPTERS.filter((chapter) => chapter.screen === screen).map((chapter) => chapter.id);
+
+/** When a screen comes on: its prompt (what never leaves, its first line), as a short range. */
+function comesOn(screen: BlockOwner | 'never', blocks: readonly TerminalBlock[]): Range {
+  if (screen === 'never') return within(showingOf('never')[0], [BEATS.never[0] - 0.02, BEATS.never[0]]);
+  const at = timeOutput(screen, blocks).prompt;
+  return [at - 0.0015, at];
+}
+
+/** The screen that comes on after this one has had its chapters, if any: the output it gives way to. */
+function nextScreen(screen: BlockOwner | 'never'): BlockOwner | 'never' | null {
+  const last = CHAPTERS.findIndex((chapter) => chapter.id === showingOf(screen).at(-1));
+  const after = CHAPTERS.slice(last + 1).find((chapter) => chapter.screen !== null && chapter.screen !== screen);
+  return after === undefined ? null : (after.screen as BlockOwner | 'never');
+}
+
+/**
+ * The stretch over which a screen gives way to the next one: from the moment
+ * the next is whole, so that one or the other always is, and the two cross.
+ */
+function goesOff(screen: BlockOwner | 'never', blocks: readonly TerminalBlock[]): Range | null {
+  const following = nextScreen(screen);
+  if (following === null) return null;
+  const [, at] = comesOn(following, blocks);
+  return [at, at + CROSSFADE];
+}
+
 /**
  * Whether the screen shows an owner's output (or what never leaves), from 0 to
- * 1: on from its prompt, off as the chapter after the last one that shows it
- * clears the screen.
+ * 1: on from its prompt, and on until the next output's prompt comes on over
+ * it, so that the two cross and the screen is never blank between them.
  */
 export function onScreen(screen: BlockOwner | 'never', p: number, blocks: readonly TerminalBlock[]): number {
-  const showing = CHAPTERS.filter((chapter) => chapter.screen === screen).map((chapter) => chapter.id);
-  const first = showing[0];
-  const last = showing.at(-1);
-  if (first === undefined || last === undefined) return 0;
-  const from = screen === 'never' ? within(first, [BEATS.never[0] - 0.02, BEATS.never[0]]) : (() => {
-    const at = timeOutput(screen, blocks).prompt;
-    return [at - 0.0015, at] as const;
-  })();
-  const off = next(last) === null ? 0 : progress(p, within(last, BEATS.clear));
-  return progress(p, from) * (1 - off);
+  if (showingOf(screen).length === 0) return 0;
+  const off = goesOff(screen, blocks);
+  return progress(p, comesOn(screen, blocks)) * (1 - (off === null ? 0 : progress(p, off)));
 }
 
 function screenStops(screen: BlockOwner | 'never', blocks: readonly TerminalBlock[]): number[] {
-  const showing = CHAPTERS.filter((chapter) => chapter.screen === screen).map((chapter) => chapter.id);
-  const last = showing.at(-1) as ChapterId;
-  const from = screen === 'never' ? [within(showing[0], [BEATS.never[0] - 0.02, BEATS.never[0]])[0], within(showing[0], BEATS.never)[0]] : [timeOutput(screen, blocks).prompt - 0.0015, timeOutput(screen, blocks).prompt];
-  return [...from, ...(next(last) === null ? [] : through(within(last, BEATS.clear), 2))];
+  const off = goesOff(screen, blocks);
+  const on = comesOn(screen, blocks);
+  return [...on, ...(off === null ? [] : through(off, 2))];
 }
 
 /** Where the receipt is: 0 still in the laptop, 1 on the desk, 2 forward in front of the laptop. */
 export function receiptPose(p: number): { out: number; forward: number } {
   const out = smooth(progress(p, within('bill', BEATS.receipt)));
-  const forward = smooth(progress(p, within('sources', BEATS.forward))) * (1 - smooth(progress(p, within('unpriced', BEATS.back))));
+  const forward = smooth(progress(p, within('sources', BEATS.forward))) * (1 - smooth(progress(p, within('sources', BEATS.back))));
   return { out, forward };
 }
 
 /** Every keyframe set the story uses, by the element that uses it, and the stretch of the story each runs over. */
-export function storyMotion(blocks: readonly TerminalBlock[], receiptLines: number): string {
-  return motionOf(blocks, receiptLines).css;
+export function storyMotion(blocks: readonly TerminalBlock[], receiptLines: number, narrow?: readonly TerminalBlock[]): string {
+  return motionOf(blocks, receiptLines, narrow).css;
 }
 
-export function motionOf(blocks: readonly TerminalBlock[], receiptLines: number): { css: string; spans: ReadonlyMap<string, Span> } {
+/** The prefix of the narrow screen's own keyframes: its lines and bars are not the wide screen's. */
+export const NARROW_PREFIX = 'n-';
+
+/**
+ * The keyframes, and the stretch each runs over. `narrow`, when given, is the
+ * same commands as the narrow screen shows them (`TERMINAL_NARROW`): its lines
+ * print over the same stretch as the wide screen's, a line at a time, under
+ * names of their own.
+ */
+export function motionOf(
+  blocks: readonly TerminalBlock[],
+  receiptLines: number,
+  narrow?: readonly TerminalBlock[],
+): { css: string; spans: ReadonlyMap<string, Span> } {
   const spans = new Map<string, Span>();
   const rules: string[] = [];
   const keyframes = (name: string, stops: readonly number[], at: (p: number) => Frame, timing?: (p: number) => string | null) => frames(spans, name, stops, at, timing);
   const rise = (name: string, range: Range, distance: string, ease: (t: number) => number = smooth, extra?: (e: number) => Frame) => rising(spans, name, range, distance, ease, extra);
   const arrival = (beat: Range) => within('arrival', beat);
 
-  // The far plane, the desk and the laptop: each from its own distance, at its own rate.
-  rules.push(rise('st-figure', arrival(BEATS.desk), '--rise-figure'));
+  /*
+   * Shown from the top down to the last line printed, a line at a time, and whole once the last has printed;
+   * the screen scrolls up as a terminal does once that is taller than it. Measured from the top, so a line a
+   * narrow screen wraps onto two never shows a line early. Each stop holds until the next (`steps(1, end)`).
+   * Then each share bar fills once its row has printed.
+   */
+  const printed = (owner: BlockOwner, source: readonly TerminalBlock[], prefix: string) => {
+    const { prompt, lines } = timeOutput(owner, source);
+    const own = source.filter((block) => block.cap === owner);
+    const total = 1 + lines.length;
+    const shownAt = (p: number) => (p >= prompt - 1e-5 ? 1 : 0) + lines.filter((line) => p >= line.at - 1e-5).length;
+    rules.push(
+      keyframes(
+        `st-print-${prefix}${owner}`,
+        [prompt - 0.0005, prompt, ...lines.map((line) => line.at)],
+        (p) => {
+          const shown = shownAt(p);
+          if (shown >= total) return { 'clip-path': 'inset(0 0 0% 0)', transform: 'translateY(min(0px, calc(var(--rows) - 100%)))' };
+          return {
+            'clip-path': `inset(0 0 calc(100% - ${shown} * 1.5em) 0)`,
+            transform: `translateY(min(0px, calc(var(--rows) - ${shown} * 1.5em)))`,
+          };
+        },
+        () => 'steps(1, end)',
+      ),
+    );
+    let at = 0;
+    for (const block of own) {
+      at += block.command.split('\n').length;
+      block.lines.forEach((runs, j) => {
+        const line = lines[at + j - 1];
+        if (line === undefined || !runs.some(([text, style]) => style.includes('a') && /^█+$/.test(text))) return;
+        const fill: Range = [line.at + 0.002, line.at + 0.012];
+        rules.push(keyframes(`st-bar-${prefix}${block.id}-${j}`, through(fill, 2), (p) => ({ 'clip-path': `inset(0 calc(${n(1 - progress(p, fill))} * 100%) 0 0)` })));
+      });
+      at += block.lines.length;
+    }
+  };
+
+  // The desk and the laptop: each from its own distance, at its own rate.
   // The desk rises by its transform alone: an opacity over its tilted plane measured a dropped frame in five at 4x
   // CPU throttle, for the whole of the scroll.
   rules.push(rise('st-desk', arrival(BEATS.desk), '--rise-desk'));
   rules.push(
     keyframes('st-laptop', through(arrival(BEATS.land), 12), (p) => {
       const e = smoother(progress(p, arrival(BEATS.land)));
-      return { transform: `translateY(calc(${n(1 - e)} * var(--rise-laptop))) scale(${n(0.92 + 0.08 * e)})` };
+      return { transform: `translateY(calc(${n(1 - e)} * var(--rise-laptop))) scale(${n(0.96 + 0.04 * e)})` };
     }),
   );
 
@@ -225,13 +298,12 @@ export function motionOf(blocks: readonly TerminalBlock[], receiptLines: number)
     rules.push(keyframes(`st-skin-${object}`, stops, (p) => ({ opacity: n(lifted(object, p)) })));
   });
 
-  // The screen: each owner's output on from its prompt and off as the next chapter clears it; typed, then printed.
+  // The screen: each owner's output on from its prompt and off as the next one's prompt comes on over it; typed, then printed.
   const owners = [...new Set(blocks.map((block) => block.cap))];
   for (const owner of owners) {
     rules.push(keyframes(`st-out-${owner}`, screenStops(owner, blocks), (p) => ({ opacity: n(onScreen(owner, p, blocks)) })));
-    const { prompt, typed, lines } = timeOutput(owner, blocks);
-    const own = blocks.filter((block) => block.cap === owner);
-    const first = own[0].command.split('\n')[0];
+    const { prompt, typed } = timeOutput(owner, blocks);
+    const first = blocks.filter((block) => block.cap === owner)[0].command.split('\n')[0];
     const chars = first.length;
     const [c0, c1] = typed;
     const typing = (p: number) => (Math.abs(p - c0) < 1e-6 ? `steps(${chars}, end)` : null);
@@ -247,38 +319,8 @@ export function motionOf(blocks: readonly TerminalBlock[], receiptLines: number)
         typing,
       ),
     );
-    // Shown from the top down to the last line printed, a line at a time, and whole once the last has printed;
-    // the screen scrolls up as a terminal does once that is taller than it. Measured from the top, so a line a
-    // narrow screen wraps onto two never shows a line early. Each stop holds until the next (`steps(1, end)`).
-    const total = 1 + lines.length;
-    const shownAt = (p: number) => (p >= prompt - 1e-5 ? 1 : 0) + lines.filter((line) => p >= line.at - 1e-5).length;
-    rules.push(
-      keyframes(
-        `st-print-${owner}`,
-        [prompt - 0.0005, prompt, ...lines.map((line) => line.at)],
-        (p) => {
-          const shown = shownAt(p);
-          if (shown >= total) return { 'clip-path': 'inset(0 0 0% 0)', transform: 'translateY(min(0px, calc(var(--rows) - 100%)))' };
-          return {
-            'clip-path': `inset(0 0 calc(100% - ${shown} * 1.5em) 0)`,
-            transform: `translateY(min(0px, calc(var(--rows) - ${shown} * 1.5em)))`,
-          };
-        },
-        () => 'steps(1, end)',
-      ),
-    );
-    // Each share bar fills once its row has printed.
-    let at = 0;
-    for (const block of own) {
-      at += block.command.split('\n').length;
-      block.lines.forEach((runs, j) => {
-        const line = lines[at + j - 1];
-        if (line === undefined || !runs.some(([text, style]) => style.includes('a') && /^█+$/.test(text))) return;
-        const fill: Range = [line.at + 0.002, line.at + 0.012];
-        rules.push(keyframes(`st-bar-${block.id}-${j}`, through(fill, 2), (p) => ({ 'clip-path': `inset(0 calc(${n(1 - progress(p, fill))} * 100%) 0 0)` })));
-      });
-      at += block.lines.length;
-    }
+    printed(owner, blocks, '');
+    if (narrow !== undefined) printed(owner, narrow, NARROW_PREFIX);
   }
 
   // What never leaves: on the screen in its chapter, a line at a time, and still there as the lid closes over it.
@@ -291,20 +333,23 @@ export function motionOf(blocks: readonly TerminalBlock[], receiptLines: number)
 
   // The receipt: hidden in the laptop until it prints, then out of its side and onto the desk; forward in front of
   // the laptop, upright and nearer; and back. The poses are custom properties of the desk, so a phone, which has no
-  // room for it on the desk, keeps it in the laptop until it comes forward.
+  // room for it on the desk, keeps it in the laptop until it comes forward. While it prints, what of it is still
+  // inside the laptop is cut away at the laptop's side (`--receipt-from-x` is the slot's own width and a gap to the
+  // left, and the slot rests 0.7 of a gap right of the laptop): it never lies over the screen while text is on it.
   const [r0] = within('bill', BEATS.receipt);
-  const poseStops = [r0 - 0.001, ...through(within('bill', BEATS.receipt), 10), ...through(within('sources', BEATS.forward), 10), ...through(within('unpriced', BEATS.back), 10)];
+  const poseStops = [r0 - 0.001, ...through(within('bill', BEATS.receipt), 10), ...through(within('sources', BEATS.forward), 10), ...through(within('sources', BEATS.back), 10)];
   rules.push(
     keyframes('st-receipt', poseStops, (p) => {
       const { out, forward } = receiptPose(p);
       const x = `calc(${n(1 - out)} * var(--receipt-from-x) + ${n(forward)} * var(--receipt-fwd-x))`;
       const y = `calc(${n(1 - out)} * var(--receipt-from-y) + ${n(forward)} * var(--receipt-fwd-y))`;
       const shown = p >= r0 ? `calc(${n(1 - forward)} * var(--receipt-rest) + ${n(forward)})` : '0';
-      return { transform: `translate(${x}, ${y})`, opacity: shown };
+      const inside = `max(-24px, calc(${n(1 - out)} * (100% + var(--gap)) - 0.7 * var(--gap)))`;
+      return { transform: `translate(${x}, ${y})`, opacity: shown, 'clip-path': `inset(-80px -400% -80px ${inside})` };
     }),
   );
   rules.push(
-    keyframes('st-receipt-face', [...through(within('sources', BEATS.forward), 10), ...through(within('unpriced', BEATS.back), 10)], (p) => {
+    keyframes('st-receipt-face', [...through(within('sources', BEATS.forward), 10), ...through(within('sources', BEATS.back), 10)], (p) => {
       const { forward } = receiptPose(p);
       const back = 1 - forward;
       return {
@@ -312,17 +357,17 @@ export function motionOf(blocks: readonly TerminalBlock[], receiptLines: number)
       };
     }),
   );
-  // A leader rule from each line to the page its rate was read from and the date, drawn one after another, and gone
-  // as the receipt goes back.
+  // A note from each line, with a leader rule, of the page its rate was read from and the date: each shown whole,
+  // one after another, and gone as the receipt goes back.
   const notes = within('sources', BEATS.notes);
-  const gone = within('unpriced', [0, BEATS.back[0] + 0.04]);
+  const gone = within('sources', [BEATS.back[0] - 0.06, BEATS.back[0]]);
   for (let k = 0; k < receiptLines; k += 1) {
     const draw = staggered(notes, k, receiptLines, NOTE_DRAW);
     rules.push(
-      keyframes(`st-note-${k}`, [...through(draw, 6), ...through(gone, 2)], (p) => ({
-        'clip-path': `inset(0 calc(${n(1 - smooth(progress(p, draw)))} * 100%) 0 0)`,
-        opacity: n(1 - progress(p, gone)),
-      })),
+      keyframes(`st-note-${k}`, [...through(draw, 6), ...through(gone, 2)], (p) => {
+        const e = smooth(progress(p, draw));
+        return { transform: `translateX(${n(-8 * (1 - e))}px)`, opacity: n(e * (1 - progress(p, gone))) };
+      }),
     );
   }
 

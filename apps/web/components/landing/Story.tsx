@@ -4,10 +4,20 @@ import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { type CSSProperties, useEffect, useRef, useState } from 'react';
 
 import { DESK_COMMANDS, DESK_COMMAND_NAMES, type DeskCommand, ILLUSTRATIVE_BILL, type LandingCopy, MORE_LINKS } from '../../lib/landing-copy';
-import { type BlockOwner, RECEIPT, TERMINAL, TERMINAL_COLUMNS, type TerminalBlock, type TerminalRun, UNPRICED } from '../../lib/landing-terminal';
+import {
+  type BlockOwner,
+  RECEIPT,
+  TERMINAL,
+  TERMINAL_COLUMNS,
+  TERMINAL_NARROW,
+  TERMINAL_NARROW_COLUMNS,
+  type TerminalBlock,
+  type TerminalRun,
+  UNPRICED,
+} from '../../lib/landing-terminal';
 import { COMMAND } from '../../lib/site';
 import type { SiteCopy } from '../../lib/site-copy';
-import { coverOf, motionOf } from '../../lib/story-motion';
+import { NARROW_PREFIX, coverOf, motionOf } from '../../lib/story-motion';
 import { CHAPTERS, type ChapterId, LEAD, type ObjectId, type ScreenId, STORY_HEIGHT } from '../../lib/story-timeline';
 import { CommandLine } from '../site/CommandLine';
 import { GitHubButton } from '../site/GitHub';
@@ -71,6 +81,10 @@ import { DashboardAction } from '../site/SiteHeader';
  *
  * `lib/landing-terminal.ts`, written by `scripts/draw-landing-terminal.mjs`
  * from what the built CLI prints, and the receipt from the receipt it writes.
+ * Each output is there twice, as a pipe gets it and as a 60-column window
+ * does (`TERMINAL_NARROW`); the stylesheet shows the narrow one on a screen
+ * too narrow for 80 columns at a size that can be read, and the other one is
+ * not displayed, so it is neither drawn nor read out.
  * The text is in the DOM once and does not change as it "types": a clip or an
  * opacity shows it, so it can be selected, and a screen reader reads each line
  * once.
@@ -79,7 +93,7 @@ import { DashboardAction } from '../site/SiteHeader';
 type Vars = CSSProperties & Record<`--${string}`, string | number>;
 
 /** The keyframes, written once per page load from the timeline and the transcript, and the stretch each runs over. */
-const MOTION = motionOf(TERMINAL, RECEIPT.lines.length);
+const MOTION = motionOf(TERMINAL, RECEIPT.lines.length, TERMINAL_NARROW);
 
 /**
  * An element's own keyframes, by name, and the stretch of the story they run
@@ -98,7 +112,10 @@ const moves = (name: string): Vars => {
 
 /** Every owner of output on the screen, in the order the story shows them: the objects' commands, then the example. */
 const OWNERS: readonly BlockOwner[] = [...DESK_COMMANDS, 'unpriced'];
-const BLOCKS_OF = Object.fromEntries(OWNERS.map((id) => [id, TERMINAL.filter((block) => block.cap === id)])) as Record<BlockOwner, TerminalBlock[]>;
+const blocksOf = (source: readonly TerminalBlock[]) =>
+  Object.fromEntries(OWNERS.map((id) => [id, source.filter((block) => block.cap === id)])) as Record<BlockOwner, TerminalBlock[]>;
+const BLOCKS_OF = blocksOf(TERMINAL);
+const NARROW_OF = blocksOf(TERMINAL_NARROW);
 
 /** The longest a press's output takes to appear, a line at a time, and the most each line waits. */
 const TYPE_MS = 700;
@@ -122,7 +139,10 @@ function useStoryProgress(ref: React.RefObject<HTMLElement | null>) {
     root.dataset.story = 'script';
     // The animations of the elements that move, found once: each is a second
     // long and paused, and the story's position is its current time.
-    const animations = [...element.querySelectorAll<HTMLElement>('[data-mv]')].flatMap((target) => target.getAnimations());
+    // A screen that changes width can swap the wide transcript for the narrow one, whose animations only exist once
+    // it is displayed: so they are found again on a resize.
+    const collect = () => [...element.querySelectorAll<HTMLElement>('[data-mv]')].flatMap((target) => target.getAnimations());
+    let animations = collect();
     let frame = 0;
     let listening = false;
     const write = () => {
@@ -136,12 +156,16 @@ function useStoryProgress(ref: React.RefObject<HTMLElement | null>) {
     const request = () => {
       if (frame === 0) frame = requestAnimationFrame(write);
     };
+    const resized = () => {
+      animations = collect();
+      request();
+    };
     const listen = (on: boolean) => {
       if (on === listening) return;
       listening = on;
       const method = on ? 'addEventListener' : 'removeEventListener';
       window[method]('scroll', request, { passive: true } as AddEventListenerOptions);
-      window[method]('resize', request, { passive: true } as AddEventListenerOptions);
+      window[method]('resize', resized, { passive: true } as AddEventListenerOptions);
     };
     // On screen from half a window before the section, so the arrival starts as the hero scrolls out.
     const observer = new IntersectionObserver(
@@ -228,14 +252,23 @@ function Runs({ runs, bar }: { runs: readonly TerminalRun[]; bar: string }) {
   );
 }
 
-/** One owner's output: each command it runs, its prompt, and the lines it printed. Its first command is typed; the rest prints a line at a time. */
-function Transcript({ owner }: { owner: BlockOwner }) {
-  const blocks = BLOCKS_OF[owner];
+/**
+ * One owner's output: each command it runs, its prompt, and the lines it
+ * printed. Its first command is typed; the rest prints a line at a time.
+ * `narrow` is the same commands as a 60-column window shows them.
+ */
+function Transcript({ owner, narrow = false }: { owner: BlockOwner; narrow?: boolean }) {
+  const blocks = (narrow ? NARROW_OF : BLOCKS_OF)[owner];
+  const prefix = narrow ? NARROW_PREFIX : '';
   const count = blocks.reduce((sum, block) => sum + block.command.split('\n').length + block.lines.length, 0);
-  const style: Vars = { '--step': `${Math.min(LINE_MS, TYPE_MS / Math.max(1, count))}ms`, ...moves(`st-print-${owner}`) };
+  const style: Vars = {
+    '--step': `${Math.min(LINE_MS, TYPE_MS / Math.max(1, count))}ms`,
+    ...(narrow ? { '--cols': TERMINAL_NARROW_COLUMNS } : {}),
+    ...moves(`st-print-${prefix}${owner}`),
+  };
   let at = 0;
   return (
-    <pre className="term" data-mv="" style={style}>
+    <pre className={narrow ? 'term term-narrow' : 'term'} data-mv="" style={style}>
       {blocks.map((block, b) => [
         ...block.command.split('\n').map((line, j) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: a command's lines are a constant written by a script: they never move, and a line has no identity of its own but its place
@@ -260,7 +293,7 @@ function Transcript({ owner }: { owner: BlockOwner }) {
         ...block.lines.map((runs, j) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: the transcript is a constant written by a script: its runs and lines never move, and an empty line or a repeated run has no identity of its own but its place
           <span key={`${block.id}-${j}`} className={isRuled(runs) ? 'tl tl-rule' : 'tl'} style={{ '--i': at++ } as Vars}>
-            <Runs runs={runs} bar={`st-bar-${block.id}-${j}`} />
+            <Runs runs={runs} bar={`st-bar-${prefix}${block.id}-${j}`} />
           </span>
         )),
       ])}
@@ -325,6 +358,7 @@ function Laptop({ t, screen, pressed, run, mounted }: { t: LandingCopy; screen: 
                 >
                   {owner === 'unpriced' && <p className="screen-tag">{t.desk.example}</p>}
                   <Transcript owner={owner} />
+                  <Transcript owner={owner} narrow />
                 </div>
               ))}
             </div>
@@ -478,16 +512,31 @@ function Slot({ id, children, labelledBy, ...rest }: { id: ChapterId; children: 
   );
 }
 
-/** An object's chapter: its command, a title, what it does in a sentence, and what it does not do. */
-function Plate({ t, id, link, extra }: { t: LandingCopy; id: DeskCommand; link?: { href: string; label: string }; extra?: React.ReactNode }) {
+/**
+ * An object's words: a title, what it does in a sentence, the command at its
+ * prompt, and what it does not do. In its chapter the title is the heading
+ * its output on the screen is labelled by; on the press card it is a copy.
+ */
+function PlateWords({
+  t,
+  id,
+  headingId,
+  link,
+  extra,
+}: { t: LandingCopy; id: DeskCommand; headingId?: string; link?: { href: string; label: string }; extra?: React.ReactNode }) {
   const cap = t.desk.caps[id];
   return (
-    <Slot id={id} labelledBy={`desk-plate-${id}`}>
-      <p className="plate-eyebrow">{DESK_COMMAND_NAMES[id]}</p>
-      <h3 id={`desk-plate-${id}`} className="plate-title">
+    <>
+      <h3 id={headingId} className="plate-title">
         {cap.title}
       </h3>
       <p className="plate-body">{cap.body}</p>
+      <p className="plate-run">
+        <span aria-hidden="true" className="plate-prompt">
+          ${' '}
+        </span>
+        <code>{DESK_COMMAND_NAMES[id]}</code>
+      </p>
       <p className="plate-not">{t.desk.notLabel}</p>
       <ul className="plate-list">
         {cap.not.map((item) => (
@@ -501,7 +550,47 @@ function Plate({ t, id, link, extra }: { t: LandingCopy; id: DeskCommand; link?:
           <ArrowRight className="size-4" aria-hidden="true" />
         </a>
       )}
+    </>
+  );
+}
+
+/** What never leaves the machine, in words: the lid's, before it closes over it. */
+function NeverWords({ t, headingId }: { t: LandingCopy; headingId?: string }) {
+  return (
+    <>
+      <h3 id={headingId} className="plate-title">
+        {t.neverTitle}
+      </h3>
+      <p className="plate-body">
+        <strong className="plate-lead">{t.reasons[3][0]}</strong> {t.reasons[3][1]}
+      </p>
+      <p className="plate-body">{t.neverLede}</p>
+    </>
+  );
+}
+
+/** An object's chapter: its words in its slot. */
+function Plate({ t, id, link, extra }: { t: LandingCopy; id: DeskCommand; link?: { href: string; label: string }; extra?: React.ReactNode }) {
+  return (
+    <Slot id={id} labelledBy={`desk-plate-${id}`}>
+      <PlateWords t={t} id={id} headingId={`desk-plate-${id}`} link={link} extra={extra} />
     </Slot>
+  );
+}
+
+/**
+ * The card a press puts where the chapter's card was: the pressed object's
+ * words, so that what the screen shows and the words beside it (under it, on
+ * a phone) are about the same thing. A copy for the eye: hidden from
+ * assistive technology, which reads the pressed output from the screen's live
+ * region, labelled by the object's chapter heading, and with no control of
+ * its own, so nothing is reached twice. The lid's card is what never leaves.
+ */
+function PressCard({ t, id }: { t: LandingCopy; id: ObjectId }) {
+  return (
+    <div aria-hidden="true" className="press-card" data-for={id}>
+      {id === 'lid' ? <NeverWords t={t} /> : <PlateWords t={t} id={id} />}
+    </div>
   );
 }
 
@@ -529,6 +618,10 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
   const object: ObjectId | null = pressed ?? (staged ? current.object : 'bill');
   const screen: ScreenId = pressed !== null ? (pressed === 'lid' ? 'never' : pressed) : staged ? current.screen : 'bill';
   const closed = pressed !== null ? pressed === 'lid' : staged && chapter === 'close';
+  // A press of an object whose chapter is not the one current puts that object's card where the chapter's was: the
+  // lid's is what never leaves, which its own chapter and the one before it already show.
+  const cardOf = (id: ObjectId): ChapterId => (id === 'lid' ? 'never' : id);
+  const swapped = staged && pressed !== null && cardOf(pressed) !== chapter && !(pressed === 'lid' && chapter === 'close');
 
   const press = (id: ObjectId) => {
     pressedIn.current = chapter;
@@ -564,6 +657,7 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
       style={{ '--story-h': `${STORY_HEIGHT}svh` } as Vars}
       {...(pressed !== null ? { 'data-pressed': pressed } : {})}
       {...(closed ? { 'data-closed': '' } : {})}
+      {...(swapped ? { 'data-swapped': '' } : {})}
     >
       {/* biome-ignore lint/security/noDangerouslySetInnerHtml: keyframes written in this repository from the timeline and the CLI's transcript; nothing a visitor sends reaches them, and style-src allows inline styles */}
       <style dangerouslySetInnerHTML={{ __html: MOTION.css }} />
@@ -573,11 +667,6 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
             <div className="desk-top" />
             <div className="desk-edge" />
           </div>
-
-          {/* The bill's total, set huge on the far plane behind the laptop, which stands in front of it. The receipt and the screen say it in words. */}
-          <p aria-hidden="true" className="desk-figure" data-mv="" data-arrive="" style={moves('st-figure')}>
-            {RECEIPT.total}
-          </p>
 
           <div className="desk-scene">
             <div className="desk-laptop" data-mv="" data-arrive="" style={moves('st-laptop')}>
@@ -612,11 +701,15 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
             </div>
           </div>
         </div>
+        {swapped && pressed !== null && (
+          <div className="press-place">
+            <PressCard key={pressed} t={t} id={pressed} />
+          </div>
+        )}
       </div>
 
       <div className="chapters">
         <Slot id="arrival" labelledBy="desk-title">
-          <p className="plate-eyebrow">{t.desk.kicker}</p>
           <h2 id="desk-title" className="chapter-title">
             {t.desk.title}
           </h2>
@@ -651,7 +744,6 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
           <p className="plate-body">{reasonBilled[1]}</p>
         </Slot>
         <Slot id="unpriced" labelledBy="story-unpriced">
-          <p className="plate-eyebrow">{t.reasonsTitle}</p>
           <h3 id="story-unpriced" className="plate-title">
             {t.reasons[2][0]}
           </h3>
@@ -659,12 +751,7 @@ export function Story({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
           <p className="plate-body">{t.desk.unpricedNote(UNPRICED.source, UNPRICED.models.join(', '), UNPRICED.calls)}</p>
         </Slot>
         <Slot id="never" labelledBy="story-never">
-          <p className="plate-eyebrow">{t.neverTitle}</p>
-          <h3 id="story-never" className="plate-title">
-            {t.reasons[3][0]}
-          </h3>
-          <p className="plate-body">{t.reasons[3][1]}</p>
-          <p className="plate-body">{t.neverLede}</p>
+          <NeverWords t={t} headingId="story-never" />
         </Slot>
         <Slot id="close" labelledBy="close-title" data-landing-close="">
           <h2 id="close-title" className="chapter-title chapter-close">

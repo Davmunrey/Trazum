@@ -56,6 +56,17 @@
  * core's `PROVIDER_SOURCES` for the line's provider, beside the date the
  * receipt says that rate was read.
  *
+ * **The narrow screen.** A phone's screen is too narrow for 80 columns at a
+ * size anybody can read, and a table wrapped onto two lines is no longer a
+ * table. So every command above runs a second time with `COLUMNS=60`, the
+ * narrowest window the CLI draws for (`MIN_COLUMNS` in its `style.ts`): its
+ * tables narrow their bars and its prose reflows to 60 columns, as they would
+ * in a terminal that wide. The one table the CLI does not narrow, `models`,
+ * is cut after its `output` column in that transcript, and a dimmed line this
+ * script writes says so. The page shows the narrow transcript on a screen
+ * too narrow for the wide one and the wide one everywhere else; both are the
+ * CLI's, and both are compared by the web suite.
+ *
  * The MCP server's `spend_guard` answer is not on the screen: the repository
  * has no example call of it to run, and an answer written for the page would
  * be the invented output this script exists to prevent.
@@ -110,14 +121,65 @@ function styleOf({ bold, dim, colour, mark }) {
 
 const toLines = (ansi) => styledLines(ansi).map((runs) => runs.map((run) => [run.text, styleOf(run)]));
 
-/** One run of the built CLI, as a terminal would see it: colour on, English, no host read from the environment. */
-function run(args, { cwd = ROOT, input, env: extra = {}, node = [] } = {}) {
+/**
+ * A line this script writes, dimmed, under two spaces, as the CLI indents its
+ * notes; in a window `columns` wide it is wrapped at a space, as the CLI wraps
+ * its prose, each line under the same two spaces.
+ */
+function said(text, columns) {
+  const lines = [];
+  for (const word of text.split(' ')) {
+    const last = lines.at(-1);
+    if (last !== undefined && (columns === undefined || 2 + last.length + 1 + word.length <= columns)) lines[lines.length - 1] = `${last} ${word}`;
+    else lines.push(word);
+  }
+  return lines.map((line) => [['  ', ''], [line, 'd']]);
+}
+
+/** A line's runs cut to its first `width` characters, without the spaces the cut leaves at its end. */
+function cutRuns(runs, width) {
+  const out = [];
+  let left = width;
+  for (const [text, style] of runs) {
+    if (left <= 0) break;
+    out.push([text.slice(0, left), style]);
+    left -= text.length;
+  }
+  while (out.length > 0) {
+    const [text, style] = out.at(-1);
+    const trimmed = text.replace(/\s+$/, '');
+    if (trimmed !== '') {
+      out[out.length - 1] = [trimmed, style];
+      break;
+    }
+    out.pop();
+  }
+  return out;
+}
+
+/** The narrowest window the CLI draws for (`MIN_COLUMNS`): the phone's transcript is the CLI's at this width. */
+const NARROW = 60;
+
+/**
+ * One run of the built CLI, as a terminal would see it: colour on, English, no
+ * host read from the environment, and a window `columns` wide when that is
+ * given (a pipe otherwise, as the README's pictures are drawn).
+ */
+function run(args, { cwd = ROOT, input, env: extra = {}, node = [], columns } = {}) {
   const env = { ...process.env, FORCE_COLOR: '1', TRAZUM_LOCALE: 'en', ...extra };
   delete env.NO_COLOR;
+  delete env.COLUMNS;
+  if (columns !== undefined) env.COLUMNS = String(columns);
   for (const name of HOST_ENV) env[name] = '';
   const result = spawnSync(process.execPath, [...node, CLI, ...args], { cwd, env, input, encoding: 'utf8' });
   if (result.error) throw result.error;
   return result;
+}
+
+/** What the built CLI writes to standard output for `args`, as `capture` does, in a window `columns` wide when that is given. */
+function captureAt(args, columns) {
+  if (columns === undefined) return capture(args);
+  return run(args, { columns }).stdout;
 }
 
 /** The exit status `check` returns, which `echo $?` prints. */
@@ -129,10 +191,10 @@ function exitStatus(args) {
 }
 
 /** The optimize report without the line naming the file `-o` wrote. */
-function optimizeReport(prompt) {
+function optimizeReport(prompt, columns) {
   const scratch = mkdtempSync(join(tmpdir(), 'trazum-landing-'));
   try {
-    const ansi = capture(['optimize', prompt, '-o', join(scratch, 'shorter.txt'), '--locale', 'en']);
+    const ansi = captureAt(['optimize', prompt, '-o', join(scratch, 'shorter.txt'), '--locale', 'en'], columns);
     const lines = ansi.split('\n');
     const written = lines.findLastIndex((line) => plain(line).includes(scratch));
     if (written === -1) throw new Error('optimize no longer says where it wrote the prompt');
@@ -148,7 +210,7 @@ function optimizeReport(prompt) {
  * writes only one of the two), and the status after each. A fresh cache
  * directory, so the warning is the first this session was given.
  */
-function sessionGuard() {
+function sessionGuard(columns) {
   const cache = mkdtempSync(join(tmpdir(), 'trazum-landing-guard-'));
   try {
     const runs = [
@@ -157,7 +219,7 @@ function sessionGuard() {
     ];
     return runs.flatMap(([id, figures, expected]) => {
       const args = ['session-guard', 'check', ...figures, '--on-cannot-tell', 'fail-open'];
-      const result = run(args, { cwd: join(ROOT, WEBAPP), input: `${HOOK_INPUT}\n`, env: { TRAZUM_STATUSLINE_CACHE: cache } });
+      const result = run(args, { cwd: join(ROOT, WEBAPP), input: `${HOOK_INPUT}\n`, env: { TRAZUM_STATUSLINE_CACHE: cache }, columns });
       if (result.status !== expected) throw new Error(`session-guard exited ${result.status} at ${figures.join(' ')}: those figures no longer ${id} on the example transcript`);
       return [
         {
@@ -229,7 +291,7 @@ async function receipt() {
  * clock is a module loaded before the CLI that makes `new Date()` and
  * `Date.now()` that day at noon UTC; nothing else about the run changes.
  */
-async function models(priced) {
+async function models(priced, columns) {
   const { PROVIDER_REVIEWED } = await import(pathToFileURL(CORE).href);
   const today = Object.values(PROVIDER_REVIEWED).sort().at(-1);
   const scratch = mkdtempSync(join(tmpdir(), 'trazum-landing-clock-'));
@@ -245,7 +307,7 @@ globalThis.Date = class extends Real {
 };
 `,
     );
-    const result = run(['models', '--locale', 'en'], { node: ['--import', pathToFileURL(clock).href] });
+    const result = run(['models', '--locale', 'en'], { node: ['--import', pathToFileURL(clock).href], columns });
     if (result.status !== 0) throw new Error(`models exited ${result.status}`);
     const lines = toLines(result.stdout);
     const text = lines.map((runs) => runs.map(([t]) => t).join(''));
@@ -255,15 +317,23 @@ globalThis.Date = class extends Real {
     if (end === -1) end = text.length;
     const rows = lines.slice(head + 1, end).filter((_, index) => priced.includes(text[head + 1 + index].trim().split(/\s+/)[0]));
     if (rows.length !== new Set(priced).size) throw new Error('the table does not have a row for every model the receipt priced');
+    // The table is as wide as its columns whatever the window: in a narrow one it is cut after `output`, and says so.
+    const output = text[head].indexOf('output');
+    const cut = columns !== undefined && widthOf(lines[head]) > columns ? output + 'output'.length : null;
+    if (cut !== null && output === -1) throw new Error('models no longer has an output column to cut the narrow table after');
+    const fit = (runs) => (cut === null ? runs : cutRuns(runs, cut));
+    const left = cut === null ? [] : text[head].slice(cut).trim().split(/\s{2,}/);
     return {
       id: 'models',
       cap: 'models',
       command: `${NPX} models`,
       lines: [
-        ...lines.slice(0, head + 1),
-        ...rows,
-        [['  ', ''], [`… ${rows.length} of ${end - head - 1} rows shown: the models the receipt priced.`, 'd']],
-        [['  ', ''], [`Run with the clock set to ${today}, the day the newest rates were read.`, 'd']],
+        ...lines.slice(0, head),
+        fit(lines[head]),
+        ...rows.map(fit),
+        ...said(`… ${rows.length} of ${end - head - 1} rows shown: the models the receipt priced.`, columns),
+        ...(cut === null ? [] : said(`Cut after output to fit ${columns} columns: ${left.join(', ')} not shown.`, columns)),
+        ...said(`Run with the clock set to ${today}, the day the newest rates were read.`, columns),
       ],
     };
   } finally {
@@ -271,44 +341,55 @@ globalThis.Date = class extends Real {
   }
 }
 
-/** The transcript: one block per command, each with the object that shows it, and the paper receipt. */
-export async function transcript() {
+/**
+ * The transcript: one block per command, each with the object that shows it,
+ * in a window `columns` wide when that is given (the narrow screen's), as a
+ * pipe otherwise.
+ */
+async function blocksAt(paper, columns) {
   const check = ['check', 'examples/', '--locale', 'en'];
-  const paper = await receipt();
-  const blocks = [
+  return [
     {
       id: 'bill',
       cap: 'bill',
       command: `${NPX} bill examples/claude-projects`,
-      lines: toLines(capture(['bill', 'examples/claude-projects', '--table', '--locale', 'en'])),
+      lines: toLines(captureAt(['bill', 'examples/claude-projects', '--table', '--locale', 'en'], columns)),
     },
-    { id: 'check', cap: 'check', command: `${NPX} check examples/`, lines: toLines(capture(check)) },
+    { id: 'check', cap: 'check', command: `${NPX} check examples/`, lines: toLines(captureAt(check, columns)) },
     { id: 'status', cap: 'check', command: 'echo $?', lines: [[[String(exitStatus(check)), '']]] },
     { id: 'guard-cd', cap: 'guard', command: `cd ${WEBAPP}`, lines: [] },
-    ...sessionGuard(),
+    ...sessionGuard(columns),
     {
       id: 'clock',
       cap: 'clock',
       command: `${NPX} bill examples/claude-projects${NEXT}--agent claude-code --timezone Europe/Madrid --by week`,
       lines: toLines(
-        capture(['bill', 'examples/claude-projects', '--agent', 'claude-code', '--timezone', 'Europe/Madrid', '--by', 'week', '--table', '--locale', 'en']),
+        captureAt(['bill', 'examples/claude-projects', '--agent', 'claude-code', '--timezone', 'Europe/Madrid', '--by', 'week', '--table', '--locale', 'en'], columns),
       ),
     },
     {
       id: 'optimize',
       cap: 'optimize',
       command: `${NPX} optimize examples/support-prompt.txt`,
-      lines: toLines(optimizeReport('examples/support-prompt.txt')),
+      lines: toLines(optimizeReport('examples/support-prompt.txt', columns)),
     },
-    await models(paper.lines.map((line) => line.model)),
+    await models(
+      paper.lines.map((line) => line.model),
+      columns,
+    ),
     {
       id: 'unpriced',
       cap: 'unpriced',
       command: `${NPX} bill ${UNPRICED_LOG}`,
-      lines: toLines(capture(['bill', UNPRICED_LOG, '--table', '--locale', 'en'])),
+      lines: toLines(captureAt(['bill', UNPRICED_LOG, '--table', '--locale', 'en'], columns)),
     },
   ];
-  return { receipt: paper, unpriced: unpriced(), blocks };
+}
+
+/** The transcript as a pipe sees it and as a 60-column window does, and the paper receipt. */
+export async function transcript() {
+  const paper = await receipt();
+  return { receipt: paper, unpriced: unpriced(), blocks: await blocksAt(paper), narrow: await blocksAt(paper, NARROW) };
 }
 
 const widthOf = (runs) => runs.reduce((n, [text]) => n + text.length, 0);
@@ -322,9 +403,10 @@ const isRuled = (runs) => runs.length > 0 && /^─+$/.test(runs.at(-1)[0]);
  * and so is the calendar's line naming every provider; the calendar's table
  * is not wrapped.
  */
-function columnsOf(blocks) {
+function columnsOf(blocks, { wrapped = [] } = {}) {
   const measured = blocks.flatMap((block) => {
     const commands = block.command.split('\n').map((line, index) => line.length + (index === 0 ? 2 : 0));
+    if (wrapped.includes(block.cap)) return [];
     if (block.cap === 'guard') return commands;
     const from = block.id === 'models' ? block.lines.findIndex((runs) => /^\s+model\s/.test(runs.map(([t]) => t).join(''))) : 0;
     return [...commands, ...block.lines.slice(from).filter((runs) => !isRuled(runs)).map(widthOf)];
@@ -332,8 +414,18 @@ function columnsOf(blocks) {
   return Math.max(...measured);
 }
 
+/** One block as the generated source writes it. */
+const blockSource = (block) => `  {
+    id: ${JSON.stringify(block.id)},
+    cap: ${JSON.stringify(block.cap)},
+    command: ${JSON.stringify(block.command)},
+    lines: [${block.lines.length === 0 ? '' : `\n${block.lines.map((runs) => `      ${JSON.stringify(runs)},`).join('\n')}\n    `}],
+  },`;
+
 export async function render(data) {
-  const { receipt: paper, unpriced: gap, blocks } = data ?? (await transcript());
+  const { receipt: paper, unpriced: gap, blocks, narrow } = data ?? (await transcript());
+  const narrowColumns = columnsOf(narrow, { wrapped: ['guard'] });
+  if (narrowColumns > NARROW) throw new Error(`the narrow transcript has a line ${narrowColumns} columns wide, more than the ${NARROW} it was drawn for`);
   return `/**
  * Written by scripts/draw-landing-terminal.mjs from what the built CLI prints.
  * Do not edit: run \`node scripts/draw-landing-terminal.mjs\`. The web suite
@@ -362,16 +454,17 @@ export interface TerminalBlock {
 export const TERMINAL_COLUMNS = ${columnsOf(blocks)};
 
 export const TERMINAL: readonly TerminalBlock[] = [
-${blocks
-  .map(
-    (block) => `  {
-    id: ${JSON.stringify(block.id)},
-    cap: ${JSON.stringify(block.cap)},
-    command: ${JSON.stringify(block.command)},
-    lines: [${block.lines.length === 0 ? '' : `\n${block.lines.map((runs) => `      ${JSON.stringify(runs)},`).join('\n')}\n    `}],
-  },`,
-  )
-  .join('\n')}
+${blocks.map(blockSource).join('\n')}
+];
+
+/**
+ * The narrow screen's width in characters: the same commands run again in a window ${NARROW} columns wide, the
+ * narrowest the CLI draws for. The breaker's echo line and its messages are wider, and wrap as that terminal wraps them.
+ */
+export const TERMINAL_NARROW_COLUMNS = ${narrowColumns};
+
+export const TERMINAL_NARROW: readonly TerminalBlock[] = [
+${narrow.map(blockSource).join('\n')}
 ];
 
 /**

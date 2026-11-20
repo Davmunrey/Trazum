@@ -56,7 +56,7 @@ before(async () => {
 });
 
 /** The keyframes the page writes. */
-const written = () => motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length);
+const written = () => motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length, terminal.TERMINAL_NARROW);
 
 /**
  * One `@keyframes` rule's stops, as [fraction of the story, body]: each rule
@@ -66,7 +66,7 @@ const written = () => motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lin
 function stopsOf(name) {
   const rule = written().match(new RegExp(`@keyframes ${name} \\{([\\s\\S]*?)\\n\\}`));
   assert.ok(rule, `no keyframes ${name}`);
-  const [lo, hi] = motion.motionOf(terminal.TERMINAL, terminal.RECEIPT.lines.length).spans.get(name);
+  const [lo, hi] = motion.motionOf(terminal.TERMINAL, terminal.RECEIPT.lines.length, terminal.TERMINAL_NARROW).spans.get(name);
   return rule[1]
     .split('\n')
     .filter((line) => /^\s+[\d.]+% /.test(line))
@@ -135,6 +135,46 @@ describe('the laptop’s screen and the receipt are what the CLI prints', () => 
     for (const locale of locales.MARKETING_LOCALES) {
       assert.deepEqual(screenLines(await landingHtml(locale)), expected, `the screen (${locale}) is not the transcript`);
     }
+  });
+
+  it('the narrow screen’s transcript is the same commands in a 60-column window: every line the CLI’s, a table never wider', async () => {
+    const narrow = terminal.TERMINAL_NARROW;
+    // The same blocks, the same commands, in the same order: only the window differs.
+    assert.deepEqual(
+      narrow.map((b) => [b.id, b.cap, b.command]),
+      terminal.TERMINAL.map((b) => [b.id, b.cap, b.command]),
+      'the narrow screen runs other commands than the wide one',
+    );
+    assert.ok(terminal.TERMINAL_NARROW_COLUMNS <= 60 && terminal.TERMINAL_NARROW_COLUMNS < terminal.TERMINAL_COLUMNS);
+    // Every table row fits the narrow window: a row with a share bar, and the calendar's rows, which the script cuts.
+    const narrowBlock = (id) => narrow.find((candidate) => candidate.id === id);
+    for (const b of narrow) {
+      for (const runs of b.lines) {
+        const line = text(runs);
+        if (/[█░]/.test(line)) assert.ok(line.length <= terminal.TERMINAL_NARROW_COLUMNS, `${b.id}: a table row ${line.length} columns wide on the narrow screen`);
+      }
+    }
+    const models = narrowBlock('models').lines.map(text);
+    const head = models.findIndex((line) => /^\s+model\s/.test(line));
+    for (const line of models.slice(head)) assert.ok(line.length <= terminal.TERMINAL_NARROW_COLUMNS, `the calendar is ${line.length} columns wide on the narrow screen`);
+    assert.match(models.join(' ').replace(/\s+/g, ' '), /Cut after output to fit 60 columns: context, cache min\. not shown\./, 'the calendar does not say what the narrow screen cut');
+    // The figures are the wide screen's: the bill's total, the gate's verdict, the model kept out.
+    const flat = (b) => b.lines.map(text).join(' ').replace(/\s+/g, ' ');
+    assert.ok(flat(narrowBlock('bill')).includes('$12.70 across 126 priced call(s)'));
+    assert.equal(flat(narrowBlock('check')).includes('All 3 within budget.'), true);
+    assert.ok(flat(narrowBlock('unpriced')).includes(`Not in the total: ${terminal.UNPRICED.calls} call(s) to ${terminal.UNPRICED.models[0]}`));
+    // On the page: one narrow terminal per output, in the same order, every line the narrow transcript's.
+    const html = await landingHtml('en');
+    const pres = [...html.matchAll(/<pre class="term term-narrow"[^>]*>([\s\S]*?)<\/pre>/g)].map((match) => match[1]);
+    assert.equal(pres.length, landingCopy.DESK_COMMANDS.length + 1);
+    const lines = pres.flatMap((pre) => pre.split(/(?=<span class="tl[ "])/).filter((chunk) => chunk.startsWith('<span class="tl')).map(decode));
+    assert.deepEqual(
+      lines,
+      narrow.flatMap((b) => [...b.command.split('\n').map((line, index) => (index === 0 ? `$ ${line}` : line)), ...b.lines.map(text)]),
+    );
+    // The stylesheet shows one of the two: the narrow one only on a screen too narrow for the wide one.
+    const css = read('app/landing.css');
+    assert.match(css, /\.term-narrow \{\s*display: none;\s*\}\s*@container \(max-width: \d+px\) \{\s*\.term:not\(\.term-narrow\) \{\s*display: none;/);
   });
 
   it('runs the commands each object names, on files in this repository, in the order the objects lie', () => {
@@ -241,17 +281,14 @@ describe('the laptop’s screen and the receipt are what the CLI prints', () => 
     );
   });
 
-  it('the huge figure behind the laptop is the receipt’s total, the bill’s, and is hidden from assistive technology', async () => {
+  it('no ghost figure stands behind the stage: the total is said by the screen and the receipt, once each', async () => {
+    // A huge copy of the total behind the laptop read as a stray artefact, cut at the top of the window for the whole
+    // story, and as text of 1.1:1 contrast. The receipt and the bill say it.
     const html = await landingHtml('en');
-    const figures = [...html.matchAll(/<p aria-hidden="true" class="desk-figure"[^>]*>([^<]*)<\/p>/g)].map((match) => match[1]);
-    assert.deepEqual(figures, [terminal.RECEIPT.total], 'the figure behind the laptop is not the receipt’s total, or there is more than one');
-    const mark = block('bill').lines.flat().find(([, style]) => style.includes('m'));
-    assert.equal(figures[0], mark[0], 'the figure behind the laptop is not the bill’s total');
-    // Behind the laptop, the receipt and the plate: lower in the stacking order than each.
-    const css = read('app/landing.css');
-    const z = (selector) => Number(css.match(new RegExp(`:root\\[data-desk\\] ${selector.replace('.', '\\.')} \\{[^}]*z-index: (\\d+);`))[1]);
-    for (const nearer of ['.desk-scene', '.desk-objects']) assert.ok(z('.desk-figure') < z(nearer), `the figure is in front of ${nearer}`);
-    assert.ok(z('.desk-plane') < z('.desk-figure'), 'the figure is behind the desk');
+    assert.equal(/desk-figure/.test(html) || /desk-figure/.test(read('app/landing.css')), false, 'a figure behind the laptop');
+    // Nothing on the stage is the total alone and hidden from assistive technology: a picture of the figure.
+    const pictures = [...html.matchAll(/<(\w+) aria-hidden="true"[^>]*>([^<]*)<\/\1>/g)].filter((match) => match[2].includes(terminal.RECEIPT.total));
+    assert.deepEqual(pictures.map((match) => match[0]), [], 'a picture of the total on the stage');
   });
 
   it('carries no figure of its own: the desk writes no words and no number', () => {
@@ -305,6 +342,39 @@ describe('one laptop, and one object per capability', () => {
     }
     assert.match(html, /class="cap-out" data-cap="unpriced"[^>]*aria-labelledby="story-unpriced"/);
     assert.match(html, /<h3 id="story-unpriced" class="plate-title">/);
+  });
+
+  it('no small label stands alone above a heading, and the label that stays names a list', async () => {
+    // A tracked capital label as its own block over a heading says what the heading says, smaller. The command a
+    // chapter runs is at its prompt under the sentence instead; "what it does not do" stays, over the list it names.
+    for (const locale of locales.MARKETING_LOCALES) {
+      const html = await landingHtml(locale);
+      assert.equal(/plate-eyebrow/.test(html), false, `${locale}: a label over a heading`);
+      for (const match of html.matchAll(/<p class="plate-not">[^<]*<\/p>(<[a-z0-9]+)/g)) assert.equal(match[1], '<ul', `${locale}: the label is over ${match[1]}, not a list`);
+      for (const id of landingCopy.DESK_COMMANDS) {
+        const plate = html.slice(html.indexOf(`<h3 id="desk-plate-${id}"`));
+        assert.match(plate, new RegExp(`^<h3[^>]*>[^<]*</h3><p class="plate-body">[^<]*</p><p class="plate-run"><span aria-hidden="true" class="plate-prompt">\\$ </span><code>${landingCopy.DESK_COMMAND_NAMES[id]}</code></p>`), `${locale}: the ${id} chapter does not give its command at its prompt under its sentence`);
+      }
+    }
+  });
+
+  it('the receipt’s words are 11px or larger, and its torn edge is one tooth repeated, not a drawn outline', () => {
+    const css = read('app/landing.css');
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((match) => /\.receipt/.test(match[1]));
+    let sized = 0;
+    for (const [, selector, body] of rules) {
+      for (const [, value] of body.matchAll(/font-size: ([^;]+);/g)) {
+        sized += 1;
+        const px = value.match(/^([\d.]+)px$/);
+        const em = value.match(/^([\d.]+)em$/);
+        assert.ok((px && Number(px[1]) >= 11) || (em && Number(em[1]) >= 1), `${selector.trim()}: font-size ${value}, under 11px`);
+      }
+    }
+    assert.ok(sized >= 5, 'the receipt’s sizes are gone');
+    // Measured by a detector of generated design: a clip-path polygon of many points reads as an outline traced by
+    // hand. The tear is one triangle as a mask, repeated across the foot.
+    for (const [, points] of css.matchAll(/polygon\(([^;]*)\)/g)) assert.ok(points.split(',').length <= 6, `a polygon of ${points.split(',').length} points`);
+    assert.match(css, /mask-repeat: repeat-x;/);
   });
 
   it('the example’s output is labelled an example on the screen', async () => {
@@ -513,7 +583,7 @@ describe('the story never takes the scroll from the visitor', () => {
      */
     const css = read('app/landing.css');
     assert.equal(/var\(--p\)|@property/.test(css), false, 'the stylesheet changes with the scroll');
-    const written = motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length);
+    const written = motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length, terminal.TERMINAL_NARROW);
     const defined = new Set([...written.matchAll(/@keyframes ([\w-]+) \{/g)].map((match) => match[1]));
     const html = await landingHtml('en');
     const used = [...html.matchAll(/animation-name:([\w-]+)/g)].map((match) => match[1]);
@@ -527,13 +597,46 @@ describe('the story never takes the scroll from the visitor', () => {
   });
 
   it('only transform, opacity and clip-path change with the scroll', () => {
-    const written = motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length);
+    const written = motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length, terminal.TERMINAL_NARROW);
     const properties = new Set([...written.matchAll(/([a-z-]+): [^;]+;/g)].map((match) => match[1]));
     for (const property of properties) {
       assert.ok(['transform', 'opacity', 'clip-path', 'animation-timing-function'].includes(property), `${property} changes with the scroll`);
     }
     assert.ok(properties.has('transform') && properties.has('opacity') && properties.has('clip-path'));
     assert.equal(/--[a-z-]+:/.test(written.replace(/var\(--[a-z-]+\)/g, '')), false, 'a keyframe animates a custom property');
+  });
+});
+
+describe('the screen is never left blank, and the first command is typed as the laptop lands', () => {
+  const screens = () => [...new Set(terminal.TERMINAL.map((b) => b.cap)), 'never'];
+
+  it('the bill is typed as soon as the laptop has landed, not a stretch of scroll later', () => {
+    const landed = timeline.within('arrival', timeline.BEATS.land)[1];
+    const prompt = timeline.timeOutput('bill', terminal.TERMINAL).prompt;
+    // Measured on the page before: a blank screen for about a third of a window of scroll after the laptop settled.
+    const svh = (prompt - landed) * (timeline.STORY_HEIGHT - 100 + timeline.LEAD);
+    assert.ok(prompt > landed && svh <= 8, `the bill's prompt comes ${svh.toFixed(1)}svh of scroll after the laptop lands`);
+  });
+
+  it('from the bill’s prompt to the end, some output is always whole on the screen: each gives way to the next as it comes on', () => {
+    const start = timeline.timeOutput('bill', terminal.TERMINAL).prompt;
+    for (let step = 0; step <= 4000; step += 1) {
+      const p = start + ((1 - start) * step) / 4000;
+      const shown = screens().map((screen) => motion.onScreen(screen, p, terminal.TERMINAL));
+      assert.equal(Math.max(...shown), 1, `the screen has nothing whole on it at ${p.toFixed(4)}`);
+      // Two at once only while one gives way to the next.
+      assert.ok(shown.filter((value) => value > 0).length <= 2, `more than two outputs on the screen at ${p.toFixed(4)}`);
+    }
+    // And they cross only briefly: each transition is the crossfade and the new prompt's own fade, and no more.
+    for (const screen of screens()) {
+      let both = 0;
+      for (let step = 0; step <= 20000; step += 1) {
+        const p = step / 20000;
+        const others = screens().filter((other) => other !== screen && motion.onScreen(other, p, terminal.TERMINAL) > 0);
+        if (motion.onScreen(screen, p, terminal.TERMINAL) > 0 && others.length > 0) both += 1 / 20000;
+      }
+      assert.ok(both <= 2 * (timeline.CROSSFADE + 0.002), `${screen} shares the screen for ${both.toFixed(4)} of the story`);
+    }
   });
 });
 
@@ -588,12 +691,12 @@ describe('the lid, the depth and the order of the arrival', () => {
     // layout shift (0.036). The fallback is sized by Next's capsize metrics.
     const css = read('app/landing.css');
     assert.match(css, /@font-face \{\s*font-family: 'Trazum Grotesk Fallback';[^}]*size-adjust: 102\.09%;/);
-    assert.match(css, /#landing-title,\s*\.desk-figure,\s*\.chapter-title,\s*\.plate-title \{\s*font-family: 'Space Grotesk Variable', 'Trazum Grotesk Fallback', sans-serif;/);
+    assert.match(css, /#landing-title,\s*\.chapter-title,\s*\.plate-title \{\s*font-family: 'Space Grotesk Variable', 'Trazum Grotesk Fallback', sans-serif;/);
     assert.match(read('components/Landing.tsx'), /id="landing-title"/);
   });
 
   it('the bill is typed a character at a time and printed a line at a time', () => {
-    const written = motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length);
+    const written = motion.storyMotion(terminal.TERMINAL, terminal.RECEIPT.lines.length, terminal.TERMINAL_NARROW);
     const bill = block('bill');
     const typed = written.match(/@keyframes st-type-bill \{[\s\S]*?\n\}/)[0];
     assert.match(typed, new RegExp(`animation-timing-function: steps\\(${bill.command.length}, end\\)`));
@@ -635,13 +738,11 @@ describe('the lid, the depth and the order of the arrival', () => {
     for (let i = 1; i < arrivals.length; i += 1) assert.ok(arrivals[i][0] > arrivals[i - 1][0], 'two objects arrive together: the layers do not pass each other');
     assert.ok(arrivals.at(-1)[1] <= timeline.chapterWindow('arrival')[1] + 1e-9, 'an object is still arriving when the bill runs');
     assert.ok(BEATS.prompt[1] <= BEATS.type[0] && BEATS.type[1] <= BEATS.print[0] && BEATS.print[1] <= BEATS.receipt[0]);
-    // A chapter clears its screen and settles its object as it ends, after all it shows: at the line between two
-    // chapters the screen is blank and nothing is lifted, so a press let go there gives way to nothing old.
-    assert.ok(BEATS.receipt[1] <= BEATS.clear[0] && BEATS.lift[1] <= BEATS.settle[0] && BEATS.clear[1] === 1 && BEATS.settle[1] === 1);
+    // A chapter settles its object as it ends, after all it shows: at the line between two chapters nothing is lifted.
+    assert.ok(BEATS.receipt[1] <= 1 && BEATS.lift[1] <= BEATS.settle[0] && BEATS.settle[1] === 1);
     for (const chapter of timeline.CHAPTERS.slice(0, -1)) {
       const [, end] = timeline.chapterWindow(chapter.id);
       for (const object of motion.OBJECTS) assert.equal(motion.lifted(object, end), 0, `the ${object} is still lifted as the ${chapter.id} chapter ends`);
-      for (const owner of new Set(terminal.TERMINAL.map((b) => b.cap))) assert.equal(motion.onScreen(owner, end, terminal.TERMINAL), 0, `${owner} is still on the screen as the ${chapter.id} chapter ends`);
     }
     for (const owner of new Set(terminal.TERMINAL.map((b) => b.cap))) {
       const timed = timeline.timeOutput(owner, terminal.TERMINAL);

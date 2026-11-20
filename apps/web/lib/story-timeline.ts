@@ -58,7 +58,7 @@ export interface Chapter {
  * objects lie, and the lid last; the receipt's chapter is the bill's.
  */
 export const CHAPTERS = [
-  { id: 'arrival', object: null, screen: null, height: 100 },
+  { id: 'arrival', object: null, screen: null, height: 60 },
   { id: 'bill', object: 'bill', screen: 'bill', height: 140 },
   { id: 'check', object: 'check', screen: 'check', height: 100 },
   { id: 'guard', object: 'guard', screen: 'guard', height: 110 },
@@ -114,46 +114,52 @@ export function chapterAt(p: number): ChapterId {
 /**
  * Inside a chapter, as fractions of its window. The arrival's layers come in
  * over overlapping stretches, each at its own rate, so the desk, the laptop
- * and the objects move past each other; every other chapter first clears what
- * the one before it showed, then lifts its object and runs its command;
- * each chapter clears its screen and settles its object as it ends, so a
- * press let go at the line between two chapters gives way to a blank screen
- * and nothing lifted, never to what the chapter before showed.
+ * and the objects move past each other, and the laptop lands as the arrival
+ * ends; every other chapter lifts its object and, at once, types its command
+ * over what the chapter before it left on the screen, which gives way to it
+ * (`CROSSFADE`): the screen is never left blank between two outputs. Each
+ * chapter settles its object as it ends, so at the line between two chapters
+ * nothing is lifted.
  */
 export const BEATS = {
-  /** The desk rises under where the laptop will stand; the bill's total behind it. */
-  desk: [0, 0.62],
-  /** The laptop comes down onto the desk and lands. */
-  land: [0.08, 0.78],
+  /** The desk rises under where the laptop will stand. */
+  desk: [0, 0.7],
+  /** The laptop comes down onto the desk and lands, as the arrival ends: the bill is typed as soon as it has. */
+  land: [0, 0.92],
   /** The objects arrive on the desk, each a little after the one before it. */
-  objects: [0.16, 0.96],
+  objects: [0.1, 1],
   /** The chapter's object lifts off the desk and turns pressed... */
-  lift: [0.02, 0.16],
+  lift: [0.02, 0.14],
   /** ...and settles back as the chapter ends, so that at the line between two chapters nothing is lifted. */
   settle: [0.9, 1],
-  /** The screen clears as the chapter that showed it ends: at the line between two chapters it is blank. */
-  clear: [0.94, 1],
-  /** The command's prompt is on the screen... */
-  prompt: [0.07, 0.075],
+  /** The command's prompt is on the screen, as the chapter begins... */
+  prompt: [0.015, 0.02],
   /** ...it is typed a character at a time... */
-  type: [0.08, 0.18],
+  type: [0.025, 0.11],
   /** ...and its output prints a line at a time. */
-  print: [0.21, 0.58],
+  print: [0.13, 0.55],
   /** The receipt prints out of the laptop's side and comes to rest on the desk (the bill's chapter). */
   receipt: [0.62, 0.92],
   /** The receipt comes forward, off the desk and upright, in front of the laptop (the sources' chapter). */
-  forward: [0.06, 0.34],
-  /** A leader rule from each of its lines to the page the rate was read from and the date, one after another. */
-  notes: [0.36, 0.86],
-  /** The receipt goes back to the desk (the unpriced model's chapter)... */
-  back: [0.04, 0.28],
-  /** ...and the example's command runs, after it has gone. */
-  run: [0.3, 0.72],
+  forward: [0.04, 0.22],
+  /** A note from each of its lines of the page the rate was read from and the date, one after another, each whole. */
+  notes: [0.24, 0.56],
+  /** The notes go, and the receipt goes back to the desk as the chapter ends: it is never over the screen's text after it... */
+  back: [0.86, 0.98],
+  /** ...and the example's command runs at once in the next chapter (the unpriced model's). */
+  run: [0.02, 0.6],
   /** What never leaves goes on the screen a line at a time. */
-  never: [0.08, 0.6],
+  never: [0.04, 0.3],
   /** The lid closes over it, about its hinge. */
   lid: [0.14, 0.72],
 } as const satisfies Record<string, Range>;
+
+/**
+ * How long, as a fraction of the story, the output on the screen takes to
+ * give way to the next one's prompt: they cross, and the screen is never
+ * blank between them.
+ */
+export const CROSSFADE = 0.004;
 
 /** How much of `BEATS.objects` each object takes to arrive; the rest is how far behind the one before it each starts. */
 export const OBJECT_ARRIVAL = 0.3;

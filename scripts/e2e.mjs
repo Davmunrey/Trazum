@@ -231,7 +231,7 @@ const STORY_MARKS = [
   ['the trimming’s counts', '326 → 202'],
   ['the calendar’s cut', 'rows shown: the models the receipt priced.'],
   ['the page a rate was read from', 'platform.claude.com'],
-  ['the model kept out of the total', 'Not in the total: 2 call(s) to llama-3.3-70b-instruct'],
+  ['the model kept out of the total', 'llama-3.3-70b-instruct, which the'], // in the 80-column and the 60-column transcript alike
   ['what never leaves', 'Credentials'],
   ['the closing', 'No provider key needed to get started.'],
 ];
@@ -273,7 +273,7 @@ const CHAPTER_TURNS = [
   ['check', 'check', 'Monthly cost $11.88 → $11.88 ($0)'],
   ['guard', 'guard', 'Trazum: stopped.'],
   ['clock', 'clock', 'whoever pays: --pdf-out bill.pdf.'],
-  ['optimize', 'optimize', 'and it never contains prompt text.'],
+  ['optimize', 'optimize', 'prompt text.'],
   ['models', 'models', 'rows shown: the models the receipt priced.'],
 ];
 
@@ -281,7 +281,8 @@ const CHAPTER_TURNS = [
 const stage = (page) =>
   page.evaluate(() => {
     const shown = [...document.querySelectorAll('.story .cap-out')].filter((element) => Number(getComputedStyle(element).opacity) > 0.99);
-    const lines = shown.flatMap((element) => [...element.querySelectorAll('.tl')]);
+    // Of each output, the transcript drawn at this width: the 80-column one or the 60-column one.
+    const lines = shown.flatMap((element) => [...element.querySelectorAll('.term')].filter((term) => getComputedStyle(term).display !== 'none')).flatMap((term) => [...term.querySelectorAll('.tl')]);
     return {
       outputs: shown.map((element) => element.dataset.cap),
       text: shown.map((element) => element.textContent).join('\n'),
@@ -334,7 +335,8 @@ async function pressEveryObject({ page, is }) {
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => {
       const shown = document.querySelector('.story[data-pressed] .cap-out[data-on]');
-      return shown !== null && [...shown.querySelectorAll('.tl')].every((line) => getComputedStyle(line).opacity === '1');
+      const drawn = shown === null ? [] : [...shown.querySelectorAll('.term')].filter((term) => getComputedStyle(term).display !== 'none');
+      return drawn.length === 1 && [...drawn[0].querySelectorAll('.tl')].every((line) => getComputedStyle(line).opacity === '1');
     });
     const now = await stage(page);
     is(now.outputs.join(' '), id, `the output on the screen after pressing ${id}`);
@@ -342,6 +344,7 @@ async function pressEveryObject({ page, is }) {
     is(now.pressed.join(' '), id, `${id}: the one object pressed`);
     is(now.laptops, 1, 'the laptops on the page');
     is(await lidAngle(page), 0, `${id}: the lid open`);
+    is((await cardsShown(page)).join(' | '), await plateTitle(page, id), `${id}: the card in view, the pressed object's`);
   }
   // The lid closes over what never leaves; opened again, the screen has the last command it showed.
   const lid = group.locator('[data-obj="lid"]');
@@ -358,6 +361,121 @@ async function pressEveryObject({ page, is }) {
   await page.waitForFunction(() => !/matrix3d/.test(getComputedStyle(document.querySelector('.lt-lid')).transform));
   is(await lidAngle(page), 0, 'the lid, open again');
   is((await stage(page)).outputs.join(' '), 'models', 'the screen, open again on the last command');
+}
+
+/**
+ * The chapter cards a visitor can read now, by their heading: a card counts
+ * when its heading is in the window and nothing stands over it (the hit test
+ * at the start of the heading finds it), so a card under the desk does not.
+ */
+const cardsShown = (page) =>
+  page.evaluate(() =>
+    [...document.querySelectorAll('.story .chapter-card, .story .press-card')]
+      .map((card) => card.querySelector('h2, h3'))
+      .filter((heading) => {
+        const box = heading.getBoundingClientRect();
+        const y = (box.top + box.bottom) / 2;
+        if (y < 0 || y > window.innerHeight || getComputedStyle(heading).visibility !== 'visible') return false;
+        const top = document.elementFromPoint(box.left + 4, y);
+        return top !== null && heading.contains(top);
+      })
+      .map((heading) => heading.textContent.trim()),
+  );
+
+/** The heading of an object's own chapter, as the page has it: what its card says. */
+const plateTitle = (page, id) => page.evaluate((id) => document.querySelector(id === 'lid' ? '#story-never' : `#desk-plate-${id}`).textContent.trim(), id);
+
+/**
+ * The desk in the window, at a size: the laptop's lid in the first screen
+ * under the hero; through the story the seven objects and their names inside
+ * the window, and the receipt never over the screen while the screen has
+ * text (the sources' chapter brings it forward over the screen on purpose);
+ * in that chapter each note whole, inside the window, on its own paper; at
+ * the end the shut laptop inside the window and the receipt lying on the
+ * desk; and the band after the story never under the stage.
+ */
+async function deskFitsTheWindow({ page, is }, size) {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  const first = await page.evaluate(() => ({ lid: document.querySelector('.lt-lid').getBoundingClientRect().top, height: window.innerHeight }));
+  is(first.height - first.lid >= 150, true, `${size}: the laptop's lid in the first screen (${Math.round(first.height - first.lid)}px of it)`);
+  const hit = (x, y, selector) =>
+    page.evaluate(
+      ([x, y, selector]) => {
+        // The receipt and its notes let a press through: hit-test them as if they took one.
+        const slot = document.querySelector('.receipt-slot');
+        slot.style.pointerEvents = 'auto';
+        const top = document.elementFromPoint(x, y);
+        slot.style.pointerEvents = '';
+        return top?.closest(selector) != null;
+      },
+      [x, y, selector],
+    );
+  for (let step = 0; step <= 50; step += 1) {
+    await toStory(page, step / 50);
+    const now = await page.evaluate(() => {
+      const story = document.querySelector('.story');
+      const objects = [...story.querySelectorAll('.obj')].map((button) => button.getBoundingClientRect());
+      const screen = story.querySelector('.lt-screen').getBoundingClientRect();
+      const text = [...story.querySelectorAll('.cap-out')].some((output) => Number(getComputedStyle(output).opacity) > 0.5);
+      return {
+        chapter: story.dataset.chapter,
+        objectsInside: objects.every((box) => box.top >= 0 && box.bottom <= window.innerHeight && box.left >= 0 && box.right <= window.innerWidth),
+        names: [...story.querySelectorAll('.obj .obj-name')].every((name) => name.scrollWidth <= name.clientWidth + 1),
+        screen: [screen.left, screen.top, screen.right, screen.bottom],
+        text,
+      };
+    });
+    if (now.chapter === 'arrival') continue;
+    is(now.objectsInside && now.names, true, `${size}, ${now.chapter}: the seven objects and their names inside the window`);
+    if (now.chapter === 'sources' || !now.text) continue;
+    const [, top, right, bottom] = now.screen;
+    for (let k = 1; k < 8; k += 1) {
+      if (await hit(right - 10, top + ((bottom - top) * k) / 8, '.receipt-slot')) throw new Error(`${size}, ${now.chapter}: the receipt over the screen's text, at step ${step}`);
+    }
+  }
+  await toChapter(page, 'sources', 0.7);
+  const notes = await page.evaluate(() =>
+    [...document.querySelectorAll('.receipt-note')].map((note) => {
+      const box = note.getBoundingClientRect();
+      let opacity = 1;
+      for (let at = note; at !== null; at = at.parentElement) opacity *= Number(getComputedStyle(at).opacity);
+      return { box: [box.left, box.top, box.right, box.bottom], opacity, size: Number.parseFloat(getComputedStyle(note).fontSize), fits: note.scrollWidth <= note.clientWidth + 1 };
+    }),
+  );
+  for (const [index, note] of notes.entries()) {
+    const [left, top, right, bottom] = note.box;
+    is(note.opacity > 0.99 && note.size >= 11 && note.fits, true, `${size}: the note on the receipt's line ${index + 1}, whole and at least 11px`);
+    is(left >= 0 && right <= (await page.evaluate(() => window.innerWidth)) && top >= 0, true, `${size}: the note on line ${index + 1}, inside the window`);
+    // On its own paper: what is at its middle and near its right end is the note, not a line of the desk or the screen.
+    is((await hit((left + right) / 2, (top + bottom) / 2, '.receipt-note')) && (await hit(right - 4, (top + bottom) / 2, '.receipt-note')), true, `${size}: the note on line ${index + 1}, with nothing over it`);
+  }
+  await toStory(page, 1);
+  const end = await page.evaluate(() => {
+    const lid = document.querySelector('.lt-lid').getBoundingClientRect();
+    const receipt = document.querySelector('.receipt-paper').getBoundingClientRect();
+    const desk = document.querySelector('.desk-top').getBoundingClientRect();
+    return { lid: [lid.left, lid.right], width: window.innerWidth, receiptTop: receipt.top, deskTop: desk.top };
+  });
+  is(end.lid[0] >= 0 && end.lid[1] <= end.width, true, `${size}: the shut laptop inside the window (${Math.round(end.lid[0])} to ${Math.round(end.lid[1])})`);
+  is(end.receiptTop >= end.deskTop, true, `${size}: the receipt lying on the desk, below its back edge`);
+  // On into the band after the story: its heading is never under the stage.
+  for (let step = 0; step <= 12; step += 1) {
+    await page.evaluate((f) => {
+      const story = document.querySelector('.story');
+      window.scrollTo(0, story.getBoundingClientRect().bottom + window.scrollY - window.innerHeight + (f * window.innerHeight) / 2);
+    }, step / 12);
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const covered = await page.evaluate(() => {
+      const heading = document.querySelector('#more-title');
+      const box = heading.getBoundingClientRect();
+      if (box.bottom < 0 || box.top > window.innerHeight) return false;
+      const y = Math.min(Math.max((box.top + box.bottom) / 2, 1), window.innerHeight - 1);
+      const top = document.elementFromPoint(box.left + 6, y);
+      return !(top !== null && heading.contains(top));
+    });
+    is(covered, false, `${size}: the heading after the story, clear of the stage at step ${step}`);
+  }
 }
 
 /** Every link and button in the chapters, focused one by one: none of them is behind the pinned stage. */
@@ -929,6 +1047,7 @@ export const FLOWS = [
       let now = await stage(page);
       is(now.outputs.join(' '), 'models', 'pressed mid-story: the output on the screen');
       is(now.pressed.join(' '), 'models', 'pressed mid-story: the one object pressed');
+      is((await cardsShown(page)).join(' | '), await plateTitle(page, 'models'), 'pressed mid-story: the card in view, the calendar’s, not the breaker’s');
       // Into the next chapter: the press is let go and the story shows the clock.
       await toChapter(page, 'clock');
       await page.waitForFunction(() => document.querySelector('.story').dataset.pressed === undefined);
@@ -936,6 +1055,7 @@ export const FLOWS = [
       is(now.outputs.join(' '), 'clock', 'the next chapter, taking over again: the output');
       is(now.pressed.join(' '), 'clock', 'the next chapter, taking over again: the object pressed');
       is(await seen(page, 'whoever pays: --pdf-out bill.pdf.'), true, 'the next chapter, taking over again: its output, seen');
+      is((await cardsShown(page)).includes(await plateTitle(page, 'clock')), true, 'the next chapter, taking over again: its own card');
     },
   },
   {
@@ -970,6 +1090,48 @@ export const FLOWS = [
       is(row, true, 'the seven objects, all inside the window');
       const laptop = await page.locator('.lt-device').boundingBox();
       is(laptop.width >= 280 && laptop.width <= 390 - 2 * 16, true, `the laptop inside the window's gutters (${laptop.width}px)`);
+      // Everything the laptop draws, the deck's front edge and the lid shut included, inside the window.
+      for (const p of [0.3, 1]) {
+        await toStory(page, p);
+        const drawn = await page.evaluate(() =>
+          ['.lt-lid', '.lt-deck'].map((selector) => document.querySelector(selector).getBoundingClientRect()).every((box) => box.left >= 0 && box.right <= window.innerWidth),
+        );
+        is(drawn, true, `at ${p * 100}% of the story, the laptop drawn inside the window`);
+      }
+      // The first screen: the top of the laptop under the hero.
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const lidTop = await page.evaluate(() => document.querySelector('.lt-lid').getBoundingClientRect().top);
+      is(lidTop < 844 - 40, true, `the top of the laptop in the first screen (at ${Math.round(lidTop)}px)`);
+      // The screen shows the CLI's 60-column transcript, at a size that can be read, a table row on one line.
+      await toChapter(page, 'bill', 0.7);
+      const narrow = await page.evaluate(() => {
+        const shown = document.querySelector('.cap-out[data-cap="bill"]');
+        const wide = shown.querySelector('.term:not(.term-narrow)');
+        const term = shown.querySelector('.term-narrow');
+        const size = Number.parseFloat(getComputedStyle(term).fontSize);
+        const rows = [...term.querySelectorAll('.tl')].filter((line) => /[█░]/.test(line.textContent));
+        return { wide: getComputedStyle(wide).display, size, oneLine: rows.length > 0 && rows.every((row) => row.getBoundingClientRect().height <= size * 1.6) };
+      });
+      is(narrow.wide, 'none', 'the 80-column transcript, not drawn on the phone');
+      is(narrow.size >= 8 && narrow.oneLine, true, `the 60-column transcript at ${narrow.size.toFixed(1)}px, each table row on one line`);
+      // A card always in view under the desk, from the stage pinning to the end.
+      for (let step = 3; step <= 60; step += 1) {
+        await toStory(page, step / 60);
+        const card = await page.evaluate(() => {
+          const desk = document.querySelector('.desk').getBoundingClientRect();
+          for (let y = Math.max(desk.bottom + 4, 0); y < window.innerHeight; y += 12) {
+            const top = document.elementFromPoint(window.innerWidth / 2, y);
+            if (top?.closest('.chapter-card, .press-card')) return true;
+          }
+          return false;
+        });
+        is(card, true, `at step ${step} of 60, a card in view under the desk`);
+      }
+      // A press mid-story puts the pressed object's card under the desk, not the chapter's.
+      await toChapter(page, 'guard');
+      await page.locator('.obj[data-obj="models"]').click();
+      await page.waitForFunction(() => document.querySelector('.story').dataset.pressed === 'models');
+      is((await cardsShown(page)).join(' | '), await plateTitle(page, 'models'), 'pressed mid-story on the phone: the card in view, the calendar’s');
       await toStory(page, 0);
       // A phone keeps the receipt in the laptop until it comes forward.
       await storyInOrder({ page, is }, STORY_MARKS.filter(([what]) => what !== 'the receipt’s total, on the desk'));
@@ -978,6 +1140,24 @@ export const FLOWS = [
       await toStory(page, 1);
       await pressEveryObject({ page, is });
       await noSidewaysScroll('after pressing every object');
+    },
+  },
+  {
+    name: 'landing: at 1440x900 the desk fits the window: the laptop in the first screen, the objects inside it, the receipt never over the screen’s text, the notes whole, the shut laptop inside',
+    covers: [],
+    viewport: { width: 1440, height: 900 },
+    async run({ page, open, is }) {
+      await open('/');
+      await deskFitsTheWindow({ page, is }, '1440x900');
+    },
+  },
+  {
+    name: 'landing: at 1280x720 the desk fits the window the same way',
+    covers: [],
+    viewport: { width: 1280, height: 720 },
+    async run({ page, open, is }) {
+      await open('/');
+      await deskFitsTheWindow({ page, is }, '1280x720');
     },
   },
   {
@@ -1048,7 +1228,14 @@ export const FLOWS = [
         at = found;
       }
       is(await page.locator('.story .obj').evaluateAll((all) => all.every((button) => button.getClientRects().length === 0)), true, 'the objects, which would do nothing, not drawn');
-      is(await page.locator('.story .tl').evaluateAll((lines) => lines.every((line) => line.getClientRects().length > 0)), true, 'every line of every output, shown');
+      // Each output twice, as a pipe and as a 60-column window get it: one of the two drawn, every line of it.
+      const drawn = await page.locator('.story .cap-out').evaluateAll((outputs) =>
+        outputs.map((output) => {
+          const shown = [...output.querySelectorAll('.term')].filter((term) => getComputedStyle(term).display !== 'none');
+          return shown.length === 1 && [...shown[0].querySelectorAll('.tl')].every((line) => line.getClientRects().length > 0);
+        }),
+      );
+      is(drawn.length === 7 && drawn.every(Boolean), true, 'every line of every output, shown, in one transcript of each');
       is(await page.locator('.lt-device').count(), 1, 'the laptops on the page');
     },
   },

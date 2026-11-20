@@ -96,7 +96,7 @@ export const DESK_COMMAND_NAMES: Record<DeskCommand, string> = {
   bill: 'trazum bill',
   check: 'trazum check',
   guard: 'trazum session-guard',
-  clock: 'bill --agent --timezone',
+  clock: 'trazum bill --agent --timezone',
   optimize: 'trazum optimize',
   models: 'trazum models',
 };

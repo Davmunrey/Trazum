@@ -38,7 +38,8 @@ const WRAP = 'mx-auto w-full max-w-[1440px] px-4 sm:px-8 lg:px-12';
 function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
   return (
     <>
-      <section aria-labelledby="landing-title" className={`${WRAP} pt-7 pb-8 sm:pt-10 lg:pt-12 lg:pb-12`}>
+      {/* Short enough that the laptop, open on the desk, already stands under it in the first screen. */}
+      <section aria-labelledby="landing-title" className={`${WRAP} pt-5 pb-6 sm:pt-8 lg:pt-7 lg:pb-7`}>
         <p className="font-mono text-[12px] leading-relaxed text-muted-foreground sm:text-[13px]">{t.eyebrow}</p>
         {/*
           The headline's measure is in em, not ch: 22ch of Space Grotesk Bold is 14.25em, and a ch read from the
@@ -48,11 +49,11 @@ function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
         */}
         <h1
           id="landing-title"
-          className="mt-3 max-w-[14.25em] font-display text-[clamp(34px,4.9vw,72px)] leading-[1.0] font-bold tracking-[-0.045em] text-balance sm:mt-4"
+          className="mt-3 max-w-[14.25em] font-display text-[clamp(32px,4.4vw,64px)] leading-[1.0] font-bold tracking-[-0.045em] text-balance sm:mt-4"
         >
           {t.heroTitle}
         </h1>
-        <div className="mt-6 grid gap-4 sm:mt-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)] lg:items-end lg:gap-x-16">
+        <div className="mt-5 grid gap-4 sm:mt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,560px)] lg:items-end lg:gap-x-16">
           <div className="min-w-0 lg:col-start-2 lg:row-start-1">
             <p className="mb-2.5 text-[13px] font-semibold sm:text-[14px]">{t.commandLabel}</p>
             <CommandLine command={COMMAND} copyLabel={copy.copyCommand} copiedLabel={copy.copied} />
@@ -66,32 +67,32 @@ function Page({ t, copy }: { t: LandingCopy; copy: SiteCopy }) {
 
       <Story t={t} copy={copy} />
 
-      <section aria-labelledby="more-title" className={`${WRAP} border-t-2 border-foreground py-14 lg:py-20`}>
-        <h2
-          id="more-title"
-          className="border-b-2 border-foreground pb-6 font-display text-[clamp(30px,3.6vw,52px)] leading-[1.04] font-bold tracking-[-0.04em]"
-        >
-          {t.moreTitle}
-        </h2>
-        {/* The story shows the gate and the trimming; the budget check has no chapter (the repository has no example call of it to run), so its words are here, quiet, after the story. */}
-        <article className="flex flex-col border-b-2 border-foreground py-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-x-12 lg:py-10">
-          <div>
-            <code className="inline-block border-2 border-foreground bg-primary px-2.5 py-1 font-mono text-[13px] font-semibold text-primary-foreground">
-              {MORE_LINKS.mcp.command}
-            </code>
-            <h3 className="mt-5 font-display text-[clamp(22px,2.2vw,30px)] leading-[1.12] font-bold tracking-[-0.03em]">{t.more.mcp.title}</h3>
-          </div>
-          <div>
-            <p className="mt-3 text-[15.5px] leading-[1.7] text-muted-foreground lg:mt-0">{t.more.mcp.body}</p>
-            <a
-              href={MORE_LINKS.mcp.href}
-              className="mt-6 inline-flex items-center gap-2 self-start border-b-2 border-foreground pb-0.5 text-[15px] font-semibold transition-colors hover:text-terracotta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-            >
-              {t.more.mcp.link}
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </a>
-          </div>
-        </article>
+      {/*
+        The one thing the desk cannot show: the budget check has no chapter (the repository has no example call of it
+        to run), so it is one compact band after the story, its name, its command, a sentence and the way in.
+      */}
+      <section aria-labelledby="more-title" className={`${WRAP} border-t-2 border-foreground py-6 lg:py-7`}>
+        <div className="grid gap-x-8 gap-y-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-baseline">
+          <h2 id="more-title" className="font-display text-[clamp(20px,1.7vw,24px)] leading-[1.15] font-bold tracking-[-0.03em]">
+            {t.moreTitle}
+          </h2>
+          <article className="min-w-0">
+            <h3 className="flex flex-wrap items-baseline gap-x-3 gap-y-2 font-display text-[clamp(18px,1.5vw,21px)] leading-[1.2] font-bold tracking-[-0.025em]">
+              <code className="border-2 border-foreground bg-primary px-2 py-0.5 font-mono text-[13px] font-semibold tracking-normal text-primary-foreground">
+                {MORE_LINKS.mcp.command}
+              </code>
+              {t.more.mcp.title}
+            </h3>
+            <p className="mt-2 max-w-[64ch] text-[14.5px] leading-[1.6] text-muted-foreground">{t.more.mcp.body}</p>
+          </article>
+          <a
+            href={MORE_LINKS.mcp.href}
+            className="inline-flex items-center gap-2 self-start justify-self-start border-b-2 border-foreground pb-0.5 text-[15px] font-semibold whitespace-nowrap transition-colors hover:text-terracotta focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground lg:self-baseline"
+          >
+            {t.more.mcp.link}
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </a>
+        </div>
       </section>
     </>
   );
