@@ -63,12 +63,12 @@ const bench = ({ trazum } = {}) => {
   return { dir, transcript, bin, cache: join(dir, 'cache') };
 };
 
-const run = (b, args, input) =>
+const run = (b, args, input, env = {}) =>
   spawnSync('bash', [SCRIPT, ...args], {
     encoding: 'utf8',
     input: JSON.stringify(input),
     timeout: 30000,
-    env: { ...SPAWN_ENV, TRAZUM_BIN: b.bin, TRAZUM_STATUSLINE_CACHE: b.cache },
+    env: { ...SPAWN_ENV, TRAZUM_BIN: b.bin, TRAZUM_STATUSLINE_CACHE: b.cache, ...env },
   });
 
 const payload = (b, extra = {}) => ({
@@ -173,6 +173,100 @@ describe('the Claude Code status line', () => {
     // than as a race in a shell script.
     const script = readFileSync(SCRIPT, 'utf8');
     assert.match(script, /\.tmp['"]? && mv /, 'the cache is written in place rather than renamed into place');
+  });
+
+  describe('the plan’s limits, as Claude Code sends them (#823)', () => {
+    /*
+      Claude Code hands the status line `rate_limits` on a Pro, Max or Ultra
+      plan, or behind a gateway that sets a spend limit: each window's
+      `used_percentage` and its `resets_at` in epoch seconds
+      (https://code.claude.com/docs/en/statusline, read on 2026-11-20). On a
+      subscription the question is when the window runs out, not what a call
+      cost. The line shows what was sent and nothing else: no table of plan
+      limits, no counter worked out from tokens. Times are read in UTC here so
+      the clock the line prints is the one the test expects.
+    */
+    // 2100-01-01T00:00Z, a Friday; the next day; and 2100-02-01.
+    const FIVE = 4102444800;
+    const SEVEN = 4102531200;
+    const MONTH = 4105123200;
+    const UTC = { TZ: 'UTC' };
+    const plan = (rate_limits) => (b) => payload(b, { rate_limits });
+
+    it('shows each window Claude Code sent, how much is used and when it resets', () => {
+      const b = bench();
+      const out = run(
+        b,
+        [],
+        plan({
+          five_hour: { used_percentage: 23.5, resets_at: FIVE },
+          seven_day: { used_percentage: 41.2, resets_at: SEVEN },
+          spend_limit: { used_percentage: 112.4, resets_at: MONTH, used_usd: 562, limit_usd: 500, period: 'monthly' },
+        })(b),
+        UTC,
+      ).stdout;
+      assert.equal(
+        out,
+        'Sonnet  $0.0123 (Claude Code)  |  5h 23%, resets 00:00 · 7d 41%, resets Sat 00:00 · spend 112% of $500/month, resets Feb 1',
+      );
+    });
+
+    it('beside Trazum’s own figure, once the hook has computed it', () => {
+      const b = bench();
+      const input = plan({ five_hour: { used_percentage: 80, resets_at: FIVE } })(b);
+      assert.equal(run(b, ['--refresh'], input, UTC).status, 0);
+      const out = run(b, [], input, UTC).stdout;
+      assert.match(out, /^Sonnet {2}\$\d+\.\d{4} · 2 calls · cache \d+%.* {2}\| {2}5h 80%, resets 00:00$/);
+    });
+
+    it('shows no plan figure when Claude Code sends none: an API key, or before the first response', () => {
+      const b = bench();
+      for (const input of [payload(b), plan({})(b), plan(null)(b)]) {
+        assert.equal(run(b, [], input, UTC).stdout, 'Sonnet  $0.0123 (Claude Code)', `a plan figure from ${JSON.stringify(input.rate_limits)}`);
+      }
+    });
+
+    it('shows only the windows that were sent, and none whose reset has passed', () => {
+      const b = bench();
+      const out = run(
+        b,
+        [],
+        plan({
+          // Reset an hour ago: what it says about the window is no longer true.
+          five_hour: { used_percentage: 99, resets_at: Math.floor(Date.now() / 1000) - 3600 },
+          seven_day: { used_percentage: 12, resets_at: SEVEN },
+        })(b),
+        UTC,
+      ).stdout;
+      assert.equal(out, 'Sonnet  $0.0123 (Claude Code)  |  7d 12%, resets Sat 00:00');
+    });
+
+    it('works nothing out: a window without its percentage or its reset is not shown', () => {
+      const b = bench();
+      const out = run(
+        b,
+        [],
+        plan({
+          five_hour: { resets_at: FIVE },
+          seven_day: { used_percentage: '41', resets_at: SEVEN },
+          spend_limit: { used_percentage: 50, used_usd: 250, limit_usd: 500 },
+        })(b),
+        UTC,
+      ).stdout;
+      assert.equal(out, 'Sonnet  $0.0123 (Claude Code)', 'a window shown from less than Claude Code sends for it');
+    });
+
+    it('rounds a window down, so one at 99.6% is not shown as used up', () => {
+      const b = bench();
+      const out = run(b, [], plan({ five_hour: { used_percentage: 99.6, resets_at: FIVE } })(b), UTC).stdout;
+      assert.match(out, /5h 99%,/);
+    });
+
+    it('a spend limit without its figure in dollars says only how much of it is used', () => {
+      const b = bench();
+      const out = run(b, [], plan({ spend_limit: { used_percentage: 62.8, resets_at: MONTH } })(b), UTC).stdout;
+      assert.match(out, /\| {2}spend 62%, resets Feb 1$/);
+    });
   });
 
   it('is documented onto the two hooks whose output is not context', () => {

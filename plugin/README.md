@@ -41,6 +41,24 @@ of Claude Code:
 Sonnet  $0.7761 · 10 calls · cache 88% · saved $2.91
 ```
 
+On a Pro, Max or Ultra plan, or behind a gateway that sets a spend limit, it
+also says how much of the plan's window is used and when it resets, as Claude
+Code reports it:
+
+```
+Opus  $4.1210 · 38 calls · cache 91% · saved $9.02  |  5h 23%, resets 14:20 · 7d 41%, resets Sat 09:00
+```
+
+Those figures are Claude Code's own, from the `rate_limits` it hands the status
+line ([its documentation](https://code.claude.com/docs/en/statusline), read on
+2026-11-20): each window's percentage used and its reset time, and a spend
+limit's percentage, amount and period where a gateway sets one. A window it did
+not send, or whose reset has passed, is not shown, and the percentage is rounded
+down, so a window at 99.6% is not shown as used up. On an API key, and before a
+session's first response, Claude Code sends none, and the line shows no plan
+figure: Trazum keeps no table of plan limits and works out no counter from
+tokens.
+
 The figure is the whole session's, its subagents included (since 2.7.6).
 Claude Code writes each subagent's transcript into a folder named after the
 session, which is not the transcript it hands the status line, and the line
