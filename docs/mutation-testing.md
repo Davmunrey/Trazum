@@ -132,8 +132,31 @@ ten times that. **50 of the 69 are held**: a test fails when the number moves.
 rows and their long-prompt bands. 4 are cache-write ratios of 1, on
 GPT-4.1, Gemini 2.5 Flash, DeepSeek V4 Flash and DeepSeek V4.1 Flash. 3 are
 Mistral's: Large 2's input rate, Medium 3.5's output rate and Small 4's batch
-ratio. Nothing in this change holds the rest. Which of them a test should
-hold, and how, is a question for its own issue.
+ratio.
+
+**All 681 are held since #763**, measured on 2026-11-20 the same way, one
+number moved up by one at a time in the built file: 681 of 681 fail
+`price-snapshot.test.js`, in 28 seconds on the same machine, the 19 above
+among them. That test compares the catalogue with
+`packages/core/test/fixtures/price-snapshot.json`, which
+`scripts/price-snapshot.mjs` writes from the catalogue: every row the pricing
+dataset publishes, the default ratios, and each provider's date and pages.
+
+"Held" here means one thing: a published price cannot move without a second
+diff, in the snapshot, that a reviewer reads in the same pull request. It holds
+every number at once and says nothing about whether one is right. That is the
+question of the page the price was read from and of the weekly drift check,
+and a price is never called verified because this test holds it.
+
+A test per provider table that prices a call at each rate was the other way to
+do it. It was not chosen: each expected figure would have to be typed from the
+catalogue or from the provider's page, which is either a copy that proves
+nothing or a price remembered into a test. The snapshot is written by a script,
+never by hand.
+
+Whether the other test files also hold each of the 681 was not measured: the
+sample above is the only figure for that, and with the snapshot in place it no
+longer decides whether a price is held.
 
 ## How a mutant is run
 
