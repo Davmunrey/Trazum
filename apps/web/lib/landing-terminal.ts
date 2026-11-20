@@ -6,22 +6,29 @@
  * Each line is a list of runs, `[text, style]`, where the style letters are
  * the CLI's own: b bold, d dim, g green, y yellow, r red, a cyan (drawn in the
  * acid fill, as the README's pictures draw it), m the mark (ink on the acid
- * ground: the one figure the report answers with).
+ * ground: the one figure the report answers with). A command broken across
+ * lines is one string with a newline where the shell continues it.
  */
 
+/** The object on the desk whose press shows a block on the screen. */
+export type CapabilityId = 'bill' | 'check' | 'guard' | 'clock' | 'optimize' | 'models';
+/** What shows a block: an object, or the story's chapter on a model with no published price, which no object shows. */
+export type BlockOwner = CapabilityId | 'unpriced';
 export type TerminalRun = readonly [text: string, style: string];
 export interface TerminalBlock {
-  readonly id: 'bill' | 'check' | 'status' | 'optimize';
+  readonly id: "bill" | "check" | "status" | "guard-cd" | "guard-warn" | "guard-warn-status" | "guard-stop" | "guard-stop-status" | "clock" | "optimize" | "models" | "unpriced";
+  readonly cap: BlockOwner;
   readonly command: string;
   readonly lines: readonly (readonly TerminalRun[])[];
 }
 
-/** The widest line on the screen, in characters, prompt included. */
-export const TERMINAL_COLUMNS = 78;
+/** The screen's width in characters, prompt included: its widest line that is neither a rule nor a sentence a terminal wraps. */
+export const TERMINAL_COLUMNS = 80;
 
 export const TERMINAL: readonly TerminalBlock[] = [
   {
     id: "bill",
+    cap: "bill",
     command: "npx @trazum/cli bill examples/claude-projects",
     lines: [
       [["Your bill","b"],[" ",""],["────────────────────────────────────────────────────────────────","d"]],
@@ -50,6 +57,7 @@ export const TERMINAL: readonly TerminalBlock[] = [
   },
   {
     id: "check",
+    cap: "check",
     command: "npx @trazum/cli check examples/",
     lines: [
       [["examples/, 3 prompts","b"],[" ",""],["─────────────────────────────────────────────────────","d"]],
@@ -66,13 +74,91 @@ export const TERMINAL: readonly TerminalBlock[] = [
   },
   {
     id: "status",
+    cap: "check",
     command: "echo $?",
     lines: [
       [["0",""]],
     ],
   },
   {
+    id: "guard-cd",
+    cap: "guard",
+    command: "cd examples/claude-projects/-home-me-webapp",
+    lines: [],
+  },
+  {
+    id: "guard-warn",
+    cap: "guard",
+    command: "echo '{\"session_id\":\"demo\",\"transcript_path\":\"demo-webapp.jsonl\"}' |\n    npx @trazum/cli session-guard check \\\n    --warn 1 --stop 5 --on-cannot-tell fail-open",
+    lines: [
+      [["{\"systemMessage\":\"Trazum: this session has reached $3.66 in API-equivalent cost. Your warning figure is $1.00 and it stops at $5.00. API-equivalent is what this usage would cost at the provider's list API prices, not what you were charged. This is said once per session.\"}",""]],
+    ],
+  },
+  {
+    id: "guard-warn-status",
+    cap: "guard",
+    command: "echo $?",
+    lines: [
+      [["0",""]],
+    ],
+  },
+  {
+    id: "guard-stop",
+    cap: "guard",
+    command: "echo '{\"session_id\":\"demo\",\"transcript_path\":\"demo-webapp.jsonl\"}' |\n    npx @trazum/cli session-guard check \\\n    --warn 1 --stop 3 --on-cannot-tell fail-open",
+    lines: [
+      [["Trazum: stopped. This session has reached $3.66 in API-equivalent cost, at or over your stop figure of $3.00. API-equivalent is what this usage would cost at the provider's list API prices, not what you were charged. To go on, raise the figure: trazum session-guard install --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed>.",""]],
+    ],
+  },
+  {
+    id: "guard-stop-status",
+    cap: "guard",
+    command: "echo $?",
+    lines: [
+      [["2",""]],
+    ],
+  },
+  {
+    id: "clock",
+    cap: "clock",
+    command: "npx @trazum/cli bill examples/claude-projects \\\n    --agent claude-code --timezone Europe/Madrid --by week",
+    lines: [
+      [["Your bill","b"],[" ",""],["────────────────────────────────────────────────────────────────","d"]],
+      [["  ",""],["$12.70","bm"],[" across 126 priced call(s)","b"]],
+      [],
+      [["  ",""],["project","d"],["               ",""],["calls","d"],["    ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  home-me-etl-pipeline     42  $9.05  ",""],["███████","a"],["░░░","d"],["  71.2%",""]],
+      [["  home-me-webapp           84  $3.66  ",""],["███","a"],["░░░░░░░","d"],["  28.8%",""]],
+      [],
+      [["  ",""],["model","d"],["              ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  claude-fable-5-1      28    $9.00  ",""],["███████","a"],["░░░","d"],["  70.9%",""]],
+      [["  claude-opus-5-5       56    $2.95  ",""],["██","a"],["░░░░░░░░","d"],["  23.2%",""]],
+      [["  claude-sonnet-5-5     28  $0.7077  ",""],["█","a"],["░░░░░░░░░","d"],["   5.6%",""]],
+      [["  claude-haiku-5-5      14  $0.0456  ",""],["░░░░░░░░░░","d"],["   0.4%",""]],
+      [],
+      [["  ",""],["week","d"],["      ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  2026-W36     54    $5.43  ",""],["████","a"],["░░░░░░","d"],["  42.8%",""]],
+      [["  2026-W37     63    $6.36  ",""],["█████","a"],["░░░░░","d"],["  50.1%",""]],
+      [["  2026-W38      9  $0.9107  ",""],["█","a"],["░░░░░░░░░","d"],["   7.2%",""]],
+      [["  ",""],["One week on its own: --since 2026-09-14 --until 2026-09-20.","d"]],
+      [["  ",""],["Add --timezone Europe/Madrid to bill it on the same days.","d"]],
+      [],
+      [["  ",""],["This log covers 2026-09-01 → 2026-09-14 (13.3 days): stated, never","d"]],
+      [["  ",""],["extrapolated. Scale it to a month yourself, now that you know what it","d"]],
+      [["  ",""],["covers.","d"]],
+      [["  ",""],["Days are cut in Europe/Madrid, not UTC: a bare --since/--until day is a","d"]],
+      [["  ",""],["day there, and so is every row above.","d"]],
+      [["  ",""],["!","y"],[" Agent sessions (Claude Code, Codex, Gemini CLI) are priced at catalogue",""]],
+      [["    API rates. On a subscription you paid the plan, not this API-equivalent",""]],
+      [["    estimate; missing telemetry and custom rates can change the result.",""]],
+      [],
+      [["  ",""],["The receipt as data: --receipt, or -o receipt.json. The document for","d"]],
+      [["  ",""],["whoever pays: --pdf-out bill.pdf.","d"]],
+    ],
+  },
+  {
     id: "optimize",
+    cap: "optimize",
     command: "npx @trazum/cli optimize examples/support-prompt.txt",
     lines: [
       [["Start here","b"],[" ",""],["───────────────────────────────────────────────────────────────","d"]],
@@ -127,4 +213,362 @@ export const TERMINAL: readonly TerminalBlock[] = [
       [["  and it never contains prompt text.","d"]],
     ],
   },
+  {
+    id: "models",
+    cap: "models",
+    command: "npx @trazum/cli models",
+    lines: [
+      [["Models and pricing  (USD per million tokens)","b"],[" ",""],["─────────────────────────────","d"]],
+      [["  Table reviewed on 2026-11-05 (11 days ago). Verify before budgeting.","d"]],
+      [["  Per provider: 2026-11-05 (11 days ago) moonshot, deepseek, xai, mistral · 2026-11-16 (today) anthropic, openai, google","d"]],
+      [],
+      [["  ",""],["model","d"],["                               ",""],["input","d"],["       ",""],["output","d"],["     ",""],["context","d"],["  ",""],["cache min.","d"]],
+      [["  claude-fable-5-1                       10           50      1,000K         512",""]],
+      [["  claude-opus-5-5                         4           20      1,000K         512",""]],
+      [["  claude-sonnet-5-5                       2           10      1,000K         512",""]],
+      [["  claude-haiku-5-5                      0.1          0.5      1,000K         512",""]],
+      [["  ",""],["… 4 of 91 rows shown: the models the receipt priced.","d"]],
+      [["  ",""],["Run with the clock set to 2026-11-16, the day the newest rates were read.","d"]],
+    ],
+  },
+  {
+    id: "unpriced",
+    cap: "unpriced",
+    command: "npx @trazum/cli bill examples/unpriced-model.jsonl",
+    lines: [
+      [["Your bill","b"],[" ",""],["────────────────────────────────────────────────────────────────","d"]],
+      [["  ",""],["$0.0145","bm"],[" across 3 priced call(s)","b"]],
+      [],
+      [["  ",""],["workload","d"],["  ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  triage        3  $0.0145  ",""],["██████████","a"],["  100.0%",""]],
+      [],
+      [["  ",""],["model","d"],["             ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  claude-haiku-5-5      3  $0.0145  ",""],["██████████","a"],["  100.0%",""]],
+      [],
+      [["  ",""],["This log covers 2026-09-02 → 2026-09-02 (0.1 days): stated, never","d"]],
+      [["  ",""],["extrapolated. Scale it to a month yourself, now that you know what it","d"]],
+      [["  ",""],["covers.","d"]],
+      [["  ",""],["!","y"],[" Not in the total: 2 call(s) to llama-3.3-70b-instruct, which the",""]],
+      [["    catalogue does not price. Named, never counted as $0.",""]],
+      [],
+      [["  ",""],["The receipt as data: --receipt, or -o receipt.json. The document for","d"]],
+      [["  ",""],["whoever pays: --pdf-out bill.pdf.","d"]],
+    ],
+  },
 ];
+
+/**
+ * The narrow screen's width in characters: the same commands run again in a window 60 columns wide, the
+ * narrowest the CLI draws for. The breaker's echo line and its messages are wider, and wrap as that terminal wraps them.
+ */
+export const TERMINAL_NARROW_COLUMNS = 60;
+
+export const TERMINAL_NARROW: readonly TerminalBlock[] = [
+  {
+    id: "bill",
+    cap: "bill",
+    command: "npx @trazum/cli bill examples/claude-projects",
+    lines: [
+      [["Your bill","b"],[" ",""],["────────────────────────────────────────────────","d"]],
+      [["  ",""],["$12.70","bm"],[" across 126 priced call(s)","b"]],
+      [],
+      [["  ",""],["project","d"],["               ",""],["calls","d"],["    ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  home-me-etl-pipeline     42  $9.05  ",""],["███████","a"],["░░░","d"],["  71.2%",""]],
+      [["  home-me-webapp           84  $3.66  ",""],["███","a"],["░░░░░░░","d"],["  28.8%",""]],
+      [],
+      [["  ",""],["model","d"],["              ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  claude-fable-5-1      28    $9.00  ",""],["███████","a"],["░░░","d"],["  70.9%",""]],
+      [["  claude-opus-5-5       56    $2.95  ",""],["██","a"],["░░░░░░░░","d"],["  23.2%",""]],
+      [["  claude-sonnet-5-5     28  $0.7077  ",""],["█","a"],["░░░░░░░░░","d"],["   5.6%",""]],
+      [["  claude-haiku-5-5      14  $0.0456  ",""],["░░░░░░░░░░","d"],["   0.4%",""]],
+      [],
+      [["  ",""],["This log covers 2026-09-01 → 2026-09-14 (13.3 days):","d"]],
+      [["  ",""],["stated, never extrapolated. Scale it to a month yourself,","d"]],
+      [["  ",""],["now that you know what it covers.","d"]],
+      [["  ",""],["!","y"],[" Agent sessions (Claude Code, Codex, Gemini CLI) are",""]],
+      [["    priced at catalogue API rates. On a subscription you",""]],
+      [["    paid the plan, not this API-equivalent estimate; missing",""]],
+      [["    telemetry and custom rates can change the result.",""]],
+      [],
+      [["  ",""],["The receipt as data: --receipt, or -o receipt.json. The","d"]],
+      [["  ",""],["document for whoever pays: --pdf-out bill.pdf.","d"]],
+    ],
+  },
+  {
+    id: "check",
+    cap: "check",
+    command: "npx @trazum/cli check examples/",
+    lines: [
+      [["examples/, 3 prompts","b"],[" ",""],["─────────────────────────────────────","d"]],
+      [["  ",""],["All 3 within budget.","g"]],
+      [],
+      [["  ",""],["OK","g"],["      235 / 600   examples/sample-prompt.en.txt",""]],
+      [["  ",""],["OK","g"],["      316 / 600   examples/sample-prompt.es.txt",""]],
+      [["  ",""],["OK","g"],["      326 / 600   examples/support-prompt.txt",""]],
+      [],
+      [["  ",""],["Against the baseline","b"]],
+      [["  ",""],["unchanged at 877 tokens","d"]],
+      [["  Monthly cost $11.88 → $11.88 ($0)",""]],
+    ],
+  },
+  {
+    id: "status",
+    cap: "check",
+    command: "echo $?",
+    lines: [
+      [["0",""]],
+    ],
+  },
+  {
+    id: "guard-cd",
+    cap: "guard",
+    command: "cd examples/claude-projects/-home-me-webapp",
+    lines: [],
+  },
+  {
+    id: "guard-warn",
+    cap: "guard",
+    command: "echo '{\"session_id\":\"demo\",\"transcript_path\":\"demo-webapp.jsonl\"}' |\n    npx @trazum/cli session-guard check \\\n    --warn 1 --stop 5 --on-cannot-tell fail-open",
+    lines: [
+      [["{\"systemMessage\":\"Trazum: this session has reached $3.66 in API-equivalent cost. Your warning figure is $1.00 and it stops at $5.00. API-equivalent is what this usage would cost at the provider's list API prices, not what you were charged. This is said once per session.\"}",""]],
+    ],
+  },
+  {
+    id: "guard-warn-status",
+    cap: "guard",
+    command: "echo $?",
+    lines: [
+      [["0",""]],
+    ],
+  },
+  {
+    id: "guard-stop",
+    cap: "guard",
+    command: "echo '{\"session_id\":\"demo\",\"transcript_path\":\"demo-webapp.jsonl\"}' |\n    npx @trazum/cli session-guard check \\\n    --warn 1 --stop 3 --on-cannot-tell fail-open",
+    lines: [
+      [["Trazum: stopped. This session has reached $3.66 in API-equivalent cost, at or over your stop figure of $3.00. API-equivalent is what this usage would cost at the provider's list API prices, not what you were charged. To go on, raise the figure: trazum session-guard install --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed>.",""]],
+    ],
+  },
+  {
+    id: "guard-stop-status",
+    cap: "guard",
+    command: "echo $?",
+    lines: [
+      [["2",""]],
+    ],
+  },
+  {
+    id: "clock",
+    cap: "clock",
+    command: "npx @trazum/cli bill examples/claude-projects \\\n    --agent claude-code --timezone Europe/Madrid --by week",
+    lines: [
+      [["Your bill","b"],[" ",""],["────────────────────────────────────────────────","d"]],
+      [["  ",""],["$12.70","bm"],[" across 126 priced call(s)","b"]],
+      [],
+      [["  ",""],["project","d"],["               ",""],["calls","d"],["    ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  home-me-etl-pipeline     42  $9.05  ",""],["███████","a"],["░░░","d"],["  71.2%",""]],
+      [["  home-me-webapp           84  $3.66  ",""],["███","a"],["░░░░░░░","d"],["  28.8%",""]],
+      [],
+      [["  ",""],["model","d"],["              ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  claude-fable-5-1      28    $9.00  ",""],["███████","a"],["░░░","d"],["  70.9%",""]],
+      [["  claude-opus-5-5       56    $2.95  ",""],["██","a"],["░░░░░░░░","d"],["  23.2%",""]],
+      [["  claude-sonnet-5-5     28  $0.7077  ",""],["█","a"],["░░░░░░░░░","d"],["   5.6%",""]],
+      [["  claude-haiku-5-5      14  $0.0456  ",""],["░░░░░░░░░░","d"],["   0.4%",""]],
+      [],
+      [["  ",""],["week","d"],["      ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  2026-W36     54    $5.43  ",""],["████","a"],["░░░░░░","d"],["  42.8%",""]],
+      [["  2026-W37     63    $6.36  ",""],["█████","a"],["░░░░░","d"],["  50.1%",""]],
+      [["  2026-W38      9  $0.9107  ",""],["█","a"],["░░░░░░░░░","d"],["   7.2%",""]],
+      [["  ",""],["One week on its own: --since 2026-09-14 --until","d"]],
+      [["  ",""],["2026-09-20.","d"]],
+      [["  ",""],["Add --timezone Europe/Madrid to bill it on the same days.","d"]],
+      [],
+      [["  ",""],["This log covers 2026-09-01 → 2026-09-14 (13.3 days):","d"]],
+      [["  ",""],["stated, never extrapolated. Scale it to a month yourself,","d"]],
+      [["  ",""],["now that you know what it covers.","d"]],
+      [["  ",""],["Days are cut in Europe/Madrid, not UTC: a bare","d"]],
+      [["  ",""],["--since/--until day is a day there, and so is every row","d"]],
+      [["  ",""],["above.","d"]],
+      [["  ",""],["!","y"],[" Agent sessions (Claude Code, Codex, Gemini CLI) are",""]],
+      [["    priced at catalogue API rates. On a subscription you",""]],
+      [["    paid the plan, not this API-equivalent estimate; missing",""]],
+      [["    telemetry and custom rates can change the result.",""]],
+      [],
+      [["  ",""],["The receipt as data: --receipt, or -o receipt.json. The","d"]],
+      [["  ",""],["document for whoever pays: --pdf-out bill.pdf.","d"]],
+    ],
+  },
+  {
+    id: "optimize",
+    cap: "optimize",
+    command: "npx @trazum/cli optimize examples/support-prompt.txt",
+    lines: [
+      [["Start here","b"],[" ",""],["───────────────────────────────────────────────","d"]],
+      [["  ",""],["\"This task may not need Claude Opus 5\", ","b"],["$8.34","bm"],["/month,","b"]],
+      [["  ",""],["13× what the rules saved.","b"]],
+      [],
+      [["Input tokens","b"]],
+      [["  326 → ",""],["202","g"],["   ",""],["-38.0%","b"],[" (estimated, ±6%)","d"]],
+      [],
+      [["Rules applied","b"]],
+      [["  ",""],["[safe]","d"],[" Repeated paragraphs ",""],["(1×, ~72 tokens)","d"]],
+      [["  ",""],["[safe]","d"],[" Wordy phrasing ",""],["(2×, ~6 tokens)","d"]],
+      [["  ",""],["[safe]","d"],[" Politeness formulas ",""],["(8×, ~34 tokens)","d"]],
+      [["  ",""],["[safe]","d"],[" Filler and throat-clearing ",""],["(2×, ~11 tokens)","d"]],
+      [],
+      [["Cost with Claude Opus 5","b"]],
+      [["  1,000 calls/month · 300 output tokens per call",""]],
+      [["  $9.13 → ",""],["$8.51","g"],["   ",""],["saving $0.6200/month (6.8%)","b"]],
+      [],
+      [["Beyond shortening the prompt","b"]],
+      [["  ",""],["→","a"],[" ",""],["$8.34","g"],["  ",""],["This task may not need Claude Opus 5","b"]],
+      [["           ",""],["By length and vocabulary the prompt looks like","d"]],
+      [["           \"small\" complexity. On Claude Haiku 5.5 you would","d"]],
+      [["           go from $8.51 to $0.1702 per month. This is a","d"]],
+      [["           keyword heuristic, not a judgement about answer","d"]],
+      [["           quality. Measure it before switching in","d"]],
+      [["           production: `trazum route <log.jsonl>","d"]],
+      [["           --prompt-file <prompt> --cases <cases> --yes`","d"]],
+      [["           sends the same cases to both models and reports","d"]],
+      [["           whether the cheaper one still does the job.","d"]],
+      [["  ",""],["→","a"],[" ",""],["$4.25","g"],["  ",""],["If the work tolerates latency, use the Batch API","b"]],
+      [["           ",""],["The Batch API applies a 50% discount on both","d"]],
+      [["           input and output. Most batches finish in under an","d"]],
+      [["           hour, with a 24-hour maximum. It fits bulk","d"]],
+      [["           classification, data enrichment or evaluations:","d"]],
+      [["           anything that is not answering a user in real","d"]],
+      [["           time.","d"]],
+      [["  ",""],["·","d"],[" ",""],["     ","g"],["  ",""],["Below the cacheable minimum","b"]],
+      [["           ",""],["Claude Opus 5 needs at least 512 prefix tokens to","d"]],
+      [["           cache; here the first variable placeholder","d"]],
+      [["           ({{question}}) shows up at ~186 tokens and only","d"]],
+      [["           what precedes it can be cached. Setting","d"]],
+      [["           cache_control will not error, it simply will not","d"]],
+      [["           cache.","d"]],
+      [["  ",""],["·","d"],[" ",""],["     ","g"],["  ",""],["Your cost is in the output, not the prompt","b"]],
+      [["           ",""],["Output accounts for $7.50 per month against $1.01","d"]],
+      [["           of input. Shortening the prompt has a low ceiling","d"]],
+      [["           here. The two controls that move the needle are","d"]],
+      [["           the effort parameter (lower it when the task is","d"]],
+      [["           not reasoning-heavy) and explicitly asking for","d"]],
+      [["           concise answers.","d"]],
+      [],
+      [],
+      [["  ",""],["Shortening a prompt is the smallest lever there is:","d"]],
+      [["  measured on an ordinary support prompt, the rules recover","d"]],
+      [["  about 1% of a monthly bill. On a metered API the things","d"]],
+      [["  that move 60% to 80% are which model the call goes to, the","d"]],
+      [["  Batch API, prompt caching, and what re-sending the","d"]],
+      [["  conversation costs, and \"trazum profile <usage.jsonl>\"","d"]],
+      [["  prices all four from what the provider actually charged.","d"]],
+      [["  Recording that log is a few lines and it never contains","d"]],
+      [["  prompt text.","d"]],
+    ],
+  },
+  {
+    id: "models",
+    cap: "models",
+    command: "npx @trazum/cli models",
+    lines: [
+      [["Models and pricing  (USD per million tokens)","b"],[" ",""],["─────────────","d"]],
+      [["  Table reviewed on 2026-11-05 (11 days ago). Verify before budgeting.","d"]],
+      [["  Per provider: 2026-11-05 (11 days ago) moonshot, deepseek, xai, mistral · 2026-11-16 (today) anthropic, openai, google","d"]],
+      [],
+      [["  ",""],["model","d"],["                               ",""],["input","d"],["       ",""],["output","d"]],
+      [["  claude-fable-5-1                       10           50",""]],
+      [["  claude-opus-5-5                         4           20",""]],
+      [["  claude-sonnet-5-5                       2           10",""]],
+      [["  claude-haiku-5-5                      0.1          0.5",""]],
+      [["  ",""],["… 4 of 91 rows shown: the models the receipt priced.","d"]],
+      [["  ",""],["Cut after output to fit 60 columns: context, cache min.","d"]],
+      [["  ",""],["not shown.","d"]],
+      [["  ",""],["Run with the clock set to 2026-11-16, the day the newest","d"]],
+      [["  ",""],["rates were read.","d"]],
+    ],
+  },
+  {
+    id: "unpriced",
+    cap: "unpriced",
+    command: "npx @trazum/cli bill examples/unpriced-model.jsonl",
+    lines: [
+      [["Your bill","b"],[" ",""],["────────────────────────────────────────────────","d"]],
+      [["  ",""],["$0.0145","bm"],[" across 3 priced call(s)","b"]],
+      [],
+      [["  ",""],["workload","d"],["  ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  triage        3  $0.0145  ",""],["██████████","a"],["  100.0%",""]],
+      [],
+      [["  ",""],["model","d"],["             ",""],["calls","d"],["      ",""],["USD","d"],["  ",""],["share","d"]],
+      [["  claude-haiku-5-5      3  $0.0145  ",""],["██████████","a"],["  100.0%",""]],
+      [],
+      [["  ",""],["This log covers 2026-09-02 → 2026-09-02 (0.1 days):","d"]],
+      [["  ",""],["stated, never extrapolated. Scale it to a month yourself,","d"]],
+      [["  ",""],["now that you know what it covers.","d"]],
+      [["  ",""],["!","y"],[" Not in the total: 2 call(s) to",""]],
+      [["    llama-3.3-70b-instruct, which the catalogue does not",""]],
+      [["    price. Named, never counted as $0.",""]],
+      [],
+      [["  ",""],["The receipt as data: --receipt, or -o receipt.json. The","d"]],
+      [["  ",""],["document for whoever pays: --pdf-out bill.pdf.","d"]],
+    ],
+  },
+];
+
+/**
+ * The paper receipt beside the laptop: `bill examples/claude-projects --receipt`, each figure formatted by the
+ * core's `formatUsd`, each line with the date its rate was read and the page it was read from (the core's
+ * `PROVIDER_SOURCES` for the line's provider).
+ */
+export const RECEIPT = {
+  "source": "examples/claude-projects",
+  "from": "2026-09-01",
+  "to": "2026-09-14",
+  "calls": 126,
+  "lines": [
+    {
+      "model": "claude-fable-5-1",
+      "label": "home-me-etl-pipeline",
+      "calls": 28,
+      "usd": "$9.00",
+      "reviewedOn": "2026-11-16",
+      "provider": "anthropic",
+      "source": "platform.claude.com/docs/en/about-claude/pricing"
+    },
+    {
+      "model": "claude-opus-5-5",
+      "label": "home-me-webapp",
+      "calls": 56,
+      "usd": "$2.95",
+      "reviewedOn": "2026-11-16",
+      "provider": "anthropic",
+      "source": "platform.claude.com/docs/en/about-claude/pricing"
+    },
+    {
+      "model": "claude-sonnet-5-5",
+      "label": "home-me-webapp",
+      "calls": 28,
+      "usd": "$0.7077",
+      "reviewedOn": "2026-11-16",
+      "provider": "anthropic",
+      "source": "platform.claude.com/docs/en/about-claude/pricing"
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "label": "home-me-etl-pipeline",
+      "calls": 14,
+      "usd": "$0.0456",
+      "reviewedOn": "2026-11-16",
+      "provider": "anthropic",
+      "source": "platform.claude.com/docs/en/about-claude/pricing"
+    }
+  ],
+  "total": "$12.70"
+} as const;
+
+/** What `bill --receipt` on the example log says it kept out of the total: the models it does not price, and their calls. */
+export const UNPRICED = {
+  "source": "examples/unpriced-model.jsonl",
+  "models": [
+    "llama-3.3-70b-instruct"
+  ],
+  "calls": 2
+} as const;

@@ -192,7 +192,8 @@ describe('the landing’s bill is the one the CLI prints', () => {
       assert.ok(t.billNote.length > 20, `${locale}: the bill is not labelled`);
       assert.equal(t.billSource, 'examples/claude-projects');
     }
-    assert.match(codeOf('components/Landing.tsx'), /\{t\.billNote\}/);
+    // The label stands in the bill's chapter of the story, beside the link to the files.
+    assert.match(codeOf('components/landing/Story.tsx'), /\{t\.billNote\}/);
     assert.match(codeOf('lib/social-card.tsx'), /\{note\}/, 'the social card shows the bill without its label');
   });
 });

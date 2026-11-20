@@ -104,6 +104,12 @@ describe('the public site is light until a visitor chooses', () => {
     assert.equal(run({ surface: 'site', reduce: true }).dataset.motion, undefined);
   });
 
+  it('the desk is marked before paint whenever a script runs, reduced motion included', () => {
+    // Without it the landing's desk is the still page: its objects, which need a script, are not drawn.
+    assert.equal(run({ surface: 'site' }).dataset.desk, 'on');
+    assert.equal(run({ surface: 'site', reduce: true }).dataset.desk, 'on');
+  });
+
   it('the header shows Light as the site’s default and System as the application’s', () => {
     const previous = { localStorage: globalThis.localStorage, document: globalThis.document };
     try {

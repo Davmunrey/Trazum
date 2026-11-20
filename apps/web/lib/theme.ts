@@ -21,6 +21,7 @@ export function surfaceDefault(): Theme {
   return typeof document !== 'undefined' && document.documentElement.dataset.surface === 'site' ? 'light' : 'system';
 }
 
+/** Puts a theme on the document, resolving `system` from the reader's colour-scheme preference. */
 export function applyTheme(theme: Theme): void {
   const resolved = theme === 'system'
     ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
@@ -29,6 +30,7 @@ export function applyTheme(theme: Theme): void {
   document.documentElement.style.colorScheme = resolved;
 }
 
+/** Applies a theme and remembers the choice; where storage is refused, the choice still holds for this page. */
 export function saveTheme(theme: Theme): void {
   applyTheme(theme);
   try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* Current choice still works. */ }
@@ -37,14 +39,17 @@ export function saveTheme(theme: Theme): void {
 /**
  * Runs before paint under the request nonce.
  *
- * Two decisions, both before the first frame so neither moves anything:
+ * Three decisions, all before the first frame so none moves anything:
  *
  * - The theme. An explicit choice wins everywhere. With none, the
  *   application follows the system and the public site (`data-surface` is
  *   `site`) is light. When storage throws, the application keeps the CSS
  *   system default and the site stays light.
+ * - Whether the landing's desk works: `data-desk="on"` whenever a script
+ *   runs, so the desk is laid out for its objects before they can be
+ *   pressed. Without this script (no JavaScript) the attribute is absent and
+ *   the desk is a still page: every output, then every plate, in order.
  * - Whether the landing tells its story by scroll: `data-motion="scroll"`
- *   unless the reader asked for reduced motion. Without this script (no
- *   JavaScript) the attribute is absent and the landing is a still page.
+ *   unless the reader asked for reduced motion.
  */
-export const THEME_BOOTSTRAP = `(function(){var r=document.documentElement,s=r.dataset.surface==='site';try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches)r.dataset.motion='scroll'}catch(e){}try{var t=localStorage.getItem('trazum:theme');var d=t==='dark'||(t!=='light'&&!(s&&t!=='system')&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=d?'dark':'light';r.style.colorScheme=d?'dark':'light'}catch(e){if(s){r.dataset.theme='light';r.style.colorScheme='light'}}})()`;
+export const THEME_BOOTSTRAP = `(function(){var r=document.documentElement,s=r.dataset.surface==='site';r.dataset.desk='on';try{if(!matchMedia('(prefers-reduced-motion: reduce)').matches)r.dataset.motion='scroll'}catch(e){}try{var t=localStorage.getItem('trazum:theme');var d=t==='dark'||(t!=='light'&&!(s&&t!=='system')&&matchMedia('(prefers-color-scheme: dark)').matches);r.dataset.theme=d?'dark':'light';r.style.colorScheme=d?'dark':'light'}catch(e){if(s){r.dataset.theme='light';r.style.colorScheme='light'}}})()`;

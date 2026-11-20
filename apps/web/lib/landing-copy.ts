@@ -56,7 +56,50 @@ export interface LandingCopy {
   more: Record<'ci' | 'mcp' | 'trim', { title: string; body: string; link: string }>;
   closeTitle: string;
   closeBody: string;
+  /** The desk: one object per capability around the laptop, and the plate that says what the pressed one does. */
+  desk: DeskCopy;
 }
+
+/** A capability on the desk: the object's name, and its plate's title, sentence and what it does not do. */
+export interface DeskCapability {
+  object: string;
+  title: string;
+  body: string;
+  not: readonly string[];
+}
+
+export interface DeskCopy {
+  kicker: string;
+  title: string;
+  sub: string;
+  /** The name of the group of objects, read aloud. */
+  objects: string;
+  /** The name of the laptop's screen, read aloud. */
+  screen: string;
+  notLabel: string;
+  receipt: { heading: string; calls: (calls: number) => string; rateRead: (date: string) => string; total: string };
+  caps: Record<DeskCommand, DeskCapability>;
+  /** The lid's object; its plate is what never leaves the machine. */
+  lid: string;
+  /** The tag on the screen while it runs the example log, which is not anybody's real usage. */
+  example: string;
+  /** The chapter on a model with no published price: what the example log is, with the model and the calls the CLI named. */
+  unpricedNote: (file: string, model: string, calls: number) => string;
+}
+
+/** The six objects whose press runs a command, in the order they lie on the desk; the lid comes after them. */
+export const DESK_COMMANDS = ['bill', 'check', 'guard', 'clock', 'optimize', 'models'] as const;
+export type DeskCommand = (typeof DESK_COMMANDS)[number];
+
+/** What each object runs, as the plate's eyebrow and the object's second line: the command, not a translation. */
+export const DESK_COMMAND_NAMES: Record<DeskCommand, string> = {
+  bill: 'trazum bill',
+  check: 'trazum check',
+  guard: 'trazum session-guard',
+  clock: 'trazum bill --agent --timezone',
+  optimize: 'trazum optimize',
+  models: 'trazum models',
+};
 
 /**
  * The README's illustrative bill: what `trazum bill examples/claude-projects`
@@ -167,6 +210,68 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
     },
     closeTitle: 'No provider key needed to get started.',
     closeBody: 'Requires Node.js 20 or newer. npx may download Trazum from npm. Or try sample data in your browser first.',
+    desk: {
+      kicker: 'Everything on the desk',
+      title: 'Scroll, and each object takes its turn. Press one, and the screen shows what it does.',
+      sub: 'Every line on the screen is what the CLI printed, on the example files in this repository.',
+      objects: 'What Trazum does, one object each',
+      screen: 'The laptop’s screen',
+      notLabel: 'What it does not do',
+      receipt: { heading: 'Receipt', calls: (calls) => `${calls} calls`, rateRead: (date) => `rate read ${date}`, total: 'Total' },
+      caps: {
+        bill: {
+          object: 'The receipt',
+          title: 'What your agents cost, by project and by model.',
+          body: 'It reads the sessions your agents already keep on disk and prints the bill. Every figure on the bill carries the rate behind it and the date that rate was reviewed.',
+          not: [
+            'It uploads nothing: it reads files already on this machine.',
+            'It does not extrapolate: it says which days the log covers.',
+            'It is not what a subscription charged you: agent sessions are priced at API rates.',
+          ],
+        },
+        check: {
+          object: 'The CI gate',
+          title: 'A gate in CI.',
+          body: 'Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? It exits 1 when either fails.',
+          not: ['It calls no model and needs no provider key.', 'It does not rewrite your prompts: it measures them.'],
+        },
+        guard: {
+          object: 'The breaker',
+          title: 'A spend limit for a Claude Code session.',
+          body: 'At the first figure it warns once; at the second it stops the session, with exit code 2.',
+          not: [
+            'It has no default figures: both are yours to set.',
+            'It never counts a cost it cannot tell as $0.',
+            'It cannot interrupt a model response already under way.',
+          ],
+        },
+        clock: {
+          object: 'The clock',
+          title: 'One agent, by week, on your calendar.',
+          body: '--agent keeps one coding agent’s records, and --timezone cuts the days and weeks in your zone instead of UTC.',
+          not: [
+            'Without --timezone, every day and week is a UTC one.',
+            'It does not pass a narrower bill off as the whole one: it says how many records it left out.',
+          ],
+        },
+        optimize: {
+          object: 'The pencil',
+          title: 'Trim a prompt without calling a model.',
+          body: 'Twelve deterministic rules: same input, same output, never touching code, URLs, email addresses or placeholders.',
+          not: ['It does not send your prompt anywhere.', 'It does not promise a smaller bill: trimming is the smallest lever there is.'],
+        },
+        models: {
+          object: 'The calendar',
+          title: 'Rates read, not remembered.',
+          body: 'Every price comes from the provider’s own page, and each provider carries the date its page was read.',
+          not: ['It never derives or estimates a price.', 'A model with no published price is kept out of the total, never counted as $0.'],
+        },
+      },
+      lid: 'The lid',
+      example: 'Example file',
+      unpricedNote: (file, model, calls) =>
+        `The screen runs bill on ${file}, an example log: ${calls} of its calls went to ${model}, which the catalogue does not price. The bill names it and leaves it out of the total.`,
+    },
   },
   es: {
     metaTitle: 'Trazum: lo que cuestan tus agentes de IA',
@@ -238,6 +343,68 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
     },
     closeTitle: 'Sin clave de proveedor para empezar.',
     closeBody: 'Requiere Node.js 20 o posterior. npx puede descargar Trazum de npm. O prueba antes con datos de ejemplo en tu navegador.',
+    desk: {
+      kicker: 'Todo sobre la mesa',
+      title: 'Desplázate y cada objeto tiene su turno. Pulsa uno y la pantalla enseña lo que hace.',
+      sub: 'Cada línea de la pantalla es lo que imprimió el CLI, sobre los archivos de ejemplo de este repositorio.',
+      objects: 'Lo que hace Trazum, un objeto para cada cosa',
+      screen: 'La pantalla del portátil',
+      notLabel: 'Lo que no hace',
+      receipt: { heading: 'Recibo', calls: (calls) => `${calls} llamadas`, rateRead: (date) => `tarifa leída el ${date}`, total: 'Total' },
+      caps: {
+        bill: {
+          object: 'El recibo',
+          title: 'Lo que cuestan tus agentes, por proyecto y por modelo.',
+          body: 'Lee las sesiones que tus agentes ya guardan en disco e imprime la factura. Cada cifra de la factura lleva la tarifa que hay detrás y la fecha en que se revisó.',
+          not: [
+            'No sube nada: lee archivos que ya están en esta máquina.',
+            'No extrapola: dice qué días cubre el log.',
+            'No es lo que te cobró una suscripción: las sesiones de agentes se valoran a tarifas de la API.',
+          ],
+        },
+        check: {
+          object: 'La barrera de CI',
+          title: 'Una puerta en CI.',
+          body: '¿Cabe este prompt en su presupuesto de tokens, y se ha desviado el repositorio de su línea base registrada? Sale con 1 cuando falla cualquiera de las dos.',
+          not: ['No llama a ningún modelo ni necesita clave de proveedor.', 'No reescribe tus prompts: los mide.'],
+        },
+        guard: {
+          object: 'El diferencial',
+          title: 'Un límite de gasto para una sesión de Claude Code.',
+          body: 'Con la primera cifra avisa una vez; con la segunda para la sesión, con código de salida 2.',
+          not: [
+            'No trae cifras por defecto: las dos las pones tú.',
+            'Nunca cuenta como $0 un coste que no puede saber.',
+            'No puede cortar una respuesta del modelo que ya está en marcha.',
+          ],
+        },
+        clock: {
+          object: 'El reloj',
+          title: 'Un agente, por semana, en tu calendario.',
+          body: '--agent se queda con los registros de un solo agente, y --timezone corta los días y las semanas en tu zona en vez de en UTC.',
+          not: [
+            'Sin --timezone, cada día y cada semana son de UTC.',
+            'No hace pasar una factura parcial por la completa: dice cuántos registros dejó fuera.',
+          ],
+        },
+        optimize: {
+          object: 'El lápiz',
+          title: 'Recorta un prompt sin llamar a ningún modelo.',
+          body: 'Doce reglas deterministas: misma entrada, misma salida, sin tocar nunca código, URLs, direcciones de correo ni marcadores.',
+          not: ['No envía tu prompt a ningún sitio.', 'No promete una factura menor: recortar es la palanca más pequeña que hay.'],
+        },
+        models: {
+          object: 'El calendario',
+          title: 'Tarifas leídas, no recordadas.',
+          body: 'Cada precio sale de la página del propio proveedor, y cada proveedor lleva la fecha en que se leyó su página.',
+          not: ['Nunca deduce ni estima un precio.', 'Un modelo sin precio publicado queda fuera del total, nunca contado como $0.'],
+        },
+      },
+      lid: 'La tapa',
+      example: 'Archivo de ejemplo',
+      unpricedNote: (file, model, calls) =>
+        `La pantalla ejecuta bill sobre ${file}, un log de ejemplo: ${calls} de sus llamadas fueron a ${model}, que el catálogo no tiene con precio. La factura lo nombra y lo deja fuera del total.`,
+    },
   },
   fr: {
     metaTitle: 'Trazum : ce que coûtent vos agents IA',
@@ -309,6 +476,68 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
     },
     closeTitle: 'Aucune clé de fournisseur pour commencer.',
     closeBody: 'Nécessite Node.js 20 ou plus récent. npx peut télécharger Trazum depuis npm. Ou essayez d’abord des données d’exemple dans votre navigateur.',
+    desk: {
+      kicker: 'Tout sur la table',
+      title: 'Faites défiler et chaque objet passe à son tour. Appuyez sur l’un d’eux et l’écran montre ce qu’il fait.',
+      sub: 'Chaque ligne de l’écran est ce que le CLI a imprimé, sur les fichiers d’exemple de ce dépôt.',
+      objects: 'Ce que fait Trazum, un objet pour chaque chose',
+      screen: 'L’écran de l’ordinateur',
+      notLabel: 'Ce qu’il ne fait pas',
+      receipt: { heading: 'Reçu', calls: (calls) => `${calls} appels`, rateRead: (date) => `tarif lu le ${date}`, total: 'Total' },
+      caps: {
+        bill: {
+          object: 'Le reçu',
+          title: 'Ce que coûtent vos agents, par projet et par modèle.',
+          body: 'Il lit les sessions que vos agents gardent déjà sur le disque et imprime la facture. Chaque chiffre de la facture porte le tarif qui le fonde et la date de sa vérification.',
+          not: [
+            'Il n’envoie rien : il lit des fichiers déjà présents sur cette machine.',
+            'Il n’extrapole pas : il dit quels jours le journal couvre.',
+            'Ce n’est pas ce qu’un abonnement vous a facturé : les sessions d’agents sont tarifées aux prix de l’API.',
+          ],
+        },
+        check: {
+          object: 'Le contrôle CI',
+          title: 'Un contrôle en CI.',
+          body: 'Ce prompt tient-il dans son budget de tokens, et le dépôt a-t-il dérivé au-delà de sa ligne de base enregistrée ? Il sort en 1 quand l’un des deux échoue.',
+          not: ['Il n’appelle aucun modèle et ne demande aucune clé de fournisseur.', 'Il ne réécrit pas vos prompts : il les mesure.'],
+        },
+        guard: {
+          object: 'Le disjoncteur',
+          title: 'Une limite de dépense pour une session Claude Code.',
+          body: 'Au premier chiffre il avertit une fois ; au second il arrête la session, avec le code de sortie 2.',
+          not: [
+            'Il n’a pas de chiffres par défaut : les deux sont à vous.',
+            'Il ne compte jamais à 0 $ un coût qu’il ne peut pas établir.',
+            'Il ne peut pas interrompre une réponse du modèle déjà en cours.',
+          ],
+        },
+        clock: {
+          object: 'L’horloge',
+          title: 'Un agent, par semaine, sur votre calendrier.',
+          body: '--agent garde les enregistrements d’un seul agent, et --timezone coupe les jours et les semaines dans votre fuseau au lieu de l’UTC.',
+          not: [
+            'Sans --timezone, chaque jour et chaque semaine sont en UTC.',
+            'Il ne fait pas passer une facture partielle pour la complète : il dit combien d’enregistrements il a laissés de côté.',
+          ],
+        },
+        optimize: {
+          object: 'Le crayon',
+          title: 'Raccourcir un prompt sans appeler de modèle.',
+          body: 'Douze règles déterministes : même entrée, même sortie, sans jamais toucher au code, aux URL, aux adresses e-mail ni aux espaces réservés.',
+          not: ['Il n’envoie votre prompt nulle part.', 'Il ne promet pas une facture plus petite : raccourcir est le plus petit levier qui soit.'],
+        },
+        models: {
+          object: 'Le calendrier',
+          title: 'Des tarifs lus, pas retenus de mémoire.',
+          body: 'Chaque prix vient de la page du fournisseur lui-même, et chaque fournisseur porte la date à laquelle sa page a été lue.',
+          not: ['Il ne déduit ni n’estime jamais un prix.', 'Un modèle sans prix publié reste hors du total, jamais compté à 0 $.'],
+        },
+      },
+      lid: 'Le couvercle',
+      example: 'Fichier d’exemple',
+      unpricedNote: (file, model, calls) =>
+        `L’écran lance bill sur ${file}, un journal d’exemple : ${calls} de ses appels sont allés à ${model}, que le catalogue ne tarifie pas. La facture le nomme et le laisse hors du total.`,
+    },
   },
   de: {
     metaTitle: 'Trazum: was Ihre KI-Agenten kosten',
@@ -380,6 +609,68 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
     },
     closeTitle: 'Kein Anbieterschlüssel für den Einstieg nötig.',
     closeBody: 'Benötigt Node.js 20 oder neuer. npx kann Trazum von npm laden. Oder probieren Sie zuerst Beispieldaten in Ihrem Browser.',
+    desk: {
+      kicker: 'Alles auf dem Tisch',
+      title: 'Scrollen Sie, und jeder Gegenstand ist an der Reihe. Drücken Sie auf einen, und der Bildschirm zeigt, was er tut.',
+      sub: 'Jede Zeile auf dem Bildschirm ist, was das CLI ausgegeben hat, auf den Beispieldateien dieses Repositorys.',
+      objects: 'Was Trazum tut, ein Gegenstand für jede Sache',
+      screen: 'Der Bildschirm des Laptops',
+      notLabel: 'Was es nicht tut',
+      receipt: { heading: 'Beleg', calls: (calls) => `${calls} Aufrufe`, rateRead: (date) => `Preis gelesen am ${date}`, total: 'Summe' },
+      caps: {
+        bill: {
+          object: 'Der Beleg',
+          title: 'Was Ihre Agenten kosten, pro Projekt und pro Modell.',
+          body: 'Es liest die Sitzungen, die Ihre Agenten ohnehin auf der Festplatte ablegen, und druckt die Rechnung. Jede Zahl auf der Rechnung trägt den Preis dahinter und das Datum, an dem er geprüft wurde.',
+          not: [
+            'Es lädt nichts hoch: Es liest Dateien, die schon auf dieser Maschine liegen.',
+            'Es rechnet nicht hoch: Es sagt, welche Tage das Protokoll abdeckt.',
+            'Es ist nicht, was ein Abonnement Ihnen berechnet hat: Agentensitzungen werden zu API-Preisen bewertet.',
+          ],
+        },
+        check: {
+          object: 'Die CI-Schranke',
+          title: 'Eine Prüfung in der CI.',
+          body: 'Passt dieser Prompt in sein Token-Budget, und ist das Repository über seine aufgezeichnete Baseline hinausgedriftet? Es endet mit 1, wenn eines davon scheitert.',
+          not: ['Es ruft kein Modell auf und braucht keinen Anbieterschlüssel.', 'Es schreibt Ihre Prompts nicht um: Es misst sie.'],
+        },
+        guard: {
+          object: 'Die Sicherung',
+          title: 'Ein Ausgabenlimit für eine Claude-Code-Sitzung.',
+          body: 'Bei der ersten Zahl warnt es einmal; bei der zweiten stoppt es die Sitzung, mit Exit-Code 2.',
+          not: [
+            'Es hat keine voreingestellten Zahlen: Beide legen Sie fest.',
+            'Es zählt Kosten, die es nicht feststellen kann, nie als 0 $.',
+            'Es kann eine bereits laufende Antwort des Modells nicht unterbrechen.',
+          ],
+        },
+        clock: {
+          object: 'Die Uhr',
+          title: 'Ein Agent, pro Woche, in Ihrem Kalender.',
+          body: '--agent behält die Einträge eines einzigen Agenten, und --timezone schneidet Tage und Wochen in Ihrer Zeitzone statt in UTC.',
+          not: [
+            'Ohne --timezone ist jeder Tag und jede Woche einer in UTC.',
+            'Es gibt eine schmalere Rechnung nie als die ganze aus: Es sagt, wie viele Einträge es weggelassen hat.',
+          ],
+        },
+        optimize: {
+          object: 'Der Bleistift',
+          title: 'Einen Prompt kürzen, ohne ein Modell aufzurufen.',
+          body: 'Zwölf deterministische Regeln: gleiche Eingabe, gleiche Ausgabe, ohne je Code, URLs, E-Mail-Adressen oder Platzhalter anzufassen.',
+          not: ['Es schickt Ihren Prompt nirgendwohin.', 'Es verspricht keine kleinere Rechnung: Kürzen ist der kleinste Hebel, den es gibt.'],
+        },
+        models: {
+          object: 'Der Kalender',
+          title: 'Gelesene Preise, keine erinnerten.',
+          body: 'Jeder Preis stammt von der Seite des Anbieters selbst, und jeder Anbieter trägt das Datum, an dem seine Seite gelesen wurde.',
+          not: ['Es leitet nie einen Preis ab und schätzt keinen.', 'Ein Modell ohne veröffentlichten Preis bleibt aus der Summe heraus, nie als 0 $ gezählt.'],
+        },
+      },
+      lid: 'Der Deckel',
+      example: 'Beispieldatei',
+      unpricedNote: (file, model, calls) =>
+        `Der Bildschirm führt bill auf ${file} aus, einem Beispielprotokoll: ${calls} seiner Aufrufe gingen an ${model}, für das der Katalog keinen Preis hat. Die Rechnung nennt es und lässt es aus der Summe.`,
+    },
   },
   pt: {
     metaTitle: 'Trazum: quanto custam os seus agentes de IA',
@@ -451,5 +742,67 @@ export const COPY: Record<MarketingLocale, LandingCopy> = {
     },
     closeTitle: 'Sem chave de fornecedor para começar.',
     closeBody: 'Requer Node.js 20 ou mais recente. O npx pode descarregar o Trazum do npm. Ou experimente primeiro dados de exemplo no seu navegador.',
+    desk: {
+      kicker: 'Tudo em cima da mesa',
+      title: 'Desloque a página e cada objeto tem a sua vez. Carregue num e o ecrã mostra o que faz.',
+      sub: 'Cada linha do ecrã é o que o CLI imprimiu, sobre os ficheiros de exemplo deste repositório.',
+      objects: 'O que o Trazum faz, um objeto para cada coisa',
+      screen: 'O ecrã do portátil',
+      notLabel: 'O que não faz',
+      receipt: { heading: 'Recibo', calls: (calls) => `${calls} chamadas`, rateRead: (date) => `tarifa lida a ${date}`, total: 'Total' },
+      caps: {
+        bill: {
+          object: 'O recibo',
+          title: 'Quanto custam os seus agentes, por projeto e por modelo.',
+          body: 'Lê as sessões que os seus agentes já guardam no disco e imprime a fatura. Cada número da fatura leva a tarifa por trás e a data em que foi revista.',
+          not: [
+            'Não envia nada: lê ficheiros que já estão nesta máquina.',
+            'Não extrapola: diz que dias o registo cobre.',
+            'Não é o que uma subscrição lhe cobrou: as sessões de agentes são valorizadas a tarifas da API.',
+          ],
+        },
+        check: {
+          object: 'A barreira de CI',
+          title: 'Um controlo no CI.',
+          body: 'Este prompt cabe no seu orçamento de tokens, e o repositório desviou-se da sua linha de base registada? Sai com 1 quando qualquer um falha.',
+          not: ['Não chama nenhum modelo nem precisa de chave de fornecedor.', 'Não reescreve os seus prompts: mede-os.'],
+        },
+        guard: {
+          object: 'O disjuntor',
+          title: 'Um limite de gasto para uma sessão do Claude Code.',
+          body: 'No primeiro número avisa uma vez; no segundo para a sessão, com código de saída 2.',
+          not: [
+            'Não tem números por omissão: os dois são seus.',
+            'Nunca conta como 0 $ um custo que não consegue saber.',
+            'Não consegue interromper uma resposta do modelo já em curso.',
+          ],
+        },
+        clock: {
+          object: 'O relógio',
+          title: 'Um agente, por semana, no seu calendário.',
+          body: '--agent fica com os registos de um só agente, e --timezone corta os dias e as semanas no seu fuso em vez de em UTC.',
+          not: [
+            'Sem --timezone, cada dia e cada semana são de UTC.',
+            'Não faz passar uma fatura parcial pela completa: diz quantos registos deixou de fora.',
+          ],
+        },
+        optimize: {
+          object: 'O lápis',
+          title: 'Encurtar um prompt sem chamar nenhum modelo.',
+          body: 'Doze regras determinísticas: mesma entrada, mesma saída, sem nunca tocar em código, URLs, endereços de e-mail ou marcadores.',
+          not: ['Não envia o seu prompt para lado nenhum.', 'Não promete uma fatura menor: encurtar é a alavanca mais pequena que há.'],
+        },
+        models: {
+          object: 'O calendário',
+          title: 'Tarifas lidas, não lembradas.',
+          body: 'Cada preço vem da página do próprio fornecedor, e cada fornecedor leva a data em que a sua página foi lida.',
+          not: ['Nunca deduz nem estima um preço.', 'Um modelo sem preço publicado fica fora do total, nunca contado como 0 $.'],
+        },
+      },
+      lid: 'A tampa',
+      example: 'Ficheiro de exemplo',
+      unpricedNote: (file, model, calls) =>
+        `O ecrã executa bill sobre ${file}, um registo de exemplo: ${calls} das suas chamadas foram para ${model}, que o catálogo não tem com preço. A fatura nomeia-o e deixa-o fora do total.`,
+    },
   },
 };

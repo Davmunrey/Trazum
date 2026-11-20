@@ -1,5 +1,20 @@
-import type { TerminalBlock } from './landing-terminal';
-import { PHASES, PROMPT_LEAD, RUNS, SCENES, SCENE_OF, lineCount, progress, timeLines, type Range } from './story-timeline';
+import type { BlockOwner, TerminalBlock } from './landing-terminal';
+import {
+  BEATS,
+  CHAPTERS,
+  CROSSFADE,
+  LEAD,
+  STORY_HEIGHT,
+  type ChapterId,
+  NOTE_DRAW,
+  type ObjectId,
+  type Range,
+  objectArrival,
+  progress,
+  staggered,
+  timeOutput,
+  within,
+} from './story-timeline';
 
 /**
  * The landing story's motion, as CSS keyframes of `transform`, `opacity` and
@@ -7,261 +22,367 @@ import { PHASES, PROMPT_LEAD, RUNS, SCENES, SCENE_OF, lineCount, progress, timeL
  *
  * ## Why keyframes, and why written here
  *
- * The first version computed every position in the stylesheet from one
- * custom property, `--p`, animated by the scroll. It read well and cost a
- * great deal: measured at 4x CPU throttle, every frame recomputed the style
- * of about 460 elements (each line and run of the terminal, each key of the
- * keyboard), 50 to 180 ms a frame, because a changing custom property makes
- * the browser restyle what lies beneath it, inherited or not. Animating the
- * properties themselves restyles only the element that moves, and lets the
- * browser hand a transform or an opacity to the compositor.
+ * A first version computed every position in the stylesheet from one custom
+ * property animated by the scroll. Measured at 4x CPU throttle, every frame
+ * recomputed the style of about 460 elements, 50 to 180 ms a frame, because a
+ * changing custom property makes the browser restyle what lies beneath it.
+ * Animating the properties themselves restyles only the element that moves,
+ * and lets the browser hand a transform or an opacity to the compositor.
  *
- * So each moving element gets keyframes over the whole story (0% when the
- * stage pins, 100% when it lets go), sampled through each eased phase finely
- * enough that the straight lines between samples follow the curve. The
- * geometry stays in the stylesheet as custom properties of the stage, which
- * never change while scrolling (`var(--cy)`, `var(--lam)` and so on), so one
- * set of keyframes serves the desktop and the phone.
+ * So each moving element gets keyframes over the whole story (0% as the hero
+ * scrolls out, 100% when the stage lets go), sampled through each eased beat
+ * finely enough that the straight lines between samples follow the curve. The
+ * distances stay in the stylesheet as custom properties of the desk, which
+ * never change while scrolling (`var(--rise-laptop)` and so on), so one set of
+ * keyframes serves the desktop and the phone.
  *
  * The same keyframes run two ways: on the section's scroll timeline where the
  * browser has one, and, where it has not, paused, with `Story.tsx` setting
- * each element's `animation-delay` to the scroll position. Either way, the
+ * each animation's current time to the scroll position. Either way, the
  * scroll position is the only clock.
+ *
+ * ## What each chapter moves
+ *
+ * The arrival brings the desk, the laptop and each object in over their own
+ * stretch and from their own distance, so they pass each other as layers.
+ * Then each chapter lifts its own object, types its command over what the
+ * chapter before left on the screen, which gives way to it, and prints the
+ * output a line at a time, the screen scrolling up as a terminal does once
+ * the output is taller than it; as it ends it settles the object back. Only
+ * the receipt moves sideways: out of the laptop's side, never over its screen
+ * while it prints, forward in front of it with a note of each rate's page,
+ * and back onto the desk. The lid closes last.
  */
 
 /** The lid's angle, closed: onto the deck, which lies at `DECK_ANGLE`, short of touching it by a degree. */
 export const DECK_ANGLE = 76;
 export const LID_CLOSED = -(180 - DECK_ANGLE - 1);
 
+/** Smoothstep: eases a 0 to 1 progress in and out. */
 const smooth = (t: number) => t * t * (3 - 2 * t);
+/** Smootherstep: the same, with a flatter start and end. */
 const smoother = (t: number) => t * t * t * (t * (t * 6 - 15) + 10);
+/** A number as CSS text, rounded to five places so the keyframes stay short. */
 const n = (value: number) => Number(value.toFixed(5)).toString();
-
-/** The eased phases at a point of the story. */
-export function phasesAt(p: number) {
-  const A = smooth(progress(p, PHASES.approach));
-  const D = smoother(progress(p, PHASES.dive)) * (1 - smoother(progress(p, PHASES.undive)));
-  const X = smooth(progress(p, PHASES.expand)) * (1 - smooth(progress(p, PHASES.unexpand)));
-  const S = smooth(progress(p, PHASES.aside));
-  const CL = progress(p, PHASES.clear);
-  const T = progress(p, PHASES.settle);
-  const C = smooth(progress(p, PHASES.close));
-  const V = smooth(progress(p, PHASES.leaves));
-  return { A, D, X, S, CL, T, C, V };
-}
 
 /** Points through a range: its two ends and `count` between. */
 function through([start, end]: Range, count: number): number[] {
   return Array.from({ length: count + 2 }, (_, i) => start + ((end - start) * i) / (count + 1));
 }
 
-/** The moments at which the camera's eased phases are sampled. */
-const CAMERA_STOPS = [
-  ...through(PHASES.approach, 6),
-  ...through(PHASES.dive, 14),
-  ...through(PHASES.expand, 5),
-  ...through(PHASES.unexpand, 5),
-  ...through(PHASES.undive, 12),
-  ...through(PHASES.aside, 6),
-  ...through(PHASES.clear, 2),
-  ...through(PHASES.close, 10),
-];
-
 type Frame = Readonly<Record<string, string>>;
 
-/** One `@keyframes` rule, its stops in order, each stop the values `at(p)` gives. */
-function keyframes(name: string, stops: readonly number[], at: (p: number) => Frame, timing?: (p: number) => string | null): string {
-  const points = [...new Set([0, 1, ...stops.map((p) => Math.min(1, Math.max(0, p)))].map((p) => Number(p.toFixed(5))))].sort((a, b) => a - b);
-  const body = points
-    .map((p) => {
+/**
+ * The stretch of the story each moving element moves in, by its keyframes'
+ * name: from its first stop to its last, as a fraction of the story. Outside
+ * it the element holds still (`animation-fill-mode: both`), so each element
+ * runs only over its own stretch rather than over the whole story: measured
+ * at 4x CPU throttle, about ninety animations each active over the whole
+ * story dropped a frame in five at 1440x900, because the browser samples
+ * every animation in its active interval on every frame.
+ */
+export type Span = readonly [start: number, end: number];
+
+/** Where a point of the story is on the section's `cover` range, in percent: the stylesheet's `animation-range` for it. */
+export function coverOf(p: number): number {
+  return ((LEAD + p * (STORY_HEIGHT - 100 + LEAD)) / (STORY_HEIGHT + 100)) * 100;
+}
+
+/**
+ * One `@keyframes` rule over its own stretch, its stops in order, each stop
+ * the values `at(p)` gives; the stretch is recorded in `spans`. Every value
+ * holds still outside the stretch, which the stops are chosen to cover.
+ */
+function frames(spans: Map<string, Span>, name: string, stops: readonly number[], at: (p: number) => Frame, timing?: (p: number) => string | null): string {
+  const points = stops.map((q) => Math.min(1, Math.max(0, q)));
+  const lo = Math.min(...points);
+  const hi = Math.max(lo + 1e-4, ...points);
+  spans.set(name, [lo, hi]);
+  // Each stop as written (to five decimals of a percent), with the point it was asked for, so that a value read at a
+  // stop is the value at the moment the timeline names, not at a rounding of it.
+  const asked = new Map<number, number>();
+  for (const p of [lo, hi, ...points]) {
+    const written = Number((((p - lo) / (hi - lo)) * 100).toFixed(5));
+    if (!asked.has(written)) asked.set(written, p);
+  }
+  const body = [...asked.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([written, p]) => {
       const frame = Object.entries(at(p)).map(([property, value]) => `${property}: ${value};`);
       const easing = timing?.(p);
       if (easing) frame.push(`animation-timing-function: ${easing};`);
-      return `  ${n(p * 100)}% { ${frame.join(' ')} }`;
+      return `  ${n(written)}% { ${frame.join(' ')} }`;
     })
     .join('\n');
   return `@keyframes ${name} {\n${body}\n}`;
 }
 
-function cameraTransform(p: number, layer: boolean): string {
-  const { A, D, X, S, C } = phasesAt(p);
-  const k0 = 0.9 + 0.1 * A;
-  const zoom = `${n(k0)} * (1 + (1 / var(--lam) - 1) * ${n(D)}) * ${n(1 - 0.24 * S)}`;
-  const y = `${n(1 - A)} * (4cqh - var(--top)) + ${n(D)} * (50cqh - var(--cy)) + ${n(S)} * var(--aside-y) - ${n(C)} * var(--close-y)`;
-  const x = `${n(S)} * var(--aside-x)`;
-  return layer
-    ? `translate(calc(${x}), calc(var(--cy) - 50cqh + ${y})) scale(calc(${zoom} * var(--lam)))`
-    : `translate(calc(${x}), calc(${y})) scale(calc(${zoom} * ${n(1 + 0.32 * X)}))`;
+/** A layer that rises into place over `range`, from `var(<distance>)` below where it rests. */
+function rising(spans: Map<string, Span>, name: string, range: Range, distance: string, ease: (t: number) => number = smooth, extra?: (e: number) => Frame): string {
+  return frames(spans, name, through(range, 10), (p) => {
+    const e = ease(progress(p, range));
+    return { transform: `translateY(calc(${n(1 - e)} * var(${distance})))`, ...extra?.(e) };
+  });
+}
+
+/** The objects on the desk, in the order they lie: the six that run a command, and the lid. */
+export const OBJECTS: readonly ObjectId[] = ['bill', 'check', 'guard', 'clock', 'optimize', 'models', 'lid'];
+/** How many objects lie on the desk. */
+export const OBJECT_COUNT = OBJECTS.length;
+
+/** The chapter after this one, or none for the last. */
+function next(id: ChapterId): ChapterId | null {
+  const index = CHAPTERS.findIndex((chapter) => chapter.id === id);
+  return CHAPTERS[index + 1]?.id ?? null;
+}
+
+/** The chapter in which an object takes its turn. */
+export function chapterOfObject(object: ObjectId): ChapterId {
+  const chapter = CHAPTERS.find((candidate) => candidate.object === object);
+  if (chapter === undefined) throw new Error(`no chapter is the ${object}'s turn`);
+  return chapter.id;
 }
 
 /**
- * Where one scene's plate gives way to the next's: the plate going fades over the last 0.015 of its scene and the
- * one coming over the first 0.015 of its own (`windowed` below).
+ * How far an object is lifted, from 0 on the desk to 1 lifted and pressed:
+ * up through its chapter's lift, held, and down as its chapter ends (the last
+ * chapter's, the lid's, stays up).
  */
-const SWAP_AT = [SCENES[1].range[0], SCENES[2].range[0]] as const;
-const SWAP = 0.015;
+export function lifted(object: ObjectId, p: number): number {
+  const chapter = chapterOfObject(object);
+  const up = smooth(progress(p, within(chapter, BEATS.lift)));
+  const down = next(chapter) === null ? 0 : smooth(progress(p, within(chapter, BEATS.settle)));
+  return up * (1 - down);
+}
+
+/** The stretch over which a lift happens, for sampling: up, and down. */
+function liftStops(object: ObjectId): number[] {
+  const chapter = chapterOfObject(object);
+  return [...through(within(chapter, BEATS.lift), 8), ...(next(chapter) === null ? [] : through(within(chapter, BEATS.settle), 8))];
+}
+
+/** The chapters that show a screen, in order. */
+const showingOf = (screen: BlockOwner | 'never') => CHAPTERS.filter((chapter) => chapter.screen === screen).map((chapter) => chapter.id);
+
+/** When a screen comes on: its prompt (what never leaves, its first line), as a short range. */
+function comesOn(screen: BlockOwner | 'never', blocks: readonly TerminalBlock[]): Range {
+  if (screen === 'never') return within(showingOf('never')[0], [BEATS.never[0] - 0.02, BEATS.never[0]]);
+  const at = timeOutput(screen, blocks).prompt;
+  return [at - 0.0015, at];
+}
+
+/** The screen that comes on after this one has had its chapters, if any: the output it gives way to. */
+function nextScreen(screen: BlockOwner | 'never'): BlockOwner | 'never' | null {
+  const last = CHAPTERS.findIndex((chapter) => chapter.id === showingOf(screen).at(-1));
+  const after = CHAPTERS.slice(last + 1).find((chapter) => chapter.screen !== null && chapter.screen !== screen);
+  return after === undefined ? null : (after.screen as BlockOwner | 'never');
+}
 
 /**
- * The top of the free part of the scene that is showing, as a CSS length, from each scene's (`--ft-<scene>`, which
- * the stylesheet sets). Across a swap it moves from one scene's top to the next's while only the plate it moves away
- * from is up: down to a lower top while the plate going fades (the one coming is not up yet), up to a higher one while
- * the plate coming fades in (the one going is gone). Either way it is the larger of the two paths, so no line of
- * output is ever under a plate that is up at all.
+ * The stretch over which a screen gives way to the next one: from the moment
+ * the next is whole, so that one or the other always is, and the two cross.
  */
-export function freeTop(p: number): string {
-  const path = (shift: number) => {
-    const toCheck = progress(p, [SWAP_AT[0] - SWAP + shift, SWAP_AT[0] + shift]);
-    const toTrim = progress(p, [SWAP_AT[1] - SWAP + shift, SWAP_AT[1] + shift]);
-    const w = { bill: 1 - toCheck, check: toCheck - toTrim, trim: toTrim };
-    // Only the scenes that count: outside a swap that is one, and the length is that scene's top as it stands.
-    const terms = (['bill', 'check', 'trim'] as const).filter((scene) => w[scene] > 1e-6);
-    return terms.length === 1 ? `var(--ft-${terms[0]})` : terms.map((scene) => `${n(w[scene])} * var(--ft-${scene})`).join(' + ');
-  };
-  const [a, b] = [path(0), path(SWAP)];
-  return a === b ? a : `max(${a}, ${b})`;
+function goesOff(screen: BlockOwner | 'never', blocks: readonly TerminalBlock[]): Range | null {
+  const following = nextScreen(screen);
+  if (following === null) return null;
+  const [, at] = comesOn(following, blocks);
+  return [at, at + CROSSFADE];
 }
 
-/** A window of the story in which something is shown, with short ramps at either end. */
-function windowed(p: number, [start, end]: Range, ramp: number, stays = false): number {
-  const rise = progress(p, [start, start + ramp]);
-  return stays ? rise : rise * (1 - progress(p, [end - ramp, end]));
+/**
+ * Whether the screen shows an owner's output (or what never leaves), from 0 to
+ * 1: on from its prompt, and on until the next output's prompt comes on over
+ * it, so that the two cross and the screen is never blank between them.
+ */
+export function onScreen(screen: BlockOwner | 'never', p: number, blocks: readonly TerminalBlock[]): number {
+  if (showingOf(screen).length === 0) return 0;
+  const off = goesOff(screen, blocks);
+  return progress(p, comesOn(screen, blocks)) * (1 - (off === null ? 0 : progress(p, off)));
 }
 
-/** Every keyframe set the story uses, by the element that uses it. */
-export function storyMotion(blocks: readonly TerminalBlock[]): string {
+/** The points of the story at which a screen's opacity changes: where it comes on and, if it goes off, where. */
+function screenStops(screen: BlockOwner | 'never', blocks: readonly TerminalBlock[]): number[] {
+  const off = goesOff(screen, blocks);
+  const on = comesOn(screen, blocks);
+  return [...on, ...(off === null ? [] : through(off, 2))];
+}
+
+/** Where the receipt is: 0 still in the laptop, 1 on the desk, 2 forward in front of the laptop. */
+export function receiptPose(p: number): { out: number; forward: number } {
+  const out = smooth(progress(p, within('bill', BEATS.receipt)));
+  const forward = smooth(progress(p, within('sources', BEATS.forward))) * (1 - smooth(progress(p, within('sources', BEATS.back))));
+  return { out, forward };
+}
+
+/** Every keyframe set the story uses, by the element that uses it, and the stretch of the story each runs over. */
+export function storyMotion(blocks: readonly TerminalBlock[], receiptLines: number, narrow?: readonly TerminalBlock[]): string {
+  return motionOf(blocks, receiptLines, narrow).css;
+}
+
+/** The prefix of the narrow screen's own keyframes: its lines and bars are not the wide screen's. */
+export const NARROW_PREFIX = 'n-';
+
+/**
+ * The keyframes, and the stretch each runs over. `narrow`, when given, is the
+ * same commands as the narrow screen shows them (`TERMINAL_NARROW`): its lines
+ * print over the same stretch as the wide screen's, a line at a time, under
+ * names of their own.
+ */
+export function motionOf(
+  blocks: readonly TerminalBlock[],
+  receiptLines: number,
+  narrow?: readonly TerminalBlock[],
+): { css: string; spans: ReadonlyMap<string, Span> } {
+  const spans = new Map<string, Span>();
   const rules: string[] = [];
+  const keyframes = (name: string, stops: readonly number[], at: (p: number) => Frame, timing?: (p: number) => string | null) => frames(spans, name, stops, at, timing);
+  const rise = (name: string, range: Range, distance: string, ease: (t: number) => number = smooth, extra?: (e: number) => Frame) => rising(spans, name, range, distance, ease, extra);
+  const arrival = (beat: Range) => within('arrival', beat);
 
-  rules.push(keyframes('st-camera', CAMERA_STOPS, (p) => ({ transform: cameraTransform(p, false) })));
+  /*
+   * Shown from the top down to the last line printed, a line at a time, and whole once the last has printed;
+   * the screen scrolls up as a terminal does once that is taller than it. Measured from the top, so a line a
+   * narrow screen wraps onto two never shows a line early. Each stop holds until the next (`steps(1, end)`).
+   * Then each share bar fills once its row has printed.
+   */
+  const printed = (owner: BlockOwner, source: readonly TerminalBlock[], prefix: string) => {
+    const { prompt, lines } = timeOutput(owner, source);
+    const own = source.filter((block) => block.cap === owner);
+    const total = 1 + lines.length;
+    const shownAt = (p: number) => (p >= prompt - 1e-5 ? 1 : 0) + lines.filter((line) => p >= line.at - 1e-5).length;
+    rules.push(
+      keyframes(
+        `st-print-${prefix}${owner}`,
+        [prompt - 0.0005, prompt, ...lines.map((line) => line.at)],
+        (p) => {
+          const shown = shownAt(p);
+          if (shown >= total) return { 'clip-path': 'inset(0 0 0% 0)', transform: 'translateY(min(0px, calc(var(--rows) - 100%)))' };
+          return {
+            'clip-path': `inset(0 0 calc(100% - ${shown} * 1.5em) 0)`,
+            transform: `translateY(min(0px, calc(var(--rows) - ${shown} * 1.5em)))`,
+          };
+        },
+        () => 'steps(1, end)',
+      ),
+    );
+    let at = 0;
+    for (const block of own) {
+      at += block.command.split('\n').length;
+      block.lines.forEach((runs, j) => {
+        const line = lines[at + j - 1];
+        if (line === undefined || !runs.some(([text, style]) => style.includes('a') && /^█+$/.test(text))) return;
+        const fill: Range = [line.at + 0.002, line.at + 0.012];
+        rules.push(keyframes(`st-bar-${prefix}${block.id}-${j}`, through(fill, 2), (p) => ({ 'clip-path': `inset(0 calc(${n(1 - progress(p, fill))} * 100%) 0 0)` })));
+      });
+      at += block.lines.length;
+    }
+  };
+
+  // The laptop comes down onto the floor and lands.
   rules.push(
-    keyframes('st-layer', CAMERA_STOPS, (p) => {
-      const { X, CL } = phasesAt(p);
-      return {
-        transform: cameraTransform(p, true),
-        'clip-path': `inset(calc((100cqh - var(--shownH)) / 2 * ${n(1 - X)}) calc((100cqw - var(--shown)) / 2 * ${n(1 - X)}))`,
-        opacity: n(1 - CL),
-      };
+    keyframes('st-laptop', through(arrival(BEATS.land), 12), (p) => {
+      const e = smoother(progress(p, arrival(BEATS.land)));
+      return { transform: `translateY(calc(${n(1 - e)} * var(--rise-laptop))) scale(${n(0.96 + 0.04 * e)})` };
     }),
   );
 
-  // The terminal: each block of output prints a line at a time and the column scrolls by what no longer fits.
-  const timed = timeLines(blocks);
-  const scenes = ['bill', 'check', 'trim'] as const;
-  const breaks = [...through(PHASES.dive, 10), ...through(PHASES.expand, 4), ...through(PHASES.unexpand, 4), ...through(PHASES.undive, 10)];
-  for (const block of blocks) {
-    const { type, print } = RUNS[block.id];
-    breaks.push(type[0] - PROMPT_LEAD, type[0] - PROMPT_LEAD + 0.004, ...through(print, 12));
-  }
-  for (const at of SWAP_AT) breaks.push(...through([at - SWAP, at + SWAP], 5));
-  for (const scene of scenes) {
-    const mine = timed.filter(({ block }) => SCENE_OF[block.id] === scene);
-    const first = mine[0]?.command.index ?? 0;
-    const count = mine.reduce((sum, { lines }) => sum + 1 + lines.length, 0);
+  // Each object arrives on the desk a little after the one before it; then, in its chapter, lifts and turns pressed.
+  OBJECTS.forEach((object, index) => {
+    rules.push(rise(`st-obj-${index}`, objectArrival(index, OBJECT_COUNT), '--rise-obj'));
+    const stops = liftStops(object);
     rules.push(
-      keyframes(`st-term-${scene}`, breaks, (p) => {
-        const { D, X } = phasesAt(p);
-        // The free part: from the showing scene's top (`freeTop`) to its foot (`--fb`), which is the same in every scene.
-        const top = `(${freeTop(p)})`;
-        // The middle the column stands on: the laptop's screen while the camera is outside it, the free part's once the screen is the window.
-        const free = `(${top} + var(--fb)) / 2`;
-        const middle = X >= 1 ? `(${free})` : X <= 0 ? '50cqh' : `(${n(1 - X)} * 50cqh + ${n(X)} * ${free})`;
-        // How many lines' height the free part holds.
-        const room = `(var(--fb) - ${top})`;
-        const lines = lineCount(blocks, p);
-        const shown = Math.min(count, Math.max(0, lines - first));
-        // Centred on the free part's middle while the lines fit; once they fill it, scrolled by what does not fit.
-        const rise = `${middle} - var(--tb-top) - min(${n(lines)} * var(--lh), ${room}) / 2 - max(0px, ${n(lines)} * var(--lh) - ${room})`;
-        return {
-          transform: `translate(calc(var(--rest-x) * ${n(1 - D)}), calc(${rise}))`,
-          'clip-path': `inset(0 -50% calc(${n(count - shown)} * 1.5em) -50%)`,
-        };
+      keyframes(`st-lift-${object}`, stops, (p) => {
+        const e = lifted(object, p);
+        return { transform: `translate3d(${n(-3 * e)}px, ${n(-4 * e)}px, ${n(16 * e)}px)` };
       }),
     );
-  }
-  /*
-   * What has scrolled past the free part's top is gone: a sheet of the terminal's ground over the column, its foot at
-   * that top, under the plates. It moves by a transform alone. Measured for #770 at 1440x900 and 4x CPU throttle:
-   * the same cut made by the blocks' own clip, its top reading the stylesheet's lengths, cost 32 to 36 tasks over
-   * 50 ms (up to 270 ms) scrolling past the story; with this sheet, none in three scrolls of the whole page.
-   */
-  rules.push(keyframes('st-term-cut', breaks, (p) => ({ transform: `translateY(calc(${freeTop(p)} - 100cqh))` })));
+    rules.push(keyframes(`st-skin-${object}`, stops, (p) => ({ opacity: n(lifted(object, p)) })));
+  });
 
-  // Each command typed a character at a time, its cursor ahead of it; each share bar filling once its row prints.
-  timed.forEach(({ block, command, lines }, index) => {
-    const [c0, c1] = command.typed;
-    const chars = block.command.length;
+  // The screen: each owner's output on from its prompt and off as the next one's prompt comes on over it; typed, then printed.
+  const owners = [...new Set(blocks.map((block) => block.cap))];
+  for (const owner of owners) {
+    rules.push(keyframes(`st-out-${owner}`, screenStops(owner, blocks), (p) => ({ opacity: n(onScreen(owner, p, blocks)) })));
+    const { prompt, typed } = timeOutput(owner, blocks);
+    const first = blocks.filter((block) => block.cap === owner)[0].command.split('\n')[0];
+    const chars = first.length;
+    const [c0, c1] = typed;
     const typing = (p: number) => (Math.abs(p - c0) < 1e-6 ? `steps(${chars}, end)` : null);
-    rules.push(keyframes(`st-type-${index}`, [c0, c1], (p) => ({ 'clip-path': `inset(0 calc(${p >= c1 ? 0 : chars} * 1ch) 0 0)` }), typing));
+    rules.push(keyframes(`st-type-${owner}`, [c0, c1], (p) => ({ 'clip-path': `inset(0 calc(${p >= c1 ? 0 : chars} * 1ch) 0 0)` }), typing));
     rules.push(
       keyframes(
-        `st-cursor-${index}`,
-        [command.at, command.at + 0.0025, c0, c1, c1 + 0.025, c1 + 0.0275],
+        `st-cursor-${owner}`,
+        [prompt, prompt + 0.0015, c0, c1, c1 + 0.004, c1 + 0.0055],
         (p) => ({
           transform: `translateX(calc(${p >= c1 ? chars : 0} * 1ch))`,
-          opacity: n(progress(p, [command.at, command.at + 0.0025]) * (1 - progress(p, [c1 + 0.025, c1 + 0.0275]))),
+          opacity: n(progress(p, [prompt, prompt + 0.0015]) * (1 - progress(p, [c1 + 0.004, c1 + 0.0055]))),
         }),
         typing,
       ),
     );
-    block.lines.forEach((runs, j) => {
-      const bar = runs.findIndex(([text, style]) => style.includes('a') && /^█+$/.test(text));
-      if (bar === -1) return;
-      const at = lines[j]?.at ?? 0;
-      rules.push(
-        keyframes(`st-bar-${index}-${j}`, [at + 0.004, at + 0.034], (p) => ({
-          'clip-path': `inset(0 calc(${n(1 - progress(p, [at + 0.004, at + 0.034]))} * 100%) 0 0)`,
-        })),
-      );
-    });
-  });
-
-  // The words: each scene's plate on the screen while it is the subject, the last scene's beside the device.
-  for (const scene of SCENES) {
-    const stays = scene.id === 'never';
-    // The last scene's words wait until the device has moved aside, so it never slides over them.
-    const settled: Range = [PHASES.aside[1] - 0.015, PHASES.aside[1] + 0.025];
-    const on = (p: number) => (stays ? smooth(progress(p, settled)) : windowed(p, scene.range, 0.015));
-    const stops = stays ? through(settled, 6) : [scene.range[0], scene.range[0] + 0.015, scene.range[1] - 0.015, scene.range[1]];
-    rules.push(
-      keyframes(`st-words-${scene.id}`, stops, (p) => ({
-        opacity: n(on(p)),
-        transform: `translateY(calc(var(--words-y) + ${n(1 - on(p))} * var(--words-rise, 24px)))`,
-      })),
-    );
-    // The marker: each scene's bar fills while it plays, and its name shows.
-    rules.push(keyframes(`st-mark-${scene.id}`, [scene.range[0], scene.range[1]], (p) => ({ transform: `scaleX(${n(progress(p, scene.range))})` })));
-    const label = (p: number) => windowed(p, scene.range, 0.005, stays);
-    rules.push(keyframes(`st-label-${scene.id}`, [scene.range[0], scene.range[0] + 0.005, scene.range[1] - 0.005, scene.range[1]], (p) => ({ opacity: n(label(p)) })));
+    printed(owner, blocks, '');
+    if (narrow !== undefined) printed(owner, narrow, NARROW_PREFIX);
   }
 
-  // What never leaves, settling onto the screen one after another.
-  for (let i = 0; i < 5; i += 1) {
-    const from = PHASES.settle[0] + ((PHASES.settle[1] - PHASES.settle[0]) * (0.3 * i)) / 2.2;
-    const to = PHASES.settle[0] + ((PHASES.settle[1] - PHASES.settle[0]) * (1 + 0.3 * i)) / 2.2;
+  // What never leaves: on the screen in its chapter, a line at a time, and still there as the lid closes over it.
+  rules.push(keyframes('st-out-never', screenStops('never', blocks), (p) => ({ opacity: n(onScreen('never', p, blocks)) })));
+  const never = within('never', BEATS.never);
+  for (let k = 0; k < 5; k += 1) {
+    const range = staggered(never, k, 5, 0.25);
+    rules.push(keyframes(`st-never-${k}`, through(range, 4), (p) => ({ opacity: n(smooth(progress(p, range))) })));
+  }
+
+  // The receipt: hidden in the laptop until it prints, then out of its side and onto the desk; forward in front of
+  // the laptop, upright and nearer; and back. The poses are custom properties of the desk, so a phone, which has no
+  // room for it on the desk, keeps it in the laptop until it comes forward. While it prints, what of it is still
+  // inside the laptop is cut away at the laptop's side (`--receipt-from-x` is the slot's own width and a gap to the
+  // left, and the slot rests 0.7 of a gap right of the laptop): it never lies over the screen while text is on it.
+  const [r0] = within('bill', BEATS.receipt);
+  const poseStops = [r0 - 0.001, ...through(within('bill', BEATS.receipt), 10), ...through(within('sources', BEATS.forward), 10), ...through(within('sources', BEATS.back), 10)];
+  rules.push(
+    keyframes('st-receipt', poseStops, (p) => {
+      const { out, forward } = receiptPose(p);
+      const x = `calc(${n(1 - out)} * var(--receipt-from-x) + ${n(forward)} * var(--receipt-fwd-x))`;
+      const y = `calc(${n(1 - out)} * var(--receipt-from-y) + ${n(forward)} * var(--receipt-fwd-y))`;
+      const shown = p >= r0 ? `calc(${n(1 - forward)} * var(--receipt-rest) + ${n(forward)})` : '0';
+      const inside = `max(-24px, calc(${n(1 - out)} * (100% + var(--gap)) - 0.7 * var(--gap)))`;
+      return { transform: `translate(${x}, ${y})`, opacity: shown, 'clip-path': `inset(-80px -400% -80px ${inside})` };
+    }),
+  );
+  rules.push(
+    keyframes('st-receipt-face', [...through(within('sources', BEATS.forward), 10), ...through(within('sources', BEATS.back), 10)], (p) => {
+      const { forward } = receiptPose(p);
+      const back = 1 - forward;
+      return {
+        transform: `perspective(900px) rotateX(calc(${n(back)} * var(--tilt))) rotate(${n(2 * back)}deg) scale(calc(1 + ${n(forward)} * (var(--receipt-fwd-scale) - 1)))`,
+      };
+    }),
+  );
+  // A note from each line, with a leader rule, of the page its rate was read from and the date: each shown whole,
+  // one after another, and gone as the receipt goes back.
+  const notes = within('sources', BEATS.notes);
+  const gone = within('sources', [BEATS.back[0] - 0.06, BEATS.back[0]]);
+  for (let k = 0; k < receiptLines; k += 1) {
+    const draw = staggered(notes, k, receiptLines, NOTE_DRAW);
     rules.push(
-      keyframes(`st-never-${i}`, through([from, to], 4), (p) => {
-        const on = smooth(progress(p, [from, to]));
-        return { opacity: n(on), transform: `translateY(calc(${n(1 - on)} * -0.6em))` };
+      keyframes(`st-note-${k}`, [...through(draw, 6), ...through(gone, 2)], (p) => {
+        const e = smooth(progress(p, draw));
+        return { transform: `translateX(${n(-8 * (1 - e))}px)`, opacity: n(e * (1 - progress(p, gone))) };
       }),
     );
   }
-  const labelEnd = PHASES.settle[0] + (PHASES.settle[1] - PHASES.settle[0]) / 4;
-  rules.push(keyframes('st-never-label', [PHASES.settle[0], labelEnd], (p) => ({ opacity: n(progress(p, [PHASES.settle[0], labelEnd])) })));
 
-  // The lid closes about its hinge; the screen's light goes out; its shadow falls across the deck.
-  const closing = through(PHASES.close, 12);
-  rules.push(keyframes('st-lid', closing, (p) => ({ transform: `rotateX(${n(phasesAt(p).C * LID_CLOSED)}deg)` })));
-  rules.push(keyframes('st-screen-off', closing, (p) => ({ opacity: n(phasesAt(p).C * 0.92) })));
+  // The lid closes over what never leaves, about its hinge; the screen's light goes out and the lid's shade falls on the deck.
+  const lid = within('close', BEATS.lid);
+  rules.push(keyframes('st-lid', through(lid, 14), (p) => ({ transform: `rotateX(${n(LID_CLOSED * smooth(progress(p, lid)))}deg)` })));
+  const dark: Range = [lid[0] + (lid[1] - lid[0]) * 0.55, lid[1]];
+  rules.push(keyframes('st-screen-off', through(dark, 4), (p) => ({ opacity: n(0.92 * progress(p, dark)) })));
   rules.push(
-    keyframes('st-shade', closing, (p) => ({ transform: `scaleY(${n(phasesAt(p).C)})`, opacity: n(phasesAt(p).C * 0.18) })),
-  );
-
-  // What does leave comes up out of the closed machine.
-  rules.push(
-    keyframes('st-leaves', through(PHASES.leaves, 6), (p) => {
-      const { V } = phasesAt(p);
-      return { opacity: n(V), transform: `translateY(calc(${n(1 - V)} * var(--L) * 0.14))` };
+    keyframes('st-deck-shade', through(lid, 6), (p) => {
+      const e = smooth(progress(p, lid));
+      return { transform: `scaleY(${n(e)})`, opacity: n(0.18 * e) };
     }),
   );
 
-  return rules.join('\n');
+  return { css: rules.join('\n'), spans };
 }

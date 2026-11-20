@@ -1,0 +1,5 @@
+{"timestamp":"2026-09-02T09:00:00Z","model":"claude-haiku-5-5","label":"triage","usage":{"input_tokens":42000,"output_tokens":1800}}
+{"timestamp":"2026-09-02T09:20:00Z","model":"claude-haiku-5-5","label":"triage","usage":{"input_tokens":38500,"output_tokens":1500}}
+{"timestamp":"2026-09-02T09:40:00Z","model":"claude-haiku-5-5","label":"triage","usage":{"input_tokens":40100,"output_tokens":1650}}
+{"timestamp":"2026-09-02T10:00:00Z","model":"llama-3.3-70b-instruct","label":"triage","usage":{"input_tokens":41000,"output_tokens":1700}}
+{"timestamp":"2026-09-02T10:20:00Z","model":"llama-3.3-70b-instruct","label":"triage","usage":{"input_tokens":39800,"output_tokens":1600}}

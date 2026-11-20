@@ -165,28 +165,26 @@ describe('every tab a visitor can open has a flow that opens it', () => {
     }
   });
 
-  it('the landing’s story is scrolled top to bottom and back, in every way a reader can get it', () => {
+  it('the landing’s desk is scrolled top to bottom and back, in every way a reader can get it', () => {
     const named = (start) => FLOWS.filter((flow) => flow.name.startsWith(start));
     const story = named('landing: ');
-    assert.ok(story.length >= 4, 'the landing lost a flow');
+    assert.ok(story.length >= 6, 'the landing lost a flow');
     const sources = story.map((flow) => flow.run.toString()).join('\n');
     for (const step of ['storyInOrder', 'addInitScript', 'noSidewaysScroll', '[data-landing-close] [data-dashboard-action]', "url.pathname === '/app'"]) {
       assert.ok(sources.includes(step), `no landing flow does: ${step}`);
     }
     assert.ok(story.some((flow) => flow.context?.reducedMotion === 'reduce'), 'no landing flow reads the page with reduced motion');
+    assert.ok(story.some((flow) => flow.context?.javaScriptEnabled === false), 'no landing flow reads the page without JavaScript');
     assert.equal(named('appearance: the public site').length, 1);
     assert.equal(named('appearance: the public site')[0].context?.colorScheme, 'dark');
   });
 
-  it('a flow measures where the terminal’s output stands, wide and on a phone (#770)', () => {
-    const centred = FLOWS.filter((flow) => flow.name.startsWith('landing: ') && flow.run.toString().includes('terminalOffCentre'));
-    assert.equal(centred.length, 1, 'no landing flow measures the terminal’s output against the middle of its free part');
-    const [flow] = centred;
-    assert.match(flow.name, /middle of the free part/);
-    const source = flow.run.toString();
-    assert.ok(source.includes('[{ width: 1440, height: 900 }, PHONE]'), 'it does not measure at 1440x900 and on a phone');
-    assert.ok(source.includes('TERMINAL_STOPS'), 'it does not stop in every terminal scene');
-    assert.ok(source.includes('PLATE_SWAPS') && source.includes('outputClearance'), 'it does not hold the output clear of the plates as they swap');
+  it('a flow presses every object on the desk, by keyboard, wide and on a phone, and counts the laptops', () => {
+    const pressing = FLOWS.filter((flow) => flow.name.startsWith('landing: ') && flow.run.toString().includes('pressEveryObject'));
+    const sizes = pressing.map((flow) => (flow.viewport === undefined ? 'default' : `${flow.viewport.width}x${flow.viewport.height}`));
+    assert.ok(sizes.includes('1440x900') && sizes.includes('390x844'), `objects pressed only at ${sizes.join(', ')}`);
+    const source = FLOWS.find((flow) => flow.run.toString().includes('pressEveryObject'))?.run.toString() ?? '';
+    assert.ok(source.includes('pressEveryObject'), 'no flow presses the objects');
   });
 
   it('every flow has a name of its own and something to run', () => {
