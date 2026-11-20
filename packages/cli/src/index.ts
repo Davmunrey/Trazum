@@ -180,6 +180,7 @@ import {
   suggestRewrites,
   billOtlpInput,
   toBillOtlpMetrics,
+  toPrometheusText,
   toOtlpMetrics,
   toPromptfoo,
   UNLABELLED,
@@ -460,6 +461,8 @@ const VALUE_FLAGS = new Set([
   'html-out',
   'pdf-out',
   'otlp-out',
+  // `bill --prom-out <file>`: the bill in the Prometheus text format (#844).
+  'prom-out',
   // `bill --git-range <range>`: the commits whose span the statement sums.
   'git-range',
   'pricing',
@@ -926,7 +929,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'send', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'git-range', 'delivery', 'since', 'until', 'by', 'agent', 'timezone'],
+  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'send', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'prom-out', 'git-range', 'delivery', 'since', 'until', 'by', 'agent', 'timezone'],
   weekly: ['label', 'label-from-project', 'out', 'o', 'until', 'notify', 'pricing', 'pricing-live'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
@@ -4064,7 +4067,7 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
  * would put a different period on the page than the one asked for.
  */
 async function billGitRange(args: Args, range: string, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
-  for (const flag of ['since', 'until', 'label', 'by', 'agent', 'timezone', 'out', 'receipt', 'send', 'table', 'stamp', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out']) {
+  for (const flag of ['since', 'until', 'label', 'by', 'agent', 'timezone', 'out', 'receipt', 'send', 'table', 'stamp', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'prom-out']) {
     if (args.flags.has(flag)) throw new Error(t.bill.rangeConflict(`--${flag}`));
   }
   if (!boolFlag(args, 'label-from-project', true)) throw new Error(t.bill.rangeConflict('--no-label-from-project'));
@@ -4169,7 +4172,7 @@ function zoneFlagOf(args: Args, t: CliMessages, csvShape: ProfileCsvShape): stri
   if (raw === undefined) return undefined;
   const zone = canonicalZone(raw);
   if (zone === null) throw new Error(t.bill.badTimezone(raw));
-  for (const flag of ['otlp-out', 'markdown-out', 'html-out', 'pdf-out']) {
+  for (const flag of ['otlp-out', 'prom-out', 'markdown-out', 'html-out', 'pdf-out']) {
     if (args.flags.has(flag)) throw new Error(t.bill.timezoneConflict(`--${flag}`));
   }
   if (args.flags.has('csv-out') && csvShape !== 'slice') throw new Error(t.bill.timezoneConflict(`--csv-out --csv-shape ${csvShape}`));
@@ -4271,24 +4274,25 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
     point. See `toBillOtlpMetrics`.
   */
   const otlpPath = stringFlag(args, 'otlp-out');
-  if (otlpPath !== undefined) {
-    const written = await writeOtlp(args, () =>
-      toBillOtlpMetrics(
-        billOtlpInput(
-          [
-            { agent: null, lines: otherLines },
-            ...[...agentLines.entries()].map(([agent, own]) => ({ agent: AGENT_NAMES[agent], lines: own })),
-          ],
-          {
-            catalogue: pricing,
-            ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
-            ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
-            nowMs: Date.now(),
-          },
-        ),
+  const promPath = stringFlag(args, 'prom-out');
+  if (otlpPath !== undefined || promPath !== undefined) {
+    // Built once for both: the Prometheus text is written from the OTLP payload, so the two cannot disagree.
+    const payload = toBillOtlpMetrics(
+      billOtlpInput(
+        [
+          { agent: null, lines: otherLines },
+          ...[...agentLines.entries()].map(([agent, own]) => ({ agent: AGENT_NAMES[agent], lines: own })),
+        ],
+        {
+          catalogue: pricing,
+          ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+          ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+          nowMs: Date.now(),
+        },
       ),
     );
-    if (written) console.error(t.report.reportWritten(otlpPath));
+    if (otlpPath !== undefined && (await writeOtlp(args, () => payload))) console.error(t.report.reportWritten(otlpPath));
+    if (promPath !== undefined && (await writeText(promPath, toPrometheusText(payload)))) console.error(t.report.reportWritten(promPath));
   }
 
   /*
@@ -8355,6 +8359,18 @@ async function writeMarkdown(args: Args, render: () => string): Promise<void> {
  * full disk on a metrics runner must not turn a survey into a failure — the
  * survey is the thing somebody asked for, and the metrics are a copy of it.
  */
+/** Writes a text file, reporting and swallowing a failure, as `writeOtlp` does: the bill is what was asked for. */
+async function writeText(path: string, text: string): Promise<boolean> {
+  try {
+    await writeFile(path, text, 'utf8');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(c.yellow(`Could not write ${path}: ${message}`));
+    return false;
+  }
+}
+
 async function writeOtlp(args: Args, build: () => unknown): Promise<boolean> {
   const path = stringFlag(args, 'otlp-out');
   if (!path) return false;
