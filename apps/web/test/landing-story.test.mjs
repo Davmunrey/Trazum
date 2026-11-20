@@ -702,7 +702,10 @@ describe('the lid, the depth and the order of the arrival', () => {
     const typed = written.match(/@keyframes st-type-bill \{[\s\S]*?\n\}/)[0];
     assert.match(typed, new RegExp(`animation-timing-function: steps\\(${bill.command.length}, end\\)`));
     const printed = written.match(/@keyframes st-print-bill \{[\s\S]*?\n\}/)[0];
-    assert.match(printed, /\n {2}0% \{ clip-path: inset\(0 0 calc\(100% - 0 \* 1\.5em\) 0\);/, 'the output is on the screen before it is typed');
+    // From the first frame the screen holds the bill's prompt line and nothing under it: the laptop is never shown
+    // switched off, and the command on that line is still untyped, cut to no characters, until the bill is typed.
+    assert.match(printed, /\n {2}0% \{ clip-path: inset\(0 0 calc\(100% - 1 \* 1\.5em\) 0\);/, 'the first frame shows more than the prompt line, or no screen at all');
+    assert.match(typed, new RegExp(`\\n {2}0% \\{ clip-path: inset\\(0 calc\\(${bill.command.length} \\* 1ch\\) 0 0\\);`), 'the command is on the screen before it is typed');
     assert.match(printed, /\n {2}100% \{ clip-path: inset\(0 0 0% 0\);/, 'the output is not whole at the end');
     // Measured from the top: the lines shown never outnumber the lines printed, however a narrow screen wraps them.
     const shown = [...printed.matchAll(/calc\(100% - (\d+) \* 1\.5em\)/g)].map((match) => Number(match[1]));

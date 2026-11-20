@@ -164,10 +164,19 @@ function liftStops(object: ObjectId): number[] {
 /** The chapters that show a screen, in order. */
 const showingOf = (screen: BlockOwner | 'never') => CHAPTERS.filter((chapter) => chapter.screen === screen).map((chapter) => chapter.id);
 
+/**
+ * When the first command's prompt is drawn: from the story's start, its cursor waiting until the bill is typed, so
+ * the laptop is never shown switched off. A recording of the first screen at 1788x1176 (2026-11-20) showed a blank
+ * black screen until the reader scrolled. Every other prompt is drawn when its chapter gets to it.
+ */
+function waiting(owner: BlockOwner, prompt: number): number {
+  return owner === 'bill' ? 0 : prompt;
+}
+
 /** When a screen comes on: its prompt (what never leaves, its first line), as a short range. */
 function comesOn(screen: BlockOwner | 'never', blocks: readonly TerminalBlock[]): Range {
   if (screen === 'never') return within(showingOf('never')[0], [BEATS.never[0] - 0.02, BEATS.never[0]]);
-  const at = timeOutput(screen, blocks).prompt;
+  const at = waiting(screen, timeOutput(screen, blocks).prompt);
   return [at - 0.0015, at];
 }
 
@@ -249,11 +258,11 @@ export function motionOf(
     const { prompt, lines } = timeOutput(owner, source);
     const own = source.filter((block) => block.cap === owner);
     const total = 1 + lines.length;
-    const shownAt = (p: number) => (p >= prompt - 1e-5 ? 1 : 0) + lines.filter((line) => p >= line.at - 1e-5).length;
+    const shownAt = (p: number) => (p >= waiting(owner, prompt) - 1e-5 ? 1 : 0) + lines.filter((line) => p >= line.at - 1e-5).length;
     rules.push(
       keyframes(
         `st-print-${prefix}${owner}`,
-        [prompt - 0.0005, prompt, ...lines.map((line) => line.at)],
+        [waiting(owner, prompt) - 0.0005, waiting(owner, prompt), ...lines.map((line) => line.at)],
         (p) => {
           const shown = shownAt(p);
           if (shown >= total) return { 'clip-path': 'inset(0 0 0% 0)', transform: 'translateY(min(0px, calc(var(--rows) - 100%)))' };
@@ -312,10 +321,10 @@ export function motionOf(
     rules.push(
       keyframes(
         `st-cursor-${owner}`,
-        [prompt, prompt + 0.0015, c0, c1, c1 + 0.004, c1 + 0.0055],
+        [waiting(owner, prompt) - 0.0015, waiting(owner, prompt), c0, c1, c1 + 0.004, c1 + 0.0055],
         (p) => ({
           transform: `translateX(calc(${p >= c1 ? chars : 0} * 1ch))`,
-          opacity: n(progress(p, [prompt, prompt + 0.0015]) * (1 - progress(p, [c1 + 0.004, c1 + 0.0055]))),
+          opacity: n(progress(p, [waiting(owner, prompt) - 0.0015, waiting(owner, prompt)]) * (1 - progress(p, [c1 + 0.004, c1 + 0.0055]))),
         }),
         typing,
       ),
