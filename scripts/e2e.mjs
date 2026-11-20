@@ -1145,9 +1145,10 @@ export const FLOWS = [
       });
       is(narrow.wide, 'none', 'the 80-column transcript, not drawn on the phone');
       is(narrow.size >= 8 && narrow.oneLine, true, `the 60-column transcript at ${narrow.size.toFixed(1)}px, each table row on one line`);
-      // A card always in view under the desk, from the stage pinning to the end.
+      // A card always in view under the desk, from the stage pinning to the clearing, which has no words.
       for (let step = 3; step <= 60; step += 1) {
         await toStory(page, step / 60);
+        if ((await page.evaluate(() => document.querySelector('.story').dataset.chapter)) === 'away') break;
         const card = await page.evaluate(() => {
           const desk = document.querySelector('.desk').getBoundingClientRect();
           for (let y = Math.max(desk.bottom + 4, 0); y < window.innerHeight; y += 12) {

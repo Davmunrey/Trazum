@@ -1376,6 +1376,11 @@
     box-shadow: 0 0 0 100vmax var(--background);
     clip-path: inset(0 -100vmax);
   }
+  /* And the footer after it, which the band's lift brings up into the stage's last window too. */
+  :root[data-desk]:has([data-after-story]) [data-site-footer] {
+    position: relative;
+    z-index: 3;
+  }
   /*
    * Under the desk, on a phone, a chapter's card holds just under the desk
    * while its chapter is current; as its slot ends it goes on up under the
