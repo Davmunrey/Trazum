@@ -28,12 +28,17 @@ jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
+      # All three or nothing: a host without its user or token would push with an
+      # empty credential and fail every push to main, which is the opposite of
+      # "does nothing until three repository secrets exist" above (#779).
       - name: Check for N0 credentials
         id: creds
         env:
           HOST: ${{ secrets.N0_GITEA_HOST }}
+          USER: ${{ secrets.N0_GITEA_USER }}
+          TOKEN: ${{ secrets.N0_GITEA_TOKEN }}
         run: |
-          if [ -z "$HOST" ]; then
+          if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$TOKEN" ]; then
             echo "configured=false" >> "$GITHUB_OUTPUT"
             echo "N0 secrets not configured — skipping mirror. See docs/deploy-n0.md."
           else
