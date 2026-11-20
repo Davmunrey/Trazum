@@ -83,6 +83,7 @@ ${bold('USAGE')}
   trazum from-langsmith <file|dir> [-o <file>]
   trazum switch <usage.jsonl> --to <model> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
+  trazum model-pricing <managed-settings.json> --reviewed <YYYY-MM-DD> [-o <file>]
   trazum pulse [--max-stale-hours <n>]
   trazum proactive [status|on|off] [--only <item,...>] [--dry-run | --yes] [--json]
   trazum session-guard [status|install|uninstall] --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed> [--dry-run | --yes]
@@ -191,6 +192,16 @@ ${bold('OPTIONS FOR ownrate')}
   efficiency. Prints the figure and the pricing-overlay snippet to paste
   into trazum.config.json, so the model you run yourself becomes a
   first-class row in every report, priced by you and marked as such.
+
+${bold('OPTIONS FOR model-pricing')}
+  --reviewed <YYYY-MM-DD>     When the rates were last checked against the
+                              contract. Required.
+  -o, --out <file>            Write the overlay there instead of stdout.
+
+  The contracted rates your organisation gave Claude Code in its
+  modelPricing managed setting, as an overlay for --pricing, so Trazum's
+  figures match the ones Claude Code shows. What the table cannot say,
+  batch and fast mode, keeps the catalogue's figure and is named per model.
 
 ${bold('OPTIONS FOR reconcile')}
   --against <file>            The provider's cost report: Anthropic's
@@ -2098,6 +2109,39 @@ ${bold('EXAMPLES')}
     evalCostHint: () => 'Pass --cases <n> to price the evaluation the switch requires.',
     quality: (routeCommand) =>
       `Nothing above says whether the candidate can do the work. That is an evaluation, not arithmetic: ${routeCommand}`,
+  },
+
+  modelPricing: {
+    noFile: () =>
+      'Name the settings file that holds modelPricing: trazum model-pricing <managed-settings.json> --reviewed YYYY-MM-DD',
+    noReviewed: () =>
+      '--reviewed YYYY-MM-DD is required: the date somebody last checked these rates against the contract. An overlay of unknown age is worse than the bundled catalogue, whose age every report prints.',
+    notFound: (file) => `${file} is not a file.`,
+    tooLarge: (file, bytes) => `${file} is larger than ${bytes} bytes, which is more than a settings file holds.`,
+    notJson: (file, detail) => `${file} is not JSON: ${detail}`,
+    skipped: (key, reason, detail) => {
+      switch (reason) {
+        case 'invalid':
+          return `"${key}" is left out: ${detail}. Claude Code drops it too, and keeps the rest.`;
+        case 'zero':
+          return `"${key}" is left out: it holds a rate of zero, and Trazum prices nothing at zero. Calls to it stay at list price here.`;
+        case 'unknown-model':
+          return `"${key}" is not a model the catalogue knows, so nothing is priced from it. If it is a provider or gateway id for a Claude model, add that model's row under the catalogue id.`;
+        case 'duplicate':
+          return `"${key}" is left out: it is the same model as "${detail}", whose row is used. Trazum cannot price one model two ways.`;
+      }
+    },
+    empty: () => 'Nothing in the table reaches a model Trazum prices, so no overlay was written.',
+    summary: (fromRows, fromMultiplier, multiplier) =>
+      `${fromRows} model(s) at the rates in your table${multiplier === undefined ? '' : `, times ${multiplier}`}` +
+      (fromMultiplier > 0 ? `; ${fromMultiplier} other Claude model(s) at list price times ${multiplier}.` : '.'),
+    batch: (models) =>
+      `Batch: the table has no batch rate, so ${models} model(s) keep the catalogue's batch discount on the new input rate.`,
+    fastKept: (models) =>
+      `Fast mode: an overlay cannot carry a fast-mode rate, so these keep the published one, without your table or multiplier: ${models}. Claude Code applies them to fast turns.`,
+    usOnly: (models) =>
+      `US-only inference: no surcharge on a row, as Claude Code applies it: ${models}.`,
+    written: (file, models) => `Wrote an overlay of ${models} model(s) to ${file}. Use it with --pricing ${file}.`,
   },
 
   ownrate: {

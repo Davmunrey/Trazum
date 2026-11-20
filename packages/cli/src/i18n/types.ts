@@ -664,6 +664,22 @@ export interface CliMessages {
     quality(routeCommand: string): string;
   };
 
+  /** `model-pricing` — Claude Code's `modelPricing` managed setting as a pricing overlay (#856). */
+  modelPricing: {
+    noFile(): string;
+    noReviewed(): string;
+    notFound(file: string): string;
+    tooLarge(file: string, bytes: number): string;
+    notJson(file: string, detail: string): string;
+    skipped(key: string, reason: 'invalid' | 'zero' | 'unknown-model' | 'duplicate', detail?: string): string;
+    empty(): string;
+    summary(fromRows: number, fromMultiplier: number, multiplier?: number): string;
+    batch(models: number): string;
+    fastKept(models: string): string;
+    usOnly(models: string): string;
+    written(file: string, models: number): string;
+  };
+
   ownrate: {
     missing(): string;
     invalid(flag: string): string;

@@ -499,6 +499,12 @@ export {
   parsePricingOverlay,
 } from './pricing-overlay.js';
 export type { PricingOverlay } from './pricing-overlay.js';
+// Claude Code's modelPricing managed setting, read as a pricing overlay (#856).
+export {
+  ClaudeModelPricingError,
+  overlayFromClaudeModelPricing,
+} from './claude-model-pricing.js';
+export type { ClaudeModelPricingResult, SkippedRow } from './claude-model-pricing.js';
 export { openrouterOverlay } from './openrouter.js';
 
 // SigV4 and the Google service-account flow, both hand-rolled on WebCrypto to
