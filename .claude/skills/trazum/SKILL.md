@@ -23,7 +23,7 @@ spell it for you.
 |---|---|---|
 | Run a shell, in a checkout of this repository | the CLI, built from source | `node packages/cli/dist/index.js` — after `npm install && npm run build` once per session |
 | Run a shell, anywhere else | the CLI, straight from npm | `npx -y @trazum/cli` — no install, fetched on first use |
-| Call MCP tools but not a shell | the MCP server | **[Through MCP](#through-mcp)** below — twelve tools in this checkout, no shell needed |
+| Call MCP tools but not a shell | the MCP server | **[Through MCP](#through-mcp)** below — 12 tools in this checkout, no shell needed |
 | Call a local HTTP service | `trazum serve` | `GET /openapi.json` describes `POST /cost`; loopback only |
 | Import a module | the library | **[From code](#from-code)** below — `@trazum/core`, zero dependencies, browser-safe |
 | None of these | the web app | <https://trazum.vercel.app/app?tab=playground> — the pure subset runs in the page |
@@ -68,7 +68,7 @@ client can run the server over stdio; nothing here is specific to one vendor:
 }
 ```
 
-Twelve tools in this checkout. Budget checks can be used within an authorized task; a successful
+12 tools in this checkout. Budget checks can be used within an authorized task; a successful
 check never grants permission to make a paid call:
 
 | Tool | The question it answers |
@@ -681,7 +681,7 @@ this: the optimised prompt will not have broken someone's JSON schema.
   comparing two versions of the same prompt, which is what they are for. For
   exact figures use `--exact-tokens` with `ANTHROPIC_API_KEY` set — the counting
   endpoint does not charge for tokens. The band is measured against Claude's
-  tokenizer over 47 samples in ten languages; against a non-Anthropic
+  tokenizer over 47 samples in 10 languages; against a non-Anthropic
   model the report drops it, names the family, and gives the error measured
   there where anybody has measured it — 94.5% on DeepSeek, 103.1% on Mistral.
   Do not reinstate the Claude band on a prompt priced against another family.
