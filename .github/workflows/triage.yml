@@ -54,6 +54,7 @@ jobs:
           sparse-checkout: |
             scripts/triage.mjs
             scripts/pr-readiness.mjs
+            scripts/changes.mjs
           sparse-checkout-cone-mode: false
 
       # The number and the label names only. The title and the body are a
@@ -88,6 +89,7 @@ jobs:
           sparse-checkout: |
             scripts/triage.mjs
             scripts/pr-readiness.mjs
+            scripts/changes.mjs
           sparse-checkout-cone-mode: false
 
       - name: Add the labels its paths and its issue give it
@@ -115,6 +117,7 @@ jobs:
           sparse-checkout: |
             scripts/triage.mjs
             scripts/pr-readiness.mjs
+            scripts/changes.mjs
             ROADMAP.md
           sparse-checkout-cone-mode: false
 
