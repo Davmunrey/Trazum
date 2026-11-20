@@ -36,8 +36,7 @@ import type { ModelPricing } from './types.js';
 
 export const MAX_MULTIPLIER = 10;
 export const MAX_RATE = 10_000;
-const RATE_KEYS = ['input', 'output', 'cacheRead', 'cacheWrite'] as const;
-type RateKey = (typeof RATE_KEYS)[number];
+type RateKey = 'input' | 'output' | 'cacheRead' | 'cacheWrite';
 type Row = Record<RateKey, number>;
 
 /** Why a row in the table does not reach the overlay. */
@@ -92,20 +91,35 @@ function tableOf(document: unknown): Record<string, unknown> {
   throw new ClaudeModelPricingError('no "modelPricing" in the file');
 }
 
+/**
+ * One rate of a row as Claude Code reads it, or why it would drop the row.
+ * Named fields rather than a loop over keys, so nothing indexes an object by a
+ * computed name.
+ */
+function rate(value: unknown, name: RateKey): number | string {
+  if (value === undefined) return `no "${name}"`;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > MAX_RATE) {
+    return `"${name}" is not a number from 0 to ${MAX_RATE}`;
+  }
+  return value;
+}
+
 /** A row as Claude Code reads it, or why Claude Code would drop it. */
 function readRow(raw: unknown): { row: Row } | { invalid: string } {
   if (!isPlainObject(raw)) return { invalid: 'not an object' };
-  const row = {} as Row;
-  for (const key of RATE_KEYS) {
-    const value = raw[key];
-    if (value === undefined) return { invalid: `no "${key}"` };
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > MAX_RATE) {
-      return { invalid: `"${key}" is not a number from 0 to ${MAX_RATE}` };
-    }
-    row[key] = value;
+  const input = rate(raw.input, 'input');
+  const output = rate(raw.output, 'output');
+  const cacheRead = rate(raw.cacheRead, 'cacheRead');
+  const cacheWrite = rate(raw.cacheWrite, 'cacheWrite');
+  for (const read of [input, output, cacheRead, cacheWrite]) {
+    if (typeof read === 'string') return { invalid: read };
   }
-  return { row };
+  return { row: { input, output, cacheRead, cacheWrite } as Row };
 }
+
+/** Whether any of a row's rates is zero, which Trazum never prices at. */
+const hasZero = (row: Row): boolean =>
+  row.input === 0 || row.output === 0 || row.cacheRead === 0 || row.cacheWrite === 0;
 
 /**
  * The overlay a `modelPricing` table makes of a catalogue.
@@ -152,7 +166,7 @@ export function overlayFromClaudeModelPricing(
       skipped.push({ key, reason: 'invalid', detail: read.invalid });
       continue;
     }
-    if (RATE_KEYS.some((rate) => read.row[rate] === 0)) {
+    if (hasZero(read.row)) {
       skipped.push({ key, reason: 'zero' });
       continue;
     }
