@@ -16,7 +16,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: labels
@@ -26,6 +25,11 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Creating and correcting labels is an issues write, asked for by the
+    # job rather than the file (#873).
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

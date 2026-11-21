@@ -18,10 +18,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
-  checks: read
-  statuses: read
 
 concurrency:
   group: pr-guide-${{ github.event.pull_request.number || github.event.workflow_run.head_sha }}
@@ -31,6 +27,14 @@ jobs:
   guide:
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    # The writes are the job's, not the file's, so nothing added beside it
+    # inherits them (#873). The guide posts one comment and edits it.
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      checks: read
+      statuses: read
     # Fork pull requests get a read-only token; the guide stays quiet there.
     if: github.event_name == 'workflow_run' || github.event.pull_request.head.repo.full_name == github.repository
     env:

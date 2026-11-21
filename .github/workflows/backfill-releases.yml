@@ -42,11 +42,15 @@ on:
         default: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   backfill:
     runs-on: ubuntu-latest
+    # Creating a release writes to the repository; the job asks for it, not
+    # the file, so nothing added beside it inherits the write (#873).
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

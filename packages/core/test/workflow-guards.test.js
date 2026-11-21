@@ -38,6 +38,14 @@ function permissions(text) {
   return Object.fromEntries(block.trim().split('\n').map((line) => line.trim().split(': ')));
 }
 
+/** The one job's own `permissions:` block as { scope: access }, comment lines skipped. */
+function jobPermissions(text) {
+  const block = /\n {4}permissions:\n((?: {6}(?:#.*|[a-z-]+: [a-z]+)\n)+)/.exec(text)?.[1];
+  assert.ok(block, 'the job declares no permissions of its own');
+  const lines = block.split('\n').map((line) => line.trim()).filter((line) => line !== '' && !line.startsWith('#'));
+  return Object.fromEntries(lines.map((line) => line.split(': ')));
+}
+
 /** The shell a step runs: the lines of its `run: |` block, unindented, comments and blank lines kept. */
 function script(stepText) {
   const at = stepText.indexOf('run: |\n');
@@ -90,8 +98,10 @@ describe('pr-guide.yml runs a fetched script only as the pin says', () => {
     }
   });
 
-  it('writes to pull requests and issues and nothing else', () => {
-    const granted = permissions(text);
+  it('writes to pull requests and issues and nothing else, from the job and not the file', () => {
+    // On the job since #873: the top of the file grants read only.
+    assert.match(text, /\npermissions:\n {2}contents: read\n\n/);
+    const granted = jobPermissions(text);
     const writes = Object.entries(granted).filter(([, access]) => access === 'write').map(([scope]) => scope).sort();
     assert.deepEqual(writes, ['issues', 'pull-requests']);
     for (const [scope, access] of Object.entries(granted)) assert.ok(['read', 'write'].includes(access), `${scope}: ${access}`);
