@@ -104,6 +104,32 @@ describe('catalogue parity', () => {
     assert.deepEqual(Object.keys(es.models.columns).sort(), Object.keys(en.models.columns).sort());
   });
 
+  it('the Spanish catalogue names its placeholders in Spanish, with one word for each thing', () => {
+    // A Spanish reader was told `-o <file>` in one line and `-o <fichero>` in
+    // the next, `--label <name>` beside `--label <nombre>`, and the same file
+    // was `<archivo>` in twelve places and `<fichero>` in fifty-six. The
+    // catalogue's text is read as written, so every placeholder in it is held.
+    const source = readFileSync(new URL('../src/i18n/es.ts', import.meta.url), 'utf8');
+    const SPANISH = {
+      file: 'fichero',
+      archivo: 'fichero',
+      'archivo-nuevo': 'fichero-nuevo',
+      directory: 'directorio',
+      name: 'nombre',
+      label: 'etiqueta',
+      'item,...': 'elemento,...',
+      provider: 'proveedor',
+      'usage.jsonl': 'uso.jsonl',
+      yyyy: 'aaaa',
+    };
+    const found = [...source.matchAll(/<([^<>\s]+)>/g)].map((match) => match[1]).filter((word) => Object.hasOwn(SPANISH, word));
+    assert.deepEqual(
+      [...new Set(found)].map((word) => `<${word}> should be <${SPANISH[word]}>`),
+      [],
+      'placeholders in the Spanish catalogue that are English, or a second word for a thing that has one',
+    );
+  });
+
   it('every command appears in the help, in every locale', () => {
     // Regression: `eval` shipped fully implemented and completely
     // undiscoverable — the only way to find it was reading the changelog. A

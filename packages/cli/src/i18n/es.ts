@@ -37,7 +37,7 @@ ${bold('USO')}
   trazum verify <plan.json> --against <nuevo.jsonl|dir> [opciones]
   trazum profile <log.jsonl|dir> [opciones]
   trazum history <dir-de-informes-guardados> [opciones]
-  trazum connect <provider> [opciones]
+  trazum connect <proveedor> [opciones]
   trazum store [--prune] [opciones]
   trazum watch [--once | --interval 15m] [--sessions] [--notify] [opciones]
   trazum serve [--port <n> | --socket <ruta>]
@@ -62,33 +62,33 @@ ${bold('USO')}
   trazum from-gemini-cli <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
-  trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
-  trazum from-openai <usage.json> [--label <name>] [--label-by-project <file>] [-o <file>]
-  trazum from-openrouter <activity.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
-  trazum reconcile <receipt.json> --against <cost.json> [-o <file>]
+  trazum from-anthropic <usage.json> [--label <nombre>] [--label-by-workspace <fichero>] [-o <fichero>]
+  trazum from-openai <usage.json> [--label <nombre>] [--label-by-project <fichero>] [-o <fichero>]
+  trazum from-openrouter <activity.json> [--label <nombre>] [--label-by-workspace <fichero>] [-o <fichero>]
+  trazum reconcile <receipt.json> --against <cost.json> [-o <fichero>]
   trazum from-helicone <fichero|dir> [-o <fichero>]
   trazum from-langsmith <fichero|dir> [-o <fichero>]
   trazum switch <uso.jsonl> --to <modelo> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum model-pricing <managed-settings.json> --reviewed <AAAA-MM-DD> [-o <fichero>]
   trazum pulse [--max-stale-hours <n>]
-  trazum proactive [status|on|off] [--only <item,...>] [--dry-run | --yes] [--json]
+  trazum proactive [status|on|off] [--only <elemento,...>] [--dry-run | --yes] [--json]
   trazum session-guard [status|install|uninstall] --warn <usd> --stop <usd> --on-cannot-tell <fail-open|fail-closed> [--dry-run | --yes]
   trazum waste <transcripcion.jsonl> [--min-reads <n>] [--claude-md <fichero>] [--mcp-servers <a,b>] [--json]
   trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
   trazum models
   trazum rules [--measure <dir>] [--level <safe|aggressive>]
-  trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed> [--metrics-port <n>]
-  trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
-  trazum quality <log> --label <name> --at <iso> [--gate]
+  trazum gateway <proveedor> --on-cannot-tell <fail-open|fail-closed> [--metrics-port <n>]
+  trazum experiment <log> --a <etiqueta> --b <etiqueta> --min-outcomes <n>
+  trazum quality <log> --label <nombre> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]
   trazum commitment <log> --floor <usd> --discount <pct> [--months 12]
-  trazum report <log> --year <yyyy>
+  trazum report <log> --year <aaaa>
   trazum owners <log>
   trazum ladder <log>
   trazum feedback
-  trazum filter compact|restore|instructions [--recovery-dir <directory>]
+  trazum filter compact|restore|instructions [--recovery-dir <directorio>]
   trazum task analyze|policy|apply|revert|compare [--help]
   trazum --version
 
@@ -235,11 +235,11 @@ ${bold('OPCIONES DE model-pricing')}
   nombra por modelo.
 
 ${bold('OPCIONES DE reconcile')}
-  --against <archivo>         El informe de costes del proveedor: el
+  --against <fichero>         El informe de costes del proveedor: el
                               GET /v1/organizations/cost_report de Anthropic o
                               el GET /v1/organization/costs de OpenAI, que se
                               distinguen por su forma.
-  -o, --out <archivo>         Escribe la comparación ahí en vez de en stdout.
+  -o, --out <fichero>         Escribe la comparación ahí en vez de en stdout.
 
   Lo que Trazum calculo junto a lo que el proveedor facturó, nunca sumado:
   dos tablas de precios en una sola cifra es como un informe se vuelve
@@ -254,7 +254,7 @@ ${bold('OPCIONES DE reconcile')}
 ${bold('OPCIONES DE from-anthropic')}
   --label <nombre>            El proyecto al que pertenece este uso. El
                               proveedor no conoce tus nombres de proyecto.
-  -o, --out <archivo>         Escribe el log de uso ahí en vez de en stdout.
+  -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
 
   El informe de uso de Anthropic, leído como log. Lo descargas tú con tu propia
   credencial de admin; esto lee la respuesta, así que Trazum nunca sostiene una
@@ -267,10 +267,10 @@ ${bold('OPCIONES DE from-anthropic')}
 ${bold('OPCIONES DE from-openai')}
   --label <nombre>            El proyecto al que pertenece este uso. El
                               proveedor no conoce tus nombres de proyecto.
-  --label-by-project <archivo> Una etiqueta por id de proyecto, como array JSON
+  --label-by-project <fichero> Una etiqueta por id de proyecto, como array JSON
                               de {"project": "proj_…", "label": "nombre"}.
                               Coincidencia exacta; --label es el respaldo.
-  -o, --out <archivo>         Escribe el log de uso ahí en vez de en stdout.
+  -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
 
   El informe de uso de OpenAI, leído como log, con el mismo arreglo que
   from-anthropic: tu curl, tu clave de admin, y esto lee la respuesta. Pide
@@ -331,7 +331,7 @@ ${bold('OPCIONES DE bill')}
                               node exporter: una serie por día UTC cerrado (su
                               etiqueta trazum_day), sin timestamps, sin enviar nada.
   --stamp                     Sella el recibo con la hora en que se escribió.
-  -o, --out <archivo>         Escribe el recibo ahí en vez de en stdout.
+  -o, --out <fichero>         Escribe el recibo ahí en vez de en stdout.
 
   Sin ruta, lee las carpetas de sesiones de cada agente que encuentra:
   Claude Code (~/.claude/projects), Codex ($CODEX_HOME/sessions y
@@ -360,7 +360,7 @@ ${bold('OPCIONES DE weekly')}
                               una línea del resumen, la factura y su movimiento,
                               con lo que tenga la plataforma (como watch
                               --notify). Se dice, no es fatal, si no hay.
-  -o, --out <archivo>         Escribe el resumen ahí en vez de en stdout.
+  -o, --out <fichero>         Escribe el resumen ahí en vez de en stdout.
 
   La semana en Markdown: la factura, qué se movió respecto a la semana
   anterior y los tres cambios que conviene hacer primero. Lee lo que lee
@@ -375,11 +375,11 @@ ${bold('OPCIONES DE weekly')}
 
 ${bold('OPCIONES DE from-openrouter')}
   --label <nombre>            El proyecto al que pertenece este uso.
-  --label-by-workspace <archivo> Una etiqueta por id de workspace, como array
+  --label-by-workspace <fichero> Una etiqueta por id de workspace, como array
                               JSON de {"workspace": "…", "label": "nombre"}.
                               Coincidencia exacta; --label es el respaldo.
                               Requiere el informe pedido con group_by=workspace.
-  -o, --out <archivo>         Escribe el log de uso ahí en vez de en stdout.
+  -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
 
   El informe de actividad de OpenRouter (GET /api/v1/activity, clave de
   gestión, los últimos treinta días), leído como log de uso con los mismos
@@ -486,7 +486,7 @@ ${bold('OPCIONES DE proactive')}
                               tras un sí para ese elemento.
   off                         Quita exactamente las líneas que añadió. Nada más
                               cambia en esos archivos.
-  --only <item,...>           Limita a statusline, watch o mcp.
+  --only <elemento,...>       Limita a statusline, watch o mcp.
   --dry-run                   Imprime cada archivo y cada línea, no escribe nada.
                               Es lo que hace hasta que alguien dice que sí: sin
                               terminal y sin --yes es un simulacro.
@@ -613,13 +613,13 @@ ${bold('OPCIONES DE rules')}
 ${bold('OPCIONES DE task')}
   --id <id> --type <tipo>     Identifica una tarea y su tipo comparable.
   --criterion <texto>        Declara el criterio de aceptación antes del cambio.
-  --claude-code <archivo>    Añade una sesión explícita de Claude Code; repetible.
-  --codex <archivo>          Añade una sesión explícita de Codex; repetible.
+  --claude-code <fichero>    Añade una sesión explícita de Claude Code; repetible.
+  --codex <fichero>          Añade una sesión explícita de Codex; repetible.
   --outcome <valor>          accepted, rejected o unknown (por defecto unknown).
   --assessor <etiqueta>      Obligatorio para un resultado accepted o rejected.
   --policy <id>             baseline (por defecto) o repeat-review-v1.
-  --instructions <archivo>  Archivo local existente para apply o revert.
-  -o, --out <archivo-nuevo>  Crea un informe o política privados; no sobrescribe.
+  --instructions <fichero>  Archivo local existente para apply o revert.
+  -o, --out <fichero-nuevo>  Crea un informe o política privados; no sobrescribe.
   --json                    Los informes y comparaciones ya usan JSON por defecto.
   Consulta task --help para analyze, policy, apply, revert y compare.
   Máximo 400.000 caracteres entre fuentes. Nunca se infiere el éxito de la tarea.
@@ -719,7 +719,7 @@ ${bold('OPCIONES DE commitment')}
   previsión.
 
 ${bold('OPCIONES DE report')}
-  --year <yyyy>               Obligatorio. Qué año montar.
+  --year <aaaa>               Obligatorio. Qué año montar.
   --json                      El registro como datos.
 
   Todo sale del almacén y de los planes que ya guardas: no se calcula nada
@@ -824,7 +824,7 @@ ${bold('OPCIONES DE optimize')}
                               el cambio, más los desajustes en ambos sentidos
                               (prompts mapeados sin tráfico, tráfico sin
                               prompt mapeado).
-  --from-log <usage.jsonl>    Mide las tres cifras de arriba desde un registro
+  --from-log <uso.jsonl>      Mide las tres cifras de arriba desde un registro
                               de uso en vez de teclearlas: llamadas reales,
                               tamaño de salida real, cuota de caché real y el
                               modelo al que fueron las llamadas. Rechaza los
@@ -1459,7 +1459,7 @@ ${bold('EJEMPLOS')}
       `--${name} es una fracción entre 0 y 1 (recibido: ${raw}). La configuración rechaza el mismo valor de la misma forma.`,
     badLevel: (received) => `--level debe ser "safe" o "aggressive" (recibido: "${received}").`,
     allLabelsNeedsLog: () =>
-      '--all-labels ordena los prompts por tráfico medido, así que necesita --from-log <usage.jsonl>. Sin registro cada ahorro se multiplicaría por la misma suposición tecleada, lo que ordena los prompts por longitud y lo llama prioridad.',
+      '--all-labels ordena los prompts por tráfico medido, así que necesita --from-log <uso.jsonl>. Sin registro cada ahorro se multiplicaría por la misma suposición tecleada, lo que ordena los prompts por longitud y lo llama prioridad.',
     allLabelsNeedsMap: () =>
       '--all-labels lee el mapa "labels" de trazum.config.json (etiqueta a fichero de prompt) y esta config no tiene ninguno. Mapea al menos una carga a su prompt.',
     fromLogConflict: (flag) =>
@@ -1616,9 +1616,9 @@ ${bold('EJEMPLOS')}
     windowUnmoved: (share, model, window) =>
       `${share} de la ventana de ${window} de ${model}, antes y después: este cambio es demasiado pequeño para moverla.`,
     beyondThisPromptTokensOnly: () =>
-      'Acortar un prompt es la palanca más pequeña que hay: medido en un prompt de soporte corriente, las reglas recuperan alrededor del 1% de una factura mensual. Si alguno de tus prompts va a una API de pago por uso, "trazum profile <usage.jsonl>" lee lo que el proveedor cobró de verdad y calcula las palancas que no son el prompt. Grabar ese registro son unas pocas líneas y nunca contiene texto del prompt.',
+      'Acortar un prompt es la palanca más pequeña que hay: medido en un prompt de soporte corriente, las reglas recuperan alrededor del 1% de una factura mensual. Si alguno de tus prompts va a una API de pago por uso, "trazum profile <uso.jsonl>" lee lo que el proveedor cobró de verdad y calcula las palancas que no son el prompt. Grabar ese registro son unas pocas líneas y nunca contiene texto del prompt.',
     beyondThisPrompt: () =>
-      'Acortar un prompt es la palanca más pequeña que hay: medido en un prompt de soporte corriente, las reglas recuperan alrededor del 1% de una factura mensual. En una API de pago por uso, lo que mueve del 60% al 80% es a qué modelo va la llamada, la Batch API, la caché de prompts, y lo que cuesta reenviar la conversación, y "trazum profile <usage.jsonl>" calcula las cuatro a partir de lo que el proveedor cobró de verdad. Grabar ese registro son unas pocas líneas y nunca contiene texto del prompt.',
+      'Acortar un prompt es la palanca más pequeña que hay: medido en un prompt de soporte corriente, las reglas recuperan alrededor del 1% de una factura mensual. En una API de pago por uso, lo que mueve del 60% al 80% es a qué modelo va la llamada, la Batch API, la caché de prompts, y lo que cuesta reenviar la conversación, y "trazum profile <uso.jsonl>" calcula las cuatro a partir de lo que el proveedor cobró de verdad. Grabar ese registro son unas pocas líneas y nunca contiene texto del prompt.',
     windowUse: (before, after, model, window) =>
       `Ventana de contexto: ${before} → ${after} de los ${window} tokens de ${model}, sitio que se lleva la conversación.`,
     tokensOnlyAskedFor: () =>
