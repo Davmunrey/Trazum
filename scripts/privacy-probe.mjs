@@ -32,7 +32,7 @@
  * publishes.
  */
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 
 import { judgePrivacy } from './privacy-probe-judge.mjs';
 
@@ -52,7 +52,7 @@ if (!chrome || !playwrightPath) {
   process.exit(2);
 }
 
-const { chromium } = createRequire(join(playwrightPath, 'package.json'))('./index.js');
+const { chromium } = createRequire(join(resolvePath(playwrightPath), 'package.json'))('./index.js');
 
 /** Unique per run, so a marker cannot match something already on the page. */
 const run = Date.now().toString(36);

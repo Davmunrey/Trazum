@@ -33,7 +33,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
@@ -1579,7 +1579,7 @@ async function main(argv) {
     console.error(HELP);
     return 2;
   }
-  const { chromium } = createRequire(join(playwrightPath, 'package.json'))('./index.js');
+  const { chromium } = createRequire(join(resolvePath(playwrightPath), 'package.json'))('./index.js');
 
   // The server may still be starting: ask until it answers, then stop asking.
   const deadline = Date.now() + 60_000;
