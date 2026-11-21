@@ -29,5 +29,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function NotFound() {
-  return <NotFoundView initialLocale={await pageLocale()} />;
+  const locale = await pageLocale();
+  return <NotFoundView initialLocale={locale} />;
 }
