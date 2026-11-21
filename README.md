@@ -13,6 +13,7 @@ what to change and checks whether the change arrived.
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Davmunrey/Trazum/badge)](https://scorecard.dev/viewer/?uri=github.com/Davmunrey/Trazum)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16992/badge)](https://www.bestpractices.dev/projects/16992)
 [![OpenSSF Baseline](https://www.bestpractices.dev/projects/16992/baseline)](https://www.bestpractices.dev/projects/16992)
 [![Coverage](https://codecov.io/gh/Davmunrey/Trazum/graph/badge.svg)](https://app.codecov.io/gh/Davmunrey/Trazum)
 [![npm](https://img.shields.io/npm/v/%40trazum%2Fcli.svg?label=npm)](https://www.npmjs.com/package/@trazum/cli)
