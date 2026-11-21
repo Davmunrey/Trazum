@@ -9,7 +9,7 @@
 // code does on purpose, everywhere. A single place that does it on purpose
 // carries a `biome-ignore` with its reason, next to the line.
 {
-  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
   // Skills synced from elsewhere are not this repository's to edit. Markdown
   // is left out because no rule here reports on it, and reading it only
