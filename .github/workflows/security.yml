@@ -73,8 +73,9 @@ jobs:
           # Copyleft licences would change the terms of a repository that
           # promises MIT. Flagged for a human, not silently accepted.
           deny-licenses: AGPL-3.0, GPL-2.0, GPL-3.0
-          # No advisory is allowed. GHSA-mrhx-c7xc-m3w5 was, from 2026-11-21
-          # (#874) until tools/bundle-analyzer overrode zod to 4.6.7 (#905).
+          # No advisory is excepted by ID: every one at moderate or above fails
+          # the review. GHSA-mrhx-c7xc-m3w5 was excepted from 2026-11-21 (#874)
+          # until tools/bundle-analyzer overrode zod to 4.6.7 (#905).
 
   audit:
     name: npm audit
