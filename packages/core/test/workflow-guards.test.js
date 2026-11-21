@@ -335,3 +335,27 @@ describe('every advisory the dependency review allows is explained and kept out 
     assert.match(zod, /^3\./, 'zod in the analyzer is no longer 3.x: the allowance may be removed');
   });
 });
+
+/**
+ * The Node major CI tests on, the one the contributor guide names and the one
+ * the image ships are one number (#883). Dependabot raised the image alone to
+ * a major CI never ran (#878); this holds them together, so a bump of one is a
+ * red build until the others follow.
+ */
+describe('CI, the contributor guide and the image name one Node major', () => {
+  it('every setup-node, CONTRIBUTING.md and every FROM agree', () => {
+    const named = [];
+    for (const name of readdirSync(join(ROOT, '.github/workflows')).filter((file) => file.endsWith('.yml'))) {
+      for (const match of read(`.github/workflows/${name}`).matchAll(/^\s*node-version: '?(\d+)'?$/gm)) named.push([`.github/workflows/${name}`, match[1]]);
+    }
+    assert.ok(named.length > 0, 'no workflow sets up Node');
+    const guide = /^Node (\d+)\. No global installs needed\.$/m.exec(read('CONTRIBUTING.md'));
+    assert.ok(guide, 'CONTRIBUTING.md no longer names the Node major');
+    named.push(['CONTRIBUTING.md', guide[1]]);
+    const images = [...read('Dockerfile').matchAll(/^FROM node:(\d+)-alpine@/gm)];
+    assert.ok(images.length > 0, 'the Dockerfile builds on no node image');
+    for (const image of images) named.push(['Dockerfile', image[1]]);
+    const majors = new Set(named.map(([, major]) => major));
+    assert.equal(majors.size, 1, `more than one Node major: ${named.map(([file, major]) => `${file} ${major}`).join(', ')}`);
+  });
+});
