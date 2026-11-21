@@ -149,6 +149,22 @@ describe('a request can count for more than one', () => {
     assert.equal(limited(from('198.51.100.8'), 0, 11), true);
   });
 
+  it('does not charge a request it refuses, so a smaller one that fits still goes through', () => {
+    const limited = createRateLimiter({ windowMs: 60_000, max: 10 });
+    const request = from('198.51.100.10');
+    assert.equal(limited(request, 0, 6), false);
+    assert.equal(limited(request, 1, 5), true, 'a request past the budget was permitted');
+    assert.equal(limited(request, 2, 4), false, 'the refused request was charged');
+    assert.equal(limited(request, 3, 1), true, 'a request past the budget was permitted');
+  });
+
+  it('does not charge a first request it refuses either', () => {
+    const limited = createRateLimiter({ windowMs: 60_000, max: 10 });
+    const request = from('198.51.100.11');
+    assert.equal(limited(request, 0, 11), true);
+    assert.equal(limited(request, 1, 10), false, 'the refused first request was charged');
+  });
+
   it('starts again in the next window', () => {
     const limited = createRateLimiter({ windowMs: 60_000, max: 10 });
     const request = from('198.51.100.9');

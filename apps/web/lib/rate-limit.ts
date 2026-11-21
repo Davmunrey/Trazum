@@ -18,6 +18,15 @@
  * first line and their fallback.
  */
 
+/**
+ * What the limiter reads of a request: its headers, and only to find the
+ * address. A route hands it the `Request`; a page, which has no `Request`,
+ * hands it `{ headers: await headers() }`.
+ */
+export interface RequestLike {
+  headers: { get(name: string): string | null };
+}
+
 export interface RateLimiter {
   /**
    * True when this request is over the limit and should be refused.
@@ -28,7 +37,7 @@ export interface RateLimiter {
    * runs it charges the characters it was sent, so `max` becomes a budget of
    * work rather than of arrivals.
    */
-  (request: Request, now: number, cost?: number): boolean;
+  (request: RequestLike, now: number, cost?: number): boolean;
   /**
    * How many times the expired-entry sweep has run.
    *
@@ -94,7 +103,7 @@ export interface RateLimitOptions {
  * not overwritten, an attacker can rotate the header and get a fresh bucket per
  * request — another reason this is a courtesy limit and not a security control.
  */
-export function clientKey(request: Request): string {
+export function clientKey(request: RequestLike): string {
   return (
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     request.headers.get('x-real-ip') ||
@@ -109,7 +118,7 @@ export function createRateLimiter({ windowMs, max, sweepAbove = 10_000 }: RateLi
   // soon as there is anything to sweep, not a minute after the map filled up.
   let nextSweepAt = 0;
 
-  const rateLimited = function rateLimited(request: Request, now: number, cost = 1): boolean {
+  const rateLimited = function rateLimited(request: RequestLike, now: number, cost = 1): boolean {
     const key = clientKey(request);
     const bucket = buckets.get(key);
 
@@ -121,12 +130,18 @@ export function createRateLimiter({ windowMs, max, sweepAbove = 10_000 }: RateLi
           if (now >= value.resetAt) buckets.delete(other);
         }
       }
-      buckets.set(key, { count: cost, resetAt: now + windowMs });
-      return cost > max;
+      // A refused request is not charged: it did no work, and charging it
+      // would let one large refusal lock out the small requests that still fit.
+      // With a cost of 1 the answers are the same either way, since a bucket at
+      // `max` refuses the next request whether or not it counts it.
+      const refused = cost > max;
+      buckets.set(key, { count: refused ? 0 : cost, resetAt: now + windowMs });
+      return refused;
     }
 
+    if (bucket.count + cost > max) return true;
     bucket.count += cost;
-    return bucket.count > max;
+    return false;
   };
 
   Object.defineProperty(rateLimited, 'sweeps', { get: () => sweeps });

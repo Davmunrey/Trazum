@@ -48,3 +48,21 @@ export const SHARE_SUMMARY_WINDOW_MS = 10 * 60_000;
 export const MAX_SHARE_SUMMARIES = 500;
 
 export const shareSummaries = createBadgeMemo<ShareSummary>({ ttlMs: SHARE_SUMMARY_WINDOW_MS, max: MAX_SHARE_SUMMARIES });
+
+/**
+ * Thrown inside the memo when the viewer's address has spent the engine
+ * budget, so the page says to wait instead of computing.
+ *
+ * The memo bounds repeat views of one link, not views of many: an address
+ * cycling through more links than the memo holds would miss every time. So
+ * a miss is charged to the same per-address budget `/api/compare` charges
+ * (`lib/engine-budget.ts`), by the characters it is about to compare. A
+ * refusal is not memoised (`lib/badge/memo.ts`), so the next view after the
+ * window computes as usual.
+ */
+export class EngineBusy extends Error {
+  constructor() {
+    super('the engine budget for this address is spent');
+    this.name = 'EngineBusy';
+  }
+}

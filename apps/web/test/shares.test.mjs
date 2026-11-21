@@ -659,7 +659,18 @@ describe('the shared page remembers numbers, never a prompt (lib/shares/summary.
   });
 
   it('remembers per token and per language', () => {
-    assert.match(page, /shareSummaries\(`\$\{token\}:\$\{locale\}`, Date\.now\(\)/);
+    assert.match(page, /shareSummaries\(`\$\{token\}:\$\{locale\}`, now,/);
+  });
+
+  it('charges a miss to the viewer\'s engine budget before it computes, and says to wait when it is spent', () => {
+    const memo = page.indexOf('shareSummaries(');
+    const charge = page.indexOf('engineBudget({ headers: requestHeaders }, now, share.beforeText.length + share.afterText.length)');
+    const engine = page.indexOf('comparePrompts(share.beforeText');
+    assert.ok(charge > memo, 'the budget is charged outside the memo, so a hit would be charged too');
+    assert.ok(engine > charge, 'the engine runs before the budget is charged');
+    assert.match(page, /throw new EngineBusy\(\)/);
+    assert.match(page, /if \(!\(error instanceof EngineBusy\)\) throw error;/);
+    assert.match(page, /\{t\.api\.rateLimited\}/);
   });
 
   it('remembers for ten minutes, a bounded number of tokens', () => {
