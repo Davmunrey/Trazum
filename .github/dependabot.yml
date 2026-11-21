@@ -4,13 +4,7 @@ updates:
   # The core and the CLI have no runtime dependencies on purpose, so this
   # mostly covers the web app and the TypeScript toolchain.
   - package-ecosystem: npm
-    # The root, and the three tools CI installs from lockfiles of their own
-    # (#874): a pin nothing raises is a pin that goes stale.
-    directories:
-      - /
-      - /.github/tools/acorn
-      - /.github/tools/bundle-analyzer
-      - /.github/tools/playwright-core
+    directory: /
     schedule:
       interval: weekly
       day: monday
@@ -22,6 +16,24 @@ updates:
         patterns: ['*']
         update-types: ['minor', 'patch']
     labels: ['dependencies']
+
+  # The three tools CI installs from lockfiles of their own (#874): a pin
+  # nothing raises is a pin that goes stale. An entry and a group of their own,
+  # not the root's: in one group with the root, GitHub refused the whole
+  # pull request and the root's updates with it (#881).
+  - package-ecosystem: npm
+    directories:
+      - /.github/tools/acorn
+      - /.github/tools/bundle-analyzer
+      - /.github/tools/playwright-core
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      ci-tools:
+        patterns: ['*']
+    labels: ['dependencies', 'ci']
 
   - package-ecosystem: github-actions
     directory: /
