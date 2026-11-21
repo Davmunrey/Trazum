@@ -594,9 +594,12 @@ jobs:
           version="$(node -p "require('./package.json').version")"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           mkdir -p /tmp/release
+          # The sums name the files relative to their directory, so the check
+          # runs there. Outside the checkout `gh` cannot tell which repository
+          # it is in, so every `gh` call here names it (#895).
           cd /tmp/release
           for name in "trazum-vscode-$version.vsix" "trazum-mcp-$version.mcpb" "trazum-pricing-$version.json" "trazum-v$version.cdx.json" SHA256SUMS; do
-            gh release download "v$version" --pattern "$name" --dir /tmp/release --clobber
+            gh release download "v$version" --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir /tmp/release --clobber
           done
           sha256sum --check --strict SHA256SUMS
 
@@ -628,7 +631,7 @@ jobs:
               --repo "$GITHUB_REPOSITORY" \
               --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
           done
-          gh release upload "v$VERSION" "/tmp/release/trazum-v$VERSION.sigstore.json" --clobber
+          gh release upload "v$VERSION" "/tmp/release/trazum-v$VERSION.sigstore.json" --repo "$GITHUB_REPOSITORY" --clobber
 
   # The listing on the official MCP registry, which is a separate publish to a
   # separate service and was a manual step until it failed twice in a row.

@@ -435,7 +435,16 @@ describe('the release workflow attests what it attaches', () => {
     const checked = attest.slice(attest.lastIndexOf('for name in'), upload);
     for (const name of files) assert.ok(checked.includes(asVerify(name)), `${name} is not verified against the bundle`);
     assert.match(checked, /--signer-workflow "\$GITHUB_REPOSITORY\/\.github\/workflows\/release\.yml"/, 'the bundle is not held to this workflow');
-    assert.match(attest, /gh release upload "v\$VERSION" "\/tmp\/release\/trazum-v\$VERSION\.sigstore\.json" --clobber/);
+    assert.match(attest, /gh release upload "v\$VERSION" "\/tmp\/release\/trazum-v\$VERSION\.sigstore\.json" --repo "\$GITHUB_REPOSITORY" --clobber/);
+  });
+
+  // 3.0.2's run failed here: the step reads the files from /tmp/release, outside
+  // the checkout, where `gh` has no repository to read (#895).
+  it('names the repository on every gh call, since it works outside the checkout', () => {
+    const joined = attest.replace(/\\\n\s*/g, ' ');
+    const calls = [...joined.matchAll(/^\s*gh (?:release|attestation) [^\n]*$/gm)].map((m) => m[0].trim());
+    assert.ok(calls.length >= 3, 'the job makes no gh call');
+    for (const call of calls) assert.match(call, /--repo "\$GITHUB_REPOSITORY"/, `${call} does not name the repository`);
   });
 
   it('and RELEASES.md tells a person how to check a file the same way', () => {
