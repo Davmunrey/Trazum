@@ -234,6 +234,15 @@ describe('scorecard.yml is the shape the Scorecard API accepts a result from', (
     assert.match(security, /scorecard\.yml/);
     assert.match(security, /does not/i);
   });
+
+  // The Baseline badge is the project's own answers, so SECURITY.md has to say
+  // so next to it (#912).
+  it('shows the OpenSSF Baseline badge on the README and says in SECURITY.md that it is self-certified', () => {
+    assert.ok(read('README.md').includes('[![OpenSSF Baseline](https://www.bestpractices.dev/projects/16992/baseline)](https://www.bestpractices.dev/projects/16992)'), 'the README has no Baseline badge');
+    const security = read('SECURITY.md');
+    assert.match(security, /\[OpenSSF Baseline\]\(https:\/\/www\.bestpractices\.dev\/projects\/16992\)/u, 'SECURITY.md does not name the Baseline badge');
+    assert.match(security, /bestpractices\.dev does not verify them/u, 'SECURITY.md does not say the Baseline answers are the project\'s own');
+  });
 });
 
 /**

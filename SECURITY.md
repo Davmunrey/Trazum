@@ -252,6 +252,13 @@ Some of this cannot be committed to a file — it lives in repository settings.
   the code for flaws, does not check the packages npm serves against this
   source, and does not say a price is right; a high score is not an audit or a
   certification. It is not a check a merge waits for.
+- [OpenSSF Baseline](https://www.bestpractices.dev/projects/16992), the
+  README's second badge: the project meets every Level 1 control of the Open
+  Source Project Security Baseline (branch protection, how CI treats untrusted
+  input, HTTPS delivery, secrets kept out of the repository, the licence, a
+  security contact). The project answers the controls itself, with a link for
+  each; bestpractices.dev does not verify them. Like Scorecard, it reads how
+  the project is kept, not the code.
 - `.github/dependabot.yml` — weekly updates, routine patches grouped so real
   security bumps stay visible.
 - `.github/rulesets/main-branch.json` — the branch ruleset, and
