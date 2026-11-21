@@ -13,11 +13,132 @@ const hace = (days: number | null): string =>
 
 
 /** Spanish catalogue. Mirrors `en.ts`; see that file for the contract. */
+/**
+ * What `trazum task`, `trazum filter` and the core's task analysis raise, in
+ * Spanish (#871). Keyed by the English text they are raised with, because the
+ * core has no locale; `i18n.test.js` reads every such text from the sources and
+ * fails on one with no entry here.
+ */
+const TASK_FILTER_ES: ReadonlyMap<string, string> = new Map(Object.entries({
+  // packages/cli/src/task.ts
+  'Unknown task action. Run trazum task --help.': 'Acción de task desconocida. Prueba con "trazum task --help".',
+  'Unsupported task option. Run trazum task --help.': 'Opción de task no admitida. Prueba con "trazum task --help".',
+  'Task options cannot be repeated except source flags.': 'Las opciones de task no se pueden repetir, salvo las de fuente.',
+  'A task option is missing its value.': 'A una opción de task le falta su valor.',
+  'At most 16 task sources are accepted.': 'Se aceptan como mucho 16 fuentes de tarea.',
+  'Task output exceeds the report limit; use a smaller complete task source.':
+    'La salida de task supera el límite del informe; usa una fuente de tarea completa más pequeña.',
+  'Wrong number of task input files. Run trazum task --help.':
+    'Número de ficheros de entrada de task equivocado. Prueba con "trazum task --help".',
+  'Provide at least one --claude-code or --codex file.': 'Indica al menos un fichero con --claude-code o --codex.',
+  // packages/cli/src/task-files.ts
+  'Input must be a bounded regular file, not a symlink or stream.':
+    'La entrada debe ser un fichero normal de tamaño acotado, no un enlace simbólico ni un flujo.',
+  'Input must be a regular file, not a symlink or stream.': 'La entrada debe ser un fichero normal, no un enlace simbólico ni un flujo.',
+  'Input changed while opening; retry after other edits finish.':
+    'La entrada cambió mientras se abría; vuelve a intentarlo cuando terminen las otras ediciones.',
+  'Input changed while reading; finish the task and retry with a stable transcript.':
+    'La entrada cambió mientras se leía; termina la tarea y vuelve a intentarlo con una transcripción estable.',
+  'Input was replaced while reading; retry after other edits finish.':
+    'La entrada se sustituyó mientras se leía; vuelve a intentarlo cuando terminen las otras ediciones.',
+  'Input must be UTF-8 text without NUL bytes.': 'La entrada debe ser texto UTF-8 sin bytes NUL.',
+  'Cannot read input; provide an existing, readable regular file without a symlink.':
+    'No se puede leer la entrada; indica un fichero normal que exista y se pueda leer, sin enlace simbólico.',
+  'Cannot create output; choose a new file in an existing writable directory.':
+    'No se puede crear la salida; elige un fichero nuevo en un directorio que exista y admita escritura.',
+  'Instructions must be a regular file owned by you, without symlinks or hard links.':
+    'Las instrucciones deben ser un fichero normal tuyo, sin enlaces simbólicos ni enlaces duros.',
+  'The managed policy block was edited or is malformed; review it manually before retrying.':
+    'El bloque de política gestionado se editó o está mal formado; revísalo a mano antes de volver a intentarlo.',
+  'Instructions would exceed the input limit.': 'Las instrucciones superarían el límite de entrada.',
+  'Instructions changed while preparing the policy; retry after other edits finish.':
+    'Las instrucciones cambiaron mientras se preparaba la política; vuelve a intentarlo cuando terminen las otras ediciones.',
+  'Cannot update instructions; choose an existing writable file in a writable directory.':
+    'No se pueden actualizar las instrucciones; elige un fichero que exista y admita escritura, en un directorio que también la admita.',
+  // packages/cli/src/filter.ts
+  'Store must be a real directory.': 'El almacén debe ser un directorio real.',
+  'Store must be owned by you and have mode 0700.': 'El almacén debe ser tuyo y tener el modo 0700.',
+  'Invalid recovery file.': 'Fichero de recuperación no válido.',
+  'Recovery integrity check failed.': 'Ha fallado la comprobación de integridad de la recuperación.',
+  'Invalid arguments. Run trazum filter --help.': 'Argumentos no válidos. Prueba con "trazum filter --help".',
+  'Expected a SHA-256 recovery identifier.': 'Se esperaba un identificador de recuperación SHA-256.',
+  'Pipe a tool log into stdin; interactive tools are not supported.':
+    'Pasa el log de una herramienta por la entrada estándar; las herramientas interactivas no se admiten.',
+  'Trazum: original could not be retained; passing log through unchanged.':
+    'Trazum: no se pudo guardar el original; el log pasa sin cambios.',
+  // packages/core/src/task-analysis.ts and task.ts
+  'Invalid task data. See the task workflow schema and limits.':
+    'Datos de tarea no válidos. Consulta el esquema y los límites del flujo de task.',
+  'Ambiguous Claude request identifiers across sessions. Supply separate session sources.':
+    'Identificadores de petición de Claude ambiguos entre sesiones. Indica fuentes de sesión separadas.',
+  'Duplicate task sources are not supported. Supply each session once.':
+    'No se admiten fuentes de tarea duplicadas. Indica cada sesión una sola vez.',
+  'Multiple sources from the same harness require explicit, disjoint sessions.':
+    'Varias fuentes del mismo agente necesitan sesiones explícitas y sin solapes.',
+  'Overlapping task sessions are not supported. Supply each session once.':
+    'No se admiten sesiones de tarea solapadas. Indica cada sesión una sola vez.',
+  'Task usage exceeds safe numeric limits.': 'El uso de la tarea supera los límites numéricos seguros.',
+  'No actionable repeated read, search or explicit failure evidence was found.':
+    'No se encontró ninguna prueba accionable de lecturas o búsquedas repetidas, ni de fallos explícitos.',
+}));
+
 export const es: CliMessages = {
   locale: 'es',
   numberLocale: 'es-ES',
 
   commandHelpMore: 'Todos los comandos, el fichero de configuración, los precios y los ejemplos: trazum --help',
+  taskFilter: {
+    taskHelp: (maxChars) => `Uso:
+  trazum task analyze --id <id> --type <tipo> --criterion <texto>
+    --claude-code <fichero> [--codex <fichero>] [--claude-code <fichero> ...]
+    [--outcome accepted|rejected|unknown --assessor <etiqueta>]
+    [--policy baseline|repeat-review-v1] [-o <informe-nuevo.json>]
+  trazum task policy <informe.json> [-o <politica-nueva.md>]
+  trazum task apply <informe.json> --instructions <fichero-existente>
+  trazum task revert --instructions <fichero-existente>
+  trazum task compare <antes.json> <despues.json> [-o <comparacion-nueva.json>]
+
+Analiza en local fuentes de tareas explícitas y completas de Claude Code y Codex.
+Repite las opciones de fuente para incluir sesiones de los dos agentes. No se
+recorre la carpeta personal, ni se usa la red, ni se llama a un proveedor, ni se
+instalan hooks, ni se ejecutan comandos. Hasta 16 fuentes y ${maxChars} caracteres
+en total. No partas una sesión entre varias fuentes ni importes la misma sesión
+más de una vez.
+Los informes y las comparaciones son JSON por defecto (también se acepta --json).
+El resultado y quien lo evalúa los declara quien llama; nunca se deducen del uso.
+Aplicar la política añade un bloque gestionado, pequeño y opcional, al fichero que elijas.
+Revisa el diff y haz tú una tarea comparable antes de comparar informes.
+Revertir quita solo el bloque exacto y sin cambios. Cierra otros editores mientras
+aplicas o reviertes. Los informes de salida que ya existen nunca se sobrescriben; los
+ficheros nuevos se crean con 0600.
+Los resultados de herramientas repetidos pueden ser intencionados. Una comparación
+por pares es una observación, no prueba de un ahorro causal, de la calidad de la tarea
+ni del margen de suscripción que queda.
+`,
+    filterHelp: `Uso:
+  trazum filter compact --recovery-dir <directorio-privado> [--stats]
+  trazum filter restore <sha256> --recovery-dir <directorio-privado>
+  trazum filter instructions                          imprime una guía de salida opcional
+
+Filtro de visualización experimental y opcional. Solo se compactan las líneas de
+log repetidas seguidas. Los errores y las líneas únicas se conservan. No es para
+ficheros de código ni para tuberías de datos.
+Usa pipefail de Bash para conservar el fallo del comando que produce el log.
+Los logs originales pueden contener datos sensibles: --recovery-dir acepta de forma
+explícita guardarlos en local. Borra ese directorio cuando ya no necesites los originales.
+Los recuentos de tokens son estimaciones, no medidas de facturación ni de cuota de suscripción.
+--stats escribe un registro JSON en stderr, sin contenido del log ni rutas de recuperación.
+`,
+    say: (message) => {
+      const fixed = TASK_FILTER_ES.get(message);
+      if (fixed !== undefined) return fixed;
+      const missing = /^Missing --([a-z-]+)\. Run trazum task --help\.$/.exec(message);
+      if (missing) return `Falta --${missing[1]}. Prueba con "trazum task --help".`;
+      const tooLong = /^Input exceeds (\d+) characters; use a smaller complete task source\.$/.exec(message);
+      if (tooLong) return `La entrada supera los ${tooLong[1]} caracteres; usa una fuente de tarea completa más pequeña.`;
+      return message;
+    },
+  },
   help: (d, bold) => `${bold('trazum')}: lo que cuestan tus agentes de IA y tus llamadas a la API, leído de los logs de esta máquina.
 
 ${bold('EMPIEZA AQUÍ')}

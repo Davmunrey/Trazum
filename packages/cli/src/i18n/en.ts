@@ -31,6 +31,47 @@ export const en: CliMessages = {
   numberLocale: 'en-US',
 
   commandHelpMore: 'Every command, the config file, prices and examples: trazum --help',
+  taskFilter: {
+    taskHelp: (maxChars) => `Usage:
+  trazum task analyze --id <id> --type <type> --criterion <text>
+    --claude-code <file> [--codex <file>] [--claude-code <file> ...]
+    [--outcome accepted|rejected|unknown --assessor <label>]
+    [--policy baseline|repeat-review-v1] [-o <new-report.json>]
+  trazum task policy <report.json> [-o <new-policy.md>]
+  trazum task apply <report.json> --instructions <existing-file>
+  trazum task revert --instructions <existing-file>
+  trazum task compare <before.json> <after.json> [-o <new-comparison.json>]
+
+Analyze explicit, complete task sources from Claude Code and Codex locally.
+Repeat the source flags to include sessions from both harnesses. No home scan,
+network access, provider call, hook installation or command execution occurs.
+Up to 16 sources and ${maxChars} characters combined. Do not split one
+session across sources or import the same session more than once.
+Reports and comparisons are JSON by default (--json is also accepted).
+Outcome and assessor are caller declarations, never inferred from usage.
+Policy application adds a small, optional managed block to the file you choose.
+Review the diff and run a comparable task yourself before comparing reports.
+Revert removes only the exact unchanged block. Close other editors while applying
+or reverting. Existing output reports are never overwritten; new files use 0600.
+Repeated tool results may be intentional. A paired comparison is an observation,
+not proof of causal savings, task quality or remaining subscription allowance.
+`,
+    filterHelp: `Usage:
+  trazum filter compact --recovery-dir <private-directory> [--stats]
+  trazum filter restore <sha256> --recovery-dir <private-directory>
+  trazum filter instructions                          print optional output guidance
+
+Experimental, opt-in display filter. Only consecutive repeated log lines are
+compacted. Errors and unique lines are kept. Not for source files or data pipes.
+Use Bash pipefail to preserve the producing command's failure status.
+Original logs may contain sensitive data: --recovery-dir explicitly opts into local
+retention. Delete that directory when the originals are no longer needed.
+Token counts are estimates, not billing or subscription-quota measurements.
+--stats writes one JSON record to stderr, without log content or recovery paths.
+`,
+    // The source text is this language.
+    say: (message) => message,
+  },
   help: (d, bold) => `${bold('trazum')}, what your AI agents and API calls cost, read from logs on this machine.
 
 ${bold('START HERE')}
