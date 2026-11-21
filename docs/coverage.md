@@ -191,7 +191,9 @@ A test that fails here still does not fail the job.
 ## The web app's bundle
 
 The `Bundle` workflow builds the web app and sends the size of what it built
-to Codecov's bundle analysis, on every pull request and on `main`.
+to Codecov's bundle analysis, on every pull request and on `main`. The
+analyzer is `@codecov/bundle-analyzer@2.0.1`, installed from the lockfile in
+`.github/tools/bundle-analyzer`, which pins it by hash.
 
 ```bash
 npm run build && npm run build:web
