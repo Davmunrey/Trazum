@@ -48,6 +48,6 @@
     "package:release": "node scripts/release-assets.mjs build"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.4"
+    "@biomejs/biome": "2.6.8"
   }
 }
