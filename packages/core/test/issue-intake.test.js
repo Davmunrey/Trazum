@@ -130,7 +130,9 @@ describe('issue intake', () => {
     assert.match(workflow, /\.github\/labels\.json/);
     assert.match(workflow, /gh label create "\$name" --color "\$color" --description "\$description" --force/);
     assert.doesNotMatch(workflow, /gh label delete/);
-    assert.match(workflow, /^permissions:\n {2}contents: read\n {2}issues: write$/m);
+    // Read at the top, the issues write on the job alone (#873).
+    assert.match(workflow, /^permissions:\n {2}contents: read\n\n/m);
+    assert.match(workflow, /\n {4}permissions:\n {6}contents: read\n {6}issues: write\n/);
   });
 });
 

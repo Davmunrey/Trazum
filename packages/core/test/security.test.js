@@ -1713,6 +1713,29 @@ describe('the packaged Action', () => {
     );
   });
 
+  it('no workflow grants a write permission at the top level', () => {
+    // The top-level block is what every job in the file gets unless it says
+    // otherwise, including a job added later by somebody who never read it.
+    // OpenSSF Scorecard's first run on main found two files granting write
+    // there, `cla.yml` and `backfill-releases.yml`, each for one job (#873).
+    // Writes belong on the job that needs them.
+    const granting = [];
+    let inspected = 0;
+
+    for (const name of readdirSync(join(repoRoot, '.github/workflows'))) {
+      if (!/\.ya?ml$/.test(name)) continue;
+      const source = readFileSync(join(repoRoot, '.github/workflows', name), 'utf8');
+      const block = /^permissions:(.*)\n((?: {2}.*\n|\s*#.*\n)*)/m.exec(source);
+      if (!block) continue;
+      inspected++;
+      const grants = `${block[1]}\n${block[2]}`;
+      if (/write/.test(grants.replace(/#.*$/gm, ''))) granting.push(name);
+    }
+
+    assert.ok(inspected > 10, `only ${inspected} top-level permissions blocks were read`);
+    assert.deepEqual(granting, [], `a workflow grants write at the top level, so every job in it gets it:\n  ${granting.join('\n  ')}`);
+  });
+
   it('a workflow that pushes with its own secret does not keep the checkout token', () => {
     // `mirror-to-n0.yml` pushes to another host with a URL-embedded secret, so
     // the GitHub token the checkout would leave in `.git/config` is used by
