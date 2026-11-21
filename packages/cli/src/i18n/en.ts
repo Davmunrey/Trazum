@@ -41,6 +41,8 @@ export const en: CliMessages = {
   trazum task apply <report.json> --instructions <existing-file>
   trazum task revert --instructions <existing-file>
   trazum task compare <before.json> <after.json> [-o <new-comparison.json>]
+  trazum task evaluate --plan <plan.json> <before.json> <after.json>
+    [<before.json> <after.json> ...] [-o <new-evaluation.json>]
 
 Analyze explicit, complete task sources from Claude Code and Codex locally.
 Repeat the source flags to include sessions from both harnesses. No home scan,
@@ -53,6 +55,10 @@ Policy application adds a small, optional managed block to the file you choose.
 Review the diff and run a comparable task yourself before comparing reports.
 Revert removes only the exact unchanged block. Close other editors while applying
 or reverting. Existing output reports are never overwritten; new files use 0600.
+Evaluate weighs matched pairs, baseline then policy, against the bar in the plan:
+minimum pairs, minimum fall in tokens per accepted task, largest acceptable fall
+in acceptance rate. Write the plan before the runs. A pair that does not match is
+kept in the output with its reasons and left out of the totals.
 Repeated tool results may be intentional. A paired comparison is an observation,
 not proof of causal savings, task quality or remaining subscription allowance.
 `,

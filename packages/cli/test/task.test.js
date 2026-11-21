@@ -235,3 +235,56 @@ describe('task efficiency CLI', () => {
     assert.ok(readdirSync(root).every((name) => !name.startsWith('.trazum-task-')));
   });
 });
+
+describe('task evaluate', () => {
+  // Each call is input + 10 output tokens: a baseline of three calls at 100 is
+  // 330 tokens, a policy run of two calls at 50 is 120.
+  const report = (name, count, input, ...rest) => {
+    const path = location(`${name}.json`);
+    const result = analyze(save(`${name}.jsonl`, transcript(count, input, `synthetic-${name}`)), ...assess, ...rest, '-o', path);
+    assert.equal(result.status, 0, result.stderr);
+    return path;
+  };
+  const plan = (overrides = {}) => save('plan.json', JSON.stringify({
+    version: 1, kind: 'trazum-task-evaluation-plan', policyId: 'repeat-review-v1',
+    minimumPairs: 2, minimumTokenReductionPercent: 10, maximumAcceptanceDropPoints: 0, ...overrides,
+  }));
+
+  it('reads a plan and pairs of reports in order, and writes the evaluation', () => {
+    const files = [
+      report('eval-b1', 3, 100), report('eval-a1', 2, 50, '--policy', 'repeat-review-v1'),
+      report('eval-b2', 3, 100), report('eval-a2', 2, 50, '--policy', 'repeat-review-v1'),
+    ];
+    const evaluation = json(run('evaluate', '--plan', plan(), ...files));
+    assert.equal(evaluation.kind, 'trazum-task-evaluation');
+    assert.equal(evaluation.baseline.totalTokens, 660);
+    assert.equal(evaluation.policy.totalTokens, 240);
+    assert.equal(evaluation.baseline.tokensPerAcceptedTask, 330);
+    assert.equal(evaluation.policy.tokensPerAcceptedTask, 120);
+    assert.equal(evaluation.verdict, 'clears-bar');
+    assert.ok(!JSON.stringify(evaluation).includes('SYNTHETIC_PRIVATE'));
+
+    // Given policy first, each pair is the wrong way round and none is counted.
+    const swapped = json(run('evaluate', '--plan', plan(), files[1], files[0], files[3], files[2]));
+    assert.equal(swapped.verdict, 'inconclusive');
+    assert.ok(swapped.pairs.every((pair) => pair.reasons.includes('policy-pair-mismatch')));
+
+    const out = location('evaluation.json');
+    assert.equal(run('evaluate', '--plan', plan(), ...files, '-o', out).status, 0);
+    assert.deepEqual(JSON.parse(readFileSync(out, 'utf8')), evaluation);
+  });
+
+  it('refuses an odd number of reports, a missing plan and a plan with a field it does not define', () => {
+    const files = [report('eval-odd-b', 3, 100), report('eval-odd-a', 2, 50, '--policy', 'repeat-review-v1')];
+    const odd = run('evaluate', '--plan', plan(), ...files, files[0]);
+    assert.equal(odd.status, 1);
+    assert.match(odd.stderr, /Wrong number of task input files/);
+    const missing = run('evaluate', ...files);
+    assert.equal(missing.status, 1);
+    assert.match(missing.stderr, /Missing --plan/);
+    const extra = run('evaluate', '--plan', plan({ note: 'SYNTHETIC_PRIVATE_NOTE' }), ...files);
+    assert.equal(extra.status, 1);
+    assert.match(extra.stderr, /Invalid task data/);
+    assert.ok(!extra.stderr.includes('SYNTHETIC_PRIVATE_NOTE'));
+  });
+});

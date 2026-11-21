@@ -63,6 +63,9 @@ instruction to inspect every conversation on the machine.
    and `after` are JSON strings of the report fields, not their envelopes.
    Preserve an inconclusive result. Lower recorded usage is a paired observation,
    not causal proof, an invoice saving or additional subscription capacity.
+   Over several matched pairs, write a `trazum-task-evaluation-plan` before the
+   runs and use `trazum task evaluate --plan`; recommend a policy as a default
+   only on `clears-bar`, and say that is still not causal proof.
 
 Reports retain caller-supplied task metadata and opaque reuse fingerprints.
 Choose nonsensitive labels and review before sharing. Raw tool arguments,

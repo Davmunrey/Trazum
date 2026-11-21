@@ -1,4 +1,4 @@
-import { analyzeTask, compareTasks, parseTaskReport, taskPolicy, MAX_INPUT_CHARS } from '@trazum/core';
+import { analyzeTask, compareTasks, evaluateTasks, parseTaskEvaluationPlan, parseTaskReport, taskPolicy, MAX_EVALUATION_PAIRS, MAX_INPUT_CHARS } from '@trazum/core';
 import type { CliMessages } from './i18n/types.js';
 import { changeTaskInstructions, readTaskText, writeTaskText } from './task-files.js';
 
@@ -10,6 +10,7 @@ const ALLOWED: Record<string, readonly string[]> = {
   apply: ['instructions'],
   revert: ['instructions'],
   compare: ['out', 'json'],
+  evaluate: ['plan', 'out', 'json'],
 };
 
 function parse(action: string, args: string[]): Parsed {
@@ -62,8 +63,13 @@ export async function runTask(args: string[], messages: CliMessages['taskFilter'
   }
   const action = args[0]!;
   const { flags, sources, paths } = parse(action, args.slice(1));
-  const expectedPaths = action === 'compare' ? 2 : action === 'policy' || action === 'apply' ? 1 : 0;
-  if (paths.length !== expectedPaths) throw new Error('Wrong number of task input files. Run trazum task --help.');
+  if (action === 'evaluate') {
+    // Reports come in pairs, baseline then policy, so the count is even.
+    if (paths.length < 2 || paths.length % 2 !== 0 || paths.length > MAX_EVALUATION_PAIRS * 2) throw new Error('Wrong number of task input files. Run trazum task --help.');
+  } else {
+    const expectedPaths = action === 'compare' ? 2 : action === 'policy' || action === 'apply' ? 1 : 0;
+    if (paths.length !== expectedPaths) throw new Error('Wrong number of task input files. Run trazum task --help.');
+  }
   if (action === 'analyze') {
     const taskId = required(flags, 'id');
     const taskType = required(flags, 'type');
@@ -86,6 +92,13 @@ export async function runTask(args: string[], messages: CliMessages['taskFilter'
     const before = parseTaskReport(await readTaskText(paths[0]!));
     const after = parseTaskReport(await readTaskText(paths[1]!));
     await emit(compareTasks(before, after), flags.get('out'));
+  } else if (action === 'evaluate') {
+    const plan = parseTaskEvaluationPlan(await readTaskText(required(flags, 'plan')));
+    const pairs = [];
+    for (let index = 0; index < paths.length; index += 2) {
+      pairs.push({ before: parseTaskReport(await readTaskText(paths[index]!)), after: parseTaskReport(await readTaskText(paths[index + 1]!)) });
+    }
+    await emit(evaluateTasks(plan, pairs), flags.get('out'));
   } else if (action === 'policy' || action === 'apply') {
     const report = parseTaskReport(await readTaskText(paths[0]!));
     const policy = taskPolicy(report);

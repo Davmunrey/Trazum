@@ -130,7 +130,7 @@ export function parseTaskReport(text: string): TaskReport {
   return validateReport(value);
 }
 
-function validated(value: TaskReport): TaskReport {
+export function validated(value: TaskReport): TaskReport {
   let text: string;
   try { text = JSON.stringify(value); } catch { taskError(); }
   return parseTaskReport(text);
@@ -144,20 +144,36 @@ export function taskPolicy(report: TaskReport): TaskPolicy {
   return { id: 'repeat-review-v1', instructions: TASK_POLICY_INSTRUCTIONS };
 }
 
+/**
+ * Why a baseline report and a policy report cannot stand as one matched pair:
+ * a different task type, criterion, harness or model set, the wrong policy
+ * order, a source shared between them, or a gap in either. Empty when they can.
+ * `task compare` and `task evaluate` both ask this, so a pair means one thing.
+ */
+export function pairMismatch(a: TaskReport, b: TaskReport): string[] {
+  const reasons: string[] = [];
+  if (a.task.type !== b.task.type) reasons.push('task-type-mismatch');
+  if (a.task.criterion !== b.task.criterion) reasons.push('criterion-mismatch');
+  if (a.task.policyId !== 'baseline' || b.task.policyId !== 'repeat-review-v1') reasons.push('policy-pair-mismatch');
+  if (a.coverage.harnesses.slice().sort().join(',') !== b.coverage.harnesses.slice().sort().join(',')) reasons.push('harness-coverage-mismatch');
+  if (a.coverage.models.slice().sort().join(',') !== b.coverage.models.slice().sort().join(',')) reasons.push('model-coverage-mismatch');
+  if (sharesSource([a], b)) reasons.push('source-reuse');
+  if (a.coverage.gaps.length || b.coverage.gaps.length) reasons.push('incomplete-evidence');
+  return reasons;
+}
+
+/** Whether `report` shares a source fingerprint or a session key with any of `others`. */
+export function sharesSource(others: readonly TaskReport[], report: TaskReport): boolean {
+  const fingerprints = new Set(others.flatMap((other) => other.sources.map((source) => source.fingerprint)));
+  const sessions = new Set(others.flatMap((other) => other.sources.flatMap((source) => source.sessionKeys)));
+  return report.sources.some((source) => fingerprints.has(source.fingerprint) || source.sessionKeys.some((key) => sessions.has(key)));
+}
+
 /** Compare declared matched tasks; never infer causality, quality or monetary savings. */
 export function compareTasks(before: TaskReport, after: TaskReport): TaskComparison {
   const a = validated(before);
   const b = validated(after);
-  const result: TaskComparison = { version: 1, kind: 'trazum-task-comparison', verdict: 'inconclusive', reasons: [], tokenChange: null, limitations: [...TASK_LIMITATIONS] };
-  if (a.task.type !== b.task.type) result.reasons.push('task-type-mismatch');
-  if (a.task.criterion !== b.task.criterion) result.reasons.push('criterion-mismatch');
-  if (a.task.policyId !== 'baseline' || b.task.policyId !== 'repeat-review-v1') result.reasons.push('policy-pair-mismatch');
-  if (a.coverage.harnesses.slice().sort().join(',') !== b.coverage.harnesses.slice().sort().join(',')) result.reasons.push('harness-coverage-mismatch');
-  if (a.coverage.models.slice().sort().join(',') !== b.coverage.models.slice().sort().join(',')) result.reasons.push('model-coverage-mismatch');
-  const fingerprints = new Set(a.sources.map((source) => source.fingerprint));
-  const sessions = new Set(a.sources.flatMap((source) => source.sessionKeys));
-  if (b.sources.some((source) => fingerprints.has(source.fingerprint) || source.sessionKeys.some((key) => sessions.has(key)))) result.reasons.push('source-reuse');
-  if (a.coverage.gaps.length || b.coverage.gaps.length) result.reasons.push('incomplete-evidence');
+  const result: TaskComparison = { version: 1, kind: 'trazum-task-comparison', verdict: 'inconclusive', reasons: pairMismatch(a, b), tokenChange: null, limitations: [...TASK_LIMITATIONS] };
   if (result.reasons.length) return result;
   if (a.task.outcome === 'accepted' && b.task.outcome === 'rejected') {
     result.verdict = 'quality-regressed'; result.reasons.push('declared-acceptance-regressed'); return result;
