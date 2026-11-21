@@ -33,6 +33,7 @@ import { requestedLocale, saysJson } from '../../../lib/request-body';
 import type { Infer } from '../../../lib/schema';
 import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
 import type { WebMessages } from '../../../lib/i18n';
+import { engineBudget as overBudget } from '../../../lib/engine-budget';
 import { createRateLimiter } from '../../../lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -248,6 +249,11 @@ async function handlePost(request: Request) {
   const body = read.value;
 
   const { prompt } = body;
+  // Charged once the size is known, before the engine runs, to the budget
+  // every caller of the engine shares (`lib/engine-budget.ts`).
+  if (overBudget(request, Date.now(), prompt.length)) {
+    return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
+  }
   const level: RuleLevel = body.level ?? 'safe';
   const disableRules = body.disableRules ?? [];
   const usage: Partial<UsageProfile> = body.usage ?? {};

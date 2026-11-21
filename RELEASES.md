@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 3.0.1**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 3.0.2**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: it is not
@@ -154,6 +154,53 @@ The formula in this repository can be behind the manifests, because a release
 pull request bumps them before npm has a tarball to hash, and never ahead.
 
 ---
+
+## 3.0.2 — The bill where a team already looks
+
+**Adoption, read 2026-11-21:** 3943 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 3.0.1.
+
+**Fifty changes since 3.0.1, none of them breaking.** The ones you will
+notice:
+
+- **The bill reaches your dashboards.**
+  - `bill --otlp-out` writes OpenTelemetry metrics, and `bill --prom-out`
+    writes the Prometheus text format.
+  - `gateway --metrics-port` serves `/metrics` for Prometheus to scrape.
+  - A Grafana dashboard reads each of the last two.
+  - `bill --receipt --send <url>` posts the receipt to your organisation's
+    HTTPS endpoint, and nothing else leaves.
+- **The bill reads a repository's history.**
+  - `bill --git-range <range>` says what was recorded while those commits were
+    written. It is a time window, never the cost of the change.
+  - `--delivery` sets that window beside what landed in it.
+  - `--agent` bills one coding agent, and `--timezone` cuts days in your zone.
+- **The status line shows your plan's window** and when it resets.
+- **`session-guard`** is a Claude Code hook that warns once and then stops a
+  session at two dollar figures you set.
+- **`waste`** prices the waste in a session and changes nothing.
+- **`model-pricing`** reads the contracted rates Claude Code already has, so
+  `bill` shows the figure Claude Code shows.
+- **A Bedrock or Vertex model id `bill` cannot price** is named with its
+  platform and the Claude model inside, with how to price it.
+- **The Action's pull request comment** says what the change does to each
+  prompt's cost against the base branch. A plan can now open the pull request
+  that makes its edit.
+- **The price catalogue is an open dataset** published with every release.
+- **`--help` on any command** shows that command's usage and flags.
+  `task` and `filter` speak your language.
+- **A line of backticks** no longer takes quadratic time to optimise.
+
+**What a release carries is now attested.** The `.vsix`, the `.mcpb`, the
+pricing dataset, the bill of materials and `SHA256SUMS` carry one
+build-provenance attestation, attached as `trazum-v3.0.2.sigstore.json`. How
+to check a file is under *What a release carries*, above.
+
+**For whoever runs the web app:** the routes that run the engine now count the
+characters each address hands it, two million a minute, as well as the
+requests. A shared link's page keeps its numbers for ten minutes. CI and the
+image moved to Node 26.
+
+Upgrade with `npm install -g @trazum/cli@3.0.2`. Nothing you call has moved.
 
 ## 3.0.1 — Trazum, downloaded from its own pages
 

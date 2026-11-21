@@ -2975,3 +2975,24 @@ Desktop opens and their checksums, and the site has a page that links them at
 the version it was built at. The extension the old script packaged could not
 have loaded; this one carries the core it imports. Nothing in the packages
 changed.
+
+## 3.0.2 — The bill where a team already looks — released
+
+Fifty changelog entries had gathered on `main` since 3.0.1, and none had
+reached npm. The thread through most of them is the milestone that names the
+release: the measured bill goes where a team already looks. It goes to
+OpenTelemetry and Prometheus files, to a gateway's `/metrics`, to a Grafana
+dashboard, to an organisation's endpoint as a receipt, and to a pull request's
+comment as what the change does to each prompt's cost. The spend recorded
+while a range of commits was written is said as a time window, never as the
+cost of the change.
+
+Beside it, the status line learned the plan window and its reset time, and a
+session guard stops a session at a dollar figure. `waste` points at the waste
+in a session and changes nothing.
+
+The release files are attested for the first time. CI moved to Node 26. The
+web app's engine routes count the characters they are given, and the share
+page keeps its numbers for ten minutes instead of recomputing them on every
+view.
+

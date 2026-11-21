@@ -66,10 +66,10 @@ export const config = {
  * fetched through an image proxy on behalf of every reader of a README, so a
  * per-address limit would throttle a popular badge for everyone at once; it
  * memoises instead. A page needs a person to open it, so there is no fan-out
- * and the address is the right axis — and a memo would be the wrong tool there,
- * because what it would hold for the whole window is a comparison carrying
- * somebody's prompt, on the page whose own comment says it is never cached for
- * exactly that reason.
+ * and the address is the right axis. The page also remembers its numbers, and
+ * only its numbers, for ten minutes per token (`lib/shares/summary.ts`): a
+ * share can be large enough that this limit alone let one address keep the
+ * server busy.
  *
  * 120 a minute is deliberately far above a reader and far below a loop. Nobody
  * opens a page twice a second by hand, and this is the same courtesy limit the
