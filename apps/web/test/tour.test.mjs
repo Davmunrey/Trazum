@@ -195,8 +195,12 @@ describe('the guided tour', () => {
     const tour = readFileSync(join(web, 'components/Tour.tsx'), 'utf8');
     assert.match(tour, /prefers-reduced-motion/, 'the scroll ignores prefers-reduced-motion');
     assert.match(tour, /'auto' : 'smooth'/, 'the reduced-motion branch does not pick instant scrolling');
-    // Escape leaves; the card takes focus.
-    assert.match(tour, /key === 'Escape'/);
+    // Escape leaves, through the native modal's `cancel` (#860): the tour is
+    // shown with showModal() and its cancel closes the tour. The e2e flow
+    // "modal: the tour keeps the keyboard in" presses it in a browser.
+    assert.match(tour, /\.showModal\(\)/, 'the tour is not opened as a modal dialog');
+    assert.match(tour, /onCancel=\{\(event\) => \{\s*event\.preventDefault\(\);\s*onClose\(\);/, 'Escape (the dialog\'s cancel) does not close the tour');
+    // The card takes focus.
     assert.match(tour, /cardRef\.current\?\.focus\(\)/);
   });
 });
