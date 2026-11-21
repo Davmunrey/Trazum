@@ -1410,6 +1410,29 @@ export const FLOWS = [
           await context.close();
         }
       }
+      // An address nothing answers, on the site and on the application, for a reader who has chosen nothing: the
+      // `lang` the server sends is the language the page settles in. The application speaks two languages and the
+      // site five, so a French 404 under /app went out as lang="en" (#868).
+      for (const code of ['es', 'fr', 'de', 'pt']) {
+        const context = await browser.newContext({
+          locale: code,
+          extraHTTPHeaders: { 'Accept-Language': code },
+          viewport: { width: 1280, height: 900 },
+          serviceWorkers: 'block',
+        });
+        const reader = await context.newPage();
+        try {
+          for (const path of ['/nothing-lives-here', '/app/nothing-lives-here', '/admin/nothing-lives-here']) {
+            const served = await (await reader.request.get(new URL(path, base).href, { headers: { 'Accept-Language': code } })).text();
+            const servedLang = /<html[^>]*\blang="([^"]*)"/.exec(served)?.[1] ?? null;
+            await reader.goto(new URL(path, base).href, { waitUntil: 'networkidle' });
+            await reader.locator('html[data-started="true"]').waitFor({ state: 'attached' });
+            is(servedLang, await reader.locator('html').getAttribute('lang'), `the lang ${path} is served with, against the language it settles in, for a reader in ${code}`);
+          }
+        } finally {
+          await context.close();
+        }
+      }
       // A reader who chose Español in an English browser: the page renders in English and then applies the choice, words and `lang` both.
       const chosen = await browser.newContext({ locale: 'en-US', viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
       await chosen.addInitScript(() => {
