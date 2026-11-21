@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import fc from 'fast-check';
 import {
   ConfigError,
+  analyzeTask,
   claudeCodeRecords,
   codexRecords,
   geminiCliRecords,
@@ -152,6 +153,19 @@ const numbersIn = (value) => {
 
 const isCount = (n) => Number.isSafeInteger(n) && n >= 0;
 
+/**
+ * The shaped log most of the time, and sometimes any text or any JSON at all,
+ * so a reader also meets a whole input that is nothing like its format.
+ */
+const orAnything = (logText) => fc.oneof(
+  { arbitrary: logText, weight: 8 },
+  { arbitrary: anyText, weight: 1 },
+  { arbitrary: fc.jsonValue().map((v) => JSON.stringify(v)), weight: 1 },
+);
+
+/** A line no JSON parser accepts, whatever follows its first character. */
+const brokenLine = anyText.map((tail) => `\u0001{${tail.replaceAll('\n', ' ')}`);
+
 describe('the transcript readers, given any log', () => {
   const readers = [
     ['Claude Code', claudeCodeRecords, lines(claudeLine), ['collapsed', 'noRequestId', 'otherLines', 'unparseable']],
@@ -165,7 +179,7 @@ describe('the transcript readers, given any log', () => {
     });
 
     it(`${name} counts what it could not read, never throws, and every number it returns is finite and not negative`, () => {
-      check(fc.property(logText, (text) => {
+      check(fc.property(orAnything(logText), (text) => {
         const result = read(text);
         for (const key of counters) assert.ok(isCount(result[key]), `${key} is ${result[key]}`);
         for (const record of result.records) {
@@ -175,8 +189,29 @@ describe('the transcript readers, given any log', () => {
     });
 
     it(`${name} never copies message text, tool arguments or a path into what it returns`, () => {
-      check(fc.property(logText, (text) => {
+      check(fc.property(orAnything(logText), (text) => {
         assert.ok(!JSON.stringify(read(text)).includes(MARKER));
+      }));
+    });
+  }
+});
+
+describe('a line the reader cannot parse is counted, not skipped', () => {
+  // Gemini CLI's log is read as lines here: a session written as one JSON
+  // document is no longer one once a line is added to it.
+  const geminiLines = fc.tuple(id('session-'), fc.array(geminiMessage, { maxLength: 6 }))
+    .map(([session, messages]) => [drop({ sessionId: session }), ...messages.map(drop)].join('\n'));
+  for (const [name, read, logText] of [
+    ['Claude Code', claudeCodeRecords, lines(claudeLine)],
+    ['Codex', codexRecords, codexText],
+    ['Gemini CLI', geminiCliRecords, geminiLines],
+  ]) {
+    it(`${name} counts one more unparseable line for each broken line added, and reads the rest as before`, () => {
+      check(fc.property(logText, brokenLine, (text, broken) => {
+        const before = read(text);
+        const after = read(`${text}\n${broken}`);
+        assert.equal(after.unparseable, before.unparseable + 1);
+        assert.deepEqual(after.records, before.records);
       }));
     });
   }
@@ -215,6 +250,53 @@ describe('the documents a person hands in', () => {
       const result = parsePlanDocument(text);
       assert.equal(typeof result, 'object');
       assert.ok(result !== null);
+    }));
+  });
+
+  // A report the analyzer wrote, from a generated session, with a declared
+  // outcome or none.
+  const report = fc.tuple(lines(claudeLine), fc.constantFrom('accepted', 'rejected', 'unknown'), fc.constantFrom('baseline', 'repeat-review-v1'))
+    .map(([text, outcome, policyId]) => {
+      try {
+        return analyzeTask({
+          taskId: 'property-task', taskType: 'fix-test', criterion: 'The generated checks pass.', policyId, outcome,
+          ...(outcome === 'unknown' ? {} : { assessor: 'property-test' }),
+          sources: [{ format: 'claude-code', text }],
+        });
+      } catch {
+        return null;
+      }
+    })
+    .filter((value) => value !== null);
+
+  it('a task report the analyzer wrote reads back as the same report', () => {
+    check(fc.property(report, (written) => {
+      assert.deepEqual(parseTaskReport(JSON.stringify(written)), written);
+    }));
+  });
+
+  /** Every path to a value inside `value`, as a list of keys. */
+  const paths = (value, prefix = []) => {
+    if (value === null || typeof value !== 'object') return [prefix];
+    return [prefix, ...Object.entries(value).flatMap(([key, inner]) => paths(inner, [...prefix, key]))];
+  };
+
+  it('a report with one field replaced is read as it now stands or refused as invalid task data', () => {
+    check(fc.property(report, fc.nat(), fc.jsonValue(), (written, pick, replacement) => {
+      const all = paths(written).filter((path) => path.length > 0);
+      const path = all[pick % all.length];
+      const changed = structuredClone(written);
+      let target = changed;
+      for (const key of path.slice(0, -1)) target = target[key];
+      target[path.at(-1)] = replacement;
+      let parsed;
+      try {
+        parsed = parseTaskReport(JSON.stringify(changed));
+      } catch (error) {
+        assert.match(String(error?.message), /^Invalid task data/u, `${error?.constructor?.name}: ${error?.message}`);
+        return;
+      }
+      assert.deepEqual(parsed, JSON.parse(JSON.stringify(changed)));
     }));
   });
 
