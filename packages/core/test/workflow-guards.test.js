@@ -212,6 +212,13 @@ describe('scorecard.yml is the shape the Scorecard API accepts a result from', (
     assert.match(job, /\n {10}publish_results: true\n/);
   });
 
+  it('fails when the API refuses the result, and reads no cache another run wrote', () => {
+    // From scorecard-action v2.6.0 a refused result only warns unless asked
+    // to fail; a refused result is a score that stopped moving.
+    assert.match(job, /\n {10}fail_on_publish_error: true\n/, 'a refused result would only warn');
+    assert.match(text, /^cache-mode: none$/m, 'the workflow may read a cache another run wrote');
+  });
+
   it('is not a check a merge waits for', () => {
     const ruleset = JSON.parse(read('.github/rulesets/main-branch.json'));
     const required = ruleset.rules
