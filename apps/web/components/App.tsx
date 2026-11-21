@@ -212,12 +212,15 @@ export function App({
     if (!drawerOpen) return;
 
     /*
-      Tab must not walk out of an open drawer.
-
-      Without this the first Tab left the drawer and landed on the page
-      underneath — a page the scrim says you cannot reach, being operated by a
-      keyboard that can. The pair is `aria-modal` and a real trap: claiming
-      modality and not enforcing it is the worse half on its own.
+      Tab cannot walk out of an open drawer, because there is nowhere for it to
+      go: the bar and the page are `inert` while it is open (the `inert`
+      attributes below, #860). That replaced a hand-written Tab trap, which
+      kept the keyboard in but left the page in the accessibility tree, so a
+      screen reader's own navigation could still read and operate what the
+      scrim covers. `inert` takes it out of both, which is what `aria-modal`
+      claims. Modern Web Guidance's `navigation-drawer`, the variant for a
+      drawer that is also a sidebar, is the pattern: "Mark the rest of the page
+      `inert` while the drawer is open".
     */
     /*
       Read the rail on every call, never once at the top.
@@ -239,24 +242,7 @@ export function App({
     };
 
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setDrawerOpen(false);
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const stops = focusable();
-      if (stops.length === 0) return;
-      const first = stops[0]!;
-      const last = stops[stops.length - 1]!;
-      const active = document.activeElement;
-      const rail = railRef.current;
-      if (event.shiftKey && (active === first || !rail?.contains(active))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      if (event.key === 'Escape') setDrawerOpen(false);
     };
 
     // Where the reader was, so they can be put back. A drawer that closes and
@@ -843,7 +829,10 @@ export function App({
         room for a persistent 236px column, so the same navigation arrives as a
         drawer and this bar is what opens it.
       */}
-      <div className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-rule-strong bg-background/90 px-3 backdrop-blur-md lg:hidden">
+      <div
+        inert={drawerOpen}
+        className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-rule-strong bg-background/90 px-3 backdrop-blur-md lg:hidden"
+      >
         <Button
           type="button"
           variant="ghost"
@@ -951,7 +940,8 @@ export function App({
         </button>
       </aside>
 
-      <main className="trazum-workspace min-w-0 flex-1 px-5 pt-6 pb-16 lg:px-10 xl:px-14">
+      {/* Inert under the open drawer, with the bar above: see the drawer's effect. */}
+      <main inert={drawerOpen} className="trazum-workspace min-w-0 flex-1 px-5 pt-6 pb-16 lg:px-10 xl:px-14">
         {/*
           1080 was the whole page at every width. On a 1440 display it left
           180px of paper down each side while the Optimise panel's two columns

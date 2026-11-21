@@ -38,6 +38,21 @@ be run on this machine, say which one and why.
 reviews a diff against this repository's own rules and reports findings with
 file and line. It reviews and does nothing else.
 
+## The web app
+
+A change to `apps/web` that touches HTML, CSS or client-side JavaScript is
+checked against [Modern Web Guidance](https://github.com/GoogleChrome/modern-web-guidance),
+Chrome's guides to the platform features that replace hand-written patterns.
+It is a skill installed locally like the other third-party ones (see
+`.gitignore`), not committed: copy its `skills/modern-web-guidance` folder into
+`.claude/skills/`, and read a guide's Markdown rather than run its `npx`
+installer.
+
+Browser support follows the guides' default: a feature that is Baseline
+Widely available is used as it is; a newer one only with the fallback its
+guide gives. Where a change leaves a guide's rule out on purpose, the code says
+which and why.
+
 ## Other people's work
 
 Everything above is about a change you are making. This is about somebody

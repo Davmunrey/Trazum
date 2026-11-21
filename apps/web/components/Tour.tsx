@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { runDemo } from '@/lib/demo';
 import type { DemoAction } from '@/lib/demo';
@@ -33,6 +33,20 @@ import type { WebMessages } from '@/lib/i18n';
  * The rest of the 1.73 contract stands: never auto-plays, `Escape` leaves,
  * focus travels with the card, the step body is announced politely, arrow
  * keys walk the steps, and nothing fetches.
+ *
+ * **A native modal, not a div that says it is one (#860).** The overlay was a
+ * `div` with `role="dialog"` and `aria-modal="true"`, and nothing behind the
+ * claim: measured in Chromium, the third Tab left the card for the page under
+ * the dim, which went on taking focus while a screen reader was told it could
+ * not. It is a `<dialog>` opened with `showModal()`, so the browser makes the
+ * rest of the page inert, keeps focus inside, turns Escape into `cancel` and
+ * puts focus back on the button that opened it. The guide it follows is
+ * Modern Web Guidance's `dialog`, rule 1: an overlay that blocks the page.
+ *
+ * One rule of that guide is left out on purpose: scroll containment. The
+ * reader may scroll the page under the tour, and the ring follows (the
+ * `scroll` listener below), so `overscroll-behavior: contain` would take away
+ * something the tour was built to allow.
  */
 
 interface TargetRect {
@@ -68,7 +82,25 @@ export function Tour({
    */
   const [gliding, setGliding] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
   const step = TOUR_STEPS[index];
+
+  /**
+   * Shown as a modal on mount, closed before it leaves the page.
+   *
+   * A layout effect, so the close runs while the element is still in the
+   * document: removing an open modal takes it out of the top layer but does
+   * not run the close steps, and it is the close steps that give focus back to
+   * the button that opened the tour. `open` is checked both ways so a
+   * development double mount neither throws nor leaves it shut.
+   */
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog !== null && !dialog.open) dialog.showModal();
+    return () => {
+      if (dialog?.open) dialog.close();
+    };
+  }, []);
   const copy = t.tour.steps[step.id];
 
   const measure = useCallback(() => {
@@ -163,13 +195,13 @@ export function Tour({
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-      else if (event.key === 'ArrowRight') advance();
+      // Escape is the dialog's `cancel`, handled on the element.
+      if (event.key === 'ArrowRight') advance();
       else if (event.key === 'ArrowLeft') retreat();
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose, advance, retreat]);
+  }, [advance, retreat]);
 
   /**
    * The card sits under the ring when there is room, above it otherwise, and
@@ -198,7 +230,23 @@ export function Tour({
     : 'none';
 
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t.tour.dialogLabel}>
+    /*
+      The user-agent box is undone: a modal dialog is centred, sized to its
+      content, padded, bordered and painted, and this one is a transparent
+      sheet over the whole viewport whose only paint is the ring's shadow. The
+      `::backdrop` is cleared for the same reason. `cancel` is Escape: the
+      default would shut the element while the tour stayed mounted, so it is
+      prevented and the tour closes itself, which closes the dialog.
+    */
+    <dialog
+      ref={dialogRef}
+      aria-label={t.tour.dialogLabel}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      className="fixed inset-0 m-0 h-auto max-h-none w-auto max-w-none overflow-visible border-0 bg-transparent p-0 text-foreground backdrop:bg-transparent"
+    >
       {/* The dim and the ring are one element: the shadow is the backdrop. */}
       {rect !== null ? (
         <div
@@ -289,6 +337,6 @@ export function Tour({
           </div>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

@@ -1337,6 +1337,72 @@ export const FLOWS = [
       await see(page.getByRole('textbox', { name: 'Prompt to optimise' }), 'the prompt box');
     },
   },
+  {
+    /*
+      #860. The tour said `aria-modal="true"` and the third Tab left it for the
+      page under the dim. Tab is walked further than the card has controls, so
+      focus has to come round again; leaving it even once fails here. The
+      browser's own stop between the last control and the first reads as
+      `body`, which is not the page.
+    */
+    name: 'modal: the tour keeps the keyboard in, Escape closes it, and focus goes back to the button that opened it',
+    covers: [],
+    viewport: { width: 1280, height: 900 },
+    async run({ page, open, see, is }) {
+      await open('/app');
+      await page.getByRole('button', { name: 'Take the tour' }).click();
+      const tour = page.getByRole('dialog', { name: 'Guided tour' });
+      await see(tour.getByText('1 of 10'), 'the first step of the tour');
+      is(await tour.evaluate((element) => element.matches(':modal')), true, 'whether the tour is a modal the browser enforces');
+      const outside = [];
+      for (let press = 0; press < 8; press += 1) {
+        await page.keyboard.press('Tab');
+        const at = await page.evaluate(() => {
+          const element = document.activeElement;
+          if (element === null || element === document.body || element.closest('dialog') !== null) return null;
+          return `${element.tagName.toLowerCase()} "${(element.getAttribute('aria-label') ?? element.textContent ?? '').trim().slice(0, 40)}"`;
+        });
+        if (at !== null) outside.push(at);
+      }
+      is(outside.join(', '), '', 'what Tab reached outside the open tour');
+      await page.keyboard.press('Escape');
+      is(await page.locator('dialog').count(), 0, 'the tour dialogs left in the page after Escape');
+      is(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Take the tour', 'where focus is after the tour closes');
+    },
+  },
+  {
+    /*
+      #860. With the drawer open the bar and the page are inert, so neither Tab
+      nor a screen reader reaches what the scrim covers. There is no Tab trap
+      any more: if the page were not inert, this walk would land in it.
+    */
+    name: 'modal: on a phone the open drawer leaves the page inert, and closing it gives the page and focus back',
+    covers: [],
+    viewport: PHONE,
+    async run({ page, open, see, is }) {
+      await open('/app');
+      const menu = page.getByRole('button', { name: 'Open menu' });
+      await menu.click();
+      await see(page.getByRole('button', { name: 'Close menu' }), 'the open drawer');
+      const inert = () => page.evaluate(() => [document.querySelector('main').inert, document.querySelector('button[aria-label="Open menu"]').parentElement.inert].join(' '));
+      is(await inert(), 'true true', 'whether the page and the bar are inert under the drawer');
+      const outside = [];
+      for (let press = 0; press < 16; press += 1) {
+        await page.keyboard.press('Tab');
+        const at = await page.evaluate(() => {
+          const element = document.activeElement;
+          if (element === null || element === document.body || element.closest('aside') !== null) return null;
+          return `${element.tagName.toLowerCase()} "${(element.getAttribute('aria-label') ?? element.textContent ?? '').trim().slice(0, 40)}"`;
+        });
+        if (at !== null) outside.push(at);
+      }
+      is(outside.join(', '), '', 'what Tab reached outside the open drawer');
+      await page.keyboard.press('Escape');
+      await see(menu, 'the menu button, once the drawer is closed');
+      is(await inert(), 'false false', 'whether the page and the bar are inert once the drawer is closed');
+      is(await menu.evaluate((element) => element === document.activeElement), true, 'whether focus is back on the menu button');
+    },
+  },
 ];
 
 const HELP = 'e2e: pass --chrome <executable> and --playwright <path to playwright-core>.';
