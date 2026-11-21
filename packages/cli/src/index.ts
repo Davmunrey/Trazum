@@ -564,6 +564,12 @@ function localeFromArgv(argv: string[]): Locale {
   return detectLocale(flag);
 }
 
+/** The arguments without `--locale <value>`, for a command whose own parser does not know it. */
+function withoutLocale(args: string[]): string[] {
+  const index = args.indexOf('--locale');
+  return index === -1 ? args : [...args.slice(0, index), ...args.slice(index + 2)];
+}
+
 function stringFlag(args: Args, name: string): string | undefined {
   const raw = args.flags.get(name);
   return typeof raw === 'string' ? raw : undefined;
@@ -15228,15 +15234,19 @@ async function commandWaste(args: Args, t: CliMessages): Promise<void> {
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
-  if (argv[0] === 'task') {
-    const { runTask } = await import('./task.js');
-    await runTask(argv.slice(1));
-    return;
-  }
-  // The stdin display filter has its own small grammar and no project config.
-  if (argv[0] === 'filter') {
-    const { runFilter } = await import('./filter.js');
-    await runFilter(argv.slice(1));
+  // `task` and the stdin display filter have grammars of their own and no
+  // project config. They still speak the reader's language: `--locale` is
+  // read and taken out before their parsers see it, which refused it (#871).
+  if (argv[0] === 'task' || argv[0] === 'filter') {
+    const messages = getCliMessages(localeFromArgv(argv)).taskFilter;
+    const own = withoutLocale(argv.slice(1));
+    if (argv[0] === 'task') {
+      const { runTask } = await import('./task.js');
+      await runTask(own, messages);
+    } else {
+      const { runFilter } = await import('./filter.js');
+      await runFilter(own, messages);
+    }
     return;
   }
   let locale = localeFromArgv(argv);
@@ -15576,9 +15586,12 @@ function filesystemRefusal(error: unknown, t: CliMessages): string | null {
 }
 
 main().catch((error: unknown) => {
-  const t = getCliMessages(localeFromArgv(process.argv.slice(2)));
-  const message =
-    filesystemRefusal(error, t) ?? (error instanceof Error ? error.message : String(error));
+  const argv = process.argv.slice(2);
+  const t = getCliMessages(localeFromArgv(argv));
+  const raised = error instanceof Error ? error.message : String(error);
+  // `task`, `filter` and the core's task analysis raise in English (#871).
+  const own = argv[0] === 'task' || argv[0] === 'filter' ? t.taskFilter.say(raised) : raised;
+  const message = filesystemRefusal(error, t) ?? own;
   console.error(`\n${c.red(t.errors.errorLabel())}: ${message}\n`);
   process.exitCode = 1;
 });

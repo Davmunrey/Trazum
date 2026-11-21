@@ -618,3 +618,64 @@ describe('the suite does not depend on the machine it runs on', () => {
     assert.deepEqual(REMOVED, [...TERMINAL_ENV_VARS]);
   });
 });
+
+/**
+ * `trazum task` and `trazum filter` parse their own arguments and were
+ * dispatched before the language was read: `--locale` broke them, `LANG` did
+ * nothing, and every message was English (#871). The messages are still
+ * raised in English, by these two and by the core's task analysis, which has
+ * no locale; the catalogue says each one in the reader's language. This reads
+ * every message from the sources, so a new one with no Spanish fails here.
+ */
+describe('task and filter speak the reader\'s language', () => {
+  const root = join(here, '../..');
+  const SOURCES = ['cli/src/task.ts', 'cli/src/task-files.ts', 'cli/src/filter.ts', 'core/src/task-analysis.ts', 'core/src/task.ts'];
+  /** Each literal an error is raised with, or `say` is called on, a template's holes filled with a sample. */
+  const raised = SOURCES.flatMap((file) => {
+    const text = readFileSync(join(root, file), 'utf8');
+    return [...text.matchAll(/(?:Error|say)\(\s*(['`])((?:(?!\1)[^\\]|\\.)+)\1\s*\)/g)].map(([, , body]) =>
+      body.replace(/(--)?\$\{[^}]+\}/g, (_, dashes) => (dashes ? '--id' : '123')),
+    );
+  });
+
+  it('reads the messages it holds to from the sources', () => {
+    assert.ok(raised.length >= 30, `only ${raised.length} messages were read, so the pattern no longer matches the sources`);
+    assert.ok(raised.includes('Unknown task action. Run trazum task --help.'));
+    assert.ok(raised.includes('Missing --id. Run trazum task --help.'));
+  });
+
+  it('says every one of them in Spanish, and leaves English as it is', () => {
+    const untranslated = raised.filter((message) => es.taskFilter.say(message) === message);
+    assert.deepEqual(untranslated, [], 'a task or filter message has no Spanish');
+    for (const message of raised) assert.equal(en.taskFilter.say(message), message);
+    const english = raised.map((message) => es.taskFilter.say(message)).filter((said) => /\b(the|must|cannot|Run|Invalid|Input)\b/.test(said));
+    assert.deepEqual(english, [], 'a Spanish message still carries English');
+  });
+
+  it('has a Spanish help with the same commands and options as the English one', () => {
+    const shape = (help) => [...help.matchAll(/trazum (?:task|filter) [a-z]+|--[a-z-]+|-o\b/g)].map(([found]) => found);
+    assert.deepEqual(shape(es.taskFilter.taskHelp(10)), shape(en.taskFilter.taskHelp(10)));
+    assert.deepEqual(shape(es.taskFilter.filterHelp), shape(en.taskFilter.filterHelp));
+    for (const help of [es.taskFilter.taskHelp(10), es.taskFilter.filterHelp]) {
+      assert.ok(help.startsWith('Uso:\n'));
+      assert.doesNotMatch(help, /<(file|text|type|label|private-directory|existing-file|report\.json|before\.json|after\.json|new-[a-z.-]+)>/);
+    }
+  });
+
+  it('answers in the language --locale or the environment asks for, and still takes --locale out of their way', () => {
+    const cli = join(here, '../dist/index.js');
+    const run = (args, environment = SPAWN_ENV) => spawnSync(process.execPath, [cli, ...args], { encoding: 'utf8', env: environment });
+    for (const command of ['task', 'filter']) {
+      const asked = run([command, '--help', '--locale', 'es']);
+      assert.equal(asked.status, 0, asked.stderr);
+      assert.ok(asked.stdout.startsWith('Uso:\n'), `${command} --help --locale es`);
+      const english = run([command, '--help', '--locale', 'en']);
+      assert.equal(english.status, 0, english.stderr);
+      assert.ok(english.stdout.startsWith('Usage:\n'), `${command} --help --locale en`);
+    }
+    const fromEnvironment = run(['task', 'nope'], { ...SPAWN_ENV, TRAZUM_LOCALE: 'es' });
+    assert.equal(fromEnvironment.status, 1);
+    assert.match(fromEnvironment.stderr, /Acción de task desconocida/);
+    assert.match(run(['filter', 'nope', '--locale', 'es']).stderr, /Argumentos no válidos/);
+  });
+});

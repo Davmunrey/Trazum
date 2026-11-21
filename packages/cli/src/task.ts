@@ -1,30 +1,7 @@
 import { analyzeTask, compareTasks, parseTaskReport, taskPolicy, MAX_INPUT_CHARS } from '@trazum/core';
+import type { CliMessages } from './i18n/types.js';
 import { changeTaskInstructions, readTaskText, writeTaskText } from './task-files.js';
 
-const HELP = `Usage:
-  trazum task analyze --id <id> --type <type> --criterion <text>
-    --claude-code <file> [--codex <file>] [--claude-code <file> ...]
-    [--outcome accepted|rejected|unknown --assessor <label>]
-    [--policy baseline|repeat-review-v1] [-o <new-report.json>]
-  trazum task policy <report.json> [-o <new-policy.md>]
-  trazum task apply <report.json> --instructions <existing-file>
-  trazum task revert --instructions <existing-file>
-  trazum task compare <before.json> <after.json> [-o <new-comparison.json>]
-
-Analyze explicit, complete task sources from Claude Code and Codex locally.
-Repeat the source flags to include sessions from both harnesses. No home scan,
-network access, provider call, hook installation or command execution occurs.
-Up to 16 sources and ${MAX_INPUT_CHARS} characters combined. Do not split one
-session across sources or import the same session more than once.
-Reports and comparisons are JSON by default (--json is also accepted).
-Outcome and assessor are caller declarations, never inferred from usage.
-Policy application adds a small, optional managed block to the file you choose.
-Review the diff and run a comparable task yourself before comparing reports.
-Revert removes only the exact unchanged block. Close other editors while applying
-or reverting. Existing output reports are never overwritten; new files use 0600.
-Repeated tool results may be intentional. A paired comparison is an observation,
-not proof of causal savings, task quality or remaining subscription allowance.
-`;
 
 type Parsed = { flags: Map<string, string>; paths: string[]; sources: { format: 'claude-code' | 'codex'; path: string }[] };
 const ALLOWED: Record<string, readonly string[]> = {
@@ -72,10 +49,15 @@ async function emit(value: string | object, output?: string): Promise<void> {
   else process.stdout.write(text);
 }
 
-export async function runTask(args: string[]): Promise<void> {
+/**
+ * `trazum task`. Its help comes from the reader's catalogue; its errors are
+ * raised in English and said in the reader's language where `main` reports
+ * them (#871).
+ */
+export async function runTask(args: string[], messages: CliMessages['taskFilter']): Promise<void> {
   if (args.length === 0 || (args.length === 1 && ['--help', '-h'].includes(args[0]!)) ||
       (args.length === 2 && Object.hasOwn(ALLOWED, args[0]!) && ['--help', '-h'].includes(args[1]!))) {
-    process.stdout.write(HELP);
+    process.stdout.write(messages.taskHelp(MAX_INPUT_CHARS));
     return;
   }
   const action = args[0]!;

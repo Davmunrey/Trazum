@@ -5,21 +5,9 @@ import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import { once } from 'node:events';
 import { compactToolOutput, EFFICIENT_OUTPUT_INSTRUCTIONS, type ToolOutputView } from '@trazum/core';
+import type { CliMessages } from './i18n/types.js';
 
 const MAX_BYTES = 1024 * 1024;
-const HELP = `Usage:
-  trazum filter compact --recovery-dir <private-directory> [--stats]
-  trazum filter restore <sha256> --recovery-dir <private-directory>
-  trazum filter instructions                          print optional output guidance
-
-Experimental, opt-in display filter. Only consecutive repeated log lines are
-compacted. Errors and unique lines are kept. Not for source files or data pipes.
-Use Bash pipefail to preserve the producing command's failure status.
-Original logs may contain sensitive data: --recovery-dir explicitly opts into local
-retention. Delete that directory when the originals are no longer needed.
-Token counts are estimates, not billing or subscription-quota measurements.
---stats writes one JSON record to stderr, without log content or recovery paths.
-`;
 
 /** Report only the view actually emitted, including recovery-instruction overhead. */
 function reportStats(inputBytes: number, outputBytes: number, view: ToolOutputView | null,
@@ -74,7 +62,7 @@ async function saveOriginal(store: string, key: string, bytes: Buffer): Promise<
   try { await file.writeFile(bytes); await file.sync(); }
   finally { await file.close(); }
 }
-async function compact(store: string, stats: boolean): Promise<void> {
+async function compact(store: string, stats: boolean, messages: CliMessages['taskFilter']): Promise<void> {
   const chunks: Buffer[] = [];
   let size = 0;
   let passthrough = false;
@@ -111,7 +99,7 @@ async function compact(store: string, stats: boolean): Promise<void> {
   try { await saveOriginal(store, key, bytes); }
   catch {
     // A filter must not swallow a tool's output because local persistence failed.
-    if (!stats) process.stderr.write('Trazum: original could not be retained; passing log through unchanged.\n');
+    if (!stats) process.stderr.write(`${messages.say('Trazum: original could not be retained; passing log through unchanged.')}\n`);
     await emit(bytes);
     if (stats) reportStats(size, size, view, 'storage-failed');
     return;
@@ -119,14 +107,19 @@ async function compact(store: string, stats: boolean): Promise<void> {
   await emit(view.text);
   if (stats) reportStats(size, Buffer.byteLength(view.text), view, view.reason, true);
 }
-export async function runFilter(args: string[]): Promise<void> {
+/**
+ * `trazum filter`. Its help comes from the reader's catalogue; its errors are
+ * raised in English and said in the reader's language where `main` reports
+ * them (#871).
+ */
+export async function runFilter(args: string[], messages: CliMessages['taskFilter']): Promise<void> {
   let stats = false;
   if (args[0] === 'compact' && args.length === 4) {
     const index = args[1] === '--stats' ? 1 : args[3] === '--stats' ? 3 : -1;
     if (index !== -1) { stats = true; args = args.filter((_, i) => i !== index); }
   }
   if (args.length === 0 || (args.length === 1 && ['--help', '-h'].includes(args[0]!))) {
-    await emit(HELP); return;
+    await emit(messages.filterHelp); return;
   }
   if (args.length === 1 && args[0] === 'instructions') {
     await emit(`${EFFICIENT_OUTPUT_INSTRUCTIONS}\n`); return;
@@ -145,6 +138,6 @@ export async function runFilter(args: string[]): Promise<void> {
     await emit(await readOriginal(store, key));
   } else {
     if (process.stdin.isTTY) throw new Error('Pipe a tool log into stdin; interactive tools are not supported.');
-    await compact(store, stats);
+    await compact(store, stats, messages);
   }
 }

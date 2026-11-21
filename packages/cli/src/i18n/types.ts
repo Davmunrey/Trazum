@@ -100,6 +100,18 @@ export interface CliMessages {
   commandHelpMore: string;
 
   /**
+   * `trazum task` and `trazum filter`, which parse their own arguments. They
+   * were dispatched before the language was read, so `--locale` broke them and
+   * `LANG` did nothing (#871). Their messages, and those of the core's task
+   * analysis, are raised in English; `say` gives one in this language.
+   */
+  taskFilter: {
+    taskHelp: (maxChars: number) => string;
+    filterHelp: string;
+    say: (message: string) => string;
+  };
+
+  /**
    * The interview behind `trazum write`, one entry per slot in
    * `@trazum/core`'s catalogue.
    *
