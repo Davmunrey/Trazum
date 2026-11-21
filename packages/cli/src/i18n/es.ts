@@ -2467,6 +2467,10 @@ ${bold('EJEMPLOS')}
       `${count} id(s) de modelo sin precio llevan prefijo de proveedor, como nombran los modelos OpenRouter y LiteLLM, y el catálogo incluido no los trae. Vuelve a ejecutar con --pricing-live para cobrar los slugs de OpenRouter desde su propia lista.`,
     apiEquivalent: () =>
       'Las sesiones de agentes (Claude Code, Codex, Gemini CLI) se valoran a tarifas API del catálogo. Si pagas una suscripción, pagaste el plan, no esta estimación equivalente; los datos ausentes y las tarifas propias pueden cambiar el resultado.',
+    partnerUnpriced: (ids) =>
+      `Modelos Claude como los nombran Amazon Bedrock o Vertex AI: ${ids}. Esas plataformas fijan sus propios precios, que este catálogo no lleva, así que las llamadas quedan sin tasar en vez de cobrarse a las tarifas de Anthropic. Para tasarlas, da a cada id su propia fila en un overlay --pricing con las tarifas de la página de la plataforma.`,
+    partnerModel: (platform, model) =>
+      `${platform === 'bedrock' ? 'Amazon Bedrock' : 'Vertex AI'}, ${model ?? 'un modelo que este catálogo no conoce'}`,
     prefixedKnown: (ids) =>
       `${ids}: el modelo tras la barra tiene precio aquí con su propio nombre. El prefijo no se quita por ti, porque el mismo modelo a través de un router puede facturarse distinto. Si esas llamadas fueron directas al proveedor, registra el modelo sin el prefijo.`,
     windowMatchesNothing: (from, to) =>

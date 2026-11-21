@@ -930,6 +930,9 @@ export interface CliMessages {
     sendFailed(where: string, status: string | null): string;
     /** Prefixed ids whose part after the slash the catalogue prices under its own name. */
     prefixedKnown(ids: string): string;
+    /** Unpriced ids that are Claude models as Bedrock or Vertex names them (#858). */
+    partnerUnpriced(ids: string): string;
+    partnerModel(platform: 'bedrock' | 'vertex', model: string | undefined): string;
     /** Claude Code transcripts are priced at API list rates; on a plan, that is not what was paid. */
     apiEquivalent(): string;
     /** A --since/--until window no record falls in: refused, never a $0 bill. */

@@ -2424,6 +2424,10 @@ ${bold('EXAMPLES')}
       `${count} unpriced model id(s) carry a provider prefix, the way OpenRouter and LiteLLM name models, and the bundled catalogue does not carry those. Run again with --pricing-live to price OpenRouter's slugs from its own list.`,
     apiEquivalent: () =>
       'Agent sessions (Claude Code, Codex, Gemini CLI) are priced at catalogue API rates. On a subscription you paid the plan, not this API-equivalent estimate; missing telemetry and custom rates can change the result.',
+    partnerUnpriced: (ids) =>
+      `Claude models as Amazon Bedrock or Vertex AI name them: ${ids}. Those platforms set their own prices, which this catalogue does not carry, so the calls stay unpriced rather than billed at Anthropic's. To price them, give each id its own row in a --pricing overlay with the rates from the platform's own page.`,
+    partnerModel: (platform, model) =>
+      `${platform === 'bedrock' ? 'Amazon Bedrock' : 'Vertex AI'}, ${model ?? 'a model this catalogue does not know'}`,
     prefixedKnown: (ids) =>
       `${ids}: the model after the slash is priced here under its own name. The prefix is not stripped for you, because the same model through a router can bill differently. If those calls went straight to the provider, log the model without the prefix.`,
     windowMatchesNothing: (from, to) =>
