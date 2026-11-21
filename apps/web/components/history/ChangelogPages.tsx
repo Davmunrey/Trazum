@@ -259,7 +259,7 @@ export function ReleasePage({
                     .filter((heading) => heading.depth === 3)
                     .map((heading) => (
                       <li key={heading.id}>
-                        <a href={`#${heading.id}`} className={cn('inline-flex min-h-9 items-center border-2 border-foreground px-3 text-[13.5px] font-semibold hover:bg-layer-hover', FOCUS)}>
+                        <a lang="en" href={`#${heading.id}`} className={cn('inline-flex min-h-9 items-center border-2 border-foreground px-3 text-[13.5px] font-semibold hover:bg-layer-hover', FOCUS)}>
                           {heading.text}
                         </a>
                       </li>

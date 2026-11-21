@@ -1324,6 +1324,114 @@ export const FLOWS = [
     },
   },
   {
+    /*
+      #862. The documents, the changelog and the roadmap are English in every
+      language of the site, and their bodies say so with `lang="en"`. The
+      titles and headings drawn around them did not, so on the Spanish site a
+      screen reader read "Quick start" and "A site that carries the brand" as
+      Spanish. Two checks per page, in each language the site speaks besides
+      English: no block of English prose declared another language, and no
+      document title anywhere on the page declared another language. The
+      second catches the one-word titles the first cannot tell from Spanish.
+    */
+    name: 'language: on the site in Spanish, French, German and Portuguese, English text says it is English',
+    covers: [],
+    async run({ page, base, see, is }) {
+      const misdeclared = (reader) =>
+        reader.evaluate(() => {
+          const EN = new Set('the and of to is are your with from this that what which when for it not was be by on or as an you can will how only'.split(' '));
+          const OTHER = new Set('el la los las de del que y en un una es por con para no se su al lo como más le et les des du une est pour pas sur dans qui der die das und ist nicht mit für auf den von zu ein eine o os as do da em um uma não para com'.split(' '));
+          const lang = (element) => ((element.closest('[lang]') ?? document.documentElement).getAttribute('lang') ?? '').toLowerCase();
+          const found = [];
+          // Each element by its own text, the text nodes directly inside it: a container holding a Spanish heading and an English link is neither.
+          for (const element of document.body.querySelectorAll('*')) {
+            if (element.closest('script,style,[hidden],[aria-hidden="true"]')) continue;
+            const own = [...element.childNodes].filter((child) => child.nodeType === Node.TEXT_NODE).map((child) => child.textContent).join(' ').trim();
+            const words = own.toLowerCase().match(/[a-zà-ÿ']+/g) ?? [];
+            if (words.length < 4) continue;
+            const english = words.filter((word) => EN.has(word)).length;
+            if (english >= 2 && english > words.filter((word) => OTHER.has(word)).length && !lang(element).startsWith('en')) {
+              found.push(`"${own.replace(/\s+/g, ' ').slice(0, 60)}" (lang ${lang(element)})`);
+            }
+          }
+          // Text that exists only in English, wherever else on the page it is drawn: every document title the sidebar
+          // lists, and every heading of an English body (a document, a release, the roadmap's considerations).
+          const titles = new Set(
+            [
+              ...document.querySelectorAll('nav a[href^="/docs/"]'),
+              ...[...document.querySelectorAll('[lang^="en"]')].flatMap((body) => [...body.querySelectorAll('h1,h2,h3,h4')]),
+            ]
+              // A body's heading carries its own anchor link, drawn as a trailing "#".
+              .map((element) => element.textContent.trim().replace(/\s*#$/, ''))
+              .filter((text) => text.length > 0),
+          );
+          for (const element of document.body.querySelectorAll('*')) {
+            if (element.children.length > 0 || !titles.has(element.textContent.trim())) continue;
+            if (!lang(element).startsWith('en')) found.push(`the English-only text "${element.textContent.trim()}" (lang ${lang(element)})`);
+          }
+          return [...new Set(found)].slice(0, 6).join('; ');
+        });
+      // One browser per language, set the way a reader's is: its locale, its header, and the site's stored choice.
+      const browser = page.context().browser();
+      for (const code of ['es', 'fr', 'de', 'pt']) {
+        const context = await browser.newContext({
+          locale: code,
+          extraHTTPHeaders: { 'Accept-Language': code },
+          viewport: { width: 1280, height: 900 },
+          serviceWorkers: 'block',
+        });
+        await context.addInitScript((chosen) => {
+          try {
+            window.localStorage.setItem('trazum:marketing-locale', chosen);
+            if (chosen === 'es') window.localStorage.setItem('trazum:locale', chosen);
+          } catch {}
+        }, code);
+        const reader = await context.newPage();
+        const visit = async (path) => {
+          // What the server sends, before any script: what a search engine, a reader without JavaScript and the first paint get.
+          const served = await (await reader.request.get(new URL(path, base).href, { headers: { 'Accept-Language': code } })).text();
+          is(/<html[^>]*\blang="([^"]*)"/.exec(served)?.[1] ?? null, code, `the lang ${path} is served with for a reader in ${code}`);
+          await reader.goto(new URL(path, base).href, { waitUntil: 'networkidle' });
+          await reader.locator('html[data-started="true"]').waitFor({ state: 'attached' });
+          is(await reader.locator('html').getAttribute('lang'), code, `the lang of ${path} for a reader in ${code}`);
+          is(await misdeclared(reader), '', `English text declared another language on ${path} in ${code}`);
+        };
+        try {
+          for (const path of ['/docs/commands', '/changelog/2.7.11', '/roadmap']) await visit(path);
+          if (code === 'es') {
+            for (const path of ['/', '/docs', '/models', '/brand', '/pro', '/download', '/changelog', '/app', '/app?tab=compare', '/app?tab=optimise']) await visit(path);
+            // The search results, on a page whose sidebar lists the titles: a heading and the title of the document it is in.
+            await visit('/docs/commands');
+            await reader.locator('input[type="search"]').first().fill('baseline gate');
+            await see(reader.locator('ul[id] a[href^="/docs/"]'), 'the search results');
+            is(await misdeclared(reader), '', 'English text declared another language in the docs search results in es');
+          }
+        } finally {
+          await context.close();
+        }
+      }
+      // A reader who chose Español in an English browser: the page renders in English and then applies the choice, words and `lang` both.
+      const chosen = await browser.newContext({ locale: 'en-US', viewport: { width: 1280, height: 900 }, serviceWorkers: 'block' });
+      await chosen.addInitScript(() => {
+        try {
+          window.localStorage.setItem('trazum:locale', 'es');
+          window.localStorage.setItem('trazum:marketing-locale', 'es');
+        } catch {}
+      });
+      const reader = await chosen.newPage();
+      try {
+        for (const path of ['/app?tab=compare', '/app?tab=optimise', '/', '/docs/commands', '/roadmap']) {
+          await reader.goto(new URL(path, base).href, { waitUntil: 'networkidle' });
+          await reader.locator('html[data-started="true"]').waitFor({ state: 'attached' });
+          is(await reader.locator('html').getAttribute('lang'), 'es', `the lang of ${path} once the stored choice applies`);
+          is(await misdeclared(reader), '', `English text declared another language on ${path}, Español chosen in an English browser`);
+        }
+      } finally {
+        await chosen.close();
+      }
+    },
+  },
+  {
     name: 'phone: the tabs are behind a menu, and the menu reaches them',
     covers: ['optimise'],
     viewport: PHONE,
@@ -1499,6 +1607,7 @@ async function main(argv) {
       };
       const tools = {
         page,
+        base,
         panel: (tab) => page.locator(`[data-tour="panel-${tab}"]`),
         async open(path) {
           const address = new URL(path, base).href;

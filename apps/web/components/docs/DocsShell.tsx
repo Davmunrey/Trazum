@@ -58,6 +58,8 @@ export function DocsNav({ copy, currentSlug }: { copy: DocsCopy; currentSlug?: s
                 <li key={doc.slug}>
                   <a
                     href={docHref(doc.slug)}
+                    // The documents are English in every language of the site, and so are their titles (#862).
+                    lang="en"
                     {...(current ? { 'aria-current': 'page' as const } : {})}
                     className={cn(
                       'block border-2 px-2.5 py-1.5 text-[14.5px] leading-snug',
@@ -91,6 +93,7 @@ function Toc({ headings, active, copy }: { headings: readonly DocHeading[]; acti
             <li key={heading.id}>
               <a
                 href={`#${heading.id}`}
+                lang="en"
                 {...(current ? { 'aria-current': 'location' as const } : {})}
                 className={cn(
                   'block border-l-2 py-1 leading-snug [overflow-wrap:anywhere]',
@@ -240,7 +243,9 @@ function Neighbour({
         {label}
         {direction === 'next' && <Icon className="size-4" aria-hidden="true" />}
       </span>
-      <span className="font-display text-[22px] leading-tight font-bold tracking-[-0.02em]">{doc.title}</span>
+      <span lang="en" className="font-display text-[22px] leading-tight font-bold tracking-[-0.02em]">
+        {doc.title}
+      </span>
     </a>
   );
 }
