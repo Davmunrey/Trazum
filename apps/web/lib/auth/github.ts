@@ -194,8 +194,14 @@ export function authorizeUrl(config: AuthEnabled, nonce: string): string {
   url.searchParams.set('redirect_uri', config.redirectUri);
   url.searchParams.set('scope', SCOPE);
   url.searchParams.set('state', nonce);
-  // Without this, GitHub silently reuses an existing authorisation and the user
-  // never learns which account they are about to sign in as.
+  // A person signed in to more than one GitHub account chooses one, rather than
+  // being signed in as whichever is current without seeing which: GitHub's
+  // `prompt=select_account` "forces the account picker to appear" (its page on
+  // authorizing OAuth apps, read 2026-11-21, #900).
+  url.searchParams.set('prompt', 'select_account');
+  // And GitHub offers no sign-up mid-flow: `allow_signup` only decides whether
+  // a visitor who is not signed in "will be offered an option to sign up for
+  // GitHub". It used to carry the comment above, which it never did.
   url.searchParams.set('allow_signup', 'false');
   return url.toString();
 }
