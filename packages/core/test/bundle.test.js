@@ -198,6 +198,15 @@ describe('the workflow measures, and cannot stand between a pull request and mai
     assert.equal(tool.dependencies[ANALYZER.name], ANALYZER.version, 'the workflow installs a version the script refuses');
     const lock = JSON.parse(read('tools/bundle-analyzer/package-lock.json'));
     assert.equal(lock.packages[`node_modules/${ANALYZER.name}`]?.version, ANALYZER.version, 'the lockfile resolves another version');
+    // zod 3, which the analyzer asks for, has GHSA-mrhx-c7xc-m3w5 and no
+    // patched release; 4.6.6 has the fix. The override is exact, so the
+    // lockfile is what CI installs, and it was tried: the dry run and the
+    // analyzer's option checks were the same on 4.6.7 as on 3.25.76 (#905).
+    const zod = tool.overrides?.zod ?? '';
+    assert.match(zod, /^\d+\.\d+\.\d+$/u, 'zod is not overridden to one exact version');
+    const [major, minor, patch] = zod.split('.').map(Number);
+    assert.ok(major > 4 || (major === 4 && (minor > 6 || (minor === 6 && patch >= 6))), `zod ${zod} is below 4.6.6, which fixes GHSA-mrhx-c7xc-m3w5`);
+    assert.equal(lock.packages['node_modules/zod']?.version, zod, 'the lockfile installs another zod than the override names');
     assert.ok(runs.includes('npm ci --prefix tools/bundle-analyzer --ignore-scripts --no-audit --no-fund'));
     assert.ok(runs.includes(`--analyzer tools/bundle-analyzer/node_modules/${ANALYZER.name}`));
     assert.doesNotMatch(runs, /npx /, 'npx would fetch whatever is newest and run its install scripts');
