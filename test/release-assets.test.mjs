@@ -435,7 +435,21 @@ describe('the release workflow attests what it attaches', () => {
     const checked = attest.slice(attest.lastIndexOf('for name in'), upload);
     for (const name of files) assert.ok(checked.includes(asVerify(name)), `${name} is not verified against the bundle`);
     assert.match(checked, /--signer-workflow "\$GITHUB_REPOSITORY\/\.github\/workflows\/release\.yml"/, 'the bundle is not held to this workflow');
-    assert.match(attest, /gh release upload "v\$VERSION" "\/tmp\/release\/trazum-v\$VERSION\.sigstore\.json" --repo "\$GITHUB_REPOSITORY" --clobber/);
+    assert.match(attest, /gh release upload "v\$VERSION" "\/tmp\/release\/trazum-v\$VERSION\.sigstore\.json" "\/tmp\/release\/trazum-v\$VERSION\.intoto\.jsonl" --repo "\$GITHUB_REPOSITORY" --clobber/);
+  });
+
+  // Scorecard's Signed-Releases gives a `.sigstore.json` 8 and a SLSA
+  // provenance file, `*.intoto.jsonl`, 10 (#908). The second is the first on
+  // one line: nothing new is signed, and each is verified before it goes up.
+  it('attaches the same bundle on one line as the provenance file, verified against every file the same way', () => {
+    const upload = attest.indexOf('gh release upload');
+    const written = attest.indexOf('jq -c . "$BUNDLE" > "/tmp/release/trazum-v$VERSION.intoto.jsonl"');
+    assert.ok(written !== -1 && written < upload, 'the provenance file is not written from the bundle before the upload');
+    assert.match(attest, /test "\$\(wc -l < "\/tmp\/release\/trazum-v\$VERSION\.intoto\.jsonl"\)" -eq 1/, 'nothing checks the provenance file is one line');
+    const checked = attest.slice(attest.indexOf('for bundle in'), upload);
+    assert.match(checked, /^\s*for bundle in "trazum-v\$VERSION\.sigstore\.json" "trazum-v\$VERSION\.intoto\.jsonl"; do$/m, 'the provenance file is not verified');
+    assert.match(checked, /--bundle "\/tmp\/release\/\$bundle"/, 'the loop does not verify against each bundle');
+    for (const name of files) assert.ok(checked.includes(asVerify(name)), `${name} is not verified against each bundle`);
   });
 
   // 3.0.2's run failed here: the step reads the files from /tmp/release, outside

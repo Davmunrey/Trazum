@@ -554,7 +554,9 @@ jobs:
   # release carries (the extension, the bundle, the dataset, the bill of
   # materials and `SHA256SUMS`), with GitHub's `actions/attest` and this run's
   # OIDC identity, and attaches the Sigstore bundle to the release as
-  # `trazum-v<version>.sigstore.json`. `gh attestation verify` checks a file
+  # `trazum-v<version>.sigstore.json`, and the same bundle on one line as
+  # `trazum-v<version>.intoto.jsonl`, the name a SLSA provenance file goes by
+  # (#908). `gh attestation verify` checks a file
   # against it, or against GitHub's attestations API, which holds the same
   # attestation (RELEASES.md, "Checking them").
   #
@@ -617,6 +619,14 @@ jobs:
       # The bundle is checked the way RELEASES.md tells a person to check it,
       # against every file, before it is attached: a bundle that verifies
       # nothing is never put on the release page.
+      #
+      # It goes up twice, under two names, with nothing new signed. The
+      # attestation is SLSA provenance (an in-toto Statement v1 with predicate
+      # https://slsa.dev/provenance/v1), and `*.intoto.jsonl`, one bundle a
+      # line, is where slsa-verifier and Scorecard's Signed-Releases look for
+      # one: a `.sigstore.json` scores 8 there, a provenance file 10 (#908).
+      # `jq -c` only drops the whitespace, so both files hold the same bytes
+      # of signature, and each is verified against every file.
       - name: Verify the bundle against every file, then attach it
         env:
           GH_TOKEN: ${{ github.token }}
@@ -625,13 +635,17 @@ jobs:
         run: |
           set -euo pipefail
           cp "$BUNDLE" "/tmp/release/trazum-v$VERSION.sigstore.json"
-          for name in "trazum-vscode-$VERSION.vsix" "trazum-mcp-$VERSION.mcpb" "trazum-pricing-$VERSION.json" "trazum-v$VERSION.cdx.json" SHA256SUMS; do
-            gh attestation verify "/tmp/release/$name" \
-              --bundle "/tmp/release/trazum-v$VERSION.sigstore.json" \
-              --repo "$GITHUB_REPOSITORY" \
-              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+          jq -c . "$BUNDLE" > "/tmp/release/trazum-v$VERSION.intoto.jsonl"
+          test "$(wc -l < "/tmp/release/trazum-v$VERSION.intoto.jsonl")" -eq 1
+          for bundle in "trazum-v$VERSION.sigstore.json" "trazum-v$VERSION.intoto.jsonl"; do
+            for name in "trazum-vscode-$VERSION.vsix" "trazum-mcp-$VERSION.mcpb" "trazum-pricing-$VERSION.json" "trazum-v$VERSION.cdx.json" SHA256SUMS; do
+              gh attestation verify "/tmp/release/$name" \
+                --bundle "/tmp/release/$bundle" \
+                --repo "$GITHUB_REPOSITORY" \
+                --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+            done
           done
-          gh release upload "v$VERSION" "/tmp/release/trazum-v$VERSION.sigstore.json" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload "v$VERSION" "/tmp/release/trazum-v$VERSION.sigstore.json" "/tmp/release/trazum-v$VERSION.intoto.jsonl" --repo "$GITHUB_REPOSITORY" --clobber
 
   # The listing on the official MCP registry, which is a separate publish to a
   # separate service and was a manual step until it failed twice in a row.
