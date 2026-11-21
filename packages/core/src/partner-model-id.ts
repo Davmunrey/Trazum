@@ -25,10 +25,27 @@ export interface PartnerModelId {
 }
 
 const PROFILE_PREFIXES = ['us-gov', 'us', 'eu', 'apac', 'jp', 'au', 'global'];
-/** A Claude id as Anthropic writes it: lowercase letters, digits and single hyphens. */
-const CLAUDE_ID = /^claude(?:-[a-z0-9]+)+$/;
-const VERSION_SUFFIX = /-v\d+(?::\d+)?$/;
-const VERTEX_DATE = /^\d{8}$/;
+const DIGITS = /^\d+$/;
+const WORD = /^[a-z0-9]+$/;
+
+/**
+ * A Claude id as Anthropic writes it: `claude`, then one or more hyphenated
+ * words of lowercase letters and digits. Read by splitting, not by one pattern
+ * with a repeated group, so no input can make it backtrack.
+ */
+function isClaudeId(value: string): boolean {
+  const words = value.split('-');
+  return words.length >= 2 && words[0] === 'claude' && words.slice(1).every((word) => WORD.test(word));
+}
+
+/** The id without a Bedrock version such as `-v1` or `-v1:0`. */
+function withoutVersion(value: string): string {
+  const at = value.lastIndexOf('-v');
+  if (at === -1) return value;
+  const [major, minor, ...extra] = value.slice(at + 2).split(':');
+  const isVersion = extra.length === 0 && DIGITS.test(major ?? '') && (minor === undefined || DIGITS.test(minor));
+  return isVersion ? value.slice(0, at) : value;
+}
 
 /** The platform and model a Bedrock or Vertex id names, or `undefined` for any other id. */
 export function partnerModelId(id: string): PartnerModelId | undefined {
@@ -37,15 +54,15 @@ export function partnerModelId(id: string): PartnerModelId | undefined {
   const prefix = dot === -1 ? '' : id.slice(0, dot);
   const rest = PROFILE_PREFIXES.includes(prefix) ? id.slice(dot + 1) : id;
   if (rest.startsWith('anthropic.')) {
-    const model = rest.slice('anthropic.'.length).replace(VERSION_SUFFIX, '');
-    return CLAUDE_ID.test(model) ? { platform: 'bedrock', model } : undefined;
+    const model = withoutVersion(rest.slice('anthropic.'.length));
+    return isClaudeId(model) ? { platform: 'bedrock', model } : undefined;
   }
   // Vertex: the id, `@`, an eight-digit date.
   const at = id.indexOf('@');
   if (at !== -1) {
     const model = id.slice(0, at);
     const date = id.slice(at + 1);
-    if (CLAUDE_ID.test(model) && VERTEX_DATE.test(date)) return { platform: 'vertex', model: `${model}-${date}` };
+    if (isClaudeId(model) && date.length === 8 && DIGITS.test(date)) return { platform: 'vertex', model: `${model}-${date}` };
   }
   return undefined;
 }
