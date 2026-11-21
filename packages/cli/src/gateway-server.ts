@@ -361,6 +361,47 @@ async function readBody(request: IncomingMessage): Promise<string | null> {
 }
 
 /**
+ * Every field the wire format puts in front of the model, as one string to
+ * estimate and then drop.
+ *
+ * A field is the text itself when it is a string, and its JSON otherwise.
+ * `JSON.stringify` over-counts by the structural characters, which is the safe
+ * direction for a budget: an estimate that runs high refuses slightly early
+ * rather than allowing slightly late.
+ *
+ * - **System prompt.** Anthropic's `system` is a string or a list of content
+ *   blocks: the list is the usual form once a prompt carries `cache_control`.
+ *   OpenAI's Responses API calls it `instructions`. Gemini's is a
+ *   `systemInstruction` document.
+ * - **Turns.** `messages`, Responses' `input` (a string or a list), and
+ *   Gemini's `contents`.
+ * - **Tools.** `tools` on all three, and Chat Completions' older `functions`.
+ *   Each definition's name, description and schema are input tokens the
+ *   provider bills on every call. Until #899 none of them were counted, nor a
+ *   `system` sent as blocks, nor `instructions`, so a call with a large tool
+ *   set was judged against the budget as much smaller than it was.
+ */
+export function promptText(request: Record<string, unknown>): string {
+  const parts: string[] = [];
+  const add = (value: unknown): void => {
+    if (typeof value === 'string') {
+      if (value !== '') parts.push(value);
+    } else if (typeof value === 'object' && value !== null) {
+      parts.push(JSON.stringify(value));
+    }
+  };
+  add(request.system);
+  add(request.instructions);
+  add(request.systemInstruction);
+  if (Array.isArray(request.messages)) add(request.messages);
+  add(request.input);
+  if (Array.isArray(request.contents)) add(request.contents);
+  if (Array.isArray(request.tools)) add(request.tools);
+  if (Array.isArray(request.functions)) add(request.functions);
+  return parts.join('\n');
+}
+
+/**
  * What the request is asking for, without keeping any of it.
  *
  * The token count is the heuristic estimator's — the same one every other
@@ -400,25 +441,7 @@ function describe(body: string, provider: string, modelFromPath: string | null):
   const model = typeof request.model === 'string' ? request.model : modelFromPath;
   if (model === null) return null;
 
-  // Every text field the wire format puts in front of the model, counted and
-  // then dropped. `JSON.stringify` of the messages over-counts by the
-  // structural characters, which is the safe direction for a budget: an
-  // estimate that runs high refuses slightly early rather than allowing
-  // slightly late.
-  const parts: string[] = [];
-  if (typeof request.system === 'string') parts.push(request.system);
-  if (Array.isArray(request.messages)) parts.push(JSON.stringify(request.messages));
-  if (Array.isArray(request.input)) parts.push(JSON.stringify(request.input));
-  // Gemini names the same two things differently: the system prompt is a
-  // `systemInstruction` document rather than a string, and the turns are
-  // `contents` rather than `messages`. Counted the same way and dropped the
-  // same way.
-  if (typeof request.systemInstruction === 'object' && request.systemInstruction !== null) {
-    parts.push(JSON.stringify(request.systemInstruction));
-  }
-  if (Array.isArray(request.contents)) parts.push(JSON.stringify(request.contents));
-
-  const text = parts.join('\n');
+  const text = promptText(request);
   const generation = typeof request.generationConfig === 'object' && request.generationConfig !== null
     ? (request.generationConfig as Record<string, unknown>).maxOutputTokens
     : undefined;
