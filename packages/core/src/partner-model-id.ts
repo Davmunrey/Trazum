@@ -42,8 +42,9 @@ function isClaudeId(value: string): boolean {
 function withoutVersion(value: string): string {
   const at = value.lastIndexOf('-v');
   if (at === -1) return value;
-  const [major = '', minor, ...extra] = value.slice(at + 2).split(':');
-  const isVersion = extra.length === 0 && DIGITS.test(major) && (minor === undefined || DIGITS.test(minor));
+  // A major and at most one minor, each all digits: `1` or `1:0`.
+  const parts = value.slice(at + 2).split(':');
+  const isVersion = parts.length <= 2 && parts.every((part) => DIGITS.test(part));
   return isVersion ? value.slice(0, at) : value;
 }
 
