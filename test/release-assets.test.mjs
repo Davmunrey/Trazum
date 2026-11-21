@@ -441,10 +441,16 @@ describe('the release workflow attests what it attaches', () => {
   // 3.0.2's run failed here: the step reads the files from /tmp/release, outside
   // the checkout, where `gh` has no repository to read (#895).
   it('names the repository on every gh call, since it works outside the checkout', () => {
-    const joined = attest.replace(/\\\n\s*/g, ' ');
-    const calls = [...joined.matchAll(/^\s*gh (?:release|attestation) [^\n]*$/gm)].map((m) => m[0].trim());
+    // Continued lines joined and comments dropped, then every `gh` call, at the
+    // start of a line or inside `$(…)`, a pipe or a list. `gh api` names the
+    // repository in its path rather than with `--repo`.
+    const joined = attest.replace(/\\\n\s*/g, ' ').replace(/^\s*#.*$/gm, '');
+    const calls = [...joined.matchAll(/(?:^|[\s$(|&;])(gh [a-z][\w-]*[^\n]*)/gm)].map((m) => m[1].trim());
     assert.ok(calls.length >= 3, 'the job makes no gh call');
-    for (const call of calls) assert.match(call, /--repo "\$GITHUB_REPOSITORY"/, `${call} does not name the repository`);
+    for (const call of calls) {
+      const named = call.startsWith('gh api ') ? /repos\/\$GITHUB_REPOSITORY\b/ : /--repo "\$GITHUB_REPOSITORY"/;
+      assert.match(call, named, `${call} does not name the repository`);
+    }
   });
 
   it('and RELEASES.md tells a person how to check a file the same way', () => {
