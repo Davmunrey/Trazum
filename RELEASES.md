@@ -190,10 +190,13 @@ notice:
   `task` and `filter` speak your language.
 - **A line of backticks** no longer takes quadratic time to optimise.
 
-**What a release carries is now attested.** The `.vsix`, the `.mcpb`, the
-pricing dataset, the bill of materials and `SHA256SUMS` carry one
-build-provenance attestation, attached as `trazum-v3.0.2.sigstore.json`. How
-to check a file is under *What a release carries*, above.
+**3.0.2's files are not attested, though this note said so when it was
+published.** The job that signs them ran for the first time on this release
+and failed before it signed anything (#895). The files on the release page are
+what the workflow built, with their `SHA256SUMS`, and there is no
+`trazum-v3.0.2.sigstore.json`. They will not be attested afterwards: a later
+run would sign them as built by a commit that did not build them. The next
+release is the first one carrying a bundle.
 
 **For whoever runs the web app:** the routes that run the engine now count the
 characters each address hands it, two million a minute, as well as the
