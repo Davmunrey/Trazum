@@ -158,10 +158,17 @@ export function DocsSearch({
                     href={docHref(slug, anchor)}
                     className="block px-3 py-2.5 hover:bg-layer-hover focus-visible:bg-primary focus-visible:text-primary-foreground focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-foreground"
                   >
-                    <span className="block text-[15px] leading-snug font-semibold [overflow-wrap:anywhere]">{text}</span>
-                    <span className="mt-0.5 block font-mono text-[12px] text-muted-foreground">
-                      {depth === 1 ? copy.searchDocument : TITLES[slug]}
+                    {/* A heading and a title from the documents, English in every language of the site (#862). */}
+                    <span lang="en" className="block text-[15px] leading-snug font-semibold [overflow-wrap:anywhere]">
+                      {text}
                     </span>
+                    {depth === 1 ? (
+                      <span className="mt-0.5 block font-mono text-[12px] text-muted-foreground">{copy.searchDocument}</span>
+                    ) : (
+                      <span lang="en" className="mt-0.5 block font-mono text-[12px] text-muted-foreground">
+                        {TITLES[slug]}
+                      </span>
+                    )}
                   </a>
                 </li>
               );

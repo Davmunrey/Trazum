@@ -13,7 +13,7 @@ page.
 
 ## What is checked
 
-30 flows, each from an empty browser. Most drive the application at
+31 flows, each from an empty browser. Most drive the application at
 `/app`, where it has lived since the landing took `/`; thirteen start on the
 landing:
 
@@ -47,6 +47,7 @@ landing:
 | Phone menu | the tabs behind a menu, and the menu reaching them |
 | The tour, as a modal | opened from the first-visit offer and closed with Escape, focus on Take the tour in the rail; opened from there, a modal the browser enforces, Tab walked round it eight times without reaching the page, Escape closing it, and focus back on Take the tour |
 | The phone menu, as a modal | with the menu open at 390 pixels the page and the bar inert, Tab walked sixteen times without leaving the menu, and Escape giving both back with focus on the menu button |
+| Languages, declared | in Spanish, French, German and Portuguese, the docs, a release and the roadmap with `lang` set to the reader's language and no English text declared another one; in Spanish also the landing, every site page, the app, its Compare and Optimise tabs and the docs search results; and with Español chosen in an English browser, the app's examples in Spanish and `lang` following the choice on the site |
 
 A flow also fails when the page throws an error nobody caught, whatever else
 it was checking.

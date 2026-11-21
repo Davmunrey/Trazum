@@ -102,6 +102,21 @@ export function Comparer({
 }) {
   const [before, setBefore] = useState(EXAMPLES[locale].before);
   const [after, setAfter] = useState(EXAMPLES[locale].after);
+
+  /*
+    The examples follow the language, as the Optimise tab's prompt does (#862).
+
+    The page renders in the language of the browser's header and then applies
+    the reader's stored choice, so a reader who chose Español in an English
+    browser was handed the English pair, and kept it. A field the reader has
+    written in is never touched: only a field still holding an example is
+    swapped.
+  */
+  useEffect(() => {
+    const examples = Object.values(EXAMPLES);
+    setBefore((current) => (examples.some((example) => example.before === current) ? EXAMPLES[locale].before : current));
+    setAfter((current) => (examples.some((example) => example.after === current) ? EXAMPLES[locale].after : current));
+  }, [locale]);
   const [optimizeBoth, setOptimizeBoth] = useState(false);
   const [result, setResult] = useState<Comparison | null>(null);
   const [error, setError] = useState<string | null>(null);

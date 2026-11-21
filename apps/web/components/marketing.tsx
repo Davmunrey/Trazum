@@ -57,6 +57,12 @@ export function useMarketingLocale(
       // Storage can throw (private mode); the header's language is a full page.
     }
   }, []);
+  // The page says which language it is in, as the app does: a choice that
+  // changed the words and left `lang` at the header's language had a screen
+  // reader read Spanish with English rules (#862).
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
   const set = (next: MarketingLocale) => {
     setLocale(next);
     try {

@@ -6,6 +6,7 @@ import { THEME_BOOTSTRAP } from '../lib/theme';
 import { Analytics } from '../components/Analytics';
 import { SpeedInsights } from '../components/SpeedInsights';
 import { getWebMessages, localeFromHeaders } from '../lib/i18n';
+import { marketingLocaleFromHeader } from '../lib/marketing-locales';
 import './globals.css';
 
 
@@ -44,10 +45,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const requestHeaders = await headers();
-  const locale = localeFromHeaders(requestHeaders.get('accept-language'));
   // The middleware says which surface the address is; the theme bootstrap and
   // the stylesheet read it so the public site is light until a visitor chooses.
   const surface = requestHeaders.get('x-trazum-surface') === 'site' ? 'site' : 'app';
+  // The site speaks five languages and the tool two, so each surface reads the
+  // header with its own list. Read with the tool's, a French page went out as
+  // `lang="en"` (#862).
+  const acceptLanguage = requestHeaders.get('accept-language');
+  const locale = surface === 'site' ? marketingLocaleFromHeader(acceptLanguage) : localeFromHeaders(acceptLanguage);
 
   return (
     <html lang={locale} data-surface={surface} suppressHydrationWarning>

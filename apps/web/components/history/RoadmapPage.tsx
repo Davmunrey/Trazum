@@ -90,7 +90,9 @@ export function RoadmapPage({
                             aria-label={`${milestone.title}: ${t.openMilestone}, ${site.opensExternal}`}
                             className={cn('inline-flex items-start gap-1.5 underline-offset-4 hover:underline', FOCUS)}
                           >
-                            <span className="[overflow-wrap:anywhere]">{milestone.title}</span>
+                            <span lang="en" className="[overflow-wrap:anywhere]">
+                              {milestone.title}
+                            </span>
                             <ArrowUpRight className="mt-1.5 size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
                           </a>
                         </h3>

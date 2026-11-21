@@ -39,7 +39,7 @@ Then, if you want to know whether to trust the numbers:
   each run's test results, to find the test that fails now and then, and the
   size of the web app's built files.
 - **[End-to-end tests](end-to-end-tests.md)**: the web app in a real browser,
-  doing what a visitor does: the 30 flows, the figures they expect and
+  doing what a visitor does: the 31 flows, the figures they expect and
   where those come from, and what a green run does not say.
 - **[Mutation testing](mutation-testing.md)**: whether the tests would notice
   if the code stopped doing what they check: the files it runs on, the score as
