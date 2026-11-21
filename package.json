@@ -48,6 +48,7 @@
     "package:release": "node scripts/release-assets.mjs build"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.8"
+    "@biomejs/biome": "2.6.8",
+    "fast-check": "4.10.2"
   }
 }
