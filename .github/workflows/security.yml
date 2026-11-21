@@ -75,7 +75,7 @@ jobs:
           deny-licenses: AGPL-3.0, GPL-2.0, GPL-3.0
           # GHSA-mrhx-c7xc-m3w5 (zod below 4.6.6 can exhaust memory validating
           # oversized collections) reaches one lockfile only,
-          # .github/tools/bundle-analyzer: @codecov/bundle-analyzer 2.0.1, the
+          # tools/bundle-analyzer: @codecov/bundle-analyzer 2.0.1, the
           # newest there is, requires zod ^3, and no 3.x is patched. The
           # analyzer runs in CI on the sizes of this repository's own build,
           # never on input from outside, and nothing published contains zod.

@@ -21,8 +21,8 @@
  * **It needs a parser and the repository has none.** `--acorn` is a directory
  * holding acorn, installed from its own lockfile the way CI installs it (#874):
  *
- *   npm ci --prefix .github/tools/acorn --ignore-scripts
- *   node scripts/mutate.mjs --acorn .github/tools/acorn/node_modules/acorn
+ *   npm ci --prefix tools/acorn --ignore-scripts
+ *   node scripts/mutate.mjs --acorn tools/acorn/node_modules/acorn
  *
  * Nothing published, and nothing in the lockfile, depends on it.
  *
@@ -152,8 +152,8 @@ function parseArgs(argv) {
   if (!options.acorn) {
     throw new Error(
       'mutate needs a parser: --acorn <directory holding acorn>.\n'
-        + '  npm ci --prefix .github/tools/acorn --ignore-scripts\n'
-        + '  node scripts/mutate.mjs --acorn .github/tools/acorn/node_modules/acorn',
+        + '  npm ci --prefix tools/acorn --ignore-scripts\n'
+        + '  node scripts/mutate.mjs --acorn tools/acorn/node_modules/acorn',
     );
   }
   if (options.write && (options.since || options.only || options.survivors || options.without || options.audit || options.list)) {

@@ -264,11 +264,11 @@ describe('CI runs the flows against the build the pull request would deploy', ()
 
   it('with one pinned browser driver for the whole job, installed without its scripts', () => {
     // From a lockfile of its own since #874, so `npm ci` checks the hashes.
-    const installs = [...ci.matchAll(/npm ci --prefix \.github\/tools\/playwright-core --ignore-scripts\b/g)];
+    const installs = [...ci.matchAll(/npm ci --prefix tools\/playwright-core --ignore-scripts\b/g)];
     assert.equal(installs.length, 1, 'the driver is installed once, by the privacy probe step, and reused');
-    const tool = JSON.parse(readFileSync(new URL('../.github/tools/playwright-core/package.json', import.meta.url), 'utf8'));
+    const tool = JSON.parse(readFileSync(new URL('../tools/playwright-core/package.json', import.meta.url), 'utf8'));
     assert.match(tool.dependencies['playwright-core'], /^\d+\.\d+\.\d+$/, 'the driver is not pinned to one exact version');
-    assert.match(stepOf('End-to-end tests (the page, in a browser)'), /--playwright \.github\/tools\/playwright-core\/node_modules\/playwright-core/);
+    assert.match(stepOf('End-to-end tests (the page, in a browser)'), /--playwright tools\/playwright-core\/node_modules\/playwright-core/);
   });
 
   it('on a server of its own, so it never reads a page another step left running', () => {
@@ -325,7 +325,7 @@ describe('the bill the flows expect is still the bill the price list gives', () 
 
 /**
  * CI hands both browser scripts the driver as a path relative to the
- * checkout, `.github/tools/playwright-core/node_modules/playwright-core`,
+ * checkout, `tools/playwright-core/node_modules/playwright-core`,
  * since #874. `createRequire` refuses a relative path, and the first run
  * failed on it: `done` passed only because it is given an absolute one. Each
  * script is run here from a directory beside a stand-in driver whose launch

@@ -194,12 +194,12 @@ describe('the workflow measures, and cannot stand between a pull request and mai
   it('installs the one version the script accepts, from a lockfile, outside the workspace, with install scripts off', () => {
     // From a manifest and lockfile of its own since #874, so `npm ci` checks
     // the hashes; the exact version is the manifest's and the lockfile's.
-    const tool = JSON.parse(read('.github/tools/bundle-analyzer/package.json'));
+    const tool = JSON.parse(read('tools/bundle-analyzer/package.json'));
     assert.equal(tool.dependencies[ANALYZER.name], ANALYZER.version, 'the workflow installs a version the script refuses');
-    const lock = JSON.parse(read('.github/tools/bundle-analyzer/package-lock.json'));
+    const lock = JSON.parse(read('tools/bundle-analyzer/package-lock.json'));
     assert.equal(lock.packages[`node_modules/${ANALYZER.name}`]?.version, ANALYZER.version, 'the lockfile resolves another version');
-    assert.ok(runs.includes('npm ci --prefix .github/tools/bundle-analyzer --ignore-scripts --no-audit --no-fund'));
-    assert.ok(runs.includes(`--analyzer .github/tools/bundle-analyzer/node_modules/${ANALYZER.name}`));
+    assert.ok(runs.includes('npm ci --prefix tools/bundle-analyzer --ignore-scripts --no-audit --no-fund'));
+    assert.ok(runs.includes(`--analyzer tools/bundle-analyzer/node_modules/${ANALYZER.name}`));
     assert.doesNotMatch(runs, /npx /, 'npx would fetch whatever is newest and run its install scripts');
     assert.doesNotMatch(runs, /npm install/, 'an install that no lockfile checks');
     // And no package gained it: it is not in any manifest or in the lockfile.
@@ -222,7 +222,7 @@ describe('the workflow measures, and cannot stand between a pull request and mai
   });
 
   it('lets a report that was not taken fail the job on main, and nowhere else', () => {
-    assert.match(runs, /node scripts\/bundle-report\.mjs --analyzer \.github\/tools\/bundle-analyzer\/node_modules\/@codecov\/bundle-analyzer \|\| refused=1\n/);
+    assert.match(runs, /node scripts\/bundle-report\.mjs --analyzer tools\/bundle-analyzer\/node_modules\/@codecov\/bundle-analyzer \|\| refused=1\n/);
     const onMain = runs.indexOf('if [ "$refused" = "1" ] && [ "$EVENT" = "push" ]; then');
     const anywhere = runs.indexOf('if [ "$refused" = "1" ]; then');
     assert.ok(onMain !== -1 && anywhere !== -1 && onMain < anywhere, 'main is judged first');

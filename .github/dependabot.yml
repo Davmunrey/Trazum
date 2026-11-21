@@ -20,12 +20,14 @@ updates:
   # The three tools CI installs from lockfiles of their own (#874): a pin
   # nothing raises is a pin that goes stale. An entry and a group of their own,
   # not the root's: in one group with the root, GitHub refused the whole
-  # pull request and the root's updates with it (#881).
+  # pull request and the root's updates with it (#881). And at the root's
+  # tools/, not under .github/: there GitHub refused their pull request even
+  # on its own (#886).
   - package-ecosystem: npm
     directories:
-      - /.github/tools/acorn
-      - /.github/tools/bundle-analyzer
-      - /.github/tools/playwright-core
+      - /tools/acorn
+      - /tools/bundle-analyzer
+      - /tools/playwright-core
     schedule:
       interval: weekly
       day: monday

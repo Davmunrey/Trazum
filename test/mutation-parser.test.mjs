@@ -16,8 +16,8 @@ import { OPERATORS, applyMutant, functionRanges, mutantsOf, withIds, withinFunct
  * emits. It runs where the parser is installed, which is the Mutation workflow
  * and anybody's machine after
  *
- *   npm ci --prefix .github/tools/acorn --ignore-scripts
- *   TRAZUM_ACORN=.github/tools/acorn/node_modules/acorn npm run test:mutation
+ *   npm ci --prefix tools/acorn --ignore-scripts
+ *   TRAZUM_ACORN=tools/acorn/node_modules/acorn npm run test:mutation
  *
  * Without `TRAZUM_ACORN` it fails and says so. A file that skipped itself
  * would report a pass for a check that never ran.

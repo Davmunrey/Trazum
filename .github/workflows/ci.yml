@@ -156,7 +156,7 @@ jobs:
       # A pasted log never leaves the browser, checked in a real browser against
       # the page this pull request would deploy. The REA audit of November 2026
       # checked it once, by hand; this checks it on every run. `playwright-core`
-      # is installed from .github/tools/playwright-core, whose lockfile pins it
+      # is installed from tools/playwright-core, whose lockfile pins it
       # by hash (#874), with `--ignore-scripts`, and drives the runner's own
       # Chrome, so nothing published depends on either.
       #
@@ -167,13 +167,13 @@ jobs:
       # failed every time, and this one does not.
       - name: Privacy probe (a pasted log never leaves the browser)
         run: |
-          npm ci --prefix .github/tools/playwright-core --ignore-scripts --no-audit --no-fund
+          npm ci --prefix tools/playwright-core --ignore-scripts --no-audit --no-fund
           cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
           cp -r apps/web/public apps/web/.next/standalone/apps/web/public
           PORT=3123 HOSTNAME=127.0.0.1 node apps/web/.next/standalone/apps/web/server.js > "$RUNNER_TEMP/web.log" 2>&1 &
           node scripts/privacy-probe.mjs --url http://127.0.0.1:3123 \
             --chrome "$(command -v google-chrome || command -v chromium)" \
-            --playwright .github/tools/playwright-core/node_modules/playwright-core \
+            --playwright tools/playwright-core/node_modules/playwright-core \
             --cpu-throttle 6 \
             || { cat "$RUNNER_TEMP/web.log"; exit 1; }
 
@@ -190,7 +190,7 @@ jobs:
           PORT=3124 HOSTNAME=127.0.0.1 node apps/web/.next/standalone/apps/web/server.js > "$RUNNER_TEMP/e2e-web.log" 2>&1 &
           node scripts/e2e.mjs --url http://127.0.0.1:3124 \
             --chrome "$(command -v google-chrome || command -v chromium)" \
-            --playwright .github/tools/playwright-core/node_modules/playwright-core \
+            --playwright tools/playwright-core/node_modules/playwright-core \
             || { cat "$RUNNER_TEMP/e2e-web.log"; exit 1; }
 
       - name: Stress the packed release in an isolated installation

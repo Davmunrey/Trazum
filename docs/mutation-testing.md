@@ -218,13 +218,13 @@ changes, not on every run.
 ## Running it
 
 It needs a parser and no package has one, so it is installed from a manifest
-and lockfile of its own in `.github/tools/acorn`, which pin it by hash, the way
+and lockfile of its own in `tools/acorn`, which pin it by hash, the way
 CI installs it. Nothing published depends on it.
 
 ```bash
 npm run build -w @trazum/core
-npm ci --prefix .github/tools/acorn --ignore-scripts
-ACORN=.github/tools/acorn/node_modules/acorn
+npm ci --prefix tools/acorn --ignore-scripts
+ACORN=tools/acorn/node_modules/acorn
 
 npm run mutate -- --acorn "$ACORN"                    # every target, and every survivor
 npm run mutate -- --acorn "$ACORN" --only segment     # one file
