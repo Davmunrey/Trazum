@@ -74,7 +74,10 @@ these):
   made after 3.0.1;
 - `SHA256SUMS`, the SHA-256 of those files and of the bill of materials;
 - `trazum-v<version>.sigstore.json`, a Sigstore bundle holding one build-provenance
-  attestation over all of the above, from the first release made after #875.
+  attestation over all of the above, from the first release made after #875;
+- `trazum-v<version>.intoto.jsonl`, the same bundle written on one line, the
+  name slsa-verifier and OpenSSF Scorecard look for a SLSA provenance file
+  under, from the first release made after #908.
 
 The `assets` job of `release.yml` attaches them, after the job that publishes has
 npm serving every package and the release page exists: the order of the
@@ -111,6 +114,9 @@ or check it against the bundle attached to the release:
 gh attestation verify trazum-mcp-<version>.mcpb --repo Davmunrey/Trazum \
   --bundle trazum-v<version>.sigstore.json
 ```
+
+`--bundle trazum-v<version>.intoto.jsonl` checks the same signature: the file
+is that bundle with its whitespace taken out.
 
 Either one passes only for a file whose digest the attestation names, signed by
 a workflow of this repository. Add
