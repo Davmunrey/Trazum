@@ -29,7 +29,7 @@ export interface TaskEvaluationArm {
   /** Every run's tokens, a rejected run's included: the arm paid for it. */
   totalTokens: number;
   tokensPerAcceptedTask: number | null;
-  /** Null unless every run in the arm is priced. */
+  /** Null unless every run in the arm is priced, from the one catalogue every included report names. */
   apiEquivalentUsd: number | null;
   apiEquivalentUsdPerAcceptedTask: number | null;
   /** Explicit failures the agent ran again, from the reports' `repeated-failure` findings. */
@@ -55,6 +55,12 @@ export interface TaskEvaluation {
   pairs: TaskEvaluationPair[];
   baseline: TaskEvaluationArm;
   policy: TaskEvaluationArm;
+  /**
+   * The catalogue the included reports were priced from. `lastReviewed` is
+   * null when they name different review dates, and then no dollar figure is
+   * given: sums priced from two catalogues do not compare.
+   */
+  pricing: { source: 'bundled'; basis: 'api-equivalent'; lastReviewed: string | null };
   change: {
     /** Policy minus baseline, as a percentage of the baseline. Negative is fewer tokens. */
     tokensPerAcceptedTaskPercent: number | null;
@@ -70,7 +76,7 @@ export const MAX_EVALUATION_PAIRS = 100;
 export const TASK_EVALUATION_LIMITATIONS = [
   ...TASK_LIMITATIONS,
   'The plan is a caller declaration. Trazum cannot tell whether it was fixed before the runs.',
-  "The policy's own instructions are context the agent read, so their tokens are already in the policy arm's measured usage.",
+  "If the harness loaded the policy's instructions, their tokens are already in the policy arm's measured usage. Nothing here checks that it did.",
 ] as const;
 
 const PLAN_FIELDS = ['version', 'kind', 'policyId', 'minimumPairs', 'minimumTokenReductionPercent', 'maximumAcceptanceDropPoints'] as const;
@@ -96,11 +102,11 @@ export function parseTaskEvaluationPlan(text: string): TaskEvaluationPlan {
   return planValue(value);
 }
 
-function arm(reports: readonly TaskReport[]): TaskEvaluationArm {
+function arm(reports: readonly TaskReport[], onePriceList: boolean): TaskEvaluationArm {
   const accepted = reports.filter((report) => report.task.outcome === 'accepted').length;
   const rejected = reports.filter((report) => report.task.outcome === 'rejected').length;
   const totalTokens = reports.reduce((sum, report) => sum + report.usage.totalTokens, 0);
-  const priced = reports.length > 0 && reports.every((report) => report.usage.apiEquivalentUsd !== null);
+  const priced = onePriceList && reports.length > 0 && reports.every((report) => report.usage.apiEquivalentUsd !== null);
   const apiEquivalentUsd = priced ? reports.reduce((sum, report) => sum + (report.usage.apiEquivalentUsd as number), 0) : null;
   return {
     runs: reports.length,
@@ -140,13 +146,16 @@ export function evaluateTasks(plan: TaskEvaluationPlan, pairs: ReadonlyArray<{ b
     if (after.task.policyId !== checkedPlan.policyId) reasons.push('plan-policy-mismatch');
     if (sharesSource(seen, before) || sharesSource(seen, after)) reasons.push('source-reuse-across-pairs');
     if (before.task.outcome === 'unknown' || after.task.outcome === 'unknown') reasons.push('outcome-unknown');
-    if (before.usage.records === 0 || after.usage.records === 0) reasons.push('nonzero-usage-required');
+    // A baseline of no tokens has no tokens per accepted task to fall from.
+    if (before.usage.totalTokens === 0 || after.usage.records === 0) reasons.push('nonzero-usage-required');
     seen.push(before, after);
     if (reasons.length === 0) included.push({ before, after });
     return { index: offset + 1, included: reasons.length === 0, reasons, before: side(before), after: side(after) };
   });
-  const baseline = arm(included.map((pair) => pair.before));
-  const policy = arm(included.map((pair) => pair.after));
+  const dates = new Set(included.flatMap((pair) => [pair.before.usage.pricing.lastReviewed, pair.after.usage.pricing.lastReviewed]));
+  const lastReviewed = dates.size === 1 ? [...dates][0]! : null;
+  const baseline = arm(included.map((pair) => pair.before), lastReviewed !== null);
+  const policy = arm(included.map((pair) => pair.after), lastReviewed !== null);
   const result: TaskEvaluation = {
     version: 1,
     kind: 'trazum-task-evaluation',
@@ -156,6 +165,7 @@ export function evaluateTasks(plan: TaskEvaluationPlan, pairs: ReadonlyArray<{ b
     pairs: rows,
     baseline,
     policy,
+    pricing: { source: 'bundled', basis: 'api-equivalent', lastReviewed },
     change: {
       tokensPerAcceptedTaskPercent: baseline.tokensPerAcceptedTask !== null && policy.tokensPerAcceptedTask !== null
         ? (policy.tokensPerAcceptedTask - baseline.tokensPerAcceptedTask) / baseline.tokensPerAcceptedTask * 100

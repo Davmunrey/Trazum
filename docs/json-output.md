@@ -749,8 +749,9 @@ report is changed. See [evaluate over repeated pairs](task-efficiency.md#evaluat
 | `reasons` | Why the evaluation reached its verdict. |
 | `pairs` | Every pair given, in order: `index`, `included`, the `reasons` it was left out, and each side's `taskId`, `outcome` and `totalTokens`. |
 | `baseline`, `policy` | Each arm's `runs`, `accepted`, `rejected`, `acceptanceRate`, `totalTokens`, `tokensPerAcceptedTask`, `apiEquivalentUsd`, `apiEquivalentUsdPerAcceptedTask`, `repeatedFailures` and `duplicateCalls`, over the included pairs. |
+| `pricing` | `source`, `basis` and the `lastReviewed` date every included report was priced from; `null` when they differ, and then no dollar figure is given. |
 | `change` | `tokensPerAcceptedTaskPercent` (policy minus baseline, as a percentage of the baseline) and `acceptanceRatePoints` (policy minus baseline). |
-| `limitations` | The task limitations, and that the plan is a declaration and the policy's own instructions are in the measured usage. |
+| `limitations` | The task limitations, that the plan is a declaration, and that the policy's instructions are in the measured usage only if the harness loaded them. |
 
 The plan is a document of its own:
 

@@ -88,6 +88,41 @@ describe('task evaluation over matched pairs', () => {
     assert.equal(result.policy.apiEquivalentUsdPerAcceptedTask, usd(after) / 2);
   });
 
+  it('gives no dollar figure when the included reports were priced from different catalogues', () => {
+    const pairs = fixture();
+    const date = pairs[0].before.usage.pricing.lastReviewed;
+    assert.deepEqual(evaluateTasks(plan(), pairs).pricing, { source: 'bundled', basis: 'api-equivalent', lastReviewed: date });
+    const other = structuredClone(pairs[1].after);
+    other.usage.pricing.lastReviewed = '2020-01-01';
+    pairs[1] = { before: pairs[1].before, after: other };
+    const result = evaluateTasks(plan(), pairs);
+    assert.equal(result.pricing.lastReviewed, null);
+    for (const side of [result.baseline, result.policy]) {
+      assert.equal(side.apiEquivalentUsd, null);
+      assert.equal(side.apiEquivalentUsdPerAcceptedTask, null);
+    }
+    // The token figures do not depend on a catalogue and stay.
+    assert.equal(result.policy.tokensPerAcceptedTask, 330);
+  });
+
+  it('leaves out a pair whose baseline recorded calls but no tokens, so no percentage divides by zero', () => {
+    const empty = analyzeTask({
+      taskId: 'task-zero', taskType: 'fix-test', criterion: 'The synthetic checks pass.',
+      sources: [{ format: 'claude-code', text: jsonl(...call('zero', 'call-1', 0, false).map((row) => row.message?.usage
+        ? { ...row, message: { ...row.message, usage: { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } } }
+        : row)) }],
+      outcome: 'accepted', assessor: 'synthetic-reviewer',
+    });
+    assert.equal(empty.usage.records, 1);
+    assert.equal(empty.usage.totalTokens, 0);
+    assert.deepEqual(empty.coverage.gaps, []);
+    const pairs = [{ before: empty, after: policy('a-zero') }, ...fixture().slice(0, 2)];
+    const result = evaluateTasks(plan({ minimumPairs: 2 }), pairs);
+    assert.deepEqual(result.pairs[0].reasons, ['nonzero-usage-required']);
+    assert.ok(Number.isFinite(result.change.tokensPerAcceptedTaskPercent));
+    assert.equal(result.verdict, 'clears-bar');
+  });
+
   it('clears the bar when tokens per accepted task fall far enough and acceptance holds', () => {
     const pairs = fixture().slice(0, 3);
     pairs[2] = { before: baseline('b3'), after: policy('a3') };
@@ -127,7 +162,7 @@ describe('task evaluation over matched pairs', () => {
   it('says the plan is a declaration and the policy text is in the measured usage', () => {
     const { limitations } = evaluateTasks(plan(), fixture());
     assert.ok(limitations.some((line) => line.includes('cannot tell whether it was fixed before the runs')));
-    assert.ok(limitations.some((line) => line.includes("already in the policy arm's measured usage")));
+    assert.ok(limitations.some((line) => line.includes("If the harness loaded the policy's instructions") && line.includes('Nothing here checks that it did')));
   });
 
   it('keeps no transcript text in what it returns', () => {

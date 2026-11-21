@@ -243,10 +243,12 @@ the totals, so an inconclusive run is kept rather than dropped.
 
 Each arm counts every run's tokens, a rejected run's included, and divides by
 the accepted runs. That is tokens per accepted task: a policy that saves tokens
-by getting more tasks rejected does not look cheaper. The policy's own
-instructions are context the agent read, so they are already in the policy
-arm's tokens. The API-equivalent figure is given only when every run in the arm
-is priced.
+by getting more tasks rejected does not look cheaper. If the harness loaded the
+policy's instructions, their tokens are already in the policy arm's measured
+usage; nothing here checks that it did. The API-equivalent figure is given only
+when every run in the arm is priced and every included report names the same
+catalogue review date, given in `pricing`. Sums priced from two catalogues do
+not compare.
 
 The verdict:
 
@@ -308,7 +310,7 @@ proof. Comparison and policy receipts are outputs, not inputs to that parser.
 | `trazum-task` | CLI `task analyze`; MCP `analyze_task`'s `report` | `task`, `usage`, `sources`, `coverage`, `tools`, `limitations` |
 | `trazum-task-comparison` | CLI `task compare`; MCP `compare_tasks` | `verdict`, `reasons`, `tokenChange`, `limitations` |
 | `trazum-task-evaluation-plan` | You, before the runs | `policyId`, `minimumPairs`, `minimumTokenReductionPercent`, `maximumAcceptanceDropPoints` |
-| `trazum-task-evaluation` | CLI `task evaluate` | `plan`, `verdict`, `reasons`, `pairs`, `baseline`, `policy`, `change`, `limitations` |
+| `trazum-task-evaluation` | CLI `task evaluate` | `plan`, `verdict`, `reasons`, `pairs`, `baseline`, `policy`, `pricing`, `change`, `limitations` |
 | `trazum-task-policy` | CLI `task apply` and `task revert` | `policyId`, `applied`, `changed` |
 
 For a task report:
