@@ -151,3 +151,70 @@ describe('mirror-to-n0.yml pushes main and only main, and only when configured',
     assert.doesNotMatch(push, /--mirror|--all|--tags/);
   });
 });
+
+/**
+ * The Scorecard workflow publishes a result only from a workflow its API
+ * accepts (#787). The rules are the action's README at the pinned commit,
+ * "Workflow Restrictions": no top-level env or defaults, no write permission
+ * at the top, `id-token: write` on this job alone, no env, defaults,
+ * container or services on the job, an Ubuntu runner, and steps only from
+ * five approved actions. A workflow that breaks one still runs and fails when
+ * it publishes, so the README's badge goes stale without anything red here.
+ */
+describe('scorecard.yml is the shape the Scorecard API accepts a result from', () => {
+  const text = read('.github/workflows/scorecard.yml');
+  const job = text.slice(text.indexOf('\njobs:\n'));
+
+  it('runs on a push to main and weekly, the triggers Scorecard supports, and never for a pull request', () => {
+    assert.deepEqual(triggers(text), ['push', 'schedule']);
+    assert.match(text, /\n {2}push:\n {4}branches: \['main'\]\n/);
+    assert.doesNotMatch(text, /pull_request/);
+  });
+
+  it('has no top-level env or defaults, and only read access at the top', () => {
+    assert.doesNotMatch(text, /^(env|defaults):/m);
+    const top = /\npermissions:\n((?: {2}[a-z-]+: [a-z]+\n)+)/.exec(text)?.[1];
+    assert.ok(top, 'no top-level permissions block');
+    assert.deepEqual(top.trim().split('\n').map((line) => line.trim()), ['contents: read']);
+  });
+
+  it('is one job on an Ubuntu runner, with no env, defaults, container or services', () => {
+    assert.equal(job.match(/^ {2}[a-z-]+:$/gm)?.length, 1, 'a second job: id-token: write may only be on the one that runs Scorecard');
+    assert.match(job, /\n {4}runs-on: ubuntu-/);
+    assert.doesNotMatch(job, /^ {4}(env|defaults|container|services):/m);
+  });
+
+  it('asks for the four permissions it uses and no more', () => {
+    const block = /\n {4}permissions:\n((?: {6}(?:#.*|[a-z-]+: [a-z]+)\n)+)/.exec(job)?.[1];
+    assert.ok(block, 'the job declares no permissions');
+    const granted = block.split('\n').map((line) => line.trim()).filter((line) => line !== '' && !line.startsWith('#'));
+    assert.deepEqual(granted.sort(), ['actions: read', 'contents: read', 'id-token: write', 'security-events: write']);
+    assert.equal(text.match(/^\s+id-token: write$/gm)?.length, 1, 'id-token: write is granted somewhere else in the file');
+  });
+
+  it('uses only the actions the API approves, keeps no checkout token, and publishes', () => {
+    const APPROVED = ['actions/checkout', 'actions/upload-artifact', 'github/codeql-action/upload-sarif', 'ossf/scorecard-action', 'step-security/harden-runner'];
+    const used = [...job.matchAll(/^\s*- uses: ([^@\s]+)@/gm)].map((m) => m[1]);
+    assert.ok(used.includes('ossf/scorecard-action'), 'the workflow does not run Scorecard');
+    assert.deepEqual(used.filter((action) => !APPROVED.includes(action)), []);
+    assert.equal(job.match(/^\s*- (?:uses|run|name):/gm)?.length, used.length, 'a step that is not an approved action');
+    assert.match(job, /persist-credentials: false/);
+    assert.match(job, /\n {10}publish_results: true\n/);
+  });
+
+  it('is not a check a merge waits for', () => {
+    const ruleset = JSON.parse(read('.github/rulesets/main-branch.json'));
+    const required = ruleset.rules
+      .filter((rule) => rule.type === 'required_status_checks')
+      .flatMap((rule) => rule.parameters.required_status_checks.map((check) => check.context));
+    assert.ok(required.length > 0, 'the ruleset requires no checks, so this proves nothing');
+    assert.ok(!required.some((context) => /scorecard/i.test(context)), 'Scorecard is a required check');
+  });
+
+  it('shows its result on the README and says in SECURITY.md what the score covers', () => {
+    assert.ok(read('README.md').includes('https://api.scorecard.dev/projects/github.com/Davmunrey/Trazum/badge'), 'the README has no Scorecard badge');
+    const security = read('SECURITY.md');
+    assert.match(security, /scorecard\.yml/);
+    assert.match(security, /does not/i);
+  });
+});

@@ -244,6 +244,14 @@ Some of this cannot be committed to a file — it lives in repository settings.
   published from `wiki/` on every merge to `main`, and compared with it every
   Monday. It is the one workflow here whose job writes to something other than
   a release, and the paragraph on it above says why that is limited.
+- `.github/workflows/scorecard.yml`: [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/Davmunrey/Trazum)
+  on every merge to `main` and weekly, its result published to the README's
+  badge and the Security tab. It reads how the repository is kept, from
+  outside: pinned actions, token permissions, branch protection, review,
+  releases and the rest of the checks Scorecard documents. It does not read
+  the code for flaws, does not check the packages npm serves against this
+  source, and does not say a price is right; a high score is not an audit or a
+  certification. It is not a check a merge waits for.
 - `.github/dependabot.yml` — weekly updates, routine patches grouped so real
   security bumps stay visible.
 - `.github/rulesets/main-branch.json` — the branch ruleset, and
