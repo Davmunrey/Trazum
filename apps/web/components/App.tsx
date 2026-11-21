@@ -727,6 +727,7 @@ export function App({
         */}
         <button
           type="button"
+          data-tour-launch=""
           onClick={() => {
             markTourSeen();
             setTourOpen(true);

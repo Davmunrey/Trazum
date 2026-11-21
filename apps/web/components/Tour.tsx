@@ -93,12 +93,24 @@ export function Tour({
    * not run the close steps, and it is the close steps that give focus back to
    * the button that opened the tour. `open` is checked both ways so a
    * development double mount neither throws nor leaves it shut.
+   *
+   * The first-visit offer removes its own button when the tour opens, so the
+   * close steps have nothing to go back to and focus would be lost. Then it
+   * goes to the rail's launcher, where the tour lives from then on. On a phone
+   * that launcher is in the closed drawer and cannot take focus, and the body
+   * keeps it, as before.
    */
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (dialog !== null && !dialog.open) dialog.showModal();
     return () => {
       if (dialog?.open) dialog.close();
+      // Nothing to go back to leaves focus on the body, or still inside the
+      // dialog that is about to leave the page.
+      const at = document.activeElement;
+      if (at === null || at === document.body || (dialog !== null && dialog.contains(at))) {
+        document.querySelector<HTMLElement>('[data-tour-launch]')?.focus();
+      }
     };
   }, []);
   const copy = t.tour.steps[step.id];

@@ -45,7 +45,7 @@ landing:
 | Appearance | dark applied at once and still there after a reload |
 | Language | Spanish on the page and in the `lang` attribute, after a reload too |
 | Phone menu | the tabs behind a menu, and the menu reaching them |
-| The tour, as a modal | the tour a modal the browser enforces, Tab walked round it eight times without reaching the page, Escape closing it, and focus back on Take the tour |
+| The tour, as a modal | opened from the first-visit offer and closed with Escape, focus on Take the tour in the rail; opened from there, a modal the browser enforces, Tab walked round it eight times without reaching the page, Escape closing it, and focus back on Take the tour |
 | The phone menu, as a modal | with the menu open at 390 pixels the page and the bar inert, Tab walked sixteen times without leaving the menu, and Escape giving both back with focus on the menu button |
 
 A flow also fails when the page throws an error nobody caught, whatever else

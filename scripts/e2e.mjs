@@ -1345,13 +1345,20 @@ export const FLOWS = [
       browser's own stop between the last control and the first reads as
       `body`, which is not the page.
     */
-    name: 'modal: the tour keeps the keyboard in, Escape closes it, and focus goes back to the button that opened it',
+    name: 'modal: the tour keeps the keyboard in, Escape closes it, and focus goes back to the button that opened it or to the rail',
     covers: [],
     viewport: { width: 1280, height: 900 },
     async run({ page, open, see, is }) {
       await open('/app');
-      await page.getByRole('button', { name: 'Take the tour' }).click();
       const tour = page.getByRole('dialog', { name: 'Guided tour' });
+      // From the first-visit offer, whose button is gone once the tour opens:
+      // focus goes to the rail's launcher, not to the body.
+      await page.getByRole('button', { name: 'Start the tour' }).click();
+      await see(tour.getByText('1 of 10'), 'the tour, opened from the first-visit offer');
+      await page.keyboard.press('Escape');
+      is(await page.locator('dialog').count(), 0, 'the tour dialogs left in the page after Escape, opened from the offer');
+      is(await page.evaluate(() => document.activeElement?.textContent?.trim()), 'Take the tour', 'where focus is after the tour opened from the offer closes');
+      await page.getByRole('button', { name: 'Take the tour' }).click();
       await see(tour.getByText('1 of 10'), 'the first step of the tour');
       is(await tour.evaluate((element) => element.matches(':modal')), true, 'whether the tour is a modal the browser enforces');
       const outside = [];
