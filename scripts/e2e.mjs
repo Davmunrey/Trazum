@@ -1354,8 +1354,16 @@ export const FLOWS = [
               found.push(`"${own.replace(/\s+/g, ' ').slice(0, 60)}" (lang ${lang(element)})`);
             }
           }
-          // Every document title the sidebar lists, wherever else on the page it is drawn.
-          const titles = new Set([...document.querySelectorAll('nav a[href^="/docs/"]')].map((link) => link.textContent.trim()).filter(Boolean));
+          // Text that exists only in English, wherever else on the page it is drawn: every document title the sidebar
+          // lists, and every heading of an English body (a document, a release, the roadmap's considerations).
+          const titles = new Set(
+            [
+              ...document.querySelectorAll('nav a[href^="/docs/"]'),
+              ...[...document.querySelectorAll('[lang^="en"]')].flatMap((body) => [...body.querySelectorAll('h1,h2,h3,h4')]),
+            ]
+              .map((element) => element.textContent.trim())
+              .filter((text) => text.length > 0),
+          );
           for (const element of document.body.querySelectorAll('*')) {
             if (element.children.length > 0 || !titles.has(element.textContent.trim())) continue;
             if (!lang(element).startsWith('en')) found.push(`the document title "${element.textContent.trim()}" (lang ${lang(element)})`);
@@ -1379,6 +1387,9 @@ export const FLOWS = [
         }, code);
         const reader = await context.newPage();
         const visit = async (path) => {
+          // What the server sends, before any script: what a search engine, a reader without JavaScript and the first paint get.
+          const served = await (await reader.request.get(new URL(path, base).href, { headers: { 'Accept-Language': code } })).text();
+          is(/<html[^>]*\blang="([^"]*)"/.exec(served)?.[1] ?? null, code, `the lang ${path} is served with for a reader in ${code}`);
           await reader.goto(new URL(path, base).href, { waitUntil: 'networkidle' });
           await reader.locator('html[data-started="true"]').waitFor({ state: 'attached' });
           is(await reader.locator('html').getAttribute('lang'), code, `the lang of ${path} for a reader in ${code}`);
@@ -1388,8 +1399,8 @@ export const FLOWS = [
           for (const path of ['/docs/commands', '/changelog/2.7.11', '/roadmap']) await visit(path);
           if (code === 'es') {
             for (const path of ['/', '/docs', '/models', '/brand', '/pro', '/download', '/changelog', '/app', '/app?tab=compare', '/app?tab=optimise']) await visit(path);
-            // The search results: a heading and the title of the document it is in.
-            await visit('/docs');
+            // The search results, on a page whose sidebar lists the titles: a heading and the title of the document it is in.
+            await visit('/docs/commands');
             await reader.locator('input[type="search"]').first().fill('baseline gate');
             await see(reader.locator('ul[id] a[href^="/docs/"]'), 'the search results');
             is(await misdeclared(reader), '', 'English text declared another language in the docs search results in es');
