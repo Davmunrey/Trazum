@@ -51,11 +51,11 @@ jobs:
         run: npm run build:web
 
       # The analyzer, at the one version scripts/bundle-report.mjs accepts,
-      # from a manifest and lockfile of its own in .github/tools/: `npm ci`
+      # from a manifest and lockfile of its own in tools/: `npm ci`
       # checks every file against the lockfile's hashes (#874), install scripts
       # stay off, and no package that is published depends on it.
       - name: Install the analyzer, pinned by hash, outside the workspace
-        run: npm ci --prefix .github/tools/bundle-analyzer --ignore-scripts --no-audit --no-fund
+        run: npm ci --prefix tools/bundle-analyzer --ignore-scripts --no-audit --no-fund
 
       # The token is a repository secret and reaches the script through the
       # environment, where the script reads it by name; it is never on a
@@ -67,7 +67,7 @@ jobs:
           EVENT: ${{ github.event_name }}
         run: |
           refused=0
-          node scripts/bundle-report.mjs --analyzer .github/tools/bundle-analyzer/node_modules/@codecov/bundle-analyzer || refused=1
+          node scripts/bundle-report.mjs --analyzer tools/bundle-analyzer/node_modules/@codecov/bundle-analyzer || refused=1
           if [ "$refused" = "1" ] && [ "$EVENT" = "push" ]; then
             echo "::error::The bundle report for main was not taken. The log above says why."
             exit 1

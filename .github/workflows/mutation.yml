@@ -64,22 +64,22 @@ jobs:
       - name: Build
         run: npm run build
 
-      # The parser, from .github/tools/acorn, whose lockfile pins it by hash
+      # The parser, from tools/acorn, whose lockfile pins it by hash
       # (#874), installed with `--ignore-scripts`: the same arrangement as the
       # privacy probe's browser driver. Nothing published depends on it.
       - name: Install the parser
-        run: npm ci --prefix .github/tools/acorn --ignore-scripts --no-audit --no-fund
+        run: npm ci --prefix tools/acorn --ignore-scripts --no-audit --no-fund
 
       - name: The tool reads the real parser's trees the way its tests assume
         env:
-          TRAZUM_ACORN: ${{ github.workspace }}/.github/tools/acorn/node_modules/acorn
+          TRAZUM_ACORN: ${{ github.workspace }}/tools/acorn/node_modules/acorn
         run: npm run test:mutation
 
       - name: Mutants on the lines this pull request changes
         if: github.event_name == 'pull_request'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: node scripts/mutate.mjs --acorn .github/tools/acorn/node_modules/acorn --since "$BASE_SHA" --check
+        run: node scripts/mutate.mjs --acorn tools/acorn/node_modules/acorn --since "$BASE_SHA" --check
 
       # A pull request that changes no target has no mutant to run, and the
       # step above returns before it has run a single test. #695 merged green
@@ -92,11 +92,11 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           if git diff --name-only "$BASE_SHA" -- scripts/mutate.mjs scripts/mutation.mjs scripts/mutant-loader.mjs mutation.baseline.json .github/workflows/mutation.yml | grep -q .; then
-            node scripts/mutate.mjs --acorn .github/tools/acorn/node_modules/acorn --only savings --check
+            node scripts/mutate.mjs --acorn tools/acorn/node_modules/acorn --only savings --check
           else
             echo "The tool, its record and its workflow are unchanged: nothing more to run."
           fi
 
       - name: Every mutant of every target
         if: github.event_name != 'pull_request'
-        run: node scripts/mutate.mjs --acorn .github/tools/acorn/node_modules/acorn --check
+        run: node scripts/mutate.mjs --acorn tools/acorn/node_modules/acorn --check

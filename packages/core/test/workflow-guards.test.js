@@ -265,12 +265,12 @@ describe('everything CI and the image install is pinned by hash', () => {
 
   it('each tool CI installs has a manifest of exact versions and a lockfile with a hash for every package', () => {
     for (const tool of TOOLS) {
-      const manifest = JSON.parse(read(`.github/tools/${tool}/package.json`));
+      const manifest = JSON.parse(read(`tools/${tool}/package.json`));
       assert.equal(manifest.private, true, `${tool} could be published`);
       const pins = Object.entries(manifest.dependencies ?? {});
       assert.ok(pins.length > 0, `${tool} names nothing`);
       for (const [pkg, version] of pins) assert.match(version, /^\d+\.\d+\.\d+$/, `${tool}: ${pkg} is not one exact version`);
-      const lock = JSON.parse(read(`.github/tools/${tool}/package-lock.json`));
+      const lock = JSON.parse(read(`tools/${tool}/package-lock.json`));
       for (const [pkg, version] of pins) assert.equal(lock.packages[`node_modules/${pkg}`]?.version, version, `${tool}: the lockfile resolves another ${pkg}`);
       const unhashed = Object.entries(lock.packages).filter(([path, entry]) => path !== '' && !/^sha512-/.test(entry.integrity ?? ''));
       assert.deepEqual(unhashed.map(([path]) => path), [], `${tool}: a package in the lockfile has no hash`);
@@ -279,7 +279,7 @@ describe('everything CI and the image install is pinned by hash', () => {
 
   it('and Dependabot raises every pin, so none goes stale', () => {
     const dependabot = read('.github/dependabot.yml');
-    for (const tool of TOOLS) assert.ok(dependabot.includes(`- /.github/tools/${tool}\n`), `Dependabot does not watch ${tool}`);
+    for (const tool of TOOLS) assert.ok(dependabot.includes(`- /tools/${tool}\n`), `Dependabot does not watch ${tool}`);
     assert.match(dependabot, /- package-ecosystem: docker\n {4}directory: \/\n/, 'Dependabot does not watch the Dockerfile');
   });
 
@@ -287,17 +287,31 @@ describe('everything CI and the image install is pinned by hash', () => {
     const entries = read('.github/dependabot.yml').split(/^ {2}- (?=package-ecosystem:)/m).slice(1);
     const npm = entries.filter((entry) => entry.startsWith('package-ecosystem: npm\n'));
     const root = npm.filter((entry) => /^ {4}directory: \/\n/m.test(entry));
-    const tools = npm.filter((entry) => entry.includes('/.github/tools/'));
+    const tools = npm.filter((entry) => entry.includes('/tools/'));
     assert.equal(root.length, 1, 'no npm entry watches the root alone');
-    assert.doesNotMatch(root[0], /\.github\/tools/, 'the root shares an entry with the tools');
+    assert.doesNotMatch(root[0], /\/tools\//, 'the root shares an entry with the tools');
     assert.equal(tools.length, 1, 'the tools are not in one entry of their own');
-    for (const tool of TOOLS) assert.ok(tools[0].includes(`- /.github/tools/${tool}\n`), `${tool} is not in the tools' entry`);
+    for (const tool of TOOLS) assert.ok(tools[0].includes(`- /tools/${tool}\n`), `${tool} is not in the tools' entry`);
     const groups = (entry) => [...entry.matchAll(/^ {6}([a-z-]+):$/gm)].map((match) => match[1]);
     assert.deepEqual(groups(root[0]).filter((group) => groups(tools[0]).includes(group)), [], 'the root and the tools share a group');
     // One group of the tools' own that takes every dependency: without it the
     // analyzer's lockfile alone could open a pull request per package.
     assert.equal(groups(tools[0]).length, 1, 'the tools have no group of their own, or more than one');
     assert.match(tools[0], /^ {8}patterns: \['\*'\]$/m, 'the tools\' group does not take every dependency');
+  });
+
+  it('and outside .github/, where GitHub refuses the pull requests Dependabot opens (#886)', () => {
+    // With the tools in an entry of their own the refusal stayed with them,
+    // on the only directories under .github/ (run 44933577919).
+    const watched = [...read('.github/dependabot.yml').matchAll(/^ {4}directory: (\S+)$|^ {6}- (\/\S*)$/gm)].map((m) => m[1] ?? m[2]);
+    assert.ok(watched.length > 0, 'Dependabot watches no directory');
+    assert.deepEqual(watched.filter((dir) => dir.startsWith('/.github/')), [], 'Dependabot watches a directory under .github/');
+    // node_modules is skipped: it is never committed, and a clone that ran
+    // `npm ci` under the old path still holds one there until it is deleted.
+    const manifests = readdirSync(join(ROOT, '.github'), { recursive: true })
+      .filter((file) => !/(^|\/)node_modules(\/|$)/.test(file))
+      .filter((file) => /(^|\/)package(-lock)?\.json$/.test(file));
+    assert.deepEqual(manifests, [], 'a package manifest lives under .github/');
   });
 });
 
@@ -329,9 +343,9 @@ describe('every advisory the dependency review allows is explained and kept out 
     if (!allowed.includes('GHSA-mrhx-c7xc-m3w5')) return;
     assert.doesNotMatch(read('package-lock.json'), /node_modules\/zod"/, 'zod is in the root lockfile, so the allowance covers code that ships');
     for (const tool of ['acorn', 'playwright-core']) {
-      assert.doesNotMatch(read(`.github/tools/${tool}/package-lock.json`), /node_modules\/zod"/, `zod reached ${tool}`);
+      assert.doesNotMatch(read(`tools/${tool}/package-lock.json`), /node_modules\/zod"/, `zod reached ${tool}`);
     }
-    const zod = JSON.parse(read('.github/tools/bundle-analyzer/package-lock.json')).packages['node_modules/zod']?.version ?? '';
+    const zod = JSON.parse(read('tools/bundle-analyzer/package-lock.json')).packages['node_modules/zod']?.version ?? '';
     assert.match(zod, /^3\./, 'zod in the analyzer is no longer 3.x: the allowance may be removed');
   });
 });
