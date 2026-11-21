@@ -287,6 +287,10 @@ describe('everything CI and the image install is pinned by hash', () => {
     for (const tool of TOOLS) assert.ok(tools[0].includes(`- /.github/tools/${tool}\n`), `${tool} is not in the tools' entry`);
     const groups = (entry) => [...entry.matchAll(/^ {6}([a-z-]+):$/gm)].map((match) => match[1]);
     assert.deepEqual(groups(root[0]).filter((group) => groups(tools[0]).includes(group)), [], 'the root and the tools share a group');
+    // One group of the tools' own that takes every dependency: without it the
+    // analyzer's lockfile alone could open a pull request per package.
+    assert.equal(groups(tools[0]).length, 1, 'the tools have no group of their own, or more than one');
+    assert.match(tools[0], /^ {8}patterns: \['\*'\]$/m, 'the tools\' group does not take every dependency');
   });
 });
 
