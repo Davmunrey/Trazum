@@ -24,6 +24,11 @@ on:
 permissions:
   contents: read
 
+# No job here reads or writes the Actions cache, so none may: a cache another
+# run wrote is input this one did not choose. The key is the one Scorecard's
+# own example workflow sets from v2.6.0.
+cache-mode: none
+
 jobs:
   scorecard:
     name: Scorecard
@@ -40,12 +45,15 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+      - uses: ossf/scorecard-action@23f22cd43608bae7a1f1fa2603d7314dee9538a5 # v2.6.0
         with:
           results_file: results.sarif
           results_format: sarif
           publish_results: true
+          # From v2.6.0 a result the API rejects only warns unless this is
+          # set. A rejected result means the score stopped moving, so it fails.
+          fail_on_publish_error: true
 
-      - uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+      - uses: github/codeql-action/upload-sarif@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea # v4.39.4
         with:
           sarif_file: results.sarif
