@@ -153,7 +153,7 @@ export function evaluateTasks(plan: TaskEvaluationPlan, pairs: ReadonlyArray<{ b
     return { index: offset + 1, included: reasons.length === 0, reasons, before: side(before), after: side(after) };
   });
   const dates = new Set(included.flatMap((pair) => [pair.before.usage.pricing.lastReviewed, pair.after.usage.pricing.lastReviewed]));
-  const lastReviewed = dates.size === 1 ? [...dates][0]! : null;
+  const lastReviewed = dates.size === 1 ? ([...dates][0] ?? null) : null;
   const baseline = arm(included.map((pair) => pair.before), lastReviewed !== null);
   const policy = arm(included.map((pair) => pair.after), lastReviewed !== null);
   const result: TaskEvaluation = {
