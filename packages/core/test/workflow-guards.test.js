@@ -306,7 +306,11 @@ describe('everything CI and the image install is pinned by hash', () => {
     const watched = [...read('.github/dependabot.yml').matchAll(/^ {4}directory: (\S+)$|^ {6}- (\/\S*)$/gm)].map((m) => m[1] ?? m[2]);
     assert.ok(watched.length > 0, 'Dependabot watches no directory');
     assert.deepEqual(watched.filter((dir) => dir.startsWith('/.github/')), [], 'Dependabot watches a directory under .github/');
-    const manifests = readdirSync(join(ROOT, '.github'), { recursive: true }).filter((file) => /(^|\/)package(-lock)?\.json$/.test(file));
+    // node_modules is skipped: it is never committed, and a clone that ran
+    // `npm ci` under the old path still holds one there until it is deleted.
+    const manifests = readdirSync(join(ROOT, '.github'), { recursive: true })
+      .filter((file) => !/(^|\/)node_modules(\/|$)/.test(file))
+      .filter((file) => /(^|\/)package(-lock)?\.json$/.test(file));
     assert.deepEqual(manifests, [], 'a package manifest lives under .github/');
   });
 });
