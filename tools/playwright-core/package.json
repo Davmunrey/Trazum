@@ -3,6 +3,6 @@
   "private": true,
   "description": "One tool a workflow installs with npm ci, so the lockfile's integrity hashes are checked (#874). Not a workspace and not published.",
   "dependencies": {
-    "playwright-core": "1.58.2"
+    "playwright-core": "1.65.1"
   }
 }
