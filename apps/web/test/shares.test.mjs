@@ -633,3 +633,39 @@ describe('the schema matches the driver', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+
+describe('the shared page remembers numbers, never a prompt (lib/shares/summary.ts)', () => {
+  const source = readFileSync(new URL('../app/c/[token]/page.tsx', import.meta.url), 'utf8');
+  const page = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+
+  it('keeps no text of either prompt in what it remembers', async () => {
+    const { comparePrompts } = await import('@trazum/core');
+    const { summaryOf } = await import('../lib/shares/summary.ts');
+    const before = 'Please kindly summarise the ZEBRAQUARTZ report in order to help the team.';
+    const after = 'Summarise the OCELOTMAGMA report.';
+    const summary = summaryOf(comparePrompts(before, after, { level: 'safe', locale: 'en' }));
+    const kept = JSON.stringify(summary);
+    for (const word of ['ZEBRAQUARTZ', 'OCELOTMAGMA', 'kindly']) assert.ok(!kept.includes(word), `the summary kept "${word}"`);
+    assert.deepEqual(Object.keys(summary).sort(), ['deltaPct', 'monthlyDeltaUsd', 'rules', 'tokenDelta', 'tokensAfter', 'tokensBefore']);
+    assert.deepEqual(Object.keys(summary.rules), ['newlyFiring']);
+  });
+
+  it('asks the store on every view, before the memo, so revocation is immediate', () => {
+    const lookup = page.indexOf('findShare(token');
+    const memo = page.indexOf('shareSummaries(');
+    assert.ok(lookup > 0 && memo > lookup, 'the memo is asked before the store');
+  });
+
+  it('remembers per token and per language', () => {
+    assert.match(page, /shareSummaries\(`\$\{token\}:\$\{locale\}`, Date\.now\(\)/);
+  });
+
+  it('remembers for ten minutes, a bounded number of tokens', () => {
+    const summary = readFileSync(new URL('../lib/shares/summary.ts', import.meta.url), 'utf8');
+    assert.match(summary, /createBadgeMemo<ShareSummary>\(\{ ttlMs: SHARE_SUMMARY_WINDOW_MS, max: MAX_SHARE_SUMMARIES \}\)/);
+    assert.match(summary, /export const SHARE_SUMMARY_WINDOW_MS = 10 \* 60_000;/);
+    assert.match(summary, /export const MAX_SHARE_SUMMARIES = 500;/);
+  });
+});

@@ -33,6 +33,7 @@ import { requestedLocale, saysJson } from '../../../lib/request-body';
 import type { Infer } from '../../../lib/schema';
 import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
 import type { WebMessages } from '../../../lib/i18n';
+import { createEngineBudget } from '../../../lib/engine-budget';
 import { createRateLimiter } from '../../../lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -51,6 +52,9 @@ export const runtime = 'nodejs';
  * not, and by the fourth copy of it that distinction was worth making in code.
  */
 const rateLimited = createRateLimiter({ windowMs: 60_000, max: 30 });
+
+/** Characters of prompt per address per minute: see `lib/engine-budget.ts`. */
+const overBudget = createEngineBudget();
 
 // --------------------------------------------------------------------------
 // SSRF protection
@@ -248,6 +252,10 @@ async function handlePost(request: Request) {
   const body = read.value;
 
   const { prompt } = body;
+  // Charged once the size is known, before the engine runs.
+  if (overBudget(request, Date.now(), prompt.length)) {
+    return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
+  }
   const level: RuleLevel = body.level ?? 'safe';
   const disableRules = body.disableRules ?? [];
   const usage: Partial<UsageProfile> = body.usage ?? {};

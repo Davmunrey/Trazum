@@ -45,20 +45,17 @@
  * sound because a share is create-and-revoke: nothing in the API updates one,
  * so the same token never describes different prompts.
  *
- * ## Its sibling gets a different answer, on purpose
+ * ## Its sibling uses it too, holding less
  *
- * `/c/:token` is the other unauthenticated, token-addressed route that runs the
- * same comparison, and it does **not** use this. Two reasons, and they point
- * the same way. It has no fan-out: a page needs a person to open it, where a
- * badge is fetched on behalf of every reader of a document that merely mentions
- * it, so the per-address limiter this repository already has is the right tool
- * there and the wrong one here. And the thing that would be held is different —
- * the badge memo holds a rendered SVG of numbers this file computed, while a
- * page memo would hold a comparison carrying the prompt text itself, in process
- * memory, for the whole window, on the one page whose own comment says it is
- * *never cached: the content is one person's prompt*. Reaching for the same
- * mechanism twice because it is the mechanism at hand is how a fix becomes a
- * regression.
+ * `/c/:token` runs the same comparison. It was kept off a memo because a memo
+ * there would have held a comparison carrying the prompt text, in process
+ * memory, on the one page whose own comment says the content is one person's
+ * prompt. A share may hold 400,000 characters a side, though, and at that size
+ * one address reloading one link inside the page's limit could fill a
+ * standalone server's only thread. So the page now memoises too, but only a
+ * summary of numbers and rule ids (`lib/shares/summary.ts`): the property the
+ * old answer protected still holds, by keeping the text out rather than the
+ * memo.
  *
  * ## What it is not
  *

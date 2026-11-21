@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 
 import { getWebMessages, localeFromHeaders } from '../../../lib/i18n';
 import { isShareToken } from '../../../lib/shares/api';
+import { shareSummaries, summaryOf } from '../../../lib/shares/summary';
 import { getStore } from '../../../lib/store';
 
 export const runtime = 'nodejs';
@@ -32,7 +33,9 @@ export const dynamic = 'force-dynamic';
  *   for `dangerouslySetInnerHTML`, because the content is attacker-supplied by
  *   construction — the sharer chose it and the reader did not.
  * - **It recomputes the comparison** rather than showing a stored one, so a link
- *   opened next year is priced by next year's rules.
+ *   opened next year is priced by next year's rules. It remembers the numbers,
+ *   never the text, for ten minutes per token, so reloading one large share in
+ *   a loop costs one computation a window (`lib/shares/summary.ts`).
  * - **An expired or unknown token is a plain 404,** identical either way.
  */
 
@@ -61,19 +64,25 @@ export default async function SharedComparison({
   const copy = getMessages(locale);
 
   const { settings } = share;
-  const comparison = comparePrompts(share.beforeText, share.afterText, {
-    level: settings.level,
-    locale,
-    usage: {
-      model: settings.model,
-      callsPerMonth: settings.callsPerMonth,
-      avgOutputTokens: settings.avgOutputTokens,
-      cacheHitRate: settings.cacheHitRate,
-      batchEligible: settings.batchEligible,
-    },
-    disableRules: settings.disableRules as never,
-    optimizeBoth: settings.optimizeBoth,
-  });
+  // At most once per token and language every ten minutes, and only numbers
+  // and rule ids are kept: see `lib/shares/summary.ts`.
+  const comparison = await shareSummaries(`${token}:${locale}`, Date.now(), async () =>
+    summaryOf(
+      comparePrompts(share.beforeText, share.afterText, {
+        level: settings.level,
+        locale,
+        usage: {
+          model: settings.model,
+          callsPerMonth: settings.callsPerMonth,
+          avgOutputTokens: settings.avgOutputTokens,
+          cacheHitRate: settings.cacheHitRate,
+          batchEligible: settings.batchEligible,
+        },
+        disableRules: settings.disableRules as never,
+        optimizeBoth: settings.optimizeBoth,
+      }),
+    ),
+  );
 
   const number = (value: number) => value.toLocaleString(t.numberLocale);
   const signed = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${number(Math.abs(value))}`;

@@ -132,8 +132,11 @@ Rate limits count per address, over one minute.
 | --- | --- | --- | --- |
 | Optimise requests | 30 a minute | The rule engine runs over up to 400,000 characters per request, and a model-assisted pass makes an outbound call; this is the route a script would hammer | `apps/web/app/api/optimize/route.ts` |
 | Compare requests | 30 a minute | The same engine, twice per request | `apps/web/app/api/compare/route.ts` |
+| Characters the engine is given, per address | 2,000,000 a minute, `MAX_ENGINE_CHARS_PER_MINUTE` | A limit in requests counts a one-line prompt and one at the cap the same; one comparison of two 400,000-character prompts took 982 ms (2026-11-21), so thirty at the cap were half a minute of the server's only thread every minute. This counts the work: five comparisons at the cap | `apps/web/lib/engine-budget.ts` |
 | Interview requests | 60 a minute | Deterministic and small, but answered on every change a person makes; twice the engine routes, still far below a loop | `apps/web/app/api/write/route.ts` |
-| Share page views | 120 a minute | Guessing tokens, and scraping a page that is never cached because it holds somebody's prompt; far above a reader, far below a loop | `apps/web/middleware.ts` |
+| Share page views | 120 a minute | Guessing tokens, and scraping the page; far above a reader, far below a loop | `apps/web/middleware.ts` |
+| How long the share page keeps a link's numbers | 10 minutes, `SHARE_SUMMARY_WINDOW_MS` | Without it, 120 views a minute of one large share were 120 comparisons; it keeps numbers and rule ids, never the prompt, and the store is still asked on every view, so revoking is immediate | `apps/web/lib/shares/summary.ts` |
+| Links whose numbers one instance keeps | 500, `MAX_SHARE_SUMMARIES` | A stream of tokens must not grow the memo without bound | `apps/web/lib/shares/summary.ts` |
 | Sign-in, account export and deletion, and ending a session | 30 a minute, `authRateLimited` | Each starts an OAuth round trip, reads a whole account or ends something; counted across instances, because a limit each instance kept alone would multiply by the number of instances | `apps/web/lib/auth/routes.ts` |
 | Session checks and sign-out | 60 a minute, `sessionRateLimited` | Every page load asks once, and each answer, like each sign-out, is a database read by the hash of a cookie the caller chose | `apps/web/lib/auth/routes.ts` |
 | Library, share and admin requests | 60 a minute, `libraryRateLimited` | Each is a database round trip; writes cost storage | `apps/web/lib/prompts/api.ts` |

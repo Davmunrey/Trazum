@@ -19,8 +19,16 @@
  */
 
 export interface RateLimiter {
-  /** True when this request is over the limit and should be refused. */
-  (request: Request, now: number): boolean;
+  /**
+   * True when this request is over the limit and should be refused.
+   *
+   * `cost` is what the request counts for, 1 unless the caller says otherwise.
+   * A limit counted in requests treats a one-line prompt and one at the
+   * 400,000-character cap as the same, and the engine does not: a route that
+   * runs it charges the characters it was sent, so `max` becomes a budget of
+   * work rather than of arrivals.
+   */
+  (request: Request, now: number, cost?: number): boolean;
   /**
    * How many times the expired-entry sweep has run.
    *
@@ -101,7 +109,7 @@ export function createRateLimiter({ windowMs, max, sweepAbove = 10_000 }: RateLi
   // soon as there is anything to sweep, not a minute after the map filled up.
   let nextSweepAt = 0;
 
-  const rateLimited = function rateLimited(request: Request, now: number): boolean {
+  const rateLimited = function rateLimited(request: Request, now: number, cost = 1): boolean {
     const key = clientKey(request);
     const bucket = buckets.get(key);
 
@@ -113,11 +121,11 @@ export function createRateLimiter({ windowMs, max, sweepAbove = 10_000 }: RateLi
           if (now >= value.resetAt) buckets.delete(other);
         }
       }
-      buckets.set(key, { count: 1, resetAt: now + windowMs });
-      return false;
+      buckets.set(key, { count: cost, resetAt: now + windowMs });
+      return cost > max;
     }
 
-    bucket.count++;
+    bucket.count += cost;
     return bucket.count > max;
   };
 
