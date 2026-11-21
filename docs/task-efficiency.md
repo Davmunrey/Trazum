@@ -203,6 +203,66 @@ or unknown quality is not an accepted efficiency improvement. One pair of
 tasks cannot establish a general benefit; use repeated, representative runs
 before keeping a default.
 
+## Evaluate over repeated pairs
+
+One pair cannot show that a policy helps. `task evaluate` weighs several, held
+to a bar you write down before the first run:
+
+```json
+{
+  "version": 1,
+  "kind": "trazum-task-evaluation-plan",
+  "policyId": "repeat-review-v1",
+  "minimumPairs": 5,
+  "minimumTokenReductionPercent": 10,
+  "maximumAcceptanceDropPoints": 0
+}
+```
+
+`minimumPairs` is how many matched pairs a verdict needs.
+`minimumTokenReductionPercent` is the smallest fall in tokens per accepted task
+that would be worth keeping. `maximumAcceptanceDropPoints` is the largest fall
+in acceptance rate you would accept for it. Commit the plan before the runs, so
+the bar cannot move to meet the results. Trazum cannot check when it was written,
+and the output says so.
+
+Then give the reports in pairs, baseline then policy:
+
+```sh
+node packages/cli/dist/index.js task evaluate --plan ./plan.json \
+  ./task1-baseline.json ./task1-policy.json \
+  ./task2-baseline.json ./task2-policy.json
+```
+
+Each pair is checked the way `task compare` checks one: same task type,
+criterion, harnesses and models, baseline then `repeat-review-v1`, no evidence
+gaps, and no source shared between the two. No source may appear in two pairs
+either. A pair with an `unknown` outcome is neither accepted nor rejected. A
+pair that fails any check stays in `pairs` with its reasons and is left out of
+the totals, so an inconclusive run is kept rather than dropped.
+
+Each arm counts every run's tokens, a rejected run's included, and divides by
+the accepted runs. That is tokens per accepted task: a policy that saves tokens
+by getting more tasks rejected does not look cheaper. If the harness loaded the
+policy's instructions, their tokens are already in the policy arm's measured
+usage; nothing here checks that it did. The API-equivalent figure is given only
+when every run in the arm is priced and every included report names the same
+catalogue review date, given in `pricing`. Sums priced from two catalogues do
+not compare.
+
+The verdict:
+
+- `inconclusive` with fewer matched pairs than the plan asks for, or with no
+  accepted run in an arm.
+- `quality-bar-failed` when the acceptance rate falls by more points than the
+  plan allows, whatever the tokens did.
+- `clears-bar` when tokens per accepted task fall by at least the plan's
+  percentage. Otherwise `below-bar`.
+
+`clears-bar` is the evidence to ask for before a policy becomes a default. It
+is still not proof that the policy caused the change, and nothing here changes
+an instruction file or a default.
+
 ## Revert the instruction change
 
 ```sh
@@ -249,6 +309,8 @@ proof. Comparison and policy receipts are outputs, not inputs to that parser.
 |---|---|---|
 | `trazum-task` | CLI `task analyze`; MCP `analyze_task`'s `report` | `task`, `usage`, `sources`, `coverage`, `tools`, `limitations` |
 | `trazum-task-comparison` | CLI `task compare`; MCP `compare_tasks` | `verdict`, `reasons`, `tokenChange`, `limitations` |
+| `trazum-task-evaluation-plan` | You, before the runs | `policyId`, `minimumPairs`, `minimumTokenReductionPercent`, `maximumAcceptanceDropPoints` |
+| `trazum-task-evaluation` | CLI `task evaluate` | `plan`, `verdict`, `reasons`, `pairs`, `baseline`, `policy`, `pricing`, `change`, `limitations` |
 | `trazum-task-policy` | CLI `task apply` and `task revert` | `policyId`, `applied`, `changed` |
 
 For a task report:

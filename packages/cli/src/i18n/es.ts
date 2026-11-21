@@ -97,6 +97,8 @@ export const es: CliMessages = {
   trazum task apply <informe.json> --instructions <fichero-existente>
   trazum task revert --instructions <fichero-existente>
   trazum task compare <antes.json> <despues.json> [-o <comparacion-nueva.json>]
+  trazum task evaluate --plan <plan.json> <antes.json> <despues.json>
+    [<antes.json> <despues.json> ...] [-o <evaluacion-nueva.json>]
 
 Analiza en local fuentes de tareas explícitas y completas de Claude Code y Codex.
 Repite las opciones de fuente para incluir sesiones de los dos agentes. No se
@@ -111,6 +113,11 @@ Revisa el diff y haz tú una tarea comparable antes de comparar informes.
 Revertir quita solo el bloque exacto y sin cambios. Cierra otros editores mientras
 aplicas o reviertes. Los informes de salida que ya existen nunca se sobrescriben; los
 ficheros nuevos se crean con 0600.
+Evaluate mide pares emparejados, primero la línea base y luego la política, contra
+el listón del plan: cuántos pares como mínimo, cuánto deben bajar como mínimo los
+tokens por tarea aceptada y cuánto puede bajar como mucho la tasa de aceptación.
+Escribe el plan antes de las ejecuciones. Un par que no encaja se conserva en la
+salida con sus motivos y queda fuera de los totales.
 Los resultados de herramientas repetidos pueden ser intencionados. Una comparación
 por pares es una observación, no prueba de un ahorro causal, de la calidad de la tarea
 ni del margen de suscripción que queda.

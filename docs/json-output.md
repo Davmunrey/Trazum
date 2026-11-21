@@ -734,6 +734,36 @@ task reports. Neither report is mutated.
 | `tokenChange` | `before`, `after`, `delta` and `percent` for a supported accepted comparison; otherwise `null`. |
 | `limitations` | Evidence and interpretation boundaries, including absence of causal proof. |
 
+### Evaluation
+
+CLI `task evaluate` emits this object from a plan and matched pairs of task
+reports, baseline then policy. It reads the plan below; neither the plan nor any
+report is changed. See [evaluate over repeated pairs](task-efficiency.md#evaluate-over-repeated-pairs).
+
+| Field | What it holds |
+| --- | --- |
+| `version` | `1`. |
+| `kind` | `trazum-task-evaluation`. |
+| `plan` | The plan it was held to, as read. |
+| `verdict` | `clears-bar`, `below-bar`, `quality-bar-failed` or `inconclusive`. |
+| `reasons` | Why the evaluation reached its verdict. |
+| `pairs` | Every pair given, in order: `index`, `included`, the `reasons` it was left out, and each side's `taskId`, `outcome` and `totalTokens`. |
+| `baseline`, `policy` | Each arm's `runs`, `accepted`, `rejected`, `acceptanceRate`, `totalTokens`, `tokensPerAcceptedTask`, `apiEquivalentUsd`, `apiEquivalentUsdPerAcceptedTask`, `repeatedFailures` and `duplicateCalls`, over the included pairs. |
+| `pricing` | `source`, `basis` and the `lastReviewed` date every included report was priced from; `null` when they differ, and then no dollar figure is given. |
+| `change` | `tokensPerAcceptedTaskPercent` (policy minus baseline, as a percentage of the baseline) and `acceptanceRatePoints` (policy minus baseline). |
+| `limitations` | The task limitations, that the plan is a declaration, and that the policy's instructions are in the measured usage only if the harness loaded them. |
+
+The plan is a document of its own:
+
+| Field | What it holds |
+| --- | --- |
+| `version` | `1`. |
+| `kind` | `trazum-task-evaluation-plan`. |
+| `policyId` | `repeat-review-v1`. |
+| `minimumPairs` | Matched pairs needed for any verdict but `inconclusive`: 2 to 100. |
+| `minimumTokenReductionPercent` | How far tokens per accepted task must fall, as a percentage of the baseline: above 0 and below 100. |
+| `maximumAcceptanceDropPoints` | How many percentage points the acceptance rate may fall: 0 to 100. |
+
 ### Policy receipt
 
 CLI `task apply` and `task revert` emit this receipt. It records the managed

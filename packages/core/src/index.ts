@@ -2,6 +2,8 @@ export * from './types.js';
 export { MAX_INPUT_CHARS } from './limits.js';
 export { analyzeTask, parseTaskReport, compareTasks, taskPolicy, TASK_POLICY_INSTRUCTIONS } from './task.js';
 export type { TaskCategory, TaskComparison, TaskFinding, TaskFormat, TaskInput, TaskOutcome, TaskPolicy, TaskPolicyId, TaskReport } from './task.js';
+export { evaluateTasks, parseTaskEvaluationPlan, MAX_EVALUATION_PAIRS, TASK_EVALUATION_LIMITATIONS } from './task-evaluation.js';
+export type { TaskEvaluation, TaskEvaluationArm, TaskEvaluationPair, TaskEvaluationPlan } from './task-evaluation.js';
 export {
   ESTIMATE_ERROR_BAND_PCT,
   BAND_CALIBRATED_PROVIDER,

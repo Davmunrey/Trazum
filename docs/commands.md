@@ -127,9 +127,10 @@ privacy, limits and interpretation.
 | `task apply <report.json> --instructions <file>` | Append the exact managed policy block to an explicit existing instruction file, idempotently. |
 | `task compare <before.json> <after.json>` | JSON observations, quality regression or inconclusive evidence; no causal savings claim. |
 | `task revert --instructions <file>` | Remove only the exact unchanged managed block, preserving other instructions. |
+| `task evaluate --plan <plan.json> <before.json> <after.json> ...` | Weigh matched baseline and policy pairs against a bar declared in a plan: tokens per accepted task, acceptance rate, repeated failures. A pair that does not match is kept with its reasons and left out of the totals. |
 
-`analyze`, `policy` and `compare` accept `-o` / `--out` to create a new private
-file; existing files are refused. `analyze` and `compare` emit JSON by default;
+`analyze`, `policy`, `compare` and `evaluate` accept `-o` / `--out` to create a new private
+file; existing files are refused. `analyze`, `compare` and `evaluate` emit JSON by default;
 `--json` is optional. Analysis accepts up to 16 sources and 400,000 UTF-16 code units
 in aggregate. Reports exclude raw tool content and source paths; explicit task
 metadata and non-cryptographic reuse checks remain. No source discovery,
