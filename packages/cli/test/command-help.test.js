@@ -25,6 +25,12 @@ for (const locale of ['en', 'es']) {
     // The commands the help itself lists, from its usage lines.
     const commands = [...new Set(lines.map((line) => /^ {2}trazum ([a-z][a-z-]*)\b/.exec(line)?.[1]).filter(Boolean))];
     const headings = lines.filter(isHeading);
+    // The usage section: the one with the most lines that open with `trazum` (START HERE has a few too).
+    const starts = lines.flatMap((line, i) => (isHeading(line) ? [i] : []));
+    const usage = starts
+      .map((start, k) => ({ start, end: starts[k + 1] ?? lines.length }))
+      .map((section) => ({ ...section, count: lines.slice(section.start, section.end).filter((line) => line.startsWith('  trazum ')).length }))
+      .reduce((best, section) => (section.count > best.count ? section : best));
     const more = getCliMessages(locale).commandHelpMore;
 
     it('found the commands to ask about', () => {
@@ -40,9 +46,9 @@ for (const locale of ['en', 'es']) {
         if (ownLines.length * 5 > lines.length) wrong.push(`${command}: ${ownLines.length} lines, the whole help is ${lines.length}`);
         if (!ownLines.some((line) => line === `  trazum ${command}` || line.startsWith(`  trazum ${command} `))) wrong.push(`${command}: no usage line`);
         // A long usage line goes on over the lines indented under it, and all of it is the usage (bill's runs to three).
-        for (let i = 0; i < lines.length; i += 1) {
+        for (let i = usage.start + 1; i < usage.end; i += 1) {
           if (!(lines[i] === `  trazum ${command}` || lines[i].startsWith(`  trazum ${command} `))) continue;
-          for (let j = i + 1; j < lines.length && /^ {3,}\S/.test(lines[j]); j += 1) {
+          for (let j = i + 1; j < usage.end && /^ {3,}\S/.test(lines[j]); j += 1) {
             if (!ownLines.includes(lines[j])) wrong.push(`${command}: the usage line's continuation "${lines[j].trim().slice(0, 40)}" missing`);
           }
           break;
