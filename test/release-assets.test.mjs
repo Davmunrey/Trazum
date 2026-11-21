@@ -378,12 +378,15 @@ describe('the release workflow', () => {
  */
 describe('the release workflow attests what it attaches', () => {
   const workflow = read('.github/workflows/release.yml');
-  const jobs = workflow.split(/^  (?=[a-z][a-z-]*:$)/m);
+  const jobs = workflow.split(/^ {2}(?=[a-z][a-z-]*:$)/m);
   const job = (name) => jobs.find((candidate) => candidate.startsWith(`${name}:`));
   const code = (text) => text.replace(/^\s*#.*$/gm, '');
   const attest = code(job('attest') ?? '');
   const files = ['trazum-vscode-$version.vsix', 'trazum-mcp-$version.mcpb', 'trazum-pricing-$version.json', 'trazum-v$version.cdx.json', 'SHA256SUMS'];
-  const asStep = (name) => name.replaceAll('$version', '${{ steps.files.outputs.version }}');
+  // The workflow names the version with an Actions expression in `with:`; it is
+  // joined here so the source holds no `${` a reader could take for a template.
+  const stepVersion = ['$', '{{ steps.files.outputs.version }}'].join('');
+  const asStep = (name) => name.replaceAll('$version', stepVersion);
   const asVerify = (name) => name.replaceAll('$version', '$VERSION');
 
   it('in a job of its own, after the files are attached, on a release to latest only', () => {
