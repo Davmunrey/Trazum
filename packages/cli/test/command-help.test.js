@@ -39,6 +39,14 @@ for (const locale of ['en', 'es']) {
         const ownLines = own.split('\n');
         if (ownLines.length * 5 > lines.length) wrong.push(`${command}: ${ownLines.length} lines, the whole help is ${lines.length}`);
         if (!ownLines.some((line) => line === `  trazum ${command}` || line.startsWith(`  trazum ${command} `))) wrong.push(`${command}: no usage line`);
+        // A long usage line goes on over the lines indented under it, and all of it is the usage (bill's runs to three).
+        for (let i = 0; i < lines.length; i += 1) {
+          if (!(lines[i] === `  trazum ${command}` || lines[i].startsWith(`  trazum ${command} `))) continue;
+          for (let j = i + 1; j < lines.length && /^ {3,}\S/.test(lines[j]); j += 1) {
+            if (!ownLines.includes(lines[j])) wrong.push(`${command}: the usage line's continuation "${lines[j].trim().slice(0, 40)}" missing`);
+          }
+          break;
+        }
         for (const heading of headings.filter((h) => h.endsWith(` ${command}`))) {
           if (!ownLines.includes(heading)) wrong.push(`${command}: "${heading}" missing`);
         }
