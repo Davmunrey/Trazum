@@ -17,6 +17,7 @@ export const es: CliMessages = {
   locale: 'es',
   numberLocale: 'es-ES',
 
+  commandHelpMore: 'Todos los comandos, el fichero de configuración, los precios y los ejemplos: trazum --help',
   help: (d, bold) => `${bold('trazum')}: lo que cuestan tus agentes de IA y tus llamadas a la API, leído de los logs de esta máquina.
 
 ${bold('EMPIEZA AQUÍ')}
