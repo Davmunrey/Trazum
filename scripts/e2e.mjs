@@ -1361,7 +1361,8 @@ export const FLOWS = [
               ...document.querySelectorAll('nav a[href^="/docs/"]'),
               ...[...document.querySelectorAll('[lang^="en"]')].flatMap((body) => [...body.querySelectorAll('h1,h2,h3,h4')]),
             ]
-              .map((element) => element.textContent.trim())
+              // A body's heading carries its own anchor link, drawn as a trailing "#".
+              .map((element) => element.textContent.trim().replace(/\s*#$/, ''))
               .filter((text) => text.length > 0),
           );
           for (const element of document.body.querySelectorAll('*')) {
