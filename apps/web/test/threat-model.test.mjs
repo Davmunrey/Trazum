@@ -100,7 +100,7 @@ function declared(file, name) {
 
 let values;
 before(async () => {
-  const [core, prompts, shares, sharesApi, schemas, usage, session, config, tasks] = await Promise.all([
+  const [core, prompts, shares, sharesApi, schemas, usage, session, config, tasks, engine, summaries] = await Promise.all([
     import('@trazum/core'),
     import('../lib/store/prompts.ts'),
     import('../lib/store/shares.ts'),
@@ -110,6 +110,8 @@ before(async () => {
     import('../lib/auth/session.ts'),
     import('../lib/auth/config.ts'),
     import('../lib/task-workflow.ts'),
+    import('../lib/engine-budget.ts'),
+    import('../lib/shares/summary.ts'),
   ]);
   values = {
     ...prompts,
@@ -125,6 +127,9 @@ before(async () => {
     MAX_INPUT_CHARS: core.MAX_INPUT_CHARS,
     MAX_TASK_FILES: tasks.MAX_TASK_FILES,
     MAX_TASK_FILE_BYTES: tasks.MAX_TASK_FILE_BYTES,
+    MAX_ENGINE_CHARS_PER_MINUTE: engine.MAX_ENGINE_CHARS_PER_MINUTE,
+    SHARE_SUMMARY_WINDOW_MS: summaries.SHARE_SUMMARY_WINDOW_MS,
+    MAX_SHARE_SUMMARIES: summaries.MAX_SHARE_SUMMARIES,
   };
 });
 
@@ -134,6 +139,7 @@ before(async () => {
  */
 const EXPECTED = {
   REAUTH_WINDOW_MS: (v) => [`${v / 60_000} minutes`],
+  SHARE_SUMMARY_WINDOW_MS: (v) => [`${v / 60_000} minutes`],
   OAUTH_STATE_TTL_SECONDS: (v) => [`${v / 60} minutes`],
   MAX_HOURS_CEILING: (v) => [`${v} hours`],
   IDLE_MINUTES_FLOOR: (v) => [`${v} minutes`],

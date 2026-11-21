@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation';
 
 import { getWebMessages, localeFromHeaders } from '../../../lib/i18n';
 import { isShareToken } from '../../../lib/shares/api';
+import { engineBudget } from '../../../lib/engine-budget';
+import { EngineBusy, shareSummaries, summaryOf, type ShareSummary } from '../../../lib/shares/summary';
 import { getStore } from '../../../lib/store';
 
 export const runtime = 'nodejs';
@@ -32,7 +34,11 @@ export const dynamic = 'force-dynamic';
  *   for `dangerouslySetInnerHTML`, because the content is attacker-supplied by
  *   construction — the sharer chose it and the reader did not.
  * - **It recomputes the comparison** rather than showing a stored one, so a link
- *   opened next year is priced by next year's rules.
+ *   opened next year is priced by next year's rules. It remembers the numbers,
+ *   never the text, for ten minutes per token, so reloading one large share in
+ *   a loop costs one computation a window (`lib/shares/summary.ts`). A
+ *   computation is charged to the viewer's engine budget, so cycling through
+ *   many links is bounded too (`lib/engine-budget.ts`).
  * - **An expired or unknown token is a plain 404,** identical either way.
  */
 
@@ -61,19 +67,41 @@ export default async function SharedComparison({
   const copy = getMessages(locale);
 
   const { settings } = share;
-  const comparison = comparePrompts(share.beforeText, share.afterText, {
-    level: settings.level,
-    locale,
-    usage: {
-      model: settings.model,
-      callsPerMonth: settings.callsPerMonth,
-      avgOutputTokens: settings.avgOutputTokens,
-      cacheHitRate: settings.cacheHitRate,
-      batchEligible: settings.batchEligible,
-    },
-    disableRules: settings.disableRules as never,
-    optimizeBoth: settings.optimizeBoth,
-  });
+  // At most once per token and language every ten minutes, and only numbers
+  // and rule ids are kept: see `lib/shares/summary.ts`. A miss is charged to
+  // the viewer's engine budget before it computes.
+  const now = Date.now();
+  let comparison: ShareSummary;
+  try {
+    comparison = await shareSummaries(`${token}:${locale}`, now, async () => {
+      if (engineBudget({ headers: requestHeaders }, now, share.beforeText.length + share.afterText.length)) {
+        throw new EngineBusy();
+      }
+      return summaryOf(
+        comparePrompts(share.beforeText, share.afterText, {
+          level: settings.level,
+          locale,
+          usage: {
+            model: settings.model,
+            callsPerMonth: settings.callsPerMonth,
+            avgOutputTokens: settings.avgOutputTokens,
+            cacheHitRate: settings.cacheHitRate,
+            batchEligible: settings.batchEligible,
+          },
+          disableRules: settings.disableRules as never,
+          optimizeBoth: settings.optimizeBoth,
+        }),
+      );
+    });
+  } catch (error) {
+    if (!(error instanceof EngineBusy)) throw error;
+    return (
+      <main className="mx-auto max-w-[1180px] px-5 pt-7 pb-16">
+        <h1 className="text-2xl font-semibold tracking-tight">Trazum</h1>
+        <p className="mt-3 text-muted-foreground">{t.api.rateLimited}</p>
+      </main>
+    );
+  }
 
   const number = (value: number) => value.toLocaleString(t.numberLocale);
   const signed = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${number(Math.abs(value))}`;

@@ -7,6 +7,7 @@ import { getWebMessages } from '../../../lib/i18n';
 import { COMPARE, readBody } from '../../../lib/body-schemas';
 import { requestedLocale, saysJson } from '../../../lib/request-body';
 import { logsRefusedInput, unreadableBody } from '../../../lib/security-log';
+import { engineBudget as overBudget } from '../../../lib/engine-budget';
 import { createRateLimiter } from '../../../lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -35,7 +36,6 @@ export const runtime = 'nodejs';
  * per call, so both properties hold at once.
  */
 const rateLimited = createRateLimiter({ windowMs: 60_000, max: 30 });
-
 
 function badRequest(message: string) {
   return NextResponse.json({ error: message }, { status: 400 });
@@ -84,6 +84,11 @@ async function handlePost(request: Request) {
   const body = read.value;
 
   const { before, after } = body;
+  // Charged once the size is known, before the engine runs, to the budget
+  // every caller of the engine shares (`lib/engine-budget.ts`).
+  if (overBudget(request, Date.now(), before.length + after.length)) {
+    return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
+  }
   const level: RuleLevel = body.level ?? 'safe';
   const disableRules = body.disableRules ?? [];
   const usage: Partial<UsageProfile> = body.usage ?? {};

@@ -133,3 +133,42 @@ describe('what it costs to answer', () => {
     assert.equal(limited.sweeps, 0);
   });
 });
+
+describe('a request can count for more than one', () => {
+  it('charges what the caller says a request costs, and refuses once the budget is spent', () => {
+    const limited = createRateLimiter({ windowMs: 60_000, max: 10 });
+    const request = from('198.51.100.7');
+
+    assert.equal(limited(request, 0, 6), false);
+    assert.equal(limited(request, 1, 4), false, 'exactly the budget was refused');
+    assert.equal(limited(request, 2, 1), true, 'a request past the budget was permitted');
+  });
+
+  it('refuses a first request that alone costs more than the budget', () => {
+    const limited = createRateLimiter({ windowMs: 60_000, max: 10 });
+    assert.equal(limited(from('198.51.100.8'), 0, 11), true);
+  });
+
+  it('does not charge a request it refuses, so a smaller one that fits still goes through', () => {
+    const limited = createRateLimiter({ windowMs: 60_000, max: 10 });
+    const request = from('198.51.100.10');
+    assert.equal(limited(request, 0, 6), false);
+    assert.equal(limited(request, 1, 5), true, 'a request past the budget was permitted');
+    assert.equal(limited(request, 2, 4), false, 'the refused request was charged');
+    assert.equal(limited(request, 3, 1), true, 'a request past the budget was permitted');
+  });
+
+  it('does not charge a first request it refuses either', () => {
+    const limited = createRateLimiter({ windowMs: 60_000, max: 10 });
+    const request = from('198.51.100.11');
+    assert.equal(limited(request, 0, 11), true);
+    assert.equal(limited(request, 1, 10), false, 'the refused first request was charged');
+  });
+
+  it('starts again in the next window', () => {
+    const limited = createRateLimiter({ windowMs: 60_000, max: 10 });
+    const request = from('198.51.100.9');
+    assert.equal(limited(request, 0, 11), true);
+    assert.equal(limited(request, 60_000, 10), false);
+  });
+});

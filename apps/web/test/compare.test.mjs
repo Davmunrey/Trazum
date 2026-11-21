@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { register } from 'node:module';
 import { before, describe, it } from 'node:test';
 
@@ -189,5 +190,45 @@ describe('refusals name the field, because there are two of them', () => {
   it('answers in the browser language when the body names none', async () => {
     const { body } = await post({ after: PADDED }, { 'accept-language': 'es-ES,es;q=0.9' });
     assert.match(body.error, /Falta la versión/);
+  });
+});
+
+describe('the engine is charged by what it is given (lib/engine-budget.ts)', () => {
+  const code = (path) =>
+    readFileSync(new URL(path, import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+
+  it('compare charges both prompts\' characters before the engine runs', () => {
+    const route = code('../app/api/compare/route.ts');
+    const charged = route.indexOf('overBudget(request, Date.now(), before.length + after.length)');
+    assert.ok(charged > 0, 'compare does not charge the characters it was sent');
+    assert.ok(charged < route.indexOf('comparePrompts('), 'the engine runs before the charge');
+  });
+
+  it('optimize charges the prompt\'s characters before the engine runs', () => {
+    const route = code('../app/api/optimize/route.ts');
+    const charged = route.indexOf('overBudget(request, Date.now(), prompt.length)');
+    assert.ok(charged > 0, 'optimize does not charge the characters it was sent');
+    assert.ok(charged < route.indexOf('reorderForCache(prompt'), 'the reorder runs before the charge');
+    assert.ok(charged < route.indexOf('optimize(reorder?.text ?? prompt'), 'the engine runs before the charge');
+  });
+
+  it('is one budget for every route, however many copies of its module are loaded', async () => {
+    const first = await import('../lib/engine-budget.ts?first');
+    const second = await import('../lib/engine-budget.ts?second');
+    assert.notEqual(first, second, 'the two imports were the same module, so this proves nothing');
+    assert.equal(first.engineBudget, second.engineBudget, 'each copy of the module made its own budget');
+    for (const file of ['../app/api/compare/route.ts', '../app/api/optimize/route.ts']) {
+      const route = code(file);
+      assert.match(route, /import \{ engineBudget as overBudget \} from '\.\.\/\.\.\/\.\.\/lib\/engine-budget';/, `${file} does not charge the shared budget`);
+      assert.doesNotMatch(route, /createEngineBudget\(/, `${file} makes a budget of its own`);
+    }
+  });
+
+  it('allows a few comparisons at the input cap a minute, and no more', async () => {
+    const { MAX_ENGINE_CHARS_PER_MINUTE } = await import('../lib/engine-budget.ts');
+    const { MAX_INPUT_CHARS } = await import('@trazum/core');
+    const atTheCap = 2 * MAX_INPUT_CHARS;
+    assert.ok(MAX_ENGINE_CHARS_PER_MINUTE >= 2 * atTheCap, 'not even two comparisons at the cap fit in a minute');
+    assert.ok(MAX_ENGINE_CHARS_PER_MINUTE <= 5 * atTheCap, 'more than five comparisons at the cap fit in a minute');
   });
 });
