@@ -62,7 +62,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: 22
+          node-version: 26
 
       # Which dist-tag this run publishes to, latest or next, on every run: the
       # uploads take it as `--tag`, so a run with no answer must not reach
@@ -127,7 +127,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: 22
+          node-version: 26
           cache: npm
           registry-url: https://registry.npmjs.org
 
@@ -494,7 +494,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: 22
+          node-version: 26
           cache: npm
 
       - name: Install dependencies
@@ -676,7 +676,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: 22
+          node-version: 26
 
       # The race this job exists to avoid. The registry verifies a listing by
       # reading `mcpName` off the package on npm, and npm serves a new version

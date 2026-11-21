@@ -76,7 +76,7 @@ npm install
 npm run verify     # everything CI runs, in the order CI runs it
 ```
 
-Node 22. No global installs needed.
+Node 26. No global installs needed.
 
 `verify` is the one command worth remembering — it is the linter, build, tests,
 typecheck across all six workspaces, and the web build. **Run it before pushing, and

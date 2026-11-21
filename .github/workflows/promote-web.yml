@@ -62,7 +62,7 @@ jobs:
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
-          node-version: 22
+          node-version: 26
 
       # Read before anything changes: the deployment has to be a staged
       # production build of this project to be promoted, and one that served

@@ -10,10 +10,10 @@
 # are loopback-only by design (a cost oracle on a network interface is an
 # attack surface), and they belong on the machines where the agents run.
 
-# node:22-alpine, by the digest Docker Hub served for that tag on 2026-11-21.
+# node:26-alpine, by the digest Docker Hub served for that tag on 2026-11-21.
 # A tag can be moved by whoever publishes it; a digest cannot (#874).
 # Dependabot raises the digest with the tag.
-FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS build
+FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS build
 WORKDIR /repo
 
 # Dependency manifests first, for layer caching: a source edit must not
@@ -51,7 +51,7 @@ ARG NEXT_PUBLIC_VERCEL_SPEED_INSIGHTS=""
 RUN npm run build --workspace @trazum/core \
  && npm run build --workspace @trazum/web
 
-FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
+FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0

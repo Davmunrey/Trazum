@@ -335,3 +335,37 @@ describe('every advisory the dependency review allows is explained and kept out 
     assert.match(zod, /^3\./, 'zod in the analyzer is no longer 3.x: the allowance may be removed');
   });
 });
+
+/**
+ * The Node major CI tests on, the one the contributor guide names and the one
+ * the image ships are one number (#883). Dependabot raised the image alone to
+ * a major CI never ran (#878); this holds them together, so a bump of one is a
+ * red build until the others follow.
+ */
+describe('CI, the contributor guide and the image name one Node major', () => {
+  it('every setup-node, CONTRIBUTING.md and every FROM agree', () => {
+    const named = [];
+    for (const name of readdirSync(join(ROOT, '.github/workflows')).filter((file) => file.endsWith('.yml'))) {
+      const text = read(`.github/workflows/${name}`);
+      // Every setup-node names its version one way, a bare major: a range, an
+      // `.x`, `lts/*` or a `node-version-file` would read as no number at all.
+      const setups = (text.match(/uses: actions\/setup-node@/g) ?? []).length;
+      const versions = [...text.matchAll(/^\s*node-version: '?(\d+)'?$/gm)];
+      assert.equal(versions.length, setups, `${name}: ${setups} setup-node step(s), ${versions.length} naming a bare major`);
+      assert.doesNotMatch(text, /node-version-file:/, `${name} reads the Node version from a file this test does not read`);
+      for (const match of versions) named.push([`.github/workflows/${name}`, match[1]]);
+    }
+    assert.ok(named.length > 0, 'no workflow sets up Node');
+    const guide = /^Node (\d+)\. No global installs needed\.$/m.exec(read('CONTRIBUTING.md'));
+    assert.ok(guide, 'CONTRIBUTING.md no longer names the Node major');
+    named.push(['CONTRIBUTING.md', guide[1]]);
+    const dockerfile = read('Dockerfile');
+    const stages = dockerfile.match(/^FROM .*$/gm) ?? [];
+    const images = [...dockerfile.matchAll(/^FROM node:(\d+)-alpine@sha256:[0-9a-f]{64}(?: AS \w+)?$/gm)];
+    assert.ok(images.length > 0, 'the Dockerfile builds on no node image');
+    assert.equal(images.length, stages.length, `a stage builds on another image or variant: ${stages.join(' | ')}`);
+    for (const image of images) named.push(['Dockerfile', image[1]]);
+    const majors = new Set(named.map(([, major]) => major));
+    assert.equal(majors.size, 1, `more than one Node major: ${named.map(([file, major]) => `${file} ${major}`).join(', ')}`);
+  });
+});
