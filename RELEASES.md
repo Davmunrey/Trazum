@@ -72,7 +72,9 @@ these):
   same file the site serves at `/datasets/pricing/<version>.json`
   ([docs/pricing-dataset.md](docs/pricing-dataset.md)), from the first release
   made after 3.0.1;
-- `SHA256SUMS`, the SHA-256 of those files and of the bill of materials.
+- `SHA256SUMS`, the SHA-256 of those files and of the bill of materials;
+- `trazum-v<version>.sigstore.json`, a Sigstore bundle holding one build-provenance
+  attestation over all of the above, from the first release made after #875.
 
 The `assets` job of `release.yml` attaches them, after the job that publishes has
 npm serving every package and the release page exists: the order of the
@@ -82,10 +84,12 @@ bundle by `@anthropic-ai/mcpb@2.1.2`, both fetched by `npx` at those versions
 (pinned in `scripts/release-assets.mjs`), and each holds `@trazum/core`'s built
 files and nothing else the lockfile does not name. The dataset is not built
 there: it is the file the release pull request committed, checked byte for byte
-against what the catalogue at the published commit builds. None of them is signed
-or attested: this workflow makes no build-provenance attestation, so none is
-claimed, and `SHA256SUMS` says that a file is the one the release lists, not who
-made it. The site's [download page](https://trazum.vercel.app/download) links
+against what the catalogue at the published commit builds. The `attest` job then
+reads every file back from the release, checks it against `SHA256SUMS`, and signs
+one build-provenance attestation over all of them with the run's own OIDC
+identity, in a job that runs no packager. `SHA256SUMS` says that a file is the
+one the release lists; the attestation says which workflow, run and commit made
+it. The site's [download page](https://trazum.vercel.app/download) links
 each by the name its version gives it, and draws its commands from the same
 source as `docs/agents.md`.
 
@@ -94,6 +98,25 @@ source as `docs/agents.md`.
 file's digest with `shasum -a 256 <file>` and compare it with its line. A
 manual run of the `Release` workflow builds the files and prints their sums
 without attaching anything.
+
+To check who made a file, with the GitHub CLI, ask GitHub's attestations API:
+
+```bash
+gh attestation verify trazum-mcp-<version>.mcpb --repo Davmunrey/Trazum
+```
+
+or check it against the bundle attached to the release:
+
+```bash
+gh attestation verify trazum-mcp-<version>.mcpb --repo Davmunrey/Trazum \
+  --bundle trazum-v<version>.sigstore.json
+```
+
+Either one passes only for a file whose digest the attestation names, signed by
+a workflow of this repository. Add
+`--signer-workflow Davmunrey/Trazum/.github/workflows/release.yml` to hold it to
+the release workflow alone; the job runs that same check on every file before it
+attaches the bundle. Releases up to 3.0.1 carry no attestation.
 
 **The MCP registry listing** names the bundle and its digest, and only for a
 version whose bundle exists: the `mcp-registry` job waits for the `assets` job,
