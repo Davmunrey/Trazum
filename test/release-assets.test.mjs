@@ -369,3 +369,78 @@ describe('the release workflow', () => {
     assert.match(listing, /--sums \/tmp\/bundle\/SHA256SUMS/, 'the digest is not checked against the release\'s own sums');
   });
 });
+
+/**
+ * Who made the files on the release page (#875). One build-provenance
+ * attestation over every file the release carries, signed with the run's OIDC
+ * identity in a job that runs no third-party code, and attached to the release
+ * as a Sigstore bundle under the name Scorecard's Signed-Releases reads.
+ */
+describe('the release workflow attests what it attaches', () => {
+  const workflow = read('.github/workflows/release.yml');
+  const jobs = workflow.split(/^  (?=[a-z][a-z-]*:$)/m);
+  const job = (name) => jobs.find((candidate) => candidate.startsWith(`${name}:`));
+  const code = (text) => text.replace(/^\s*#.*$/gm, '');
+  const attest = code(job('attest') ?? '');
+  const files = ['trazum-vscode-$version.vsix', 'trazum-mcp-$version.mcpb', 'trazum-pricing-$version.json', 'trazum-v$version.cdx.json', 'SHA256SUMS'];
+  const asStep = (name) => name.replaceAll('$version', '${{ steps.files.outputs.version }}');
+  const asVerify = (name) => name.replaceAll('$version', '$VERSION');
+
+  it('in a job of its own, after the files are attached, on a release to latest only', () => {
+    assert.ok(job('attest'), 'no job attests the files');
+    assert.ok(workflow.indexOf('\n  attest:\n') > workflow.indexOf('\n  assets:\n'), 'the attest job is above the assets job');
+    assert.match(attest, /needs: \[decide, assets\]/, 'the attestation does not wait for the files');
+    assert.match(attest, /if: github\.event_name == 'push' && needs\.decide\.outputs\.channel == 'latest'/, 'a manual run or a next could attest');
+  });
+
+  it('with the permissions signing needs and no more', () => {
+    const granted = attest.slice(attest.indexOf('permissions:'), attest.indexOf('steps:')).match(/^ {6}[a-z-]+: \w+$/gm).map((line) => line.trim());
+    assert.deepEqual(granted.sort(), ['attestations: write', 'contents: write', 'id-token: write']);
+    for (const forbidden of ['secrets.', 'NPM_TOKEN', 'environment:', 'npx', 'npm ci', 'npm install', 'release-assets.mjs', 'setup-node']) {
+      assert.ok(!attest.includes(forbidden), `the attest job has ${forbidden}, so code besides gh and GitHub's action runs where the token signs`);
+    }
+    const actions = attest.match(/uses: \S+/g);
+    assert.deepEqual(
+      actions,
+      ['uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1', 'uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6'],
+      'an action other than checkout and GitHub\'s attest runs where the token signs',
+    );
+  });
+
+  it('and the job that runs the packagers still cannot sign', () => {
+    const assets = code(job('assets'));
+    assert.ok(!assets.includes('id-token') && !assets.includes('attestations:'), 'the packagers share a job with the signing token');
+  });
+
+  it('reads every file back from the release and checks it against SHA256SUMS, with none allowed to be missing, before attesting', () => {
+    const fetched = attest.slice(attest.indexOf('for name in'), attest.indexOf('done', attest.indexOf('for name in')));
+    for (const name of files) assert.ok(fetched.includes(name), `${name} is not read back from the release`);
+    assert.match(attest, /sha256sum --check --strict SHA256SUMS/, 'the files are not checked against the sums');
+    assert.doesNotMatch(attest, /--ignore-missing/, 'a file missing from the release would pass');
+    assert.ok(attest.indexOf('sha256sum --check') < attest.indexOf('uses: actions/attest'), 'the files are attested before they are checked');
+  });
+
+  it('attests each file the release carries, the sums included', () => {
+    const subjects = attest.slice(attest.indexOf('subject-path: |'), attest.indexOf('- name:', attest.indexOf('subject-path: |')));
+    for (const name of files) assert.ok(subjects.includes(`/tmp/release/${asStep(name)}`), `${name} is not a subject of the attestation`);
+  });
+
+  it('verifies the bundle against every file before it attaches it, under the name Scorecard reads', () => {
+    const verify = attest.indexOf('gh attestation verify');
+    const upload = attest.indexOf('gh release upload');
+    assert.ok(verify !== -1 && upload !== -1 && verify < upload, 'the bundle is attached before it is verified, or not at all');
+    const checked = attest.slice(attest.lastIndexOf('for name in'), upload);
+    for (const name of files) assert.ok(checked.includes(asVerify(name)), `${name} is not verified against the bundle`);
+    assert.match(checked, /--signer-workflow "\$GITHUB_REPOSITORY\/\.github\/workflows\/release\.yml"/, 'the bundle is not held to this workflow');
+    assert.match(attest, /gh release upload "v\$VERSION" "\/tmp\/release\/trazum-v\$VERSION\.sigstore\.json" --clobber/);
+  });
+
+  it('and RELEASES.md tells a person how to check a file the same way', () => {
+    const releases = read('RELEASES.md');
+    const intro = releases.slice(0, releases.indexOf('\n## '));
+    assert.match(intro, /trazum-v<version>\.sigstore\.json/, 'the bundle is not named');
+    assert.match(intro, /gh attestation verify trazum-mcp-<version>\.mcpb --repo Davmunrey\/Trazum/, 'no command checks a file against GitHub');
+    assert.match(intro, /--bundle trazum-v<version>\.sigstore\.json/, 'no command checks a file against the bundle on the release');
+    assert.doesNotMatch(intro, /None of them is signed\s+or attested/, 'RELEASES.md still says nothing is attested');
+  });
+});

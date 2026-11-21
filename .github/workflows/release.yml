@@ -472,10 +472,10 @@ jobs:
   # reaches one step: the one that downloads the bill, sums and uploads. The
   # steps that run the packagers have no token in their environment.
   #
-  # This repository does not attest these files: no step here makes a build
-  # provenance attestation, so none is claimed. `SHA256SUMS` says the files
-  # are the ones this job made, to anybody who trusts the release page; it is
-  # not a signature.
+  # This job does not attest the files; the `attest` job below does, so that the
+  # OIDC token that signs never shares a job with the packagers. `SHA256SUMS`
+  # says the files are the ones this job made, to anybody who trusts the
+  # release page; the attestation says which workflow, run and commit made them.
   #
   # A manual run builds the files, prints their sums and attaches nothing, so
   # a broken packager is found by a dry run rather than during a release.
@@ -544,6 +544,91 @@ jobs:
             "/tmp/assets/trazum-pricing-$version.json" \
             /tmp/assets/SHA256SUMS \
             --clobber
+
+  # Who made the files on the release page, and from which commit (#875). The
+  # npm packages carry npm's provenance; the files a person downloads from the
+  # release page carried nothing but `SHA256SUMS`, which says what the bytes
+  # are and not who built them.
+  #
+  # This job signs one build-provenance attestation over every file the
+  # release carries (the extension, the bundle, the dataset, the bill of
+  # materials and `SHA256SUMS`), with GitHub's `actions/attest` and this run's
+  # OIDC identity, and attaches the Sigstore bundle to the release as
+  # `trazum-v<version>.sigstore.json`. `gh attestation verify` checks a file
+  # against it, or against GitHub's attestations API, which holds the same
+  # attestation (RELEASES.md, "Checking them").
+  #
+  # **Its own job, on purpose.** `id-token: write` is the permission that
+  # signs, and the `assets` job runs two packagers fetched by `npx`; in the same
+  # job they would hold the means to sign anything. Here nothing runs but
+  # `gh`, `sha256sum` and GitHub's own action. The files are read back from the
+  # release, checked against its `SHA256SUMS` with no file missing, attested,
+  # and the bundle is verified against every file before it is attached.
+  #
+  # After `assets`, so the order of the publishes is untouched: npm first,
+  # then the release page, then its files, then this. A manual run builds no
+  # release and attests nothing.
+  attest:
+    name: Attest the files on the release
+    needs: [decide, assets]
+    if: github.event_name == 'push' && needs.decide.outputs.channel == 'latest'
+    runs-on: ubuntu-latest
+    permissions:
+      # To read the files back and attach the bundle.
+      contents: write
+      # The OIDC token Sigstore exchanges for the certificate that signs.
+      id-token: write
+      # To store the attestation where `gh attestation verify` finds it.
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Read the files back from the release and check their sums
+        id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          mkdir -p /tmp/release
+          cd /tmp/release
+          for name in "trazum-vscode-$version.vsix" "trazum-mcp-$version.mcpb" "trazum-pricing-$version.json" "trazum-v$version.cdx.json" SHA256SUMS; do
+            gh release download "v$version" --pattern "$name" --dir /tmp/release --clobber
+          done
+          sha256sum --check --strict SHA256SUMS
+
+      - name: Attest them
+        id: attest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            /tmp/release/trazum-vscode-${{ steps.files.outputs.version }}.vsix
+            /tmp/release/trazum-mcp-${{ steps.files.outputs.version }}.mcpb
+            /tmp/release/trazum-pricing-${{ steps.files.outputs.version }}.json
+            /tmp/release/trazum-v${{ steps.files.outputs.version }}.cdx.json
+            /tmp/release/SHA256SUMS
+
+      # The bundle is checked the way RELEASES.md tells a person to check it,
+      # against every file, before it is attached: a bundle that verifies
+      # nothing is never put on the release page.
+      - name: Verify the bundle against every file, then attach it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.files.outputs.version }}
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          cp "$BUNDLE" "/tmp/release/trazum-v$VERSION.sigstore.json"
+          for name in "trazum-vscode-$VERSION.vsix" "trazum-mcp-$VERSION.mcpb" "trazum-pricing-$VERSION.json" "trazum-v$VERSION.cdx.json" SHA256SUMS; do
+            gh attestation verify "/tmp/release/$name" \
+              --bundle "/tmp/release/trazum-v$VERSION.sigstore.json" \
+              --repo "$GITHUB_REPOSITORY" \
+              --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/release.yml"
+          done
+          gh release upload "v$VERSION" "/tmp/release/trazum-v$VERSION.sigstore.json" --clobber
 
   # The listing on the official MCP registry, which is a separate publish to a
   # separate service and was a manual step until it failed twice in a row.

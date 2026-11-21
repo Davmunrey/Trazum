@@ -610,6 +610,19 @@ names them). A manual run of the workflow makes the files and prints their sums
 and attaches nothing: do that from a release pull request's branch to know the
 packagers still work before the merge.
 
+The `attest` job comes last (#875). It holds `contents: write`, `id-token:
+write` and `attestations: write`, and runs nothing but `gh`, `sha256sum` and
+GitHub's `actions/attest`, pinned like every action here: the token that signs
+never shares a job with the packagers. It reads every file back from the
+release, the bill of materials included, checks them with
+`sha256sum --check --strict SHA256SUMS`, signs one build-provenance attestation
+over all of them and `SHA256SUMS`, verifies the bundle against each file with
+`gh attestation verify --signer-workflow`, and only then attaches it as
+`trazum-v<version>.sigstore.json`. A manual run skips it. If it fails, the
+packages and the files are already out and nothing is half-published: re-run
+the job, and it reads, attests and attaches again (`--clobber`). How a person
+checks a file is in `RELEASES.md`, "Checking them".
+
 The pricing dataset is not made in that job, only checked there. It is the
 document `prepare-release.mjs` wrote into `apps/web/public/datasets/pricing/`
 in the release pull request, which the site serves at the same version;
