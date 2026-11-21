@@ -261,11 +261,12 @@ describe('CI runs the flows against the build the pull request would deploy', ()
   });
 
   it('with one pinned browser driver for the whole job, installed without its scripts', () => {
-    const versions = [...ci.matchAll(/playwright-core@([0-9.]+)/g)].map(([, version]) => version);
-    assert.equal(versions.length, 1, 'the driver is installed once, by the privacy probe step, and reused');
-    assert.match(versions[0], /^\d+\.\d+\.\d+$/);
-    assert.match(ci, /--ignore-scripts[^\n]* playwright-core@/);
-    assert.match(stepOf('End-to-end tests (the page, in a browser)'), /--playwright "\$RUNNER_TEMP\/pw\/node_modules\/playwright-core"/);
+    // From a lockfile of its own since #874, so `npm ci` checks the hashes.
+    const installs = [...ci.matchAll(/npm ci --prefix \.github\/tools\/playwright-core --ignore-scripts\b/g)];
+    assert.equal(installs.length, 1, 'the driver is installed once, by the privacy probe step, and reused');
+    const tool = JSON.parse(readFileSync(new URL('../.github/tools/playwright-core/package.json', import.meta.url), 'utf8'));
+    assert.match(tool.dependencies['playwright-core'], /^\d+\.\d+\.\d+$/, 'the driver is not pinned to one exact version');
+    assert.match(stepOf('End-to-end tests (the page, in a browser)'), /--playwright \.github\/tools\/playwright-core\/node_modules\/playwright-core/);
   });
 
   it('on a server of its own, so it never reads a page another step left running', () => {

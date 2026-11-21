@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -226,5 +226,53 @@ describe('scorecard.yml is the shape the Scorecard API accepts a result from', (
     const security = read('SECURITY.md');
     assert.match(security, /scorecard\.yml/);
     assert.match(security, /does not/i);
+  });
+});
+
+/**
+ * What CI and the image install is pinned by hash, not by a tag or a version
+ * somebody could move or republish (#874). OpenSSF Scorecard's first run on
+ * main found the Dockerfile's `FROM node:22-alpine` and three `npm install
+ * <name>@<version>` commands in workflows: every action was pinned by commit,
+ * and those four were the rest.
+ */
+describe('everything CI and the image install is pinned by hash', () => {
+  const TOOLS = ['acorn', 'bundle-analyzer', 'playwright-core'];
+
+  it('every FROM in the Dockerfile names a digest', () => {
+    const froms = read('Dockerfile').split('\n').filter((line) => /^FROM\s/i.test(line));
+    assert.ok(froms.length > 0, 'the Dockerfile has no FROM line, so this checks nothing');
+    const loose = froms.filter((line) => !/^FROM\s+\S+:\S+@sha256:[0-9a-f]{64}(\s|$)/.test(line));
+    assert.deepEqual(loose, [], 'a base image is pinned by tag only');
+  });
+
+  it('no workflow installs a package by name: installs come from a lockfile with npm ci', () => {
+    const offenders = [];
+    for (const name of readdirSync(join(ROOT, '.github/workflows'))) {
+      if (!/\.ya?ml$/.test(name)) continue;
+      const code = read(`.github/workflows/${name}`).split('\n').filter((line) => !/^\s*#/.test(line)).join('\n');
+      for (const [found] of code.matchAll(/\b(?:npm (?:install|i|add)|npx|pnpm (?:add|dlx)|yarn (?:add|dlx))\b[^\n]*/g)) offenders.push(`${name}: ${found.trim()}`);
+    }
+    assert.deepEqual(offenders, []);
+  });
+
+  it('each tool CI installs has a manifest of exact versions and a lockfile with a hash for every package', () => {
+    for (const tool of TOOLS) {
+      const manifest = JSON.parse(read(`.github/tools/${tool}/package.json`));
+      assert.equal(manifest.private, true, `${tool} could be published`);
+      const pins = Object.entries(manifest.dependencies ?? {});
+      assert.ok(pins.length > 0, `${tool} names nothing`);
+      for (const [pkg, version] of pins) assert.match(version, /^\d+\.\d+\.\d+$/, `${tool}: ${pkg} is not one exact version`);
+      const lock = JSON.parse(read(`.github/tools/${tool}/package-lock.json`));
+      for (const [pkg, version] of pins) assert.equal(lock.packages[`node_modules/${pkg}`]?.version, version, `${tool}: the lockfile resolves another ${pkg}`);
+      const unhashed = Object.entries(lock.packages).filter(([path, entry]) => path !== '' && !/^sha512-/.test(entry.integrity ?? ''));
+      assert.deepEqual(unhashed.map(([path]) => path), [], `${tool}: a package in the lockfile has no hash`);
+    }
+  });
+
+  it('and Dependabot raises every pin, so none goes stale', () => {
+    const dependabot = read('.github/dependabot.yml');
+    for (const tool of TOOLS) assert.ok(dependabot.includes(`- /.github/tools/${tool}\n`), `Dependabot does not watch ${tool}`);
+    assert.match(dependabot, /- package-ecosystem: docker\n {4}directory: \/\n/, 'Dependabot does not watch the Dockerfile');
   });
 });

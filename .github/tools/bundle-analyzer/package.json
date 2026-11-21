@@ -1,0 +1,8 @@
+{
+  "name": "trazum-ci-bundle-analyzer",
+  "private": true,
+  "description": "One tool a workflow installs with npm ci, so the lockfile's integrity hashes are checked (#874). Not a workspace and not published.",
+  "dependencies": {
+    "@codecov/bundle-analyzer": "2.0.1"
+  }
+}

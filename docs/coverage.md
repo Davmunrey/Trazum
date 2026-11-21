@@ -195,9 +195,8 @@ to Codecov's bundle analysis, on every pull request and on `main`.
 
 ```bash
 npm run build && npm run build:web
-DIR="$(mktemp -d)"
-npm install --prefix "$DIR" --no-save --ignore-scripts @codecov/bundle-analyzer@2.0.1
-node scripts/bundle-report.mjs --analyzer "$DIR/node_modules/@codecov/bundle-analyzer" --dry-run
+npm ci --prefix .github/tools/bundle-analyzer --ignore-scripts
+node scripts/bundle-report.mjs --analyzer .github/tools/bundle-analyzer/node_modules/@codecov/bundle-analyzer --dry-run
 ```
 
 Measured on 2026-11-18, with `--dry-run`, which sends nothing:

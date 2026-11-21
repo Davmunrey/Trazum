@@ -4,7 +4,13 @@ updates:
   # The core and the CLI have no runtime dependencies on purpose, so this
   # mostly covers the web app and the TypeScript toolchain.
   - package-ecosystem: npm
-    directory: /
+    # The root, and the three tools CI installs from lockfiles of their own
+    # (#874): a pin nothing raises is a pin that goes stale.
+    directories:
+      - /
+      - /.github/tools/acorn
+      - /.github/tools/bundle-analyzer
+      - /.github/tools/playwright-core
     schedule:
       interval: weekly
       day: monday
@@ -31,3 +37,12 @@ updates:
       codeql:
         patterns: ['github/codeql-action*']
     labels: ['dependencies', 'ci']
+
+  # The Dockerfile's base image is pinned by digest (#874). Dependabot raises
+  # the digest, and the tag beside it, when Docker Hub moves.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ['dependencies']
