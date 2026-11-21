@@ -344,6 +344,10 @@ describe('oauth state', () => {
     assert.equal(url.searchParams.get('redirect_uri'), 'https://trazum.example/api/auth/github/callback');
     assert.equal(url.searchParams.get('state'), 'nonce123');
     assert.equal(url.searchParams.get('scope'), 'read:user');
+    // The account picker, so a person with two accounts sees which one (#900),
+    // and no sign-up offered mid-flow.
+    assert.equal(url.searchParams.get('prompt'), 'select_account');
+    assert.equal(url.searchParams.get('allow_signup'), 'false');
     // Nothing that would let Trazum act on the account.
     assert.ok(!url.searchParams.get('scope').includes('repo'));
     assert.ok(!url.searchParams.get('scope').includes('write'));
