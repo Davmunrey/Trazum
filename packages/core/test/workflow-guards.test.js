@@ -317,9 +317,9 @@ describe('everything CI and the image install is pinned by hash', () => {
 
 /**
  * An advisory the dependency review lets through is a decision, and a
- * decision is written down where it is taken (#874). GHSA-mrhx-c7xc-m3w5 is
- * in zod 3, which only the CI-only Codecov analyzer brings, and no 3.x is
- * patched; the owner accepted it on that ground. Each allowed advisory names
+ * decision is written down where it is taken (#874). GHSA-mrhx-c7xc-m3w5, in
+ * the zod 3 the CI-only Codecov analyzer brought, was allowed on that ground
+ * until #905 overrode zod to a patched 4.x; none is allowed now. Each allowed advisory names
  * its package, says why, who accepted it and when it goes, and reaches no
  * lockfile but a CI tool's.
  */

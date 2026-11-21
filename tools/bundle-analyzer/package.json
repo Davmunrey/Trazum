@@ -1,8 +1,11 @@
 {
   "name": "trazum-ci-bundle-analyzer",
   "private": true,
-  "description": "One tool a workflow installs with npm ci, so the lockfile's integrity hashes are checked (#874). Not a workspace and not published.",
+  "description": "One tool a workflow installs with npm ci, so the lockfile's integrity hashes are checked (#874). Not a workspace and not published. zod is overridden to a release with the fix for GHSA-mrhx-c7xc-m3w5, which no 3.x has (#905); the analyzer's dry run and its option checks were the same on it.",
   "dependencies": {
     "@codecov/bundle-analyzer": "2.0.1"
+  },
+  "overrides": {
+    "zod": "4.6.7"
   }
 }
