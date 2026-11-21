@@ -30,6 +30,7 @@ export const en: CliMessages = {
   locale: 'en',
   numberLocale: 'en-US',
 
+  commandHelpMore: 'Every command, the config file, prices and examples: trazum --help',
   help: (d, bold) => `${bold('trazum')}, what your AI agents and API calls cost, read from logs on this machine.
 
 ${bold('START HERE')}

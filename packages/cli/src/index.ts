@@ -358,6 +358,7 @@ import {
   viewGuard,
 } from './session-guard.js';
 import { readSession, sizeOf } from './waste.js';
+import { commandHelp } from './command-help.js';
 import { MAX_COLUMNS, Report, WINDOW, c, cErr, fitPath, sectionHeading, table, wrap } from './style.js';
 import type { Cell, TableColumn } from './style.js';
 
@@ -15277,19 +15278,18 @@ async function main(): Promise<void> {
   }
 
   if (boolFlag(args, 'help') || boolFlag(args, 'h') || !args.command) {
-    console.log(
-      t.help(
-        {
-          model: DEFAULT_USAGE.model,
-          callsPerMonth: DEFAULT_USAGE.callsPerMonth,
-          avgOutputTokens: DEFAULT_USAGE.avgOutputTokens,
-          cacheHitRate: DEFAULT_USAGE.cacheHitRate,
-          locales: LOCALES,
-          contracts: CONTRACT_NAMES,
-        },
-        c.bold,
-      ),
-    );
+    const defaults = {
+      model: DEFAULT_USAGE.model,
+      callsPerMonth: DEFAULT_USAGE.callsPerMonth,
+      avgOutputTokens: DEFAULT_USAGE.avgOutputTokens,
+      cacheHitRate: DEFAULT_USAGE.cacheHitRate,
+      locales: LOCALES,
+      contracts: CONTRACT_NAMES,
+    };
+    const full = t.help(defaults, c.bold);
+    // `trazum <command> --help` is that command's part of the help (#865); the whole help is `trazum --help`.
+    const own = args.command ? commandHelp(full, t.help(defaults, (s) => s), args.command, t.commandHelpMore) : undefined;
+    console.log(own ?? full);
     return;
   }
 

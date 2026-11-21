@@ -96,6 +96,8 @@ export interface CliMessages {
   numberLocale: string;
 
   help(defaults: HelpDefaults, bold: (s: string) => string): string;
+  /** Closes `trazum <command> --help`, which shows one command's part of the help: where the rest is. */
+  commandHelpMore: string;
 
   /**
    * The interview behind `trazum write`, one entry per slot in
