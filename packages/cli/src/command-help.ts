@@ -23,13 +23,9 @@ export function commandHelp(rendered: string, plain: string, command: string, mo
   // Rendering only wraps words in escape codes, so the two have the same lines.
   if (lines.length !== shown.length) return undefined;
 
-  const sections: Array<{ start: number; end: number }> = [];
-  for (let i = 0; i < lines.length; i += 1) {
-    if (!isHeading(lines[i] ?? '')) continue;
-    let end = i + 1;
-    while (end < lines.length && !isHeading(lines[end] ?? '')) end += 1;
-    sections.push({ start: i, end });
-  }
+  // A section runs from its heading to the next heading, or to the end.
+  const headings = lines.flatMap((line, index) => (isHeading(line) ? [index] : []));
+  const sections = headings.map((start, k) => ({ start, end: headings.at(k + 1) ?? lines.length }));
 
   const opensWith = (line: string) => line === `  trazum ${command}` || line.startsWith(`  trazum ${command} `);
   // The usage section is the one with the most lines that open with `trazum`.
@@ -41,21 +37,23 @@ export function commandHelp(rendered: string, plain: string, command: string, mo
   const out: string[] = [];
   if (usage !== undefined) {
     const picked: string[] = [];
-    for (let i = usage.start + 1; i < usage.end; i += 1) {
-      if (!opensWith(lines[i] ?? '')) continue;
-      picked.push(shown[i] ?? '');
+    const shownBody = shown.slice(usage.start + 1, usage.end);
+    let taking = false;
+    lines.slice(usage.start + 1, usage.end).forEach((line, index) => {
       // A long usage line continues on lines indented past the command.
-      while (i + 1 < usage.end && /^ {3,}\S/.test(lines[i + 1] ?? '')) picked.push(shown[++i] ?? '');
-    }
-    if (picked.length > 0) out.push(shown[usage.start] ?? '', ...picked);
+      if (opensWith(line)) taking = true;
+      else if (!/^ {3,}\S/.test(line)) taking = false;
+      if (taking) picked.push(shownBody.at(index) ?? '');
+    });
+    if (picked.length > 0) out.push(shown.at(usage.start) ?? '', ...picked);
   }
 
   for (const section of sections) {
     if (section === usage) continue;
-    const heading = lines[section.start] ?? '';
+    const heading = lines.at(section.start) ?? '';
     if (!(heading.endsWith(` ${command}`) || heading === `trazum ${command}`)) continue;
     const body = shown.slice(section.start, section.end);
-    while (body.length > 0 && (body[body.length - 1] ?? '').trim() === '') body.pop();
+    while (body.length > 0 && (body.at(-1) ?? '').trim() === '') body.pop();
     if (out.length > 0) out.push('');
     out.push(...body);
   }
