@@ -1367,7 +1367,7 @@ export const FLOWS = [
           );
           for (const element of document.body.querySelectorAll('*')) {
             if (element.children.length > 0 || !titles.has(element.textContent.trim())) continue;
-            if (!lang(element).startsWith('en')) found.push(`the document title "${element.textContent.trim()}" (lang ${lang(element)})`);
+            if (!lang(element).startsWith('en')) found.push(`the English-only text "${element.textContent.trim()}" (lang ${lang(element)})`);
           }
           return [...new Set(found)].slice(0, 6).join('; ');
         });
