@@ -16,6 +16,24 @@ merged commit with no entry is a change only `git log` remembers.
 
 Pending changes are files in [`changes/`](changes/README.md), one per change, and a release folds them in under its version.
 
+## 3.0.4 — 2026-11-21
+
+### Added
+
+- **The README shows the OpenSSF Best Practices badges, Passing and Baseline Level 1, and SECURITY.md says what they certify.** (#912) The project meets every Passing criterion and every Baseline Level 1 control on bestpractices.dev. Those answers are the project's own, with a link for each, and SECURITY.md says so next to the badges.
+- **A release carries its SLSA provenance under the name slsa-verifier and OpenSSF Scorecard look for.** (#908) Besides `trazum-v<version>.sigstore.json`, the attest job attaches `trazum-v<version>.intoto.jsonl`, the same bundle written on one line. Nothing new is signed, and the job verifies every release file against both before it attaches them. On the files of 3.0.3, `gh attestation verify --bundle` passed with the one-line form, and failed on a file the attestation does not name.
+- **Property-based tests feed every parser of untrusted text random input.** (#906) `packages/core/test/property-input.test.js` uses fast-check, pinned as a development dependency only, on a fixed seed. It generates logs for the Claude Code, Codex and Gemini CLI readers, usage lines, configs, plans, task reports and prompts. Each reader has to count what it cannot read and never throw, return no negative or infinite count, and copy no message text, tool argument or path into its output. Each parser has to refuse with its own error, never a `TypeError`. `optimize` has to keep a fenced block intact and never grow the count. Run across four seeds at 1,500 cases a property, none of them failed.
+- **`trazum task evaluate --plan <plan.json>` weighs several matched task pairs against a bar written down before the runs.** (#903) The plan sets the number of pairs, the smallest fall in tokens per accepted task worth keeping and the largest fall in acceptance rate to accept for it. Each arm counts a rejected run's tokens, and a pair that does not match is kept with its reasons and left out of the totals. The verdict is `clears-bar`, `below-bar`, `quality-bar-failed` or `inconclusive`, and none of them claims the policy caused the change.
+
+### Fixed
+
+- **Signing in to the web app shows GitHub's account picker.** (#900) A person signed in to more than one GitHub account now chooses which one, with `prompt=select_account`. The comment beside `allow_signup=false` said that parameter did this. It only hides GitHub's sign-up offer from a visitor who is not signed in, and the comment now says so.
+- **The gateway's estimate counts the tools, a system prompt sent as blocks, and Responses' `instructions`.** (#899) Each is billed as input on every call, and none was counted, so a call with a large tool set or a cached system prompt was judged against the budget as smaller than it was and could be let past the limit.
+
+### Security
+
+- **The one advisory the security workflow excepted is fixed, not excepted.** (#905) GHSA-mrhx-c7xc-m3w5 reached only the CI-only Codecov bundle analyzer, through the zod 3 it asks for, which no 3.x patches. `tools/bundle-analyzer` now overrides zod to 4.6.7, and the analyzer's dry run and option checks gave the same results on it as on 3.25.76. The dependency review excepts no advisory by ID again, so every one at moderate or above fails it, and a test keeps the override exact and at or above the fixed release.
+
 ## 3.0.3 — 2026-11-21
 
 ### Changed

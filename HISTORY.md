@@ -3005,3 +3005,14 @@ npm by then, and 3.0.2's files stay unattested, because a later run would sign
 them as built by a commit that did not build them. 3.0.3 carries the fix and
 the dependency updates since, and is the first release with a bundle.
 
+## 3.0.4 — A gateway estimate that counts what it was missing — released
+
+The gateway's estimate left out what every call is billed for besides the
+messages: the tool definitions, a system prompt sent as
+blocks, and Responses' `instructions`. A budget was being held against calls
+smaller than the ones sent. 3.0.4 carries that fix, `trazum task evaluate`
+over repeated pairs with a bar set before the runs, and the work on how the
+project is kept that OpenSSF reads: property-based tests over every parser of
+untrusted text, no excepted advisory, the Best Practices badges, and the first
+release with its provenance under the name verifiers look for.
+

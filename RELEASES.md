@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 3.0.3**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 3.0.4**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: it is not
@@ -160,6 +160,34 @@ The formula in this repository can be behind the manifests, because a release
 pull request bumps them before npm has a tarball to hash, and never ahead.
 
 ---
+
+## 3.0.4 — A gateway estimate that counts what it was missing
+
+**Adoption, read 2026-11-21:** 3943 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 3.0.3.
+
+- **The gateway's estimate counts the tools, a system prompt sent as blocks,
+  and Responses' `instructions`.** Each is billed as input on every call, and
+  none was counted. A call with a large tool set or a cached system prompt was
+  judged against the budget as smaller than it was, and could be let past the
+  limit (#899). If you run `trazum gateway` with a budget, upgrade.
+- **`trazum task evaluate --plan <plan.json>` weighs several matched task
+  pairs against a bar written down before the runs** (#903). The plan sets the
+  number of pairs, the smallest fall in tokens per accepted task worth keeping
+  and the largest fall in acceptance rate to accept for it. The verdict is
+  `clears-bar`, `below-bar`, `quality-bar-failed` or `inconclusive`, and none
+  of them says the policy caused the change.
+- **Signing in to the web app shows GitHub's account picker** (#900), so a
+  person signed in to more than one GitHub account chooses which one.
+- **The release carries its SLSA provenance** as `trazum-v3.0.4.intoto.jsonl`,
+  the same signed bundle as `trazum-v3.0.4.sigstore.json` on one line, under
+  the name slsa-verifier and OpenSSF Scorecard look for (#908).
+- **How the project is kept:** property-based tests feed every parser of
+  untrusted text random input (#906); the security workflow excepts no
+  advisory, after the one it excepted was fixed in a CI-only tool (#905); and
+  the README shows the OpenSSF Best Practices badges, Passing and Baseline
+  Level 1, which SECURITY.md says are the project's own answers (#912).
+
+Upgrade with `npm install -g @trazum/cli@3.0.4`.
 
 ## 3.0.3 — The first release whose files are attested
 
