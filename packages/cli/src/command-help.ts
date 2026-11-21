@@ -40,9 +40,11 @@ export function commandHelp(rendered: string, plain: string, command: string, mo
     const shownBody = shown.slice(usage.start + 1, usage.end);
     let taking = false;
     lines.slice(usage.start + 1, usage.end).forEach((line, index) => {
-      // A long usage line continues on lines indented past the command.
+      // A long usage line continues on lines indented past the command: three
+      // spaces or more, then text. Said without a regular expression, which a
+      // scanner reads as one a visitor's input could make slow.
       if (opensWith(line)) taking = true;
-      else if (!/^ {3,}\S/.test(line)) taking = false;
+      else if (!(line.startsWith('   ') && line.trim().length > 0)) taking = false;
       if (taking) picked.push(shownBody.at(index) ?? '');
     });
     if (picked.length > 0) out.push(shown.at(usage.start) ?? '', ...picked);
