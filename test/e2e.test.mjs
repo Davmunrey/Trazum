@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, relative } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -261,11 +263,12 @@ describe('CI runs the flows against the build the pull request would deploy', ()
   });
 
   it('with one pinned browser driver for the whole job, installed without its scripts', () => {
-    const versions = [...ci.matchAll(/playwright-core@([0-9.]+)/g)].map(([, version]) => version);
-    assert.equal(versions.length, 1, 'the driver is installed once, by the privacy probe step, and reused');
-    assert.match(versions[0], /^\d+\.\d+\.\d+$/);
-    assert.match(ci, /--ignore-scripts[^\n]* playwright-core@/);
-    assert.match(stepOf('End-to-end tests (the page, in a browser)'), /--playwright "\$RUNNER_TEMP\/pw\/node_modules\/playwright-core"/);
+    // From a lockfile of its own since #874, so `npm ci` checks the hashes.
+    const installs = [...ci.matchAll(/npm ci --prefix \.github\/tools\/playwright-core --ignore-scripts\b/g)];
+    assert.equal(installs.length, 1, 'the driver is installed once, by the privacy probe step, and reused');
+    const tool = JSON.parse(readFileSync(new URL('../.github/tools/playwright-core/package.json', import.meta.url), 'utf8'));
+    assert.match(tool.dependencies['playwright-core'], /^\d+\.\d+\.\d+$/, 'the driver is not pinned to one exact version');
+    assert.match(stepOf('End-to-end tests (the page, in a browser)'), /--playwright \.github\/tools\/playwright-core\/node_modules\/playwright-core/);
   });
 
   it('on a server of its own, so it never reads a page another step left running', () => {
@@ -318,4 +321,36 @@ describe('the bill the flows expect is still the bill the price list gives', () 
       assert.ok(source.includes(shown), `scripts/e2e.mjs no longer expects ${shown}`);
     }
   });
+});
+
+/**
+ * CI hands both browser scripts the driver as a path relative to the
+ * checkout, `.github/tools/playwright-core/node_modules/playwright-core`,
+ * since #874. `createRequire` refuses a relative path, and the first run
+ * failed on it: `done` passed only because it is given an absolute one. Each
+ * script is run here from a directory beside a stand-in driver whose launch
+ * throws a marker as it loads, so the marker means the relative path was
+ * loaded.
+ */
+describe('the browser scripts take the driver from a path relative to where they run', () => {
+  for (const script of ['scripts/privacy-probe.mjs', 'scripts/e2e.mjs']) {
+    it(script, () => {
+      const dir = mkdtempSync(join(tmpdir(), 'trazum-driver-'));
+      try {
+        const driver = join(dir, 'tools', 'playwright-core');
+        mkdirSync(driver, { recursive: true });
+        writeFileSync(join(driver, 'package.json'), '{"name":"playwright-core","main":"index.js"}');
+        // Thrown when the module loads: both scripts load the driver before they wait for a server.
+        writeFileSync(join(driver, 'index.js'), "throw new Error('STAND-IN DRIVER REACHED');\n");
+        const run = spawnSync(process.execPath, [fileURLToPath(new URL(`../${script}`, import.meta.url)), '--url', 'http://127.0.0.1:9', '--chrome', '/nonexistent/chrome', '--playwright', relative(dir, driver)], {
+          cwd: dir, env: process.env, encoding: 'utf8', timeout: 20_000,
+        });
+        const said = `${run.stdout}${run.stderr}`;
+        assert.doesNotMatch(said, /ERR_INVALID_ARG_VALUE/, 'the relative path was refused');
+        assert.match(said, /STAND-IN DRIVER REACHED/, `the driver was not loaded:\n${said.slice(0, 800)}`);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
 });

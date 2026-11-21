@@ -1,0 +1,8 @@
+{
+  "name": "trazum-ci-acorn",
+  "private": true,
+  "description": "One tool a workflow installs with npm ci, so the lockfile's integrity hashes are checked (#874). Not a workspace and not published.",
+  "dependencies": {
+    "acorn": "8.19.0"
+  }
+}

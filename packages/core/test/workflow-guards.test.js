@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -226,5 +226,88 @@ describe('scorecard.yml is the shape the Scorecard API accepts a result from', (
     const security = read('SECURITY.md');
     assert.match(security, /scorecard\.yml/);
     assert.match(security, /does not/i);
+  });
+});
+
+/**
+ * What CI and the image install is pinned by hash, not by a tag or a version
+ * somebody could move or republish (#874). OpenSSF Scorecard's first run on
+ * main found the Dockerfile's `FROM node:22-alpine` and three `npm install
+ * <name>@<version>` commands in workflows: every action was pinned by commit,
+ * and those four were the rest.
+ */
+describe('everything CI and the image install is pinned by hash', () => {
+  const TOOLS = ['acorn', 'bundle-analyzer', 'playwright-core'];
+
+  it('every FROM in the Dockerfile names a digest', () => {
+    const froms = read('Dockerfile').split('\n').filter((line) => /^FROM\s/i.test(line));
+    assert.ok(froms.length > 0, 'the Dockerfile has no FROM line, so this checks nothing');
+    const loose = froms.filter((line) => !/^FROM\s+\S+:\S+@sha256:[0-9a-f]{64}(\s|$)/.test(line));
+    assert.deepEqual(loose, [], 'a base image is pinned by tag only');
+  });
+
+  it('no workflow installs a package by name: installs come from a lockfile with npm ci', () => {
+    const offenders = [];
+    for (const name of readdirSync(join(ROOT, '.github/workflows'))) {
+      if (!/\.ya?ml$/.test(name)) continue;
+      const code = read(`.github/workflows/${name}`).split('\n').filter((line) => !/^\s*#/.test(line)).join('\n');
+      for (const [found] of code.matchAll(/\b(?:npm (?:install|i|add)|npx|pnpm (?:add|dlx)|yarn (?:add|dlx))\b[^\n]*/g)) offenders.push(`${name}: ${found.trim()}`);
+    }
+    assert.deepEqual(offenders, []);
+  });
+
+  it('each tool CI installs has a manifest of exact versions and a lockfile with a hash for every package', () => {
+    for (const tool of TOOLS) {
+      const manifest = JSON.parse(read(`.github/tools/${tool}/package.json`));
+      assert.equal(manifest.private, true, `${tool} could be published`);
+      const pins = Object.entries(manifest.dependencies ?? {});
+      assert.ok(pins.length > 0, `${tool} names nothing`);
+      for (const [pkg, version] of pins) assert.match(version, /^\d+\.\d+\.\d+$/, `${tool}: ${pkg} is not one exact version`);
+      const lock = JSON.parse(read(`.github/tools/${tool}/package-lock.json`));
+      for (const [pkg, version] of pins) assert.equal(lock.packages[`node_modules/${pkg}`]?.version, version, `${tool}: the lockfile resolves another ${pkg}`);
+      const unhashed = Object.entries(lock.packages).filter(([path, entry]) => path !== '' && !/^sha512-/.test(entry.integrity ?? ''));
+      assert.deepEqual(unhashed.map(([path]) => path), [], `${tool}: a package in the lockfile has no hash`);
+    }
+  });
+
+  it('and Dependabot raises every pin, so none goes stale', () => {
+    const dependabot = read('.github/dependabot.yml');
+    for (const tool of TOOLS) assert.ok(dependabot.includes(`- /.github/tools/${tool}\n`), `Dependabot does not watch ${tool}`);
+    assert.match(dependabot, /- package-ecosystem: docker\n {4}directory: \/\n/, 'Dependabot does not watch the Dockerfile');
+  });
+});
+
+/**
+ * An advisory the dependency review lets through is a decision, and a
+ * decision is written down where it is taken (#874). GHSA-mrhx-c7xc-m3w5 is
+ * in zod 3, which only the CI-only Codecov analyzer brings, and no 3.x is
+ * patched; the owner accepted it on that ground. Each allowed advisory names
+ * its package, says why, who accepted it and when it goes, and reaches no
+ * lockfile but a CI tool's.
+ */
+describe('every advisory the dependency review allows is explained and kept out of what ships', () => {
+  const text = read('.github/workflows/security.yml');
+  const allowed = (/\n {10}allow-ghsas: ([^\n]+)\n/.exec(text)?.[1] ?? '').split(',').map((id) => id.trim()).filter(Boolean);
+  const comment = (/((?:\n {10}#[^\n]*)+)\n {10}allow-ghsas:/.exec(text)?.[1] ?? '');
+
+  it('says, beside the list, why each one is allowed, who accepted it and when to remove it', () => {
+    for (const id of allowed) {
+      assert.match(id, /^GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/);
+      assert.ok(comment.includes(id), `${id} is allowed without a word on why`);
+    }
+    if (allowed.length > 0) {
+      assert.match(comment, /Accepted by the owner on \d{4}-\d{2}-\d{2} \(#\d+\)/);
+      assert.match(comment, /Remove this when /);
+    }
+  });
+
+  it('allows zod\'s advisory only while zod reaches no lockfile but the CI analyzer\'s', () => {
+    if (!allowed.includes('GHSA-mrhx-c7xc-m3w5')) return;
+    assert.doesNotMatch(read('package-lock.json'), /node_modules\/zod"/, 'zod is in the root lockfile, so the allowance covers code that ships');
+    for (const tool of ['acorn', 'playwright-core']) {
+      assert.doesNotMatch(read(`.github/tools/${tool}/package-lock.json`), /node_modules\/zod"/, `zod reached ${tool}`);
+    }
+    const zod = JSON.parse(read('.github/tools/bundle-analyzer/package-lock.json')).packages['node_modules/zod']?.version ?? '';
+    assert.match(zod, /^3\./, 'zod in the analyzer is no longer 3.x: the allowance may be removed');
   });
 });

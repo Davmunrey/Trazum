@@ -191,18 +191,23 @@ describe('the workflow measures, and cannot stand between a pull request and mai
     assert.ok(!required.includes(job), `${job} is required: a measurement must not block a merge`);
   });
 
-  it('installs the one version the script accepts, outside the workspace, with install scripts off', () => {
-    const [, version] = workflow.match(/^ {6}ANALYZER_VERSION: (\d+\.\d+\.\d+)$/m) ?? [];
-    assert.equal(version, ANALYZER.version, 'the workflow installs a version the script refuses');
-    assert.ok(runs.includes(`npm install --prefix "$RUNNER_TEMP/analyzer" --no-save --ignore-scripts --no-audit --no-fund "${ANALYZER.name}@\${ANALYZER_VERSION}"`));
+  it('installs the one version the script accepts, from a lockfile, outside the workspace, with install scripts off', () => {
+    // From a manifest and lockfile of its own since #874, so `npm ci` checks
+    // the hashes; the exact version is the manifest's and the lockfile's.
+    const tool = JSON.parse(read('.github/tools/bundle-analyzer/package.json'));
+    assert.equal(tool.dependencies[ANALYZER.name], ANALYZER.version, 'the workflow installs a version the script refuses');
+    const lock = JSON.parse(read('.github/tools/bundle-analyzer/package-lock.json'));
+    assert.equal(lock.packages[`node_modules/${ANALYZER.name}`]?.version, ANALYZER.version, 'the lockfile resolves another version');
+    assert.ok(runs.includes('npm ci --prefix .github/tools/bundle-analyzer --ignore-scripts --no-audit --no-fund'));
+    assert.ok(runs.includes(`--analyzer .github/tools/bundle-analyzer/node_modules/${ANALYZER.name}`));
     assert.doesNotMatch(runs, /npx /, 'npx would fetch whatever is newest and run its install scripts');
-    assert.equal((runs.match(/npm install/g) ?? []).length, 1);
+    assert.doesNotMatch(runs, /npm install/, 'an install that no lockfile checks');
     // And no package gained it: it is not in any manifest or in the lockfile.
     for (const manifest of ['package.json', 'apps/web/package.json', 'package-lock.json']) assert.ok(!read(manifest).includes('@codecov/'), `${manifest} depends on it`);
   });
 
   it('builds the web app before it measures it, with the command a person runs', () => {
-    const order = ['npm ci --ignore-scripts', 'npm run build\n', 'npm run build:web', 'npm install --prefix', 'node scripts/bundle-report.mjs'].map((step) => runs.indexOf(step));
+    const order = ['npm ci --ignore-scripts', 'npm run build\n', 'npm run build:web', 'npm ci --prefix', 'node scripts/bundle-report.mjs'].map((step) => runs.indexOf(step));
     assert.ok(order.every((at) => at !== -1), `a step is missing: ${order}`);
     assert.deepEqual(order, [...order].sort((a, b) => a - b), 'install, build, build the web app, fetch the analyzer, measure');
   });
@@ -217,7 +222,7 @@ describe('the workflow measures, and cannot stand between a pull request and mai
   });
 
   it('lets a report that was not taken fail the job on main, and nowhere else', () => {
-    assert.match(runs, /node scripts\/bundle-report\.mjs --analyzer "\$RUNNER_TEMP\/analyzer\/node_modules\/@codecov\/bundle-analyzer" \|\| refused=1\n/);
+    assert.match(runs, /node scripts\/bundle-report\.mjs --analyzer \.github\/tools\/bundle-analyzer\/node_modules\/@codecov\/bundle-analyzer \|\| refused=1\n/);
     const onMain = runs.indexOf('if [ "$refused" = "1" ] && [ "$EVENT" = "push" ]; then');
     const anywhere = runs.indexOf('if [ "$refused" = "1" ]; then');
     assert.ok(onMain !== -1 && anywhere !== -1 && onMain < anywhere, 'main is judged first');

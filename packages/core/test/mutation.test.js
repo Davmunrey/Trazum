@@ -579,20 +579,24 @@ describe('the workflow asks a pull request about its own lines and the week abou
   it('holds the tool against the real parser before it trusts the tool', () => {
     const held = step('The tool reads the real parser\'s trees the way its tests assume');
     assert.match(held, /^ {8}run: npm run test:mutation$/m);
-    assert.match(held, /TRAZUM_ACORN: \$\{\{ runner\.temp \}\}\/parser\/node_modules\/acorn/);
+    assert.match(held, /TRAZUM_ACORN: \$\{\{ github\.workspace \}\}\/\.github\/tools\/acorn\/node_modules\/acorn/);
     assert.ok(workflow.indexOf(held) < workflow.indexOf('scripts/mutate.mjs --acorn'));
     assert.match(read('package.json'), /"test:mutation": "node --test test\/mutation-parser\.test\.mjs"/);
   });
 
   it('installs one parser version, outside the workspace, and names the same one everywhere', () => {
+    // From a manifest and lockfile of its own since #874: one exact version,
+    // checked against the lockfile's hash, and every place that tells a
+    // person how to install it points at that one source.
     const install = step('Install the parser');
-    assert.match(install, /--prefix "\$RUNNER_TEMP\/parser" --no-save --ignore-scripts/);
-    const pinned = /acorn@(\d+\.\d+\.\d+)/.exec(install)?.[1];
-    assert.ok(pinned, 'the workflow does not pin the parser to an exact version');
+    assert.match(install, /npm ci --prefix \.github\/tools\/acorn --ignore-scripts/);
+    const pinned = JSON.parse(read('.github/tools/acorn/package.json')).dependencies.acorn;
+    assert.match(pinned ?? '', /^\d+\.\d+\.\d+$/, 'the parser is not pinned to one exact version');
+    assert.equal(JSON.parse(read('.github/tools/acorn/package-lock.json')).packages['node_modules/acorn']?.version, pinned);
     for (const path of ['scripts/mutate.mjs', 'test/mutation-parser.test.mjs', 'docs/mutation-testing.md']) {
-      const versions = [...read(path).matchAll(/acorn@([\w.-]+\d)/g)].map((match) => match[1]);
-      assert.ok(versions.length > 0, `${path} does not say which parser`);
-      for (const version of versions) assert.equal(version, pinned, path);
+      const text = read(path);
+      assert.ok(text.includes('npm ci --prefix .github/tools/acorn --ignore-scripts'), `${path} does not say where the parser comes from`);
+      assert.doesNotMatch(text, /acorn@\d/, `${path} names a version of its own`);
     }
     // Not a dependency of anything: the lockfile and every manifest stay as they were.
     assert.doesNotMatch(read('package-lock.json'), /"node_modules\/acorn"/);

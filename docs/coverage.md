@@ -191,13 +191,14 @@ A test that fails here still does not fail the job.
 ## The web app's bundle
 
 The `Bundle` workflow builds the web app and sends the size of what it built
-to Codecov's bundle analysis, on every pull request and on `main`.
+to Codecov's bundle analysis, on every pull request and on `main`. The
+analyzer is `@codecov/bundle-analyzer@2.0.1`, installed from the lockfile in
+`.github/tools/bundle-analyzer`, which pins it by hash.
 
 ```bash
 npm run build && npm run build:web
-DIR="$(mktemp -d)"
-npm install --prefix "$DIR" --no-save --ignore-scripts @codecov/bundle-analyzer@2.0.1
-node scripts/bundle-report.mjs --analyzer "$DIR/node_modules/@codecov/bundle-analyzer" --dry-run
+npm ci --prefix .github/tools/bundle-analyzer --ignore-scripts
+node scripts/bundle-report.mjs --analyzer .github/tools/bundle-analyzer/node_modules/@codecov/bundle-analyzer --dry-run
 ```
 
 Measured on 2026-11-18, with `--dry-run`, which sends nothing:

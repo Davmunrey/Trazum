@@ -77,19 +77,18 @@ So a green run is not read as more than it is:
 
 ## Running them
 
-They need a Chrome-family browser and `playwright-core`, and the repository
-brings neither: the driver is installed outside the workspace, pinned, the way
-CI installs it for the privacy probe. Nothing published and nothing in the
-lockfile depends on it.
+They need a Chrome-family browser and `playwright-core`, and no package brings
+either: the driver is installed from a manifest and lockfile of its own in
+`.github/tools/playwright-core`, which pin it by hash, the way CI installs it
+for the privacy probe. Nothing published depends on it.
 
 ```bash
 npm run build && npm run build:web
 cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
 PORT=3124 HOSTNAME=127.0.0.1 node apps/web/.next/standalone/apps/web/server.js &
 
-DIR="$(mktemp -d)"
-npm install --prefix "$DIR" --no-save --ignore-scripts playwright-core@1.58.2
-PW="$DIR/node_modules/playwright-core"
+npm ci --prefix .github/tools/playwright-core --ignore-scripts
+PW=.github/tools/playwright-core/node_modules/playwright-core
 CHROME="$(command -v google-chrome || command -v chromium)"
 
 npm run e2e -- --url http://127.0.0.1:3124 --chrome "$CHROME" --playwright "$PW"

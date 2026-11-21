@@ -19,11 +19,10 @@
  * which test runs which code, and starts the tests against each mutant.
  *
  * **It needs a parser and the repository has none.** `--acorn` is a directory
- * holding acorn, installed outside the workspace the way CI installs the
- * browser driver for the privacy probe:
+ * holding acorn, installed from its own lockfile the way CI installs it (#874):
  *
- *   npm install --prefix "$DIR" --no-save --ignore-scripts acorn@8.19.0
- *   node scripts/mutate.mjs --acorn "$DIR/node_modules/acorn"
+ *   npm ci --prefix .github/tools/acorn --ignore-scripts
+ *   node scripts/mutate.mjs --acorn .github/tools/acorn/node_modules/acorn
  *
  * Nothing published, and nothing in the lockfile, depends on it.
  *
@@ -153,8 +152,8 @@ function parseArgs(argv) {
   if (!options.acorn) {
     throw new Error(
       'mutate needs a parser: --acorn <directory holding acorn>.\n'
-        + '  npm install --prefix "$DIR" --no-save --ignore-scripts acorn@8.19.0\n'
-        + '  node scripts/mutate.mjs --acorn "$DIR/node_modules/acorn"',
+        + '  npm ci --prefix .github/tools/acorn --ignore-scripts\n'
+        + '  node scripts/mutate.mjs --acorn .github/tools/acorn/node_modules/acorn',
     );
   }
   if (options.write && (options.since || options.only || options.survivors || options.without || options.audit || options.list)) {
