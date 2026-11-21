@@ -2996,3 +2996,12 @@ web app's engine routes count the characters they are given, and the share
 page keeps its numbers for ten minutes instead of recomputing them on every
 view.
 
+## 3.0.3 — The first release whose files are attested — released
+
+3.0.2 was the first release the attest job ran on, and the job failed before
+it signed anything: it read the release from a directory outside the checkout,
+where `gh` could not tell which repository it was in. The packages were on
+npm by then, and 3.0.2's files stay unattested, because a later run would sign
+them as built by a commit that did not build them. 3.0.3 carries the fix and
+the dependency updates since, and is the first release with a bundle.
+

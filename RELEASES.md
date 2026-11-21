@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 3.0.2**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 3.0.3**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: it is not
@@ -154,6 +154,24 @@ The formula in this repository can be behind the manifests, because a release
 pull request bumps them before npm has a tarball to hash, and never ahead.
 
 ---
+
+## 3.0.3 — The first release whose files are attested
+
+**Adoption, read 2026-11-21:** 3943 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 3.0.2.
+
+**Nothing you call changes.** This release exists so that a release carries
+the attestation 3.0.2 was meant to.
+
+- **The files on this release are attested.** The `.vsix`, the `.mcpb`, the
+  pricing dataset, the bill of materials and `SHA256SUMS` carry one
+  build-provenance attestation, attached as `trazum-v3.0.3.sigstore.json`.
+  How to check a file is under *What a release carries*, above. The job that
+  signs them failed on 3.0.2 before it signed anything, because it read the
+  release from outside the checkout without naming the repository (#895).
+- **Dependencies at their latest releases:** Biome 2.6.8, lucide-react 1.75.0,
+  posthog-js 1.451.1, and playwright-core 1.65.1 for the end-to-end tests.
+
+Upgrade with `npm install -g @trazum/cli@3.0.3`.
 
 ## 3.0.2 — The bill where a team already looks
 

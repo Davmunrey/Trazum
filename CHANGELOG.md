@@ -16,6 +16,16 @@ merged commit with no entry is a change only `git log` remembers.
 
 Pending changes are files in [`changes/`](changes/README.md), one per change, and a release folds them in under its version.
 
+## 3.0.3 — 2026-11-21
+
+### Changed
+
+- **Dependencies move to their latest patch and minor releases.** (#885, #892) Biome 2.6.8, lucide-react 1.75.0 and posthog-js 1.451.1 in the workspace, and playwright-core 1.65.1 for the end-to-end tests in `tools/`. posthog-js now fetches its remote config from the assets host, which the web app's CSP does not allow. That fetch only sets session recording, surveys and autocapture, which `Analytics.tsx` turns off itself, so nothing the app sends changes.
+
+### Fixed
+
+- **The release's attest job names the repository it reads.** (#895) On 3.0.2, its first run, it read the release's files from outside the checkout, where `gh` has no repository to read, and failed before it signed anything. 3.0.2's files carry no attestation, and its notes now say so. A test holds every `gh` call in the job to `--repo`.
+
 ## 3.0.2 — 2026-11-21
 
 ### Added
