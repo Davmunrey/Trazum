@@ -72,10 +72,18 @@ describe('the bill of materials for this repository', () => {
     );
     const ours = byRef(bom);
     const workspaces = new Set(workspacesOf());
+    // npm 10 marks a workspace by its path; npm 11 (Node 26) writes no path
+    // for one, so it is also known by the name@version its manifest carries.
+    const workspaceRefs = new Set(
+      workspacesOf().map((path) => {
+        const own = JSON.parse(readFileSync(join(REPO_ROOT, path, 'package.json'), 'utf8'));
+        return `${own.name}@${own.version}`;
+      }),
+    );
     let compared = 0;
     for (const component of theirs.components) {
       const path = component.properties?.find((p) => p.name === PATH)?.value;
-      if (workspaces.has(path)) continue;
+      if (workspaces.has(path) || workspaceRefs.has(component['bom-ref'])) continue;
       const mine = ours.get(component['bom-ref']);
       assert.ok(mine, `npm sbom lists ${component['bom-ref']} and this bill does not`);
       for (const field of ['version', 'purl', 'licenses', 'hashes']) {
