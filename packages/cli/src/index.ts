@@ -186,6 +186,7 @@ import {
   UNLABELLED,
   withExactTokenCounts,
   overlayFromClaudeModelPricing,
+  partnerModelId,
 } from '@trazum/core';
 import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
 import { OPTIONAL_COUNTERS } from './optional-counters.js';
@@ -4389,6 +4390,23 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
   */
   const priceableAfterSlash = slugged.filter((model) => pricing.byId.has(model.slice(model.lastIndexOf('/') + 1)));
   if (priceableAfterSlash.length > 0) console.error(t.bill.prefixedKnown(priceableAfterSlash.join(', ')));
+
+  /*
+    A Claude model as Bedrock or Vertex names it (#858). The platform sets its
+    own price, so the call stays unpriced; what changes is that the reader is
+    told what the id is, and the model inside when the catalogue knows it.
+  */
+  const partners = document.gaps.flatMap((gap) =>
+    gap.kind === 'unpriced'
+      ? gap.models.flatMap((id) => {
+          const read = partnerModelId(id);
+          if (read === undefined) return [];
+          const known = pricing.byId.get(read.model);
+          return [`${id} (${t.bill.partnerModel(read.platform, known?.id)})`];
+        })
+      : [],
+  );
+  if (partners.length > 0) console.error(t.bill.partnerUnpriced(partners.join('; ')));
 }
 
 /**

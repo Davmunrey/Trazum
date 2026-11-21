@@ -4120,6 +4120,17 @@ route that bills differently. When the model after the slash is one the
 catalogue prices under its own name, `bill` says so, so the fix is one rename
 in the log rather than a guess made on the reader's behalf.
 
+A Claude model as Amazon Bedrock or Vertex AI names it, such as
+`us.anthropic.claude-sonnet-4-6`, `anthropic.claude-haiku-4-5-20251001-v1:0` or
+`claude-sonnet-4-5@20250929`, is unpriced too, because each platform sets its
+own prices and the catalogue carries Anthropic's. `bill` names each such id with
+its platform and, when the catalogue knows it, the model inside, and says to
+price it with an overlay row at the platform's rates. It never bills it at
+Anthropic's. The forms read are the ones Claude Code's Bedrock and Vertex pages
+show: the profile prefixes `us`, `eu`, `apac`, `jp`, `au`, `global` and
+`us-gov`, an optional version such as `-v1:0`, and Vertex's `@YYYYMMDD`. An
+application inference profile ARN is opaque and is left as it is.
+
 **A bill for a period: `--since` and `--until`.** A Claude Code folder holds
 every session since the tool was installed, so a bill with no window answers
 "what has this ever cost", which is rarely the question.

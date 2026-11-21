@@ -499,6 +499,9 @@ export {
   parsePricingOverlay,
 } from './pricing-overlay.js';
 export type { PricingOverlay } from './pricing-overlay.js';
+// A Claude model as Bedrock or Vertex names it, read but never priced (#858).
+export { partnerModelId } from './partner-model-id.js';
+export type { PartnerModelId, PartnerPlatform } from './partner-model-id.js';
 // Claude Code's modelPricing managed setting, read as a pricing overlay (#856).
 export {
   ClaudeModelPricingError,
