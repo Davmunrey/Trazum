@@ -1,1 +1,0 @@
-**The Action pin in `docs/setup.md` and `docs/running.md` moves to 3.0.1** (`9b0b245`). The 3.0.1 release PR was prepared without the 3.0.0 tag fetched, so `prepare-release` found no newer tag and left the pin at 2.7.12; the docs-pin guard in `security.test.js` caught the two releases of lag.

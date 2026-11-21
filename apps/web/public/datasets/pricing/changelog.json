@@ -4,6 +4,27 @@
   "schema": "https://trazum.vercel.app/datasets/pricing/schema-1.json",
   "versions": [
     {
+      "version": "3.0.2",
+      "url": "https://trazum.vercel.app/datasets/pricing/3.0.2.json",
+      "releaseAsset": "https://github.com/Davmunrey/Trazum/releases/download/v3.0.2/trazum-pricing-3.0.2.json",
+      "sha256": "a1659de88964e4da233b53f5169108c1693ca4dd99712e32db0b96f79b67f210",
+      "models": 91,
+      "rows": 734,
+      "changes": {
+        "since": "3.0.1",
+        "rows": {
+          "added": [],
+          "removed": [],
+          "changed": []
+        },
+        "models": {
+          "added": [],
+          "removed": [],
+          "changed": []
+        }
+      }
+    },
+    {
       "version": "3.0.1",
       "url": "https://trazum.vercel.app/datasets/pricing/3.0.1.json",
       "releaseAsset": null,
