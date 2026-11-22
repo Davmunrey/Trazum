@@ -30,6 +30,7 @@ describe('duplicateKey', () => {
       '{"model":"a","messages":[{"role":"user","content":"model"},{"role":"user","content":"model"}]}',
       '{"a":"\\"a\\":","b":[{"a":1},{"a":2}]}',
       '[{"a":1},{"a":1}]',
+      '{"stop_sequences":["a","b","b"]}',
       '{}',
       '"model"',
     ]) {
