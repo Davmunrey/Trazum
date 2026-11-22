@@ -6,12 +6,12 @@
     "url": "https://github.com/TrazumAPP/Trazum",
     "source": "github"
   },
-  "version": "3.0.4",
+  "version": "3.0.5",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@trazum/mcp",
-      "version": "3.0.4",
+      "version": "3.0.5",
       "transport": {
         "type": "stdio"
       }

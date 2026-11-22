@@ -3016,3 +3016,12 @@ project is kept that OpenSSF reads: property-based tests over every parser of
 untrusted text, no excepted advisory, the Best Practices badges, and the first
 release with its provenance under the name verifiers look for.
 
+## 3.0.5 — Three findings of a penetration test, closed — released
+
+An internal penetration test of 3.0.4 found three things worth an advisory: the
+gateway followed a provider's redirect with the caller's key, the status line
+kept its cache in a shared `/tmp` another local user could write to, and a
+self-hosted web app could be made to run out of memory by one client. 3.0.5
+closes all three, each proven by planting the fault it catches. It also carries
+the move to the `TrazumAPP` organisation, the rule that every change to main
+waits for the other maintainer's approval, and the end of the N0 deployment.
