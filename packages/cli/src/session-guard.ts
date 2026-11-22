@@ -18,7 +18,7 @@
  *   `profileUsage` at the bundled, dated catalogue.
  * - **The same place for state.** "The warning was given" is a file in the
  *   status line's cache directory, `TRAZUM_STATUSLINE_CACHE` or
- *   `$TMPDIR/trazum-statusline`. Nothing is written anywhere else.
+ *   `~/.cache/trazum/statusline`. Nothing is written anywhere else.
  *
  * **The hook protocol.** Claude Code's hooks page, read on 2026-11-19
  * (code.claude.com/docs/en/hooks), says:
@@ -54,6 +54,7 @@
 
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { claudeCodeRecords, FAILURE_POLICIES, formatUsd, profileUsage } from '@trazum/core';
 import type { FailurePolicy, PricingCatalogue } from '@trazum/core';
@@ -217,9 +218,13 @@ function cannotTell(cause: CannotTellCause | 'unpriced', models: string[], polic
 // "The warning was given", kept where the status line keeps its cache
 // --------------------------------------------------------------------------
 
-/** The status line's cache directory, as its script resolves it. */
+/**
+ * The status line's cache directory, as its script resolves it: the user's own
+ * cache directory, never a shared /tmp, where another user could plant a
+ * marker that silences the warning (GHSA-qrgc-pfrm-49qv).
+ */
 export function stateDir(env: NodeJS.ProcessEnv): string {
-  return env.TRAZUM_STATUSLINE_CACHE || join(env.TMPDIR || '/tmp', 'trazum-statusline');
+  return env.TRAZUM_STATUSLINE_CACHE || join(env.XDG_CACHE_HOME || join(env.HOME || homedir(), '.cache'), 'trazum', 'statusline');
 }
 
 /** A session id is hashed for the file name: it came from stdin and is not a path. */
@@ -237,8 +242,8 @@ export async function alreadyGiven(dir: string, session: string, kind: 'warned' 
 /** Never throws: a notice that cannot be remembered is given again, which is the safe direction. */
 export async function remember(dir: string, session: string, kind: 'warned' | 'cannot-tell'): Promise<void> {
   try {
-    await mkdir(dir, { recursive: true });
-    await writeFile(markerPath(dir, session, kind), '');
+    await mkdir(dir, { recursive: true, mode: 0o700 });
+    await writeFile(markerPath(dir, session, kind), '', { mode: 0o600 });
   } catch {
     /* given again next time */
   }

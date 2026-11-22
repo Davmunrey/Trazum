@@ -1187,7 +1187,7 @@ or `TRAZUM_BIN`), for the reason [`proactive`](#speaking-first-trazum-proactive)
 
 **What it remembers.** "The warning was given" is one empty file per session in the
 directory the [status line](../plugin/README.md#the-status-line-which-costs-nothing)
-already uses, `TRAZUM_STATUSLINE_CACHE` or `$TMPDIR/trazum-statusline`, named
+already uses, `TRAZUM_STATUSLINE_CACHE` or `~/.cache/trazum/statusline`, named
 `guard-<hash of the session id>.warned`. Clear the directory and the warning is given
 again. The session id is hashed, not used as a path.
 

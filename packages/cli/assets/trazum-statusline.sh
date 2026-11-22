@@ -43,7 +43,12 @@
 set -uo pipefail
 
 trazum_bin="${TRAZUM_BIN:-trazum}"
-cache_dir="${TRAZUM_STATUSLINE_CACHE:-${TMPDIR:-/tmp}/trazum-statusline}"
+# In the user's own cache directory, never in a shared /tmp: another user on
+# the machine could create a shared directory first, plant a link where this
+# writes, or a line where this reads (GHSA-qrgc-pfrm-49qv). The directory is
+# used only when it is a real directory this user owns, and is kept at 700.
+cache_dir="${TRAZUM_STATUSLINE_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/trazum/statusline}"
+own_cache_dir() { [ -d "$cache_dir" ] && [ ! -L "$cache_dir" ] && [ -O "$cache_dir" ]; }
 
 json="$(cat)"
 field() { printf '%s' "$json" | node -e '
@@ -56,7 +61,8 @@ field() { printf '%s' "$json" | node -e '
     process.stdout.write(String(value ?? process.argv[2] ?? ""));
   });' "$1" "${2-}"; }
 
-session="$(field session_id)"
+# A file name, so only the characters a session id has: never a path.
+session="$(field session_id | tr -cd 'A-Za-z0-9_.-')"
 model="$(field model.display_name '?')"
 cache="$cache_dir/${session:-unknown}.txt"
 
@@ -109,8 +115,9 @@ if [ "${1-}" != "--refresh" ]; then
   # an error: Claude Code's own figure stands in, labelled, because a number
   # from somewhere else presented as Trazum's is the one thing this product
   # does not do.
-  if [ -s "$cache" ]; then
-    printf '%s  %s' "$model" "$(cat "$cache")"
+  # Control characters are dropped: the line goes to a terminal.
+  if own_cache_dir && [ ! -L "$cache" ] && [ -s "$cache" ]; then
+    printf '%s  %s' "$model" "$(tr -d '\000-\037\177' < "$cache")"
   else
     printf '%s  $%s (Claude Code)' "$model" "$(field cost.total_cost_usd 0)"
   fi
@@ -123,7 +130,9 @@ fi
 path="$(field transcript_path)"
 [ -s "$path" ] || exit 0
 
-mkdir -p "$cache_dir" || exit 0
+(umask 077 && mkdir -p "$cache_dir") || exit 0
+own_cache_dir || exit 0
+chmod 700 "$cache_dir" || exit 0
 
 # The converted log and its resume point live beside the cached line, so a
 # session that ends takes its working files with it when $TMPDIR is cleared.

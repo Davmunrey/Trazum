@@ -7,7 +7,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
-import { decide, guardCommand, parseGuardCommand, parseThresholds, viewGuard } from '../dist/session-guard.js';
+import { decide, guardCommand, parseGuardCommand, parseThresholds, stateDir, viewGuard } from '../dist/session-guard.js';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -400,5 +400,15 @@ describe('install and uninstall, into a temporary settings file', () => {
 describe('the real home', () => {
   it('was not touched by any of this', () => {
     assert.equal(hashOf(REAL_SETTINGS), realBefore);
+  });
+});
+
+// GHSA-qrgc-pfrm-49qv: the guard's markers sat in the status line's shared
+// /tmp directory, where another user could plant one and silence the warning.
+describe('where the guard keeps its markers', () => {
+  it('is the status line’s directory, in the user’s own cache, never TMPDIR', () => {
+    assert.equal(stateDir({ HOME: '/home/a', TMPDIR: '/tmp' }), join('/home/a', '.cache', 'trazum', 'statusline'));
+    assert.equal(stateDir({ XDG_CACHE_HOME: '/x/cache', TMPDIR: '/tmp' }), join('/x/cache', 'trazum', 'statusline'));
+    assert.equal(stateDir({ TRAZUM_STATUSLINE_CACHE: '/chosen', HOME: '/home/a' }), '/chosen');
   });
 });

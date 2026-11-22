@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -294,5 +294,57 @@ describe('the Claude Code status line', () => {
         `${where} wires the refresh to SessionStart, whose stdout the model is charged for`,
       );
     }
+  });
+});
+
+// GHSA-qrgc-pfrm-49qv: the cache lived in a shared /tmp directory that another
+// user could create first, plant links in, or write the status line's text to.
+describe('where the status line keeps its cache', () => {
+  it('is the user’s own cache directory by default, kept at 700', () => {
+    const b = bench();
+    const home = join(b.dir, 'home');
+    mkdirSync(home);
+    const env = { TRAZUM_STATUSLINE_CACHE: '', HOME: home, XDG_CACHE_HOME: '', TMPDIR: b.dir };
+    assert.equal(run(b, ['--refresh'], payload(b), env).status, 0);
+    const dir = join(home, '.cache', 'trazum', 'statusline');
+    assert.ok(existsSync(join(dir, 'sess-1.txt')), 'the cache is not under ~/.cache/trazum/statusline');
+    assert.equal(statSync(dir).mode & 0o777, 0o700, 'the cache directory is readable by others');
+    assert.ok(!existsSync(join(b.dir, 'trazum-statusline')), 'the cache still went to TMPDIR');
+  });
+
+  it('narrows a directory others can read to 700 before writing in it', () => {
+    const b = bench();
+    mkdirSync(b.cache, { mode: 0o777 });
+    chmodSync(b.cache, 0o777);
+    assert.equal(run(b, ['--refresh'], payload(b)).status, 0);
+    assert.equal(statSync(b.cache).mode & 0o777, 0o700);
+  });
+
+  it('writes nothing through a cache directory that is a link, and reads nothing from it', () => {
+    const b = bench();
+    const elsewhere = join(b.dir, 'elsewhere');
+    mkdirSync(elsewhere);
+    writeFileSync(join(elsewhere, 'sess-1.txt'), 'planted');
+    symlinkSync(elsewhere, b.cache);
+
+    assert.equal(run(b, ['--refresh'], payload(b)).status, 0);
+    assert.deepEqual(readdirSync(elsewhere), ['sess-1.txt'], 'the refresh wrote through the link');
+    assert.doesNotMatch(run(b, [], payload(b)).stdout, /planted/, 'the status line read through the link');
+  });
+
+  it('drops control characters from what it prints', () => {
+    const b = bench();
+    mkdirSync(b.cache, { mode: 0o700 });
+    writeFileSync(join(b.cache, 'sess-1.txt'), '$1.0000\u001b]0;owned\u0007\u001b[2J');
+    const out = run(b, [], payload(b)).stdout;
+    assert.match(out, /\$1\.0000/);
+    assert.doesNotMatch(out, /[\u0000-\u001f\u007f]/, 'an escape sequence reached the terminal');
+  });
+
+  it('keeps a session id from naming a path outside the cache directory', () => {
+    const b = bench();
+    assert.equal(run(b, ['--refresh'], payload(b, { session_id: '../../escaped' })).status, 0);
+    assert.ok(!existsSync(join(b.dir, 'escaped.txt')), 'the session id climbed out of the cache directory');
+    assert.ok(readdirSync(b.cache).some((name) => name.endsWith('escaped.txt')));
   });
 });
