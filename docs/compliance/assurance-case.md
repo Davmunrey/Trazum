@@ -32,7 +32,7 @@ production and npm.
 | Complete mediation | Every library, share and admin route resolves the caller from the session and looks records up by owner | [TRZ-06](controls.md) |
 | Economy of mechanism | The core has no runtime dependency; three of the four published packages have none outside the project | [docs/architecture.md](../architecture.md) |
 | Open design | The source, the threat model and this argument are public | This repository |
-| Separation of privilege, in part | Nothing reaches `main` but through a pull request with required checks, under a ruleset with no bypass actor. That is enforcement, not separation: the ruleset asks for zero approvals, and a maintainer can change the workflows and the ruleset through the same pull requests, so no independent approval is required yet | [TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md) |
+| Separation of privilege | Nothing reaches `main` but through a pull request with required checks and the approval of a maintainer other than the one who pushed last, given after that push, under a ruleset with no bypass actor. A change to the workflows or the ruleset goes through the same approval | [TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md) |
 
 The design decisions behind these, and the ones deliberately not taken, are in
 SECURITY.md's [Deliberate design decisions](../../SECURITY.md#deliberate-design-decisions).
@@ -56,5 +56,6 @@ A claim is only as strong as what it leaves out. The risks accepted on purpose
 are in the threat model's [Accepted, and why](threat-model.md#accepted-and-why),
 and every limit the server sets, with the risk behind it, in
 [The limits, and the risk behind each](threat-model.md#the-limits-and-the-risk-behind-each).
-The ruleset asks for zero approvals, so no second person's approval is
-required yet ([TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md)).
+Two maintainers are a small team: a change both of them miss is not caught by
+review, and while one of them cannot approve, nothing merges until an admin
+lowers the count ([TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md#when-the-other-maintainer-cannot-approve)).

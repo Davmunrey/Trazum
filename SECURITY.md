@@ -320,19 +320,17 @@ Some of this cannot be committed to a file — it lives in repository settings.
    not fine, and it is not drift either. An admin's `npm run ruleset` reads
    all of it, so run it after anybody has been on the settings page.
 
-   **It asks for zero approvals, deliberately.** The first version required
-   one, and that deadlocked the repository: GitHub does not let you approve
-   your own pull request, and with a single maintainer there was nobody else to
-   ask. Since 2026-11-22 there are two maintainers ([GOVERNANCE.md](GOVERNANCE.md)),
-   so requiring one approval no longer deadlocks; until the ruleset asks for it,
-   no second person's approval is required. Worth being clear about what was lost — nothing. An outside
-   contributor cannot merge regardless, because merging needs write access; the
-   approval rule only ever constrained the maintainers, and an approval you
-   give yourself is not review. The gate that does real work here is the
-   required status checks, which no one can talk their way past.
-
-   Raise it back to `1` the day a second maintainer has write access. Until
-   then it would be theatre with a deadlock attached.
+   **It asks for one approval, from the other maintainer.** The first version
+   required one, and that deadlocked the repository: GitHub does not let you
+   approve your own pull request, and with a single maintainer there was nobody
+   else to ask, so it asked for zero. It went back to one when a second
+   maintainer had write access (#920, [GOVERNANCE.md](GOVERNANCE.md)). Now
+   every change, Dependabot's included, waits for the maintainer who did not
+   open it, beside the required status checks, which no one can talk their way
+   past. The approval must be of the last push and come from somebody other
+   than whoever made it (`require_last_push_approval`), so a maintainer cannot
+   push to the other's pull request and approve their own commit; a later push
+   dismisses it.
 2. **Code security → Dependency graph**, then add an Actions **variable**
    `DEPENDENCY_REVIEW = enabled` (Settings → Secrets and variables → Actions →
    Variables).
