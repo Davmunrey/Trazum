@@ -47,7 +47,7 @@ closed, not when somebody remembers this page. Live:
 [open to a first contribution](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
-**Ready to be picked up (19).**
+**Ready to be picked up (13).**
 
 | Issue | What | Area |
 | --- | --- | --- |
@@ -59,17 +59,11 @@ closed, not when somebody remembers this page. Live:
 | [#682](https://github.com/TrazumAPP/Trazum/issues/682) | Review the Portuguese dictionary: 36 entries nobody who reads Portuguese has agreed to | core |
 | [#683](https://github.com/TrazumAPP/Trazum/issues/683) | Review the Italian dictionary: 36 entries nobody who reads Italian has agreed to | core |
 | [#684](https://github.com/TrazumAPP/Trazum/issues/684) | Review the Dutch dictionary: 30 entries nobody who reads Dutch has agreed to | core |
-| [#763](https://github.com/TrazumAPP/Trazum/issues/763) | Nineteen of sixty-nine sampled prices could change and no test would fail | core |
 | [#774](https://github.com/TrazumAPP/Trazum/issues/774) | Gemini CLI and Codex users install the MCP server in one line, and the Gemini gallery lists it | mcp |
 | [#775](https://github.com/TrazumAPP/Trazum/issues/775) | bill reads Amazon Bedrock's model invocation logs | cli |
-| [#778](https://github.com/TrazumAPP/Trazum/issues/778) | Four counts the documents state in words are not derived by any test | - |
-| [#779](https://github.com/TrazumAPP/Trazum/issues/779) | Two workflows that write outside the repository have no test that reads them: pr-guide and the mirror | - |
 | [#780](https://github.com/TrazumAPP/Trazum/issues/780) | The MCP server ships as a one-click bundle for Claude Desktop, and the registry lists it | mcp |
 | [#781](https://github.com/TrazumAPP/Trazum/issues/781) | brew install the CLI from a tap this repository keeps current | cli |
 | [#786](https://github.com/TrazumAPP/Trazum/issues/786) | bill takes what ccusage already reports, and prices it with dated rates, budgets and the ranked changes | cli |
-| [#787](https://github.com/TrazumAPP/Trazum/issues/787) | OpenSSF Scorecard runs on main and its result is on the README | - |
-| [#823](https://github.com/TrazumAPP/Trazum/issues/823) | Show an agent plan's limit and reset time, from the agent's own signals only | cli |
-| [#824](https://github.com/TrazumAPP/Trazum/issues/824) | Prometheus metrics and a Grafana dashboard for the bill and the gateway | cli |
 
 **Waiting on something outside the repository (11).** Each issue says what.
 
