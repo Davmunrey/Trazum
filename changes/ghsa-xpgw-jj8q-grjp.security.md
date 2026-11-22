@@ -1,0 +1,1 @@
+**`trazum gateway` no longer follows a redirect from the provider.** (GHSA-xpgw-jj8q-grjp) A provider endpoint, or anything able to answer in its place, that replied with a 307 or 308 got the request repeated to the new host with the caller's API key in it. The gateway now refuses the redirect and answers 502, as every other outbound call in Trazum already did.

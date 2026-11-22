@@ -215,6 +215,23 @@ const nextConfig = {
    */
   poweredByHeader: false,
 
+  /**
+   * How much of a request body Next holds in memory before the middleware and
+   * the route see it. Next's default is 10 MB, buffered for every request,
+   * including ones the route then refuses, and a container with 512 MB went
+   * down in a second under bodies that size (GHSA-xx4w-86jg-r8xr).
+   *
+   * 4 MB, because the largest body a route accepts is a comparison of two
+   * prompts at the 400,000-character cap: 2.4 MB when every character takes
+   * three bytes. A body past the limit is cut off, the JSON no longer parses,
+   * and the route answers 400. Vercel refuses a body above 4.5 MB on its own;
+   * a container needs this and the proxy in
+   * `packaging/nginx/trazum-web.conf`.
+   */
+  experimental: {
+    proxyClientMaxBodySize: '4mb',
+  },
+
   async headers() {
     return [
       { source: '/:path*', headers: BASELINE },

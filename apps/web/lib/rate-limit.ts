@@ -60,7 +60,21 @@ export interface RateLimitOptions {
    * process open.
    */
   sweepAbove?: number;
+  /**
+   * Buckets to hold at most. Past it, and with nothing expired to sweep, a key
+   * not seen before shares one bucket with every other such key, so the table
+   * cannot grow without bound however many addresses an attacker rotates
+   * through (GHSA-xx4w-86jg-r8xr). The cost lands on newcomers during a flood,
+   * which is the trade a bounded table has to make.
+   */
+  maxBuckets?: number;
 }
+
+/** Buckets one limiter holds at most, unless it is told otherwise. */
+export const MAX_BUCKETS = 50_000;
+
+/** The bucket new keys share once the table is full. */
+export const OVERFLOW_BUCKET = 'overflow';
 
 /**
  * How the sweep used to work, and why that was a way to take the app down.
@@ -101,17 +115,69 @@ export interface RateLimitOptions {
  * `x-forwarded-for` is client-controllable unless a trusted proxy overwrites
  * it, which is the normal deployment and is why it is read first. Where it is
  * not overwritten, an attacker can rotate the header and get a fresh bucket per
- * request — another reason this is a courtesy limit and not a security control.
+ * request, which is why the value is held to what an address can be
+ * (GHSA-xx4w-86jg-r8xr):
+ *
+ * - **Only an address is a key.** A value that is not an IPv4 or IPv6 address
+ *   shares one bucket, {@link UNREADABLE_ADDRESS}, with every other such value.
+ *   Before, any string of any length was a key, and 15,000 requests carrying
+ *   distinct 14 KB values filled 512 MB.
+ * - **IPv6 counts by its /64.** One machine is usually handed a whole /64, so
+ *   counting by the full address would give it 2^64 buckets to rotate through.
  */
 export function clientKey(request: RequestLike): string {
-  return (
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-    request.headers.get('x-real-ip') ||
-    'local'
-  );
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded !== null) return addressKey(forwarded.split(',', 1)[0] ?? '');
+  const real = request.headers.get('x-real-ip');
+  if (real !== null) return addressKey(real);
+  return 'local';
 }
 
-export function createRateLimiter({ windowMs, max, sweepAbove = 10_000 }: RateLimitOptions): RateLimiter {
+/** The one bucket every value that is not an address shares. */
+export const UNREADABLE_ADDRESS = 'unreadable';
+
+/** The longest textual IPv6 address, with an IPv4 tail: 45 characters. */
+export const MAX_ADDRESS_LENGTH = 45;
+
+const IPV4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+const HEXTET = /^[0-9a-f]{1,4}$/;
+
+function addressKey(raw: string): string {
+  const value = raw.trim().toLowerCase();
+  if (value.length === 0 || value.length > MAX_ADDRESS_LENGTH) return UNREADABLE_ADDRESS;
+  if (IPV4.test(value)) return value;
+  const prefix = ipv6Prefix(value);
+  return prefix === null ? UNREADABLE_ADDRESS : `${prefix}::/64`;
+}
+
+/**
+ * The first four groups of an IPv6 address, or null when it is not one.
+ * An IPv4 tail ("::ffff:192.0.2.1") counts as the two groups it stands for.
+ */
+function ipv6Prefix(value: string): string | null {
+  if (!value.includes(':')) return null;
+  let text = value;
+  const lastColon = text.lastIndexOf(':');
+  const last = text.slice(lastColon + 1);
+  if (last.includes('.')) {
+    if (!IPV4.test(last)) return null;
+    text = `${text.slice(0, lastColon + 1)}0:0`;
+  }
+  const halves = text.split('::');
+  if (halves.length > 2) return null;
+  const head = halves[0] === '' ? [] : halves[0]!.split(':');
+  const rest = halves.length === 2 ? (halves[1] === '' ? [] : halves[1]!.split(':')) : [];
+  if (![...head, ...rest].every((group) => HEXTET.test(group))) return null;
+  const given = head.length + rest.length;
+  if (halves.length === 1 ? given !== 8 : given > 7) return null;
+  const groups = [...head, ...Array<string>(8 - given).fill('0'), ...rest];
+  return groups
+    .slice(0, 4)
+    .map((group) => group.replace(/^0+(?=.)/, ''))
+    .join(':');
+}
+
+export function createRateLimiter({ windowMs, max, sweepAbove = 10_000, maxBuckets = MAX_BUCKETS }: RateLimitOptions): RateLimiter {
   const buckets = new Map<string, { count: number; resetAt: number }>();
   let sweeps = 0;
   // Zero rather than "one window from now": the first sweep should happen as
@@ -119,8 +185,8 @@ export function createRateLimiter({ windowMs, max, sweepAbove = 10_000 }: RateLi
   let nextSweepAt = 0;
 
   const rateLimited = function rateLimited(request: RequestLike, now: number, cost = 1): boolean {
-    const key = clientKey(request);
-    const bucket = buckets.get(key);
+    let key = clientKey(request);
+    let bucket = buckets.get(key);
 
     if (!bucket || now >= bucket.resetAt) {
       if (buckets.size > sweepAbove && now >= nextSweepAt) {
@@ -128,6 +194,15 @@ export function createRateLimiter({ windowMs, max, sweepAbove = 10_000 }: RateLi
         sweeps++;
         for (const [other, value] of buckets) {
           if (now >= value.resetAt) buckets.delete(other);
+        }
+      }
+      if (!bucket && buckets.size >= maxBuckets) {
+        key = OVERFLOW_BUCKET;
+        bucket = buckets.get(key);
+        if (bucket && now < bucket.resetAt) {
+          if (bucket.count + cost > max) return true;
+          bucket.count += cost;
+          return false;
         }
       }
       // A refused request is not charged: it did no work, and charging it
