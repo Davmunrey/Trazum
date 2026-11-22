@@ -52,9 +52,12 @@ A security report goes to the maintainers privately, as
 Trazum has to be able to close issues, accept changes and release within a week
 of losing either maintainer. These are what that rests on:
 
-- **Either maintainer can do all three.** Both can close issues and merge, and
-  both are reviewers of the `release` environment the publish runs under
-  ([`.github/environments.json`](.github/environments.json)).
+- **Either maintainer can close issues and release.** Both are reviewers of
+  the `release` environment the publish runs under
+  ([`.github/environments.json`](.github/environments.json)). Merging is
+  different: the ruleset asks for the other maintainer's approval, so with one
+  of them gone nothing merges until an admin lowers that count, as the next
+  section says.
 - **The release needs no person's machine.** Merging a release pull request is
   the release: the workflow publishes to npm, tags, attaches and signs the files
   ([docs/releasing.md](docs/releasing.md)).
@@ -71,12 +74,35 @@ of losing either maintainer. These are what that rests on:
 **Status on 2026-11-22, as the owner reported it:** @munozrey has write access
 to the repository, is a member of the `@trazum` organisation on npm, and is the
 owner's named GitHub account successor. With write access either maintainer can
-close issues and merge without waiting on the other, whether the other has left,
-died or is simply unreachable; the account successor matters only for what needs
-the owner's account itself, such as the repository's settings.
+close issues without waiting on the other.
 
 **Not yet in place:** GitHub enforces the environments' reviewers only once an
 admin applies [`.github/environments.json`](.github/environments.json) with
 `scripts/environments.mjs`. Until the owner has done that, a release still
 waits on the owner's approval, and Trazum cannot release within a week without
 them.
+
+## When the other maintainer cannot approve
+
+Every merge waits for the approval of the maintainer who did not push last
+(#920). With two maintainers, losing one stops merges, so the way back is
+written down here rather than worked out on the day:
+
+1. **Only an admin can lower the count, and only on GitHub.** The fix cannot
+   go through a pull request, because that pull request would need the missing
+   approval. An admin sets `required_approving_review_count` to `0` and turns
+   off `require_last_push_approval` and `require_code_owner_review` in the
+   ruleset on the repository's settings page, then opens a pull request that
+   says the same in [`.github/rulesets/main-branch.json`](.github/rulesets/main-branch.json)
+   and names the issue that records why. The weekly comparison reports the
+   difference until that pull request merges.
+2. **If the owner is the one who can still act**, the owner is the admin and
+   does both steps the same day.
+3. **If @munozrey is the one who can still act**, they have write access but
+   are not an admin. They become one only through GitHub's successor process
+   above, after 7 or 21 days, and only when the owner has died. While the owner
+   is alive but unreachable, there is no way back, and Trazum cannot merge
+   within a week. That is the gap a third maintainer, or a second admin, would
+   close.
+4. **When a second maintainer can act again**, the three settings go back the
+   same way, through a pull request they approve.

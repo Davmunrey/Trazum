@@ -36,6 +36,13 @@ const rule = (ruleset, type) => ruleset.rules.find((entry) => entry.type === typ
 const wanted = Object.fromEntries(SETTINGS.map((setting) => [setting.key, setting.want]));
 
 describe('the live ruleset is compared with the file, rule by rule', () => {
+  it('states that a change waits for a maintainer who did not push it last (#920)', () => {
+    const asked = rule(stated, 'pull_request').parameters;
+    assert.equal(asked.required_approving_review_count, 1, 'one approval, the other maintainer\'s');
+    assert.equal(asked.require_last_push_approval, true, 'whoever pushed last cannot be the one who approves');
+    assert.equal(asked.dismiss_stale_reviews_on_push, true, 'an approval does not survive a later push');
+  });
+
   it('finds nothing when GitHub enforces the file', () => {
     assert.deepEqual(compare(stated, live()), { differences: [], unstated: [], notRead: [] });
   });
@@ -103,6 +110,8 @@ describe('the live ruleset is compared with the file, rule by rule', () => {
     for (const [type, key, value] of [
       ['pull_request', 'required_review_thread_resolution', false],
       ['pull_request', 'require_code_owner_review', false],
+      ['pull_request', 'required_approving_review_count', 0],
+      ['pull_request', 'require_last_push_approval', false],
       ['required_status_checks', 'strict_required_status_checks_policy', false],
       ['code_scanning', 'code_scanning_tools', [{ tool: 'CodeQL', security_alerts_threshold: 'high_or_higher', alerts_threshold: 'all' }]],
       ['code_quality', 'severity', 'errors'],

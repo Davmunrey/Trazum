@@ -32,7 +32,7 @@ production and npm.
 | Complete mediation | Every library, share and admin route resolves the caller from the session and looks records up by owner | [TRZ-06](controls.md) |
 | Economy of mechanism | The core has no runtime dependency; three of the four published packages have none outside the project | [docs/architecture.md](../architecture.md) |
 | Open design | The source, the threat model and this argument are public | This repository |
-| Separation of privilege | Nothing reaches `main` but through a pull request with required checks and the approval of the maintainer who did not open it, under a ruleset with no bypass actor. A change to the workflows or the ruleset goes through the same approval | [TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md) |
+| Separation of privilege | Nothing reaches `main` but through a pull request with required checks and the approval of a maintainer other than the one who pushed last, given after that push, under a ruleset with no bypass actor. A change to the workflows or the ruleset goes through the same approval | [TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md) |
 
 The design decisions behind these, and the ones deliberately not taken, are in
 SECURITY.md's [Deliberate design decisions](../../SECURITY.md#deliberate-design-decisions).
@@ -57,4 +57,5 @@ are in the threat model's [Accepted, and why](threat-model.md#accepted-and-why),
 and every limit the server sets, with the risk behind it, in
 [The limits, and the risk behind each](threat-model.md#the-limits-and-the-risk-behind-each).
 Two maintainers are a small team: a change both of them miss is not caught by
-review ([TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md)).
+review, and while one of them cannot approve, nothing merges until an admin
+lowers the count ([TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md#when-the-other-maintainer-cannot-approve)).

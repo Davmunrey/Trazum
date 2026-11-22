@@ -327,7 +327,10 @@ Some of this cannot be committed to a file — it lives in repository settings.
    maintainer had write access (#920, [GOVERNANCE.md](GOVERNANCE.md)). Now
    every change, Dependabot's included, waits for the maintainer who did not
    open it, beside the required status checks, which no one can talk their way
-   past.
+   past. The approval must be of the last push and come from somebody other
+   than whoever made it (`require_last_push_approval`), so a maintainer cannot
+   push to the other's pull request and approve their own commit; a later push
+   dismisses it.
 2. **Code security → Dependency graph**, then add an Actions **variable**
    `DEPENDENCY_REVIEW = enabled` (Settings → Secrets and variables → Actions →
    Variables).

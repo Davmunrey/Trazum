@@ -681,7 +681,11 @@ An approval with nothing in it is not one.
   readiness` refuses a line added to `CHANGELOG.md` outside a release.
 - **One approval, from the other maintainer.** GitHub does not let an author
   approve their own pull request, so a change merges when the maintainer who
-  did not open it approves (#920, [GOVERNANCE.md](GOVERNANCE.md)).
+  did not open it approves (#920, [GOVERNANCE.md](GOVERNANCE.md)). The approval
+  has to come after the last push and from somebody other than whoever made
+  that push, and a new push dismisses it. If the reviewer pushes a fix to the
+  author's pull request, the author pushes last (updating the branch is
+  enough) so that the reviewer can approve.
 - **Required checks:** `Build and tests`, both `GitHub Action self-test` jobs,
   `CodeQL`, `npm audit`, `PR readiness`, `Signed-off-by on every commit` and
   `cla`, listed in `.github/rulesets/main-branch.json`. The `pr-guide` comment
