@@ -194,6 +194,29 @@ export const UPSTREAMS: Readonly<Record<string, Upstream>> = {
     path: /^\/v1beta\/models\/([A-Za-z0-9._-]+):generateContent$/,
     modelIn: 'path',
   },
+  /**
+   * Moonshot, confirmed from its own API reference rather than recalled.
+   *
+   * platform.kimi.ai/docs/api/overview.md, read 2026-11-22 (platform.moonshot.ai
+   * redirects there): the service address is `https://api.moonshot.ai`, OpenAI
+   * Chat Completions is `POST /v1/chat/completions`, and "All API requests
+   * require an API Key in the HTTP header", given as `Authorization: Bearer
+   * $MOONSHOT_API_KEY`. The OpenAPI document embedded in
+   * platform.kimi.ai/docs/api/chat.md, read the same day, names the same
+   * server and a bearer scheme. `scripts/check-model-availability.mjs` already
+   * sent a key to the same URL; this is the page that says it is the one.
+   *
+   * The international platform's host only. Moonshot's China platform
+   * (platform.kimi.com, which platform.moonshot.cn redirects to) serves the
+   * same API from api.moonshot.cn, a different host, and a second origin
+   * here would be a second destination for somebody's key that nobody has
+   * reviewed.
+   *
+   * Only Chat Completions. The same reference lists `/v1/responses` and an
+   * Anthropic-shaped `/anthropic/v1/messages` on this host: different
+   * operations with different usage shapes, not forwarded.
+   */
+  moonshot: { origin: 'https://api.moonshot.ai', path: '/v1/chat/completions' },
 };
 
 /**
@@ -423,6 +446,7 @@ function describe(body: string, provider: string, modelFromPath: string | null):
   speed: string | null;
   serviceTier: string | null;
   inferenceGeo: string | null;
+  cacheTtl: string | null;
 } | null {
   let parsed: unknown;
   try {
@@ -489,7 +513,30 @@ function describe(body: string, provider: string, modelFromPath: string | null):
      * The response says which tier ran, and the spend is recorded from that.
      */
     serviceTier: typeof request.service_tier === 'string' && request.service_tier !== '' ? request.service_tier : null,
+    /**
+     * Moonshot's `prompt_cache_options.ttl`: a setting, not content, and the
+     * only place a Kimi cache write's lifetime is said. The response does not
+     * echo it, and K3 bills an hour's entry at twice a five-minute one, so the
+     * reader is told what the request asked and decides from that.
+     */
+    cacheTtl: cacheTtlOf(request),
   };
+}
+
+/**
+ * The request's cache-write lifetime: `null` when it names none, the string it
+ * sent otherwise, and `''` for a value that is not a string, which no lifetime
+ * is. The reader prices `''` as an unknown lifetime rather than as the
+ * default, because a request that said something unreadable did not say
+ * nothing.
+ */
+function cacheTtlOf(request: Record<string, unknown>): string | null {
+  const options = request.prompt_cache_options;
+  if (options === undefined) return null;
+  if (typeof options !== 'object' || options === null || Array.isArray(options)) return '';
+  const ttl = (options as Record<string, unknown>).ttl;
+  if (ttl === undefined) return null;
+  return typeof ttl === 'string' ? ttl : '';
 }
 
 function labelOf(request: Record<string, unknown>): string | null {
@@ -665,7 +712,9 @@ export function buildGateway(context: GatewayContext): Server {
         return;
       }
 
-      const call = { provider: context.provider, ...described };
+      // The write lifetime is for the usage readers, not for the decision.
+      const { cacheTtl, ...asked } = described;
+      const call = { provider: context.provider, ...asked };
       const baseStanding = context.standing();
       const standing = spend === null ? baseStanding : spend.standing(baseStanding);
       const basePosition = context.position?.({
@@ -815,7 +864,7 @@ export function buildGateway(context: GatewayContext): Server {
         } catch {
           measured = null;
         }
-        const buffered = usageFromResponse(context.provider, measured, { requireComplete: context.liveBudget === true });
+        const buffered = usageFromResponse(context.provider, measured, { requireComplete: context.liveBudget === true, cacheTtl });
         /**
          * The buffered path was the silent one.
          *
@@ -846,7 +895,7 @@ export function buildGateway(context: GatewayContext): Server {
 
       response.writeHead(upstreamResponse.status, back);
 
-      const reader = streamingUsageReader(context.provider, { requireComplete: context.liveBudget === true });
+      const reader = streamingUsageReader(context.provider, { requireComplete: context.liveBudget === true, cacheTtl });
       const decoder = new TextDecoder();
       try {
         for await (const chunk of upstreamResponse.body as AsyncIterable<Uint8Array>) {
