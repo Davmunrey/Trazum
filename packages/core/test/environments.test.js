@@ -127,7 +127,7 @@ describe('GitHub is compared with the file, environment by environment', () => {
 
   it('reads reviewers, timer and policies off what GitHub answers', () => {
     const terms = liveTerms(liveOf(env('production')).environment, liveOf(env('production')).policies);
-    assert.deepEqual(terms, { reviewers: ['Davmunrey'], prevent_self_review: false, wait_timer: 0, protected_branches: false, branches: ['main'], tags: [] });
+    assert.deepEqual(terms, { reviewers: ['Davmunrey', 'munozrey'], prevent_self_review: false, wait_timer: 0, protected_branches: false, branches: ['main'], tags: [] });
   });
 
   it('sends reviewers as ids, and a branch policy only where the file limits one', () => {

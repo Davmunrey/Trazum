@@ -838,7 +838,7 @@ Portuguese, Italian or Dutch:
 rule.
 [VERSIONING.md](VERSIONING.md) covers what counts as public API.
 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) covers what is expected of everyone
-taking part, and is honest about what a single-maintainer project can promise.
+taking part, and is honest about what a small project can promise.
 [SUPPORT.md](SUPPORT.md) covers what gets answered and how fast. A question
 goes to [Discussions](https://github.com/Davmunrey/Trazum/discussions) and a
 bug goes to an [issue](https://github.com/Davmunrey/Trazum/issues/new/choose),

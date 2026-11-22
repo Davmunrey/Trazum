@@ -322,8 +322,10 @@ Some of this cannot be committed to a file — it lives in repository settings.
 
    **It asks for zero approvals, deliberately.** The first version required
    one, and that deadlocked the repository: GitHub does not let you approve
-   your own pull request, and with a single maintainer there is nobody else to
-   ask. Worth being clear about what was lost — nothing. An outside
+   your own pull request, and with a single maintainer there was nobody else to
+   ask. Since 2026-11-22 there are two maintainers ([GOVERNANCE.md](GOVERNANCE.md)),
+   so requiring one approval no longer deadlocks; until the ruleset asks for it,
+   no second person's approval is required. Worth being clear about what was lost — nothing. An outside
    contributor cannot merge regardless, because merging needs write access; the
    approval rule only ever constrained the maintainers, and an approval you
    give yourself is not review. The gate that does real work here is the

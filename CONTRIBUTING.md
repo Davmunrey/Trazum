@@ -2,7 +2,7 @@
 
 Two things before the detail. [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies
 to everyone taking part here, maintainer included, and it is explicit about what
-a single-maintainer project can and cannot promise about enforcement.
+a small project can and cannot promise about enforcement.
 [docs/README.md](docs/README.md) is the documentation index — if you are looking
 for how something works rather than how to change it, start there.
 
@@ -456,8 +456,8 @@ about it yet. Triage replaces it with one state:
 | `wontfix` | It will not be done | Closed, with the reason in the closing comment |
 | `duplicate` | Already reported | Closed, with a link to the original |
 
-The maintainer triages. With one maintainer there is no promised response time,
-and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) says what a single-maintainer
+The maintainers triage ([GOVERNANCE.md](GOVERNANCE.md)). There is no promised
+response time, and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) says what a small
 project can honestly promise. An issue is never closed for going quiet: an
 unanswered report is still a report.
 

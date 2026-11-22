@@ -54,6 +54,10 @@ Then, if you want to know whether to trust the numbers:
   the risk behind every limit the server sets, the [secure coding
   checklist](compliance/secure-coding.md) and the [procedure for rotating each
   secret](compliance/secret-rotation.md), each held to the code by a test.
+- **[Assurance case](compliance/assurance-case.md)**: the argument that
+  Trazum meets the security requirements it states, step by step, each step
+  pointing at evidence a test holds: what is protected, the trust boundaries,
+  the secure design principles applied and the weaknesses countered.
 - **[Audited from the outside](audit-rea-2026-11.md)**: what REA, a reverse
   engineering tool that has never seen this source, found reading the npm
   packages as npm serves them and the production page while a marked log was
@@ -92,6 +96,8 @@ In the order somebody actually meets them:
 
 ## I am extending it
 
+- **[Architecture](architecture.md)**: the parts, which way they depend on
+  each other, where the data goes and what crosses the network.
 - **[Authoring rules](authoring-rules.md)** — how a deterministic rule is written,
   and the bar it has to clear.
 - **[Maintaining a language](language-maintainer.md)** — what a dictionary
@@ -112,6 +118,8 @@ In the order somebody actually meets them:
 
 - **[Adoption playbook](adoption-playbook.md)** — a 30-day experiment for first-use feedback, repeat use and evidence-based case studies.
 
+- **[Governance](../GOVERNANCE.md)**: how a decision is made, the roles, and
+  what Trazum rests on if one of its maintainers can no longer act.
 - **[Releasing](releasing.md)** — the recipe, and what the workflow does.
 - **[Versioning](../VERSIONING.md)** — what the three numbers mean here, which is
   not quite what semver says.
