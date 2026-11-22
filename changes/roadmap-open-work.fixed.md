@@ -1,1 +1,0 @@
-**ROADMAP.md's table of open work lists the issues that are open again.** It still listed six that had been closed (#763, #778, #779, #787, #823, #824), so the weekly `Triage` check failed on `main`. The table is redrawn from the issue list with `node scripts/triage.mjs roadmap`, and the wiki's copy with it.

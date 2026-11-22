@@ -39,12 +39,12 @@ client's model calls, and it cannot see a request the client never sent it.
 
 | Client | Where | What to run or paste |
 |---|---|---|
-| Claude Code | a terminal | `claude mcp add trazum -- npx -y @trazum/mcp@3.0.5` |
+| Claude Code | a terminal | `claude mcp add trazum -- npx -y @trazum/mcp@3.0.6` |
 | Claude Desktop, one-click bundle | download the file, then open it with Claude Desktop | the address under "Claude Desktop, one-click bundle" below |
 | Claude Desktop, JSON | claude_desktop_config.json | the snippet under "Claude Desktop, JSON" below |
 | Cursor | .cursor/mcp.json | the snippet under "Cursor" below |
 | VS Code | .vscode/mcp.json | the snippet under "VS Code" below |
-| Codex, command | a terminal | `codex mcp add trazum -- npx -y @trazum/mcp@3.0.5` |
+| Codex, command | a terminal | `codex mcp add trazum -- npx -y @trazum/mcp@3.0.6` |
 | Codex, TOML | ~/.codex/config.toml | the snippet under "Codex, TOML" below |
 | Gemini CLI | a terminal; the version is the one gemini-extension.json names | `gemini extensions install https://github.com/TrazumAPP/Trazum` |
 
@@ -53,7 +53,7 @@ client's model calls, and it cannot see a request the client never sent it.
 Where: download the file, then open it with Claude Desktop.
 
 ```text
-https://github.com/TrazumAPP/Trazum/releases/download/v3.0.5/trazum-mcp-3.0.5.mcpb
+https://github.com/TrazumAPP/Trazum/releases/download/v3.0.6/trazum-mcp-3.0.6.mcpb
 ```
 
 ### Claude Desktop, JSON
@@ -65,7 +65,7 @@ Where: claude_desktop_config.json.
   "mcpServers": {
     "trazum": {
       "command": "npx",
-      "args": ["-y", "@trazum/mcp@3.0.5"]
+      "args": ["-y", "@trazum/mcp@3.0.6"]
     }
   }
 }
@@ -80,7 +80,7 @@ Where: .cursor/mcp.json.
   "mcpServers": {
     "trazum": {
       "command": "npx",
-      "args": ["-y", "@trazum/mcp@3.0.5"]
+      "args": ["-y", "@trazum/mcp@3.0.6"]
     }
   }
 }
@@ -96,7 +96,7 @@ Where: .vscode/mcp.json.
     "trazum": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@trazum/mcp@3.0.5"]
+      "args": ["-y", "@trazum/mcp@3.0.6"]
     }
   }
 }
@@ -109,7 +109,7 @@ Where: ~/.codex/config.toml.
 ```toml
 [mcp_servers.trazum]
 command = "npx"
-args = ["-y", "@trazum/mcp@3.0.5"]
+args = ["-y", "@trazum/mcp@3.0.6"]
 ```
 
 <!-- install-table:end -->
