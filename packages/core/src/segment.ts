@@ -310,7 +310,10 @@ export function segment(text: string): Segment[] {
   if (quoted.length > 0) {
     const outside = kept.filter((range) => !heldBy(quoted, range.start, range.end));
     kept.length = 0;
-    kept.push(...outside, ...quoted);
+    // A loop, not a spread push: a spread passes every element as an argument,
+    // and 200,000 quotations overflow the stack (#937).
+    for (const range of outside) kept.push(range);
+    for (const range of quoted) kept.push(range);
   }
 
   // Order for emission; within one pattern matches never overlap, and across
