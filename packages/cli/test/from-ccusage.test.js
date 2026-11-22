@@ -41,6 +41,11 @@ describe('from-ccusage writes the counts and sets the two figures side by side',
     const records = readFileSync(out, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
     assert.equal(records.length, 8);
     assert.ok(records.every((record) => record.requests === null), 'a row was written as one call');
+    /* The log is read as any other: it says what that does to its rows, and where to bill them as rows instead. */
+    const note = flat(result.stderr);
+    assert.ok(note.includes('counted as calls'), result.stderr);
+    assert.ok(/--timezone, --since, --until or --by/.test(note) && note.includes('cut it at a window'), 'the note does not say a zone or a window can move or cut a row of the log');
+    assert.ok(note.includes('trazum bill on the ccusage file itself'), result.stderr);
   });
 
   it('bills what it wrote at the figure worked out by hand, not at ccusage figure', () => {
@@ -126,6 +131,9 @@ describe('bill reads a ccusage report as it is', () => {
     assert.match(result.stdout, /month\s+rows\s+USD\s+share/);
     assert.doesNotMatch(result.stdout, /\bcalls\b|call\(s\)/, 'a row of the report was printed as a call');
     assert.doesNotMatch(result.stderr, /call\(s\)/, 'a row of the report was printed as a call on stderr');
+    /* The side files are refused on a ccusage report, so the statement does not point at one. */
+    assert.match(flat(result.stdout), /The receipt as data: --receipt, or -o receipt\.json\./);
+    assert.doesNotMatch(result.stdout, /--pdf-out/, 'the statement suggests a file it refuses for a ccusage report');
   });
 
   it('says records, not calls, when calls and rows are billed together', () => {

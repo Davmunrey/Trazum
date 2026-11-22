@@ -42,7 +42,7 @@
   {
     "title": "Every agent's sessions",
     "description": "The bill reads what each coding agent already keeps on disk. Next: OpenCode's SQLite sessions, and a reader for Cursor, GitHub Copilot CLI, Cline and Amp as soon as somebody supplies one real session of each.",
-    "issues": [645, 648, 728, 729, 730, 782, 786, 821, 822, 823, 825, 826]
+    "issues": [645, 648, 728, 729, 730, 782, 786, 821, 822, 823, 825, 826, 961]
   },
   {
     "title": "Every provider, counted and priced exactly",

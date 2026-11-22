@@ -2489,6 +2489,7 @@ ${bold('EXAMPLES')}
     statementUnread: (lines) => `${lines} line(s) could not be read as usage and are not in the total.`,
     statementNext: () =>
       'The receipt as data: --receipt, or -o receipt.json. The document for whoever pays: --pdf-out bill.pdf.',
+    statementNextReceipt: () => 'The receipt as data: --receipt, or -o receipt.json.',
     notFound: (path) => `${path}: not found`,
     noFiles: (path) => `${path}: no .json, .jsonl, .ndjson or .log files under it, plain or gzipped.`,
     file: (path, shape, records, leftOut, command) =>
@@ -2631,7 +2632,7 @@ ${bold('EXAMPLES')}
     notCarried: () =>
       "ccusage's report does not carry US-only inference or web searches, which Claude Code's own sessions record and Anthropic bills. Priced from this report, those are a floor; trazum bill on the sessions themselves has them.",
     logCountsCalls: () =>
-      "The log written here is read by every command as any other usage log: its records are priced as rows that sum requests, and counted as calls, the way the rows of Anthropic's usage report are. trazum bill on the ccusage file itself counts them as rows.",
+      "The log written here is read by every command as any other usage log: its records are priced as rows that sum requests, and counted as calls, the way the rows of Anthropic's usage report are. Nothing refuses --timezone, --since, --until or --by on it either, so they can move a row to another day or cut it at a window's edge. trazum bill on the ccusage file itself counts them as rows and refuses what would move or cut one.",
     comparisonHeading: () => "ccusage's figure and the catalogue's, for the same counts:",
     colModel: () => 'model, as ccusage names it',
     colCcusage: () => 'ccusage',

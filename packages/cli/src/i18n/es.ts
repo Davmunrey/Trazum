@@ -2617,6 +2617,7 @@ ${bold('EJEMPLOS')}
     statementUnread: (lines) => `${lines} línea(s) no se pudieron leer como uso y no están en el total.`,
     statementNext: () =>
       'El recibo como datos: --receipt, o -o recibo.json. El documento para quien paga: --pdf-out factura.pdf.',
+    statementNextReceipt: () => 'El recibo como datos: --receipt, o -o recibo.json.',
     notFound: (path) => `${path}: no encontrado`,
     noFiles: (path) => `${path}: no hay archivos .json, .jsonl, .ndjson ni .log dentro, ni sin comprimir ni en .gz.`,
     file: (path, shape, records, leftOut, command) =>
@@ -2759,7 +2760,7 @@ ${bold('EJEMPLOS')}
     notCarried: () =>
       'El informe de ccusage no trae la inferencia solo en EE. UU. ni las búsquedas web, que las sesiones de Claude Code sí registran y Anthropic sí cobra. Valorado desde este informe, eso es un mínimo; trazum bill sobre las sesiones mismas sí lo tiene.',
     logCountsCalls: () =>
-      'Todos los comandos leen el log escrito aquí como cualquier otro log de uso: sus registros se valoran como filas que suman peticiones, y se cuentan como llamadas, igual que las filas del informe de uso de Anthropic. trazum bill sobre el archivo de ccusage mismo las cuenta como filas.',
+      'Todos los comandos leen el log escrito aquí como cualquier otro log de uso: sus registros se valoran como filas que suman peticiones, y se cuentan como llamadas, igual que las filas del informe de uso de Anthropic. Tampoco se rechaza sobre él --timezone, --since, --until ni --by, así que pueden mover una fila a otro día o cortarla en el borde de una ventana. trazum bill sobre el archivo de ccusage mismo las cuenta como filas y rechaza lo que movería o cortaría una.',
     comparisonHeading: () => 'La cifra de ccusage y la del catálogo, para las mismas cuentas:',
     colModel: () => 'modelo, como lo nombra ccusage',
     colCcusage: () => 'ccusage',

@@ -4646,8 +4646,10 @@ row is dated at its last activity. `bill` refuses what would cut a row or
 count it as a call, and [docs/usage-logs.md](usage-logs.md#ccusage) lists
 what. The log written with `-o` is read as any other usage log: its records
 are priced as rows that sum requests and counted as calls, the way the rows of
-Anthropic's usage report are, so bill the ccusage file itself for a statement
-in rows.
+Anthropic's usage report are, and nothing refuses `--timezone`, `--since`,
+`--until` or `--by` on it, so they can move a row to another day or cut it at
+a window's edge. Bill the ccusage file itself for a statement in rows that
+none of them moves or cuts; #961 is counting such a record as a row everywhere.
 
 **What does not cross.** A project, as ccusage names it, is the folder Claude
 Code made from a working directory, which is a path. It reaches the output

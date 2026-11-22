@@ -309,7 +309,11 @@ start to the last row's end.
 The usage log `from-ccusage` writes is read by every command as any other
 log. Its records say `"requests": null`, so they are priced as rows that sum
 requests, and they are counted as calls, the way the rows of Anthropic's usage
-report are. `bill` on the ccusage file itself counts them as rows.
+report are. Nothing refuses `--timezone`, `--since`, `--until` or `--by` on
+that log either, so they can move a row to another day or cut it at a
+window's edge. `bill` on the ccusage file itself counts them as rows and
+refuses what would move or cut one: bill the file rather than the log. Counting
+such a record as a row everywhere is #961.
 
 What the report never carried is not in the bill: US-only inference
 (`inference_geo`) and web searches (`server_tool_use`), both in Claude Code's

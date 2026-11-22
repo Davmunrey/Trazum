@@ -943,6 +943,7 @@ export interface CliMessages {
     ccusageMonthsCut(rows: number): string;
     statementUnread(lines: number): string;
     statementNext(): string;
+    statementNextReceipt(): string;
     notFound(path: string): string;
     noFiles(path: string): string;
     /** One line per file: its shape, what it became, what was left out. */

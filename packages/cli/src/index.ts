@@ -4862,7 +4862,8 @@ function printBillStatement(
   if (report.timeWindow !== null && report.timeWindow.undatedExcluded > 0) {
     draw.note('caution', t.receipt.undatedExcluded(report.timeWindow.undatedExcluded));
   }
-  draw.blank().text(t.bill.statementNext(), { tone: 'dim' }).blank();
+  /* On a ccusage report the side files are refused (#786), so the line names only the receipt. */
+  draw.blank().text(ccusageView === undefined ? t.bill.statementNext() : t.bill.statementNextReceipt(), { tone: 'dim' }).blank();
   draw.print();
 }
 
