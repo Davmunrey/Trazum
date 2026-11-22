@@ -793,6 +793,27 @@ describe('who may sign in is the operator\'s decision, closed by default', () =>
     assert.equal(response.status, 303);
   });
 
+  // Penetration test of 2026-11-22, finding L-3: a login can be renamed away and
+  // claimed by another GitHub account, which then matched the operator's list.
+  describe('a login listed by name that now belongs to another account', () => {
+    const CLAIMER = { id: 999_001, login: 'octocat', name: null, avatar_url: null };
+
+    it('is refused, as a user and as an admin, once the store knows who held it', async () => {
+      assert.equal((await attempt({ TRAZUM_ALLOWED_USERS: 'octocat' })).status, 303, 'the original holder could not sign in');
+      for (const env of [{ TRAZUM_ALLOWED_USERS: 'octocat' }, { TRAZUM_ADMINS: 'OctoCat' }]) {
+        const response = await attempt(env, CLAIMER);
+        assert.equal(response.status, 403, JSON.stringify(env));
+        assert.match((await response.json()).error, /belonged to another GitHub account/);
+        assert.equal(cookieNamed(response, '__Host-trazum_session'), null);
+      }
+    });
+
+    it('still lets in the account that holds it, and an account listed by its id', async () => {
+      assert.equal((await attempt({ TRAZUM_ALLOWED_USERS: 'octocat' })).status, 303);
+      assert.equal((await attempt({ TRAZUM_ALLOWED_USERS: String(CLAIMER.id) }, CLAIMER)).status, 303);
+    });
+  });
+
   it('lets anyone in only when the operator says so out loud', async () => {
     const response = await attempt({ TRAZUM_OPEN_SIGNUP: '1' }, { id: 7, login: 'stranger', name: null, avatar_url: null });
     assert.equal(response.status, 303);

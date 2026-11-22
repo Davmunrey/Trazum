@@ -127,6 +127,17 @@ export function postgresStore(sql: SqlClient): Store {
       return toUser(row);
     },
 
+    async findUserByLogin(provider: string, login: string): Promise<UserRecord | null> {
+      const rows = await sql<Row>`
+        select id, provider, provider_id, login, name, avatar_url, created_at
+        from trazum_users
+        where provider = ${provider} and lower(login) = lower(${login})
+        limit 1
+      `;
+      const row = rows[0];
+      return row ? toUser(row) : null;
+    },
+
     async createSession(session: SessionRecord): Promise<void> {
       await sql`
         insert into trazum_sessions (token_hash, user_id, created_at, expires_at)

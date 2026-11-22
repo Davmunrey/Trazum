@@ -62,6 +62,8 @@ export type SecurityReason =
   | 'missing_code'
   | 'provider_error'
   | 'not_allowed'
+  /** Let in by login, and that login belonged to another account here (L-3). */
+  | 'login_reclaimed'
   | 'rate_limited'
   | 'not_signed_in'
   | 'cross_origin'

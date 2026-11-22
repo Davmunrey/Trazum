@@ -107,6 +107,16 @@ for (const driver of DRIVERS) {
       assert.notEqual(other.id, first.id);
     });
 
+    it('finds the account that holds a login, without case, and nobody for a login it never saw (L-3)', async () => {
+      const store = await driver.make();
+      const user = await store.upsertUser(identity(1), T0);
+      const found = await store.findUserByLogin(user.provider, user.login.toUpperCase());
+      assert.equal(found?.id, user.id);
+      assert.equal(found?.providerId, user.providerId);
+      assert.equal(await store.findUserByLogin(user.provider, 'nobody-signed-in-as-this'), null);
+      assert.equal(await store.findUserByLogin('another-provider', user.login), null);
+    });
+
     it('finds a live session, never an expired one, and ends them one at a time or all at once', async () => {
       const store = await driver.make();
       const user = await store.upsertUser(identity(1), T0);
