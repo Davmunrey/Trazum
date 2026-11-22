@@ -36,6 +36,8 @@ let calls = 0;
 const models = [];
 let POST;
 let GET;
+/** When set, the fake model answers with this error instead. */
+let failWith = null;
 
 before(async () => {
   server = createServer((req, res) => {
@@ -44,6 +46,11 @@ before(async () => {
     req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => {
       try { models.push(JSON.parse(Buffer.concat(chunks).toString('utf8')).model); } catch { models.push(null); }
+      if (failWith !== null) {
+        res.writeHead(failWith.status, { 'content-type': 'text/plain' });
+        res.end(failWith.body);
+        return;
+      }
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(
         JSON.stringify({ choices: [{ message: { content: JSON.stringify(SUGGESTIONS) } }] }),
@@ -309,6 +316,22 @@ describe('the capability a recommendation names', () => {
       assert.ok(downgrade, `${locale}: no model-downgrade advisory, so nothing was checked`);
       assert.ok(downgrade.detail.includes('"small"'), `${locale}: the advisory does not quote "small": ${downgrade.detail}`);
       assert.doesNotMatch(JSON.stringify(body), /\\?["“](haiku|sonnet|opus)\\?["”]/i, `${locale}: an old name is still in the response`);
+    }
+  });
+});
+
+// Penetration test of 2026-11-22, finding L-2: a provider's error text reached
+// the caller whole, once a 200 MB body.
+describe('a provider that answers with an error', () => {
+  it('is reported by its status, and its text stays on the server', async () => {
+    failWith = { status: 500, body: `internal: upstream db password=hunter2 ${'x'.repeat(100_000)}` };
+    try {
+      const { status, body } = await post({ prompt: PROMPT, suggest: true, llm: CALLER_KEY });
+      assert.equal(status, 502);
+      assert.match(body.error, /HTTP 500/);
+      assert.doesNotMatch(body.error, /hunter2|upstream|xxxx/, 'the provider\'s text reached the caller');
+    } finally {
+      failWith = null;
     }
   });
 });

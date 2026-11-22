@@ -989,5 +989,9 @@ export interface WebMessages {
      */
     badInput(issue: Issue): string;
     unexpected: string;
+    /** The provider answered with an error: its status, never its body (L-2). */
+    providerFailed: (status: number) => string;
+    /** The provider did not answer within PROVIDER_TIMEOUT_MS. */
+    providerTimeout: string;
   };
 }

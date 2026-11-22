@@ -1234,5 +1234,7 @@ export const es: WebMessages = {
       }
     },
     unexpected: 'Error inesperado.',
+    providerFailed: (status: number) => `El proveedor del modelo respondió con un error (HTTP ${status}). Revisa la clave, el endpoint y el modelo, y vuelve a intentarlo.`,
+    providerTimeout: 'El proveedor del modelo no respondió a tiempo. Vuelve a intentarlo, o hazlo sin la pasada con modelo.',
   },
 };
