@@ -211,10 +211,10 @@ export function langsmithRecords(text: string): LangsmithConversion {
   const runs: unknown[] = [];
   const whole = tryParse(text);
   if (whole !== undefined) {
-    if (Array.isArray(whole)) runs.push(...whole);
+    if (Array.isArray(whole)) for (const item of whole) runs.push(item);
     else {
       const doc = asObject(whole);
-      if (doc !== null && Array.isArray(doc.runs)) runs.push(...doc.runs);
+      if (doc !== null && Array.isArray(doc.runs)) for (const item of doc.runs) runs.push(item);
       else if (doc !== null) runs.push(doc);
     }
   } else {
@@ -222,7 +222,7 @@ export function langsmithRecords(text: string): LangsmithConversion {
       if (line.trim() === '') continue;
       const parsed = tryParse(line);
       if (parsed === undefined) out.unparseable += 1;
-      else if (Array.isArray(parsed)) runs.push(...parsed);
+      else if (Array.isArray(parsed)) for (const item of parsed) runs.push(item);
       else runs.push(parsed);
     }
   }

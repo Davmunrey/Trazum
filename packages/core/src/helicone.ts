@@ -144,10 +144,10 @@ export function heliconeRecords(text: string): HeliconeConversion {
   const rows: unknown[] = [];
   const whole = tryParse(text);
   if (whole !== undefined) {
-    if (Array.isArray(whole)) rows.push(...whole);
+    if (Array.isArray(whole)) for (const item of whole) rows.push(item);
     else {
       const doc = asObject(whole);
-      if (doc !== null && Array.isArray(doc.data)) rows.push(...doc.data);
+      if (doc !== null && Array.isArray(doc.data)) for (const item of doc.data) rows.push(item);
       else if (doc !== null) rows.push(doc);
     }
   } else {
@@ -155,7 +155,7 @@ export function heliconeRecords(text: string): HeliconeConversion {
       if (line.trim() === '') continue;
       const parsed = tryParse(line);
       if (parsed === undefined) out.unparseable += 1;
-      else if (Array.isArray(parsed)) rows.push(...parsed);
+      else if (Array.isArray(parsed)) for (const item of parsed) rows.push(item);
       else rows.push(parsed);
     }
   }

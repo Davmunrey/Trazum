@@ -153,11 +153,11 @@ export function litellmRecords(text: string): LiteLlmConversion {
   const rows: unknown[] = [];
   const whole = tryParse(text);
   if (whole !== undefined) {
-    if (Array.isArray(whole)) rows.push(...whole);
+    if (Array.isArray(whole)) for (const item of whole) rows.push(item);
     else {
       const doc = asObject(whole);
       // `{ data: [...] }` is what the proxy's spend endpoints return.
-      if (doc !== null && Array.isArray(doc.data)) rows.push(...doc.data);
+      if (doc !== null && Array.isArray(doc.data)) for (const item of doc.data) rows.push(item);
       else if (doc !== null) rows.push(doc);
     }
   } else {
@@ -165,7 +165,7 @@ export function litellmRecords(text: string): LiteLlmConversion {
       if (line.trim() === '') continue;
       const parsed = tryParse(line);
       if (parsed === undefined) out.unparseable += 1;
-      else if (Array.isArray(parsed)) rows.push(...parsed);
+      else if (Array.isArray(parsed)) for (const item of parsed) rows.push(item);
       else rows.push(parsed);
     }
   }

@@ -137,7 +137,7 @@ function winAnsi(char: string): number[] {
 /** The text as WinAnsi codes, the form both the width and the stream are measured in. */
 export function pdfEncode(text: string): number[] {
   const codes: number[] = [];
-  for (const char of text) codes.push(...winAnsi(char));
+  for (const char of text) for (const code of winAnsi(char)) codes.push(code);
   return codes;
 }
 
