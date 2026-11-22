@@ -16,6 +16,7 @@ import {
   resolveEndpoint,
   resolveLocale,
   validateLlmEndpoint,
+  ProviderError,
 } from '@trazum/core';
 import type {
   Locale,
@@ -366,9 +367,18 @@ async function handlePost(request: Request) {
       ...(suggestions === null ? {} : { suggestions: { ...suggestions, applied: applySuggestions } }),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : t.api.unexpected;
-    // The failure usually comes from the external LLM, not from our code.
-    return NextResponse.json({ error: message }, { status: 502 });
+    /**
+     * The status, never the text. The text is the provider's, or the
+     * runtime's, and it reached the caller whole: a provider's internal
+     * message, and once a 200 MB body (penetration test, finding L-2).
+     */
+    if (error instanceof ProviderError) {
+      return NextResponse.json({ error: t.api.providerFailed(error.status) }, { status: 502 });
+    }
+    if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
+      return NextResponse.json({ error: t.api.providerTimeout }, { status: 504 });
+    }
+    return NextResponse.json({ error: t.api.unexpected }, { status: 502 });
   }
 }
 

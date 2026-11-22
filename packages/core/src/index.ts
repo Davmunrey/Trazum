@@ -589,6 +589,9 @@ export {
   customProvider,
   providerFromEnv,
   REFINER_SYSTEM_PROMPT,
+  ProviderError,
+  MAX_PROVIDER_ERROR_CHARS,
+  PROVIDER_TIMEOUT_MS,
 } from './llm.js';
 export type {
   RefineOptions,

@@ -119,9 +119,9 @@ async function handlePost(request: Request) {
         resolved: AdvisoryId[];
       },
     });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : t.api.unexpected;
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    // Never the error's own text: it is the runtime's, not a message for the caller (L-2).
+    return NextResponse.json({ error: t.api.unexpected }, { status: 500 });
   }
 }
 
