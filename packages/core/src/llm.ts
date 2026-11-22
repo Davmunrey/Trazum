@@ -11,6 +11,60 @@ import { estimateTokens } from './tokenizer.js';
 import type { LlmProvider, OptimizationResult, TokenCounter } from './types.js';
 
 /**
+ * The most of a provider's error body that is read and repeated.
+ *
+ * The whole body used to be read and put in the error, and a provider, or
+ * anything answering in its place, decides how long that is: 200 MB was read
+ * and handed back to a caller of the web app (penetration test of 2026-11-22,
+ * finding L-2). The first 2,000 characters say what went wrong; the rest is
+ * not read at all.
+ */
+export const MAX_PROVIDER_ERROR_CHARS = 2000;
+
+/**
+ * How long a model call may take before it is given up: two minutes, which is
+ * longer than any answer the refining pass asks for (`maxTokens` 4096) and
+ * short enough that a provider that never answers does not hold a request
+ * open for as long as the platform allows.
+ */
+export const PROVIDER_TIMEOUT_MS = 120_000;
+
+/**
+ * A provider answered, and the answer was an error. `status` is its HTTP
+ * status and `detail` the start of its body; a server that relays this to
+ * somebody else shows the status and keeps the detail, which is the
+ * provider's text, not ours.
+ */
+export class ProviderError extends Error {
+  readonly status: number;
+  readonly detail: string;
+  constructor(who: string, status: number, detail: string) {
+    super(`${who} responded ${status}${detail === '' ? '' : `: ${detail}`}`);
+    this.name = 'ProviderError';
+    this.status = status;
+    this.detail = detail;
+  }
+}
+
+/** The start of an error body, read no further than it is used. */
+async function errorDetail(res: Response): Promise<string> {
+  let text = '';
+  const reader = res.body?.getReader();
+  if (reader) {
+    const decoder = new TextDecoder();
+    while (text.length < MAX_PROVIDER_ERROR_CHARS) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+    }
+    await reader.cancel().catch(() => {});
+  } else if (typeof res.text === 'function') {
+    text = await res.text();
+  }
+  return text.slice(0, MAX_PROVIDER_ERROR_CHARS).replace(/\s+/g, ' ').trim();
+}
+
+/**
  * Optional LLM layer.
  *
  * The deterministic core already does the work at zero cost. This pass adds
@@ -200,6 +254,7 @@ export function openAiCompatible(options: OpenAiCompatibleOptions): LlmProvider 
     async complete({ system, user }) {
       const res = await fetchImpl(`${endpoint}/chat/completions`, {
         ...SAFE_FETCH_INIT,
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -216,7 +271,7 @@ export function openAiCompatible(options: OpenAiCompatibleOptions): LlmProvider 
         }),
       });
       if (!res.ok) {
-        throw new Error(`Provider "${name}" responded ${res.status}: ${await res.text()}`);
+        throw new ProviderError(`Provider "${name}"`, res.status, await errorDetail(res));
       }
       const data = (await res.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
@@ -261,6 +316,7 @@ export function anthropicProvider(options: AnthropicProviderOptions): LlmProvide
     async complete({ system, user }) {
       const res = await fetchImpl(`${endpoint}/v1/messages`, {
         ...SAFE_FETCH_INIT,
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -275,7 +331,7 @@ export function anthropicProvider(options: AnthropicProviderOptions): LlmProvide
         }),
       });
       if (!res.ok) {
-        throw new Error(`The Claude API responded ${res.status}: ${await res.text()}`);
+        throw new ProviderError('The Claude API', res.status, await errorDetail(res));
       }
       const data = (await res.json()) as {
         content?: Array<{ type: string; text?: string }>;
@@ -394,6 +450,7 @@ export function geminiProvider(options: GeminiProviderOptions): LlmProvider {
         `${endpoint}/v1beta/models/${encodeURIComponent(model)}:generateContent`,
         {
           ...SAFE_FETCH_INIT,
+          signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
           body: JSON.stringify({
@@ -405,7 +462,7 @@ export function geminiProvider(options: GeminiProviderOptions): LlmProvider {
       );
 
       if (!res.ok) {
-        throw new Error(`The Gemini API responded ${res.status}: ${await res.text()}`);
+        throw new ProviderError('The Gemini API', res.status, await errorDetail(res));
       }
       return readGeminiAnswer(await res.json(), 'The Gemini API');
     },
@@ -505,13 +562,14 @@ export function bedrockProvider(options: BedrockProviderOptions): LlmProvider {
 
       const res = await fetchImpl(`${endpoint}${path}`, {
         ...SAFE_FETCH_INIT,
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
         method: 'POST',
         headers: { ...signed, 'content-type': 'application/json' },
         body,
       });
 
       if (!res.ok) {
-        throw new Error(`Bedrock responded ${res.status}: ${await res.text()}`);
+        throw new ProviderError('Bedrock', res.status, await errorDetail(res));
       }
 
       const data = (await res.json()) as {
@@ -600,6 +658,7 @@ export function vertexProvider(options: VertexProviderOptions): LlmProvider {
 
       const res = await fetchImpl(`${endpoint}${path}`, {
         ...SAFE_FETCH_INIT,
+        signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -610,7 +669,7 @@ export function vertexProvider(options: VertexProviderOptions): LlmProvider {
       });
 
       if (!res.ok) {
-        throw new Error(`Vertex responded ${res.status}: ${await res.text()}`);
+        throw new ProviderError('Vertex', res.status, await errorDetail(res));
       }
       return readGeminiAnswer(await res.json(), 'Vertex');
     },
@@ -643,9 +702,9 @@ export function customProvider(options: CustomProviderOptions): LlmProvider {
       // — but the redirect default is not something they opted into, and it is
       // the one that turns any endpoint into a hop. Overridable, since a custom
       // provider may genuinely need to follow one.
-      const res = await fetchImpl(url, { ...SAFE_FETCH_INIT, ...init });
+      const res = await fetchImpl(url, { ...SAFE_FETCH_INIT, signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS), ...init });
       if (!res.ok) {
-        throw new Error(`Provider "${name}" responded ${res.status}: ${await res.text()}`);
+        throw new ProviderError(`Provider "${name}"`, res.status, await errorDetail(res));
       }
       return extract(await res.json());
     },

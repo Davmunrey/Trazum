@@ -1214,5 +1214,7 @@ export const en: WebMessages = {
       }
     },
     unexpected: 'Unexpected error.',
+    providerFailed: (status: number) => `The model provider answered with an error (HTTP ${status}). Check the key, the endpoint and the model, then try again.`,
+    providerTimeout: 'The model provider did not answer in time. Try again, or try without the model-assisted pass.',
   },
 };
