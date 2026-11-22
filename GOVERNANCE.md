@@ -61,20 +61,20 @@ of losing either maintainer. These are what that rests on:
 - **The release needs no person's machine.** Merging a release pull request is
   the release: the workflow publishes to npm, tags, attaches and signs the files
   ([docs/releasing.md](docs/releasing.md)).
-- **A GitHub account successor.** GitHub lets an account name a successor who,
-  after presenting a death certificate and waiting 7 days (or an obituary and
-  21 days), may archive the account's public repositories or transfer them to
-  their own account
-  ([GitHub's documentation](https://docs.github.com/en/repositories/creating-and-managing-repositories/access-to-repositories)).
+- **Two admins, in an organisation.** Since 2026-11-22 the repository belongs
+  to the `TrazumAPP` organisation rather than to the owner's personal account,
+  and both maintainers are admins of it. A personal repository offers its
+  collaborators no admin role, which is why it moved (#925). No setting of the
+  repository waits on one person's account.
 - **Two publishers on npm.** A member of the `@trazum` organisation on npm can
   publish its packages
   ([npm's documentation](https://docs.npmjs.com/organization-roles-and-permissions)),
   so a release does not wait on the owner's npm account.
 
-**Status on 2026-11-22, as the owner reported it:** @munozrey has write access
-to the repository, is a member of the `@trazum` organisation on npm, and is the
-owner's named GitHub account successor. With write access either maintainer can
-close issues without waiting on the other.
+**Status on 2026-11-22, as the owner reported it:** both maintainers are admins
+of the repository in the `TrazumAPP` organisation, and @munozrey is a member of
+the `@trazum` organisation on npm. Either maintainer can close issues, approve a
+release and change the repository's settings without waiting on the other.
 
 **In place since 2026-11-22:** the owner applied the ruleset and
 [`.github/environments.json`](.github/environments.json) that day, and both
@@ -96,13 +96,9 @@ written down here rather than worked out on the day:
    says the same in [`.github/rulesets/main-branch.json`](.github/rulesets/main-branch.json)
    and names the issue that records why. The weekly comparison reports the
    difference until that pull request merges.
-2. **If the owner is the one who can still act**, the owner is the admin and
-   does both steps the same day.
-3. **If @munozrey is the one who can still act**, they have write access but
-   are not an admin. They become one only through GitHub's successor process
-   above, after 7 or 21 days, and only when the owner has died. While the owner
-   is alive but unreachable, there is no way back, and Trazum cannot merge
-   within a week. That is the gap a third maintainer, or a second admin, would
-   close.
-4. **When a second maintainer can act again**, the three settings go back the
+2. **Whichever maintainer can still act does both steps, the same day.** Both
+   are admins, so neither waits on the other's account. Until 2026-11-22 only
+   the owner was, and while the owner was unreachable there was no way back;
+   moving the repository to an organisation closed that gap (#925).
+3. **When a second maintainer can act again**, the three settings go back the
    same way, through a pull request they approve.
