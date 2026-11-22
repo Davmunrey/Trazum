@@ -126,7 +126,7 @@ reasoning or function calls)", so no field in the request bounds what a
 reasoning call can cost before it is sent, which is what a refusal before the
 money is spent rests on. The same reference calls Chat Completions the
 predecessor of its Responses API. xAI stays priced and profiled from a log, and
-`trazum gateway xai` says so.
+`trazum gateway xai` says so (#959).
 
 ## Why in the path at all
 

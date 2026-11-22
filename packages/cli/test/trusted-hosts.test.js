@@ -90,7 +90,7 @@ const HOSTS = {
     upstream: the gateway fronts calls a customer makes, and nothing here routes
     customer traffic to it. Its reference was read on 2026-11-22 and left it
     out: it does not say whether `completion_tokens` includes the reasoning it
-    bills, and its `max_completion_tokens` does not bound that reasoning (#643).
+    bills, and its `max_completion_tokens` does not bound that reasoning (#959).
     Named as its own kind so that stays true by inspection rather than by
     everyone remembering it.
   */
