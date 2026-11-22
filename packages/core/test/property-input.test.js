@@ -3,6 +3,10 @@ import { describe, it } from 'node:test';
 import fc from 'fast-check';
 import {
   ConfigError,
+  LOCALES,
+  PLAN_ACTION_KINDS,
+  PLAN_EDIT_STEPS,
+  RULES,
   analyzeTask,
   claudeCodeRecords,
   codexRecords,
@@ -307,6 +311,140 @@ describe('the documents a person hands in', () => {
       } catch (error) {
         assert.match(String(error?.message), /^Invalid task data/u, `${error?.constructor?.name}: ${error?.message}`);
       }
+    }));
+  });
+});
+
+// A path inside the project: one to three segments of plain characters, the
+// shape every relative-path check in the config and the plan accepts.
+const segment = fc.stringMatching(/^[a-z0-9_-]{1,8}$/);
+const insidePath = fc.array(segment, { minLength: 1, maxLength: 3 }).map((parts) => parts.join('/'));
+const pattern = fc.oneof(insidePath, insidePath.map((path) => `${path}/**`), insidePath.map((path) => `**/${path}.md`));
+const dollars = fc.double({ min: 0.01, max: 10_000, noNaN: true });
+
+/** A config `parseConfig` accepts, built from the rules each key is held to. */
+const validConfig = fc.record(
+  {
+    level: fc.constantFrom('safe', 'aggressive'),
+    locale: fc.constantFrom(...LOCALES),
+    disable: fc.uniqueArray(fc.constantFrom(...RULES.map((rule) => rule.id)), { maxLength: 3 }),
+    budgets: fc.dictionary(pattern, fc.nat({ max: 100_000 }), { maxKeys: 3 }),
+    labels: fc.dictionary(segment, insidePath, { maxKeys: 3 }),
+    maxGrowth: fc.double({ min: 0, max: 1_000, noNaN: true }),
+    pricing: insidePath.map((path) => `${path}.json`),
+    extensions: fc.array(segment.map((name) => `.${name}`), { minLength: 1, maxLength: 3 }),
+    ignore: fc.array(pattern, { maxLength: 3 }),
+    store: fc.record({ keepDays: fc.integer({ min: 1, max: 3650 }) }),
+    spend: fc.record({ maxUsd: dollars, monthlyUsd: dollars }, { requiredKeys: [] }),
+    limits: fc.record({ dayUsd: dollars, sessionUsd: dollars }, { requiredKeys: [] }),
+  },
+  { requiredKeys: [] },
+);
+
+/** Every place one value sits: a top-level key, or one key of an object under it. */
+function fieldsOf(document) {
+  const fields = [];
+  for (const [key, value] of Object.entries(document)) {
+    fields.push([key]);
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      for (const inner of Object.keys(value)) fields.push([key, inner]);
+    }
+  }
+  return fields;
+}
+
+function replaced(document, field, value) {
+  const copy = structuredClone(document);
+  if (field.length === 1) copy[field[0]] = value;
+  else copy[field[0]][field[1]] = value;
+  return copy;
+}
+
+describe('a valid config, generated from the rules parseConfig holds each key to', () => {
+  it('is accepted', () => {
+    check(fc.property(validConfig, (config) => {
+      parseConfig(JSON.stringify(config), 'property.json');
+    }));
+  });
+
+  // Found by the property below (#911): "store" threw a plain Error, so the
+  // CLI could not tell a bad config from a crash.
+  it('refuses a "store" of the wrong shape with a ConfigError', () => {
+    for (const text of ['{"store":[]}', '{"store":{"keepDays":0}}', '{"store":{"keepDays":1.5}}']) {
+      assert.throws(() => parseConfig(text, 'property.json'), ConfigError, text);
+    }
+  });
+
+  it('with one field replaced by any value, is accepted as it stands or refused with a ConfigError', () => {
+    check(fc.property(validConfig.filter((config) => Object.keys(config).length > 0), fc.nat(), fc.jsonValue(), (config, pick, value) => {
+      const fields = fieldsOf(config);
+      const changed = replaced(config, fields[pick % fields.length], value);
+      try {
+        parseConfig(JSON.stringify(changed), 'property.json');
+      } catch (error) {
+        assert.ok(error instanceof ConfigError, `${error?.constructor?.name}: ${error?.message}`);
+      }
+    }));
+  });
+});
+
+const sha = fc.stringMatching(/^[0-9a-f]{64}$/);
+const edit = fc
+  .record({
+    path: insidePath.map((path) => `${path}.md`),
+    steps: fc.uniqueArray(fc.constantFrom(...PLAN_EDIT_STEPS), { minLength: 1 }),
+    level: fc.constant('safe'),
+    disabledRules: fc.array(fc.constantFrom(...RULES.map((rule) => rule.id)), { maxLength: 2 }),
+    minPrefixTokens: fc.nat({ max: 10_000 }),
+    beforeSha256: sha,
+    afterSha256: sha,
+  })
+  .filter((value) => value.beforeSha256 !== value.afterSha256);
+const action = fc.oneof(
+  fc.record({ label: segment, model: segment, kind: fc.constantFrom(...PLAN_ACTION_KINDS.filter((kind) => kind !== 'edit-file')) }),
+  fc.record({ label: segment, model: segment, kind: fc.constant('edit-file'), detail: edit.map((value) => ({ edit: value })) }),
+);
+/** A plan `parsePlanDocument` reads as valid: the fields `verifyPlan` reads, and a whole edit. */
+const validPlan = fc.record({ schemaVersion: fc.constant(1), actions: fc.array(action, { minLength: 1, maxLength: 4 }) });
+
+describe('a valid plan, generated from the fields verification reads', () => {
+  it('is read as valid', () => {
+    check(fc.property(validPlan, (plan) => {
+      const result = parsePlanDocument(JSON.stringify(plan));
+      assert.equal(result.ok, true, JSON.stringify(result.ok ? null : result.why));
+    }));
+  });
+
+  // The fields every action is read by, each replaced by a value of a type it
+  // can never take: the plan is refused with a result that names the action.
+  const wrongType = {
+    label: fc.oneof(fc.integer(), fc.boolean(), fc.constant(null), fc.array(fc.string())),
+    model: fc.oneof(fc.integer(), fc.boolean(), fc.constant(null), fc.object()),
+    kind: fc.string().filter((value) => !PLAN_ACTION_KINDS.includes(value)),
+  };
+
+  it('with one action field given a value it cannot take, is refused with a result, never an exception', () => {
+    check(fc.property(validPlan, fc.nat(), fc.constantFrom('label', 'model', 'kind'), fc.nat(), (plan, at, field, seed) => {
+      const index = at % plan.actions.length;
+      const value = fc.sample(wrongType[field], { seed, numRuns: 1 })[0];
+      const changed = structuredClone(plan);
+      changed.actions[index][field] = value;
+      const result = parsePlanDocument(JSON.stringify(changed));
+      assert.equal(result.ok, false);
+      assert.equal(result.why.kind, 'action-malformed');
+      assert.equal(result.why.index, index);
+    }));
+  });
+
+  it('with any one field replaced by any value, is answered with a result, never an exception', () => {
+    check(fc.property(validPlan, fc.nat(), fc.jsonValue(), (plan, pick, value) => {
+      const fields = [['schemaVersion'], ['actions'], ...plan.actions.flatMap((entry, index) => Object.keys(entry).map((key) => ['actions', index, key]))];
+      const field = fields[pick % fields.length];
+      const changed = structuredClone(plan);
+      if (field.length === 1) changed[field[0]] = value;
+      else changed.actions[field[1]][field[2]] = value;
+      const result = parsePlanDocument(JSON.stringify(changed));
+      assert.equal(typeof result.ok, 'boolean');
     }));
   });
 });
