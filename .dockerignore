@@ -24,7 +24,6 @@ action
 !docs
 .env*
 .trazum
-.gitea
 .github
 !.github/milestones.json
 .claude

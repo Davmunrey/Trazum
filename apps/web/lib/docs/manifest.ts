@@ -90,7 +90,6 @@ export const DOCS: readonly DocEntry[] = [
   { path: 'docs/gateway.md', slug: 'gateway', title: 'The gateway', group: 'use' },
   { path: 'docs/ci.md', slug: 'ci', title: 'CI gates', group: 'use' },
   { path: 'docs/running.md', slug: 'running', title: 'Running it on a schedule', group: 'use' },
-  { path: 'docs/deploy-n0.md', slug: 'deploy-n0', title: 'Deploying on N0', group: 'use' },
   { path: 'docs/plan-format.md', slug: 'plan-format', title: 'The plan document', group: 'use' },
   { path: 'docs/json-output.md', slug: 'json-output', title: 'JSON output', group: 'use' },
   { path: 'docs/building-on-the-json.md', slug: 'building-on-the-json', title: 'Building on the JSON', group: 'use' },

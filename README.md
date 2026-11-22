@@ -466,8 +466,8 @@ and share links backed by the deployment operator's database.
 
 ### Deploying to Vercel
 
-[Deployment instructions](docs/setup.md#deploying-to-vercel),
-[environment variables](.env.example), and [N0 deployment](docs/deploy-n0.md).
+[Deployment instructions](docs/setup.md#deploying-to-vercel) and
+[environment variables](.env.example).
 
 ### Library
 

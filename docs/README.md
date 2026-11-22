@@ -87,7 +87,6 @@ In the order somebody actually meets them:
 | [The gateway](gateway.md) | Standing in the path of the call, and refusing |
 | [CI](ci.md) | Gating a build on tokens, dollars and quality |
 | [Running it](running.md) | Making it happen on a schedule, and why that schedule is yours |
-| [Deploying on N0](deploy-n0.md) | The web app as a hosted app, and how an update travels — pin the SHA, preview before promote |
 | [The plan document](plan-format.md) | The one output meant to be kept, committed and diffed |
 | [JSON output](json-output.md) | Every machine-readable document, field by field |
 | [Building on the JSON](building-on-the-json.md) | Each command's contract, what is versioned and held by tests, what is stable, and that nothing uploads usage |

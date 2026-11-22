@@ -153,7 +153,7 @@ describe('the ASVS 4.0.3 level 2 mapping', () => {
     .map(([, id, requirement, status, why]) => ({ id, requirement, status, why }));
 
   /** A repository path in backticks: has a directory, or is a known top-level file. Not `Response.json`. */
-  const PATH = /`((?:[\w.[\]-]+\/)+[\w.[\]-]+\.\w+|Dockerfile|[A-Z][\w-]*\.md|n0-app\.json)`/g;
+  const PATH = /`((?:[\w.[\]-]+\/)+[\w.[\]-]+\.\w+|Dockerfile|[A-Z][\w-]*\.md)`/g;
   const pathsIn = (text) => [...text.matchAll(PATH)].map((match) => match[1]);
 
   it('maps every level 2 requirement exactly once, in the standard\u2019s order', () => {

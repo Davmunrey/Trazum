@@ -7327,12 +7327,12 @@ Nothing installable changes: no package code, no command, no flag.
   commit, and a GitHub workflow mirrors `main` there, doing nothing (and
   saying so) until the `N0_*` secrets exist. The manifest embeds the SQL
   because the platform writes `config_files` before the container starts —
-  and `n0-manifest.test.js` holds the embedded copy byte-identical to
+  and a test of the manifest held the embedded copy byte-identical to
   `apps/web/db` in both directions, requires every env object to be a
   secret declaration rather than a credential, and requires the web image
   to stay a loud placeholder until a real workspace exists. The web app
   gains `output: 'standalone'`; deploy doctrine in
-  [docs/deploy-n0.md](docs/deploy-n0.md) — pin the SHA (`:latest` does not
+  `docs/deploy-n0.md` — pin the SHA (`:latest` does not
   update a cached tag), preview before promote, and the deploy itself stays
   a decision, not a push hook.
 

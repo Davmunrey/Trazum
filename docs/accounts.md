@@ -1,6 +1,6 @@
 # Accounts
 
-[Documentation](README.md) / [Web setup](setup.md#web) · [Deployment](deploy-n0.md) · [Privacy](../README.md#analytics-and-privacy)
+[Documentation](README.md) / [Web setup](setup.md#web) · [Deployment](setup.md#deploying-to-vercel) · [Privacy](../README.md#analytics-and-privacy)
 
 Signing in is **off by default**. With nothing configured, Trazum's web app is
 what it has always been: you paste a prompt, it answers, and it remembers

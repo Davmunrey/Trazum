@@ -32,7 +32,7 @@
   {
     "title": "A repository a stranger can contribute to",
     "description": "What a visitor and a contributor need that is not the product: a roadmap that opens with what comes next, a wiki that publishes itself, documents that agree with each other, and Discussions with a form for each kind of question.",
-    "issues": [725, 726, 727, 732, 747, 765, 767, 772, 778, 779, 787, 829, 929]
+    "issues": [725, 726, 727, 732, 747, 765, 767, 772, 778, 779, 787, 829, 929, 931]
   },
   {
     "title": "Tests that would notice a wrong price",
