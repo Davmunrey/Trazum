@@ -116,9 +116,16 @@ args = ["-y", "@trazum/mcp@3.0.5"]
 
 The Gemini CLI line installs the source of the release GitHub marks Latest,
 not the default branch, and the `gemini-extension.json` in that release names
-the server's version. Gemini CLI looks for an update the same way, by the
-latest release's tag. This was checked by hand once, with Gemini CLI 0.70.0 on
-2026-11-22 (#774).
+the server's version. That install was run by hand once, with Gemini CLI
+0.70.0 on 2026-11-22 (#774).
+
+Two more things were read in Gemini CLI 0.70.0's code and not run. It looks
+for an update by comparing the latest release's tag with the one it
+installed. And it takes a release that carries a single file as the
+extension's own archive. A release here is created with one file, its bill
+of materials, and the others are attached after it. An install in that gap
+cannot unpack the release, and Gemini CLI offers to `git clone` the default
+branch instead.
 
 The `.mcpb` bundle is attached to each release after npm serves the packages;
 if the address above is not there yet, the release page lists what the release
