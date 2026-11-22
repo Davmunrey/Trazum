@@ -2564,6 +2564,9 @@ describe('the packaged Action', () => {
     const allowlist = /allowlist:\s*'([^']*)'/.exec(cla);
     assert.ok(allowlist, 'cla.yml declares no allowlist — every PR would demand a signature');
     const listed = allowlist[1].split(',').map((entry) => entry.trim());
+    // A pattern lets in every account it matches, and nobody chose them (L-5).
+    const patterns = listed.filter((entry) => entry.includes('*'));
+    assert.deepEqual(patterns, [], 'the CLA allowlist carries a pattern, not an identity');
     for (const identity of ['Davmunrey', 'claude', 'Claude', 'Trazum automation']) {
       assert.ok(
         listed.includes(identity),
