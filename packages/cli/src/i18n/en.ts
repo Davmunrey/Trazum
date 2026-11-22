@@ -11,6 +11,10 @@ const count = (value: number): string => value.toLocaleString('en-US');
  * agreement by hand while a dozen did not. A helper rather than a dozen ternaries,
  * so the next message written gets it for free.
  */
+/** What one row of a ccusage report of this kind is the total of. */
+const ccusageUnit = (report: 'daily' | 'weekly' | 'monthly' | 'session'): string =>
+  report === 'daily' ? 'day' : report === 'weekly' ? 'week' : report === 'monthly' ? 'month' : 'session';
+
 const plural = (value: number, one: string, many = `${one}s`): string =>
   `${count(value)} ${value === 1 ? one : many}`;
 
@@ -414,9 +418,11 @@ ${bold('OPTIONS FOR from-ccusage')}
   reports, focused on Claude Code or across every agent it found), read as a
   usage log: one record for each model on each row, priced from the catalogue.
   What ccusage charged for the same counts is printed beside, model by model,
-  and never used to price. A row is a day's, month's or session's total, not
-  a call. A project's name, which is a path, is written out only as the label
-  you give it. It reads the file it is given: it does not run ccusage.
+  and never used to price. A row is a day's, week's, month's or session's
+  total, not a call. A project's name, which is a path, is written out only as
+  the label you give it. It reads the file it is given: it does not run
+  ccusage. bill reads the same file and counts its rows as rows; the log
+  written here is read as any other, and its records are counted as calls.
 
 ${bold('OPTIONS FOR from-helicone')}
   -o, --out <file>            Write the usage log there instead of stdout.
@@ -2470,6 +2476,16 @@ ${bold('EXAMPLES')}
       `Not in the total: ${records} record(s) on ${models}, which the catalogue does not price. Named, never counted as $0, and never priced at ccusage's figure.`,
     ccusageWindowed: () =>
       "ccusage's own figures cover the whole report, not the period asked for, so they are not set beside this bill. trazum from-ccusage on the file sets them beside the catalogue's, model by model.",
+    ccusageTimezone: () =>
+      "--timezone cuts the bill's days in that zone, and a row of a ccusage report is already the total of a whole day, week, month or session, with its days cut by ccusage in the zone it ran in, which its JSON does not say. Moved to another zone, a whole row would land on another day or month. Run ccusage with its own --timezone and bill its file without this flag.",
+    ccusageSideFile: (flag) =>
+      `${flag} counts what it bills as calls and splits it by day, and a row of a ccusage report is a period's total, not a call: written from one, it would print a day's or a month's total as one call on one day. So it is not written for a ccusage report. The statement (--table) bills it, and so does the receipt (--receipt), whose calls fields count records.`,
+    ccusageWindowCuts: (rows, startUnknown, report) =>
+      `--since/--until falls inside ${rows} row(s) of this ccusage ${report} report. Each row is the total of a whole ${ccusageUnit(report)} and does not say how it was spread across it, so part of one cannot be billed, and billing all of it or none of it would pass for the period asked. Put --since and --until on the rows' edges, or bill a finer report (ccusage daily --json).${startUnknown > 0 ? ` ${startUnknown} of them are sessions whose report names only their last activity, so whether they began before the edge cannot be told; ccusage claude session --json names the first activity too.` : ''}`,
+    ccusageByCuts: (unit, rows, startUnknown, report) =>
+      `--by ${unit} would split ${rows} row(s) of this ccusage ${report} report across ${unit}s. Each row is the total of a whole ${ccusageUnit(report)} and does not say how it was spread across it, so it cannot be put on one ${unit}. Bill it by a unit its rows fit inside, or bill a finer report (ccusage daily --json).${startUnknown > 0 ? ` ${startUnknown} of them are sessions whose report names only their last activity, so the ${unit} they began in cannot be told.` : ''}`,
+    ccusageMonthsCut: (rows) =>
+      `Not split by month: ${rows} row(s) of the ccusage report run across a month's edge, or are sessions whose start is not known, and a row does not say how it was spread across its span.`,
     statementUnread: (lines) => `${lines} line(s) could not be read as usage and are not in the total.`,
     statementNext: () =>
       'The receipt as data: --receipt, or -o receipt.json. The document for whoever pays: --pdf-out bill.pdf.',
@@ -2512,6 +2528,8 @@ ${bold('EXAMPLES')}
       `${ids}: the model after the slash is priced here under its own name. The prefix is not stripped for you, because the same model through a router can bill differently. If those calls went straight to the provider, log the model without the prefix.`,
     windowMatchesNothing: (from, to) =>
       `No call falls inside this period. What was read covers ${from} → ${to}. A period with nothing in it is not a $0 bill: check the dates, or leave --since/--until off to bill everything.`,
+    windowMatchesNothingRows: (from, to, mixed) =>
+      `${mixed ? 'No call and no row of the ccusage report' : 'No row of the ccusage report'} falls inside this period. What was read covers ${from} → ${to}. A period with nothing in it is not a $0 bill: check the dates, or leave --since/--until off to bill everything.`,
     written: (file) => `Wrote ${file}.`,
     rangeConflict: (flag) =>
       `--git-range sets the period itself, from the commits, and prints its own statement: it cannot be combined with ${flag}.`,
@@ -2612,6 +2630,8 @@ ${bold('EXAMPLES')}
       'A project mapping was given and no row named a project, so the split you asked for was not made. ccusage names projects in claude daily --instances and in claude session.',
     notCarried: () =>
       "ccusage's report does not carry US-only inference or web searches, which Claude Code's own sessions record and Anthropic bills. Priced from this report, those are a floor; trazum bill on the sessions themselves has them.",
+    logCountsCalls: () =>
+      "The log written here is read by every command as any other usage log: its records are priced as rows that sum requests, and counted as calls, the way the rows of Anthropic's usage report are. trazum bill on the ccusage file itself counts them as rows.",
     comparisonHeading: () => "ccusage's figure and the catalogue's, for the same counts:",
     colModel: () => 'model, as ccusage names it',
     colCcusage: () => 'ccusage',
@@ -2779,6 +2799,8 @@ ${bold('EXAMPLES')}
     movedHeading: (firstDay, lastDay) => `Against the week before (${firstDay} to ${lastDay})`,
     noWeekBefore: () =>
       'No call in the logs falls in the week before, so there is nothing to compare with. A percentage of nothing is not printed.',
+    ccusageRows: () =>
+      'weekly bills the seven days before --until and counts calls, and a row of a ccusage report is the total of a whole day, week, month or session, not a call: the week would cut rows at its edges and count them as calls. So weekly does not read a ccusage report. trazum bill on the file bills it.',
     moved: (delta, pct, now, before, calls) =>
       `The bill moved ${delta}${pct === null ? '' : ` (${pct})`} against the week before: ${now} now, ${before} then, over ${calls} ${calls === '1' ? 'call' : 'calls'}. Both are measured.`,
     unchanged: (now, before) => `The week cost the same as the week before: ${now} now, ${before} then. Both are measured.`,

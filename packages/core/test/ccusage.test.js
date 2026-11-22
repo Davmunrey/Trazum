@@ -6,7 +6,9 @@ import {
   BUNDLED_CATALOGUE,
   PROVIDER_REVIEWED,
   SHAPE_COMMAND,
+  ccusageCoverage,
   ccusageRecords,
+  ccusageRowsCut,
   claudeCodeRecords,
   compareCcusage,
   looksLikeCcusage,
@@ -131,10 +133,12 @@ describe('every report ccusage wrote is claimed, and by nothing else', () => {
       'claude-daily.json',
       'claude-monthly.json',
       'claude-session.json',
+      'claude-weekly.json',
       'daily-sections.json',
       'daily.json',
       'monthly.json',
       'session.json',
+      'weekly.json',
     ]);
   });
 
@@ -162,10 +166,12 @@ describe('the fixture prices to the figure worked out by hand', () => {
     'claude-daily.json': ['daily', 3, false],
     'claude-monthly.json': ['monthly', 2, false],
     'claude-session.json': ['session', 2, false],
+    'claude-weekly.json': ['weekly', 2, false],
     'daily-sections.json': ['daily', 3, true],
     'daily.json': ['daily', 3, true],
     'monthly.json': ['monthly', 2, true],
     'session.json': ['session', 2, true],
+    'weekly.json': ['weekly', 2, true],
   };
   for (const name of REPORTS) {
     it(`${name}: ${HAND.total}, whichever way ccusage cut the same turns`, () => {
@@ -283,6 +289,11 @@ describe('a row is a total, never a call', () => {
     assert.deepEqual([...new Set(ccusageRecords(read('session.json')).records.map((record) => record.ts))].sort(), ['2026-11-02T10:10:00.000Z', '2026-11-03T11:00:00.000Z']);
   });
 
+  it('dates a week at its start, Sunday in the focused report and Monday in the one across every agent', () => {
+    assert.deepEqual([...new Set(ccusageRecords(read('claude-weekly.json')).records.map((r) => r.ts))], ['2026-10-25T00:00:00.000Z', '2026-11-01T00:00:00.000Z']);
+    assert.deepEqual([...new Set(ccusageRecords(read('weekly.json')).records.map((r) => r.ts))], ['2026-10-26T00:00:00.000Z', '2026-11-02T00:00:00.000Z']);
+  });
+
   it('dates a day or a month at its start', () => {
     assert.deepEqual([...new Set(ccusageRecords(read('claude-daily.json')).records.map((r) => r.ts))], ['2026-10-31T00:00:00.000Z', '2026-11-02T00:00:00.000Z', '2026-11-03T00:00:00.000Z']);
     assert.deepEqual([...new Set(ccusageRecords(read('monthly.json')).records.map((r) => r.ts))].sort(), ['2026-10-01T00:00:00.000Z', '2026-11-01T00:00:00.000Z']);
@@ -396,5 +407,89 @@ describe('what the report says, read the way ccusage wrote it', () => {
       assert.equal(ccusageRecords(text).unparseable, 1, text);
       assert.equal(ccusageRecords(text).records.length, 0, text);
     }
+  });
+});
+
+/*
+  A row is a total over a stretch of time and does not say how it was spread
+  across it. A bill reads each record's date as an instant, so a window edge or
+  a split by day, week or month inside a row would bill the whole row on one
+  side of it: a month on its first day. The spans say what each row covers, and
+  `ccusageRowsCut` finds the rows a cut falls inside, for the bill to refuse.
+*/
+describe('a row covers its whole period, and a cut inside one is found', () => {
+  const at = (iso) => Date.parse(iso);
+  const spansOf = (name) => ccusageRecords(read(name)).spans;
+
+  it('spans a day, a week and a month from its start to the start of the next', () => {
+    assert.deepEqual(spansOf('claude-monthly.json'), [
+      { fromMs: at('2026-10-01T00:00:00Z'), toMs: at('2026-11-01T00:00:00Z'), atMs: at('2026-10-01T00:00:00Z') },
+      { fromMs: at('2026-11-01T00:00:00Z'), toMs: at('2026-12-01T00:00:00Z'), atMs: at('2026-11-01T00:00:00Z') },
+    ]);
+    assert.deepEqual(spansOf('claude-weekly.json').map((span) => [span.fromMs, span.toMs]), [
+      [at('2026-10-25T00:00:00Z'), at('2026-11-01T00:00:00Z')],
+      [at('2026-11-01T00:00:00Z'), at('2026-11-08T00:00:00Z')],
+    ]);
+    assert.deepEqual(spansOf('claude-daily.json').map((span) => span.toMs - span.fromMs), [86_400_000, 86_400_000, 86_400_000]);
+  });
+
+  it('spans a session from its first activity to its last, and knows when the start is not given', () => {
+    assert.deepEqual(spansOf('claude-session.json').map((span) => [span.fromMs, span.atMs]).sort((a, b) => a[1] - b[1]), [
+      [at('2026-10-31T09:00:00Z'), at('2026-11-02T10:10:00Z')],
+      [at('2026-11-02T14:00:00Z'), at('2026-11-03T11:00:00Z')],
+    ]);
+    // The report across every agent names a session's last activity only.
+    assert.ok(spansOf('session.json').every((span) => span.fromMs === null));
+  });
+
+  it('finds a window edge inside a month, and none on its edges', () => {
+    const spans = spansOf('claude-monthly.json');
+    assert.deepEqual(ccusageRowsCut(spans, { sinceMs: at('2026-11-01T00:00:00Z'), untilMs: at('2026-11-06T00:00:00Z') }), { rows: 1, startUnknown: 0 });
+    assert.deepEqual(ccusageRowsCut(spans, { sinceMs: at('2026-11-10T00:00:00Z') }), { rows: 1, startUnknown: 0 });
+    assert.deepEqual(ccusageRowsCut(spans, { sinceMs: at('2026-11-01T00:00:00Z'), untilMs: at('2026-12-01T00:00:00Z') }), { rows: 0, startUnknown: 0 });
+    // A day's edges never fall inside a day.
+    assert.equal(ccusageRowsCut(spansOf('claude-daily.json'), { sinceMs: at('2026-11-02T00:00:00Z'), untilMs: at('2026-11-03T00:00:00Z') }).rows, 0);
+  });
+
+  it('finds a split by day, week or month that a row would not fit inside', () => {
+    assert.equal(ccusageRowsCut(spansOf('claude-monthly.json'), { unit: 'day' }).rows, 2);
+    assert.equal(ccusageRowsCut(spansOf('claude-monthly.json'), { unit: 'week' }).rows, 2);
+    assert.equal(ccusageRowsCut(spansOf('claude-monthly.json'), { unit: 'month' }).rows, 0);
+    // Sunday to Saturday is never one ISO week, which runs Monday to Sunday.
+    assert.equal(ccusageRowsCut(spansOf('claude-weekly.json'), { unit: 'week' }).rows, 2);
+    assert.equal(ccusageRowsCut(spansOf('weekly.json'), { unit: 'week' }).rows, 0);
+    // The week of 2026-10-26 ends on 2026-11-01.
+    assert.equal(ccusageRowsCut(spansOf('weekly.json'), { unit: 'month' }).rows, 1);
+    assert.equal(ccusageRowsCut(spansOf('claude-daily.json'), { unit: 'day' }).rows, 0);
+    // Both sessions ran across midnight.
+    assert.equal(ccusageRowsCut(spansOf('claude-session.json'), { unit: 'day' }).rows, 2);
+  });
+
+  it('counts a session whose start is not known as cut by any edge at or before its end', () => {
+    assert.deepEqual(ccusageRowsCut(spansOf('session.json'), { sinceMs: at('2026-11-01T00:00:00Z') }), { rows: 2, startUnknown: 2 });
+    assert.deepEqual(ccusageRowsCut(spansOf('session.json'), { sinceMs: at('2026-11-04T00:00:00Z') }), { rows: 0, startUnknown: 0 });
+    assert.deepEqual(ccusageRowsCut(spansOf('session.json'), { unit: 'month' }), { rows: 2, startUnknown: 2 });
+  });
+
+  it('covers from the first row start to the last moment of the last row, inside a window', () => {
+    assert.deepEqual(ccusageCoverage(spansOf('claude-monthly.json')), { fromMs: at('2026-10-01T00:00:00Z'), toMs: at('2026-12-01T00:00:00Z') - 1 });
+    assert.deepEqual(
+      ccusageCoverage(spansOf('claude-monthly.json'), { sinceMs: at('2026-11-01T00:00:00Z'), untilMs: at('2026-12-01T00:00:00Z') }),
+      { fromMs: at('2026-11-01T00:00:00Z'), toMs: at('2026-12-01T00:00:00Z') - 1 },
+    );
+    assert.equal(ccusageCoverage(spansOf('claude-monthly.json'), { sinceMs: at('2027-01-01T00:00:00Z') }), null);
+  });
+
+  it('returns no span for a row that became no record', () => {
+    const report = JSON.parse(read('claude-daily.json'));
+    for (const breakdown of report.daily[0].modelBreakdowns) {
+      breakdown.inputTokens = 0;
+      breakdown.outputTokens = 0;
+      breakdown.cacheCreationTokens = 0;
+      breakdown.cacheReadTokens = 0;
+    }
+    const conversion = ccusageRecords(JSON.stringify(report));
+    assert.equal(conversion.spans.length, 2);
+    assert.ok(conversion.spans.every((span) => span.atMs > at('2026-10-31T00:00:00Z')));
   });
 });

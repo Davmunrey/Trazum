@@ -49,9 +49,11 @@ run() {
 run claude daily --json --offline --timezone UTC             > claude-daily.json
 run claude daily --instances --json --offline --timezone UTC > claude-daily-instances.json
 run claude daily --no-cost --json --offline --timezone UTC   > claude-daily-no-cost.json
+run claude weekly --json --offline --timezone UTC            > claude-weekly.json
 run claude monthly --json --offline --timezone UTC           > claude-monthly.json
 run claude session --json --offline --timezone UTC           > claude-session.json
 run daily --json --offline --timezone UTC                    > daily.json
+run weekly --json --offline --timezone UTC                   > weekly.json
 run monthly --json --offline --timezone UTC                  > monthly.json
 run session --json --offline --timezone UTC                  > session.json
 run daily --sections daily,monthly,session --json --offline --timezone UTC > daily-sections.json
@@ -59,6 +61,14 @@ run daily --sections daily,monthly,session --json --offline --timezone UTC > dai
 
 Every command exited 0. Run twice, the second time against the copy of the
 sessions in this folder, each run wrote the same bytes.
+
+The two weekly reports were written later, on 2026-11-22, by the same binary
+(the same sha256) run the same way against the copy of the sessions in this
+folder. In that run `claude daily` wrote the same bytes as `claude-daily.json`
+here, and each weekly report, written twice, wrote the same bytes both times.
+The report focused on Claude Code starts its weeks on Sunday (`"week":
+"2026-10-25"`), and the report across every agent on Monday (`"period":
+"2026-10-26"`).
 
 `claude …` is the report focused on Claude Code, which is all ccusage wrote
 before version 18. The others are the report across every agent ccusage

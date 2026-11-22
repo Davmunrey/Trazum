@@ -158,6 +158,102 @@ describe('bill reads a ccusage report as it is', () => {
   });
 });
 
+/*
+  A row is the total of a whole day, week, month or session and does not say
+  how it was spread across it. Billed by an instant, a zone, a window edge or a
+  split inside one would put all of it on one side: November's $1.13 in
+  October, or a month on its first day. And the files that count calls would
+  print it as one. So each of those is refused with its reason, and nothing is
+  written first.
+*/
+describe('bill never cuts a row, and never writes one where it would be a call', () => {
+  const MONTHLY = join(FIXTURES, 'claude-monthly.json');
+  const refused = (args, pattern) => {
+    const result = run(['bill', ...args, '--table']);
+    assert.equal(result.status, 1, `billed: ${result.stdout}`);
+    assert.equal(result.stdout, '', 'a statement was printed before the refusal');
+    assert.match(flat(result.stderr), pattern);
+    return result;
+  };
+
+  it('refuses --timezone, which would move a whole row to another day', () => {
+    refused([MONTHLY, '--timezone', 'America/Los_Angeles'], /--timezone .* a row of a ccusage report is already the total of a whole day, week, month or session/);
+    refused([DAILY, '--by', 'day', '--timezone', 'America/New_York'], /Run ccusage with its own --timezone/);
+  });
+
+  it('refuses a window edge inside a row, and bills a window on the rows edges', () => {
+    refused([MONTHLY, '--since', '2026-11-01', '--until', '2026-11-05'], /--since\/--until falls inside 1 row\(s\) of this ccusage monthly report/);
+    refused([MONTHLY, '--since', '2026-11-10', '--until', '2026-11-15'], /falls inside 1 row\(s\)/);
+    const november = run(['bill', MONTHLY, '--since', '2026-11-01', '--until', '2026-11-30', '--table']);
+    assert.equal(november.status, 0, november.stderr);
+    // November's rows: 1.28275 less October's 0.156.
+    assert.match(november.stdout, /\$1\.13 across 6 priced row\(s\)/);
+    assert.match(flat(november.stdout), /This log covers 2026-11-01 → 2026-11-30 \(30\.0 days\)/);
+  });
+
+  it('refuses any edge at or before a session whose start the report does not name', () => {
+    refused([join(FIXTURES, 'session.json'), '--since', '2026-11-01'], /2 of them are sessions whose report names only their last activity/);
+    refused([join(FIXTURES, 'claude-session.json'), '--since', '2026-11-03'], /falls inside 1 row\(s\) of this ccusage session report/);
+  });
+
+  it('says rows, not calls, when a window holds none', () => {
+    const result = refused([join(FIXTURES, 'claude-session.json'), '--since', '2026-11-04'], /No row of the ccusage report falls inside this period\. What was read covers 2026-10-31 → 2026-11-03\./);
+    assert.doesNotMatch(result.stderr, /No call/);
+  });
+
+  it('refuses a --by a row does not fit inside, and bills one it does', () => {
+    refused([MONTHLY, '--by', 'day'], /--by day would split 2 row\(s\) of this ccusage monthly report across days/);
+    // ccusage claude weekly starts its weeks on Sunday; the bill's ISO weeks start on Monday.
+    refused([join(FIXTURES, 'claude-weekly.json'), '--by', 'week'], /--by week would split 2 row\(s\) of this ccusage weekly report/);
+    refused([join(FIXTURES, 'weekly.json'), '--by', 'month'], /--by month would split 1 row\(s\)/);
+    const weeks = run(['bill', join(FIXTURES, 'weekly.json'), '--by', 'week', '--table']);
+    assert.equal(weeks.status, 0, weeks.stderr);
+    assert.match(weeks.stdout, /2026-W44\s+1\s+\$0\.1560/);
+    assert.match(weeks.stdout, /2026-W45\s+6\s+\$1\.13/);
+  });
+
+  it('leaves out the by-month table where a row runs across a month, and says why', () => {
+    const result = run(['bill', join(FIXTURES, 'weekly.json'), '--table']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stdout, /month\s+rows\s+USD/);
+    assert.match(flat(result.stdout), /Not split by month: 1 row\(s\) of the ccusage report run across a month's edge/);
+    // The Sunday weeks of the focused report fall inside October and November.
+    assert.match(run(['bill', join(FIXTURES, 'claude-weekly.json'), '--table']).stdout, /month\s+rows\s+USD/);
+  });
+
+  it('says what the rows cover, start to end, not the instants they are dated at', () => {
+    const result = run(['bill', MONTHLY, '--table']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(flat(result.stdout), /This log covers 2026-10-01 → 2026-11-30 \(61\.0 days\)/);
+  });
+
+  for (const flag of ['--markdown-out', '--html-out', '--pdf-out', '--csv-out', '--otlp-out', '--prom-out']) {
+    it(`refuses ${flag}, which counts calls and splits by day, and writes nothing`, () => {
+      const out = join(scratch(), 'side-file');
+      refused([DAILY, flag, out], new RegExp(`${flag} counts what it bills as calls and splits it by day`));
+      assert.equal(existsSync(out), false, `${flag} was written`);
+    });
+  }
+
+  it('leaves a ccusage report to bill alone with --agent, so nothing of it is refused or counted', () => {
+    const result = run(['bill', SESSIONS, MONTHLY, '--agent', 'claude-code', '--markdown-out', join(scratch(), 'bill.md'), '--table']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /\$1\.23 across 10 priced call\(s\)/);
+  });
+
+  it('weekly refuses a ccusage report, which it would cut at --until and count as calls', () => {
+    const result = run(['weekly', DAILY, '--until', '2026-11-04']);
+    assert.equal(result.status, 1, result.stdout);
+    assert.equal(result.stdout, '');
+    assert.match(flat(result.stderr), /So weekly does not read a ccusage report\. trazum bill on the file bills it\./);
+  });
+
+  it('says that the log it writes is counted as calls by what reads it', () => {
+    const result = run(['from-ccusage', DAILY]);
+    assert.match(flat(result.stderr), /The log written here is read by every command as any other usage log: .* counted as calls/);
+  });
+});
+
 describe('no project folder reaches anything printed or written', () => {
   for (const name of REPORTS) {
     it(`${name}: from-ccusage and bill`, () => {

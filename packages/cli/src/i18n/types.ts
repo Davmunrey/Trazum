@@ -931,6 +931,16 @@ export interface CliMessages {
     statementUnpricedRecords(models: string, records: number): string;
     /** A bill with --since or --until over a ccusage report: the comparison is the whole file's. */
     ccusageWindowed(): string;
+    /** `--timezone` over a ccusage report: refused, because a row is a whole period ccusage already cut. */
+    ccusageTimezone(): string;
+    /** A side file that counts calls and splits by day, asked for over a ccusage report: refused. */
+    ccusageSideFile(flag: string): string;
+    /** `--since`/`--until` falls inside rows of a ccusage report: refused, never billed as if it fell on an edge. */
+    ccusageWindowCuts(rows: number, startUnknown: number, report: 'daily' | 'weekly' | 'monthly' | 'session'): string;
+    /** `--by` would split rows of a ccusage report across periods: refused. */
+    ccusageByCuts(unit: 'day' | 'week' | 'month', rows: number, startUnknown: number, report: 'daily' | 'weekly' | 'monthly' | 'session'): string;
+    /** The by-month table left out, because rows of a ccusage report run across a month's edge. */
+    ccusageMonthsCut(rows: number): string;
     statementUnread(lines: number): string;
     statementNext(): string;
     notFound(path: string): string;
@@ -964,6 +974,8 @@ export interface CliMessages {
     apiEquivalent(): string;
     /** A --since/--until window no record falls in: refused, never a $0 bill. */
     windowMatchesNothing(from: string, to: string): string;
+    /** The same, where what was read is rows of a ccusage report, alone or beside calls. */
+    windowMatchesNothingRows(from: string, to: string, mixed: boolean): string;
     written(file: string): string;
     /** --git-range cannot be combined with a flag that sets the period, the project or an output. */
     rangeConflict(flag: string): string;
@@ -1041,6 +1053,8 @@ export interface CliMessages {
     projectNotGrouped(): string;
     /** What ccusage's report never carried, which makes the bill a floor on it. */
     notCarried(): string;
+    /** The log written is read as any other: its records are counted as calls downstream. */
+    logCountsCalls(): string;
     comparisonHeading(): string;
     colModel(): string;
     colCcusage(): string;
@@ -2581,6 +2595,8 @@ export interface CliMessages {
     movedHeading(firstDay: string, lastDay: string): string;
     /** The week before holds no call, so there is nothing to compare with. */
     noWeekBefore(): string;
+    /** A ccusage report among what was read: refused, since the week counts calls and cuts at --until. */
+    ccusageRows(): string;
     moved(delta: string, pct: string | null, now: string, before: string, calls: string): string;
     unchanged(now: string, before: string): string;
     moversHeading(): string;

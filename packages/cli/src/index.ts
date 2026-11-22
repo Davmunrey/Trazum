@@ -144,7 +144,9 @@ import {
   openaiCostReport,
   openaiUsageRecords,
   openrouterActivityRecords,
+  ccusageCoverage,
   ccusageRecords,
+  ccusageRowsCut,
   compareCcusage,
   type CcusageComparison,
   type CcusageConversion,
@@ -3607,17 +3609,72 @@ function refuseEmptyPeriod(
   pricing: PricingCatalogue,
   t: CliMessages,
   zone?: string,
+  rows: { counting: BillCounting; covers: ReadonlyArray<{ fromMs: number; toMs: number }> } = { counting: 'calls', covers: [] },
 ): void {
   if (period.words === undefined || report.total.calls > 0 || report.unpriced.calls > 0) return;
   const whole = profileUsage(text, { catalogue: pricing });
   if (whole.total.calls === 0 && whole.unpriced.calls === 0) return;
-  if (whole.span === null) throw new Error(t.profile.windowNeedsClock());
+  /* A ccusage row covers its whole period, not only the instant it is dated at. */
+  const span = spanWith(whole.span, rows.covers);
+  if (span === null) throw new Error(t.profile.windowNeedsClock());
+  const from = zone === undefined ? dayOf(span.fromMs) : dayInZone(span.fromMs, zone);
+  const to = zone === undefined ? dayOf(span.toMs) : dayInZone(span.toMs, zone);
   throw new Error(
-    `${t.bill.windowMatchesNothing(
-      zone === undefined ? dayOf(whole.span.fromMs) : dayInZone(whole.span.fromMs, zone),
-      zone === undefined ? dayOf(whole.span.toMs) : dayInZone(whole.span.toMs, zone),
-    )}${period.relative ? ` ${t.profile.windowRelativeEmpty()}` : ''}`,
+    `${rows.counting === 'calls' ? t.bill.windowMatchesNothing(from, to) : t.bill.windowMatchesNothingRows(from, to, rows.counting === 'mixed')}${period.relative ? ` ${t.profile.windowRelativeEmpty()}` : ''}`,
   );
+}
+
+/** A report's span, widened to what the ccusage rows in it cover. */
+function spanWith(
+  span: { fromMs: number; toMs: number } | null,
+  covers: ReadonlyArray<{ fromMs: number; toMs: number }>,
+): { fromMs: number; toMs: number } | null {
+  let out = span;
+  for (const covered of covers) {
+    out = out === null ? { ...covered } : { fromMs: Math.min(out.fromMs, covered.fromMs), toMs: Math.max(out.toMs, covered.toMs) };
+  }
+  return out;
+}
+
+/**
+ * What `bill` will not do to a ccusage report (#786). Each of its rows is the
+ * total of a whole day, week, month or session and does not say how it was
+ * spread across it, so nothing here may present it as finer than that:
+ *
+ * - `--timezone`: ccusage cut its days in the zone it ran in, and a row moved
+ *   to another zone would land whole on another day.
+ * - The side files that count calls and split by day: Markdown, HTML, PDF,
+ *   CSV, OTLP and Prometheus. The statement and the receipt bill the rows.
+ * - A `--since`/`--until` edge inside a row, or a `--by` unit that would split
+ *   one: either would bill a row's total as if it fell on one side.
+ *
+ * Refused before anything is written, so a refusal never follows a file.
+ */
+function refuseCcusageCuts(
+  args: Args,
+  conversions: readonly CcusageConversion[],
+  zone: string | undefined,
+  period: ReturnType<typeof billingPeriod>,
+  by: BillPeriodUnit | undefined,
+  t: CliMessages,
+): void {
+  if (conversions.length === 0) return;
+  if (zone !== undefined) throw new Error(t.bill.ccusageTimezone());
+  for (const flag of ['markdown-out', 'html-out', 'pdf-out', 'csv-out', 'otlp-out', 'prom-out']) {
+    if (args.flags.has(flag)) throw new Error(t.bill.ccusageSideFile(`--${flag}`));
+  }
+  for (const conversion of conversions) {
+    if (conversion.report === null) continue;
+    const window = ccusageRowsCut(conversion.spans, {
+      ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+      ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+    });
+    if (window.rows > 0) throw new Error(t.bill.ccusageWindowCuts(window.rows, window.startUnknown, conversion.report));
+    if (by !== undefined) {
+      const split = ccusageRowsCut(conversion.spans, { unit: by });
+      if (split.rows > 0) throw new Error(t.bill.ccusageByCuts(by, split.rows, split.startUnknown, conversion.report));
+    }
+  }
 }
 
 async function commandReceipt(
@@ -3805,7 +3862,10 @@ async function commandWeekly(args: Args, pricing: PricingCatalogue, t: CliMessag
   const now = Date.now();
   const until = parseWhen(args, 'until', true, t, now);
   const windows = weekWindows(until.ms ?? now);
-  const { lines } = await gatherUsageLines(args, t);
+  const { lines, ccusageRows } = await gatherUsageLines(args, t);
+  /* A ccusage row is a whole period's total and not a call: the week would
+     cut rows at its edges and count them as calls (#786). */
+  if (ccusageRows > 0) throw new Error(t.weekly.ccusageRows());
   const text = lines.join('\n');
   const profileWeek = (week: WeekWindow): UsageProfileReport =>
     profileUsage(text, { catalogue: pricing, sinceMs: week.sinceMs, untilMs: week.untilMs });
@@ -4335,6 +4395,25 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
   const agentLines = agent === undefined || only === null ? gathered.agentLines : new Map<AgentId, string[]>([[agent, only]]);
   const otherLines = only === null ? gathered.otherLines : [];
   const codexFiles = agent === undefined || agent === 'codex' ? gathered.codexFiles : 0;
+  /*
+    A row of a ccusage report is a period's total for one model, not a call:
+    the statement counts rows where every record is one, and says which are
+    which where they are mixed. And a row is not cut: a zone, a window edge or
+    a split that would fall inside one is refused before anything is written.
+  */
+  const ccusageRead = only === null ? gathered.ccusage : [];
+  const ccusageRows = only === null ? gathered.ccusageRows : 0;
+  const counting: BillCounting = ccusageRows === 0 ? 'calls' : ccusageRows === lines.length ? 'rows' : 'mixed';
+  refuseCcusageCuts(args, ccusageRead, zone, period, by, t);
+  const windowed = {
+    ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+    ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+  };
+  const ccusageCovers = (window: { sinceMs?: number; untilMs?: number }): Array<{ fromMs: number; toMs: number }> =>
+    ccusageRead.flatMap((conversion) => {
+      const covered = ccusageCoverage(conversion.spans, window);
+      return covered === null ? [] : [covered];
+    });
 
   const text = lines.join('\n');
   const report = profileUsage(text, {
@@ -4342,7 +4421,7 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
     ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
     ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
   });
-  refuseEmptyPeriod(text, report, period, pricing, t, zone);
+  refuseEmptyPeriod(text, report, period, pricing, t, zone, { counting, covers: ccusageCovers({}) });
   const document = receiptFrom(report, pricing, boolFlag(args, 'stamp') ? { emittedAt: new Date() } : {});
   const billDocument = codexFiles === 0 ? document : {
     ...document,
@@ -4413,15 +4492,7 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
       process.exitCode = BILL_SEND_FAILED;
     }
   }
-  /*
-    ccusage reads the same agent sessions, so its counts are priced at the
-    same API rates and carry the same caveat. And a row of its report is a
-    period's total for one model, not a call: the statement counts rows where
-    every record is one, and says which are which where they are mixed.
-  */
-  const ccusageRead = only === null ? gathered.ccusage : [];
-  const ccusageRows = only === null ? gathered.ccusageRows : 0;
-  const counting: BillCounting = ccusageRows === 0 ? 'calls' : ccusageRows === lines.length ? 'rows' : 'mixed';
+  /* ccusage reads the same agent sessions, so its counts are priced at the same API rates and carry the same caveat. */
   console.error(t.bill.sources(sources, fileCount));
   printReceiptSummary(document, t, counting);
   /*
@@ -4454,7 +4525,25 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
     .sort((a, b) => b.usd - a.usd);
   if (statement) {
     const zoned = zone === undefined ? undefined : zonedSpendByDay(lines, zone, pricing, period);
-    printBillStatement(report, labelledByProject > 0, t, period.words, agentSessions, byAgent.length > 1 ? byAgent : [], by, zone, zoned, counting);
+    /* What the rows cover, start to end, rather than the instants they are dated at; and whether the months would cut one. */
+    const ccusageView =
+      ccusageRead.length === 0
+        ? undefined
+        : {
+            covers: ccusageCovers(windowed),
+            monthsCut: ccusageRead.reduce(
+              (sum, conversion) =>
+                sum
+                + ccusageRowsCut(
+                  conversion.spans.filter(
+                    (span) => (windowed.sinceMs === undefined || span.atMs >= windowed.sinceMs) && (windowed.untilMs === undefined || span.atMs < windowed.untilMs),
+                  ),
+                  { unit: 'month' },
+                ).rows,
+              0,
+            ),
+          };
+    printBillStatement(report, labelledByProject > 0, t, period.words, agentSessions, byAgent.length > 1 ? byAgent : [], by, zone, zoned, counting, ccusageView);
   } else if (zone !== undefined) {
     console.error(t.bill.zoneReceiptNote(zone));
   }
@@ -4648,6 +4737,7 @@ function printBillStatement(
   zone?: string,
   zoned?: UsageProfileReport['spendByDay'],
   counting: BillCounting = 'calls',
+  ccusageView?: { covers: ReadonlyArray<{ fromMs: number; toMs: number }>; monthsCut: number },
 ): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   /* The day an instant falls on: UTC, or the zone `--timezone` named (#826). */
@@ -4717,7 +4807,11 @@ function printBillStatement(
   */
   const unit = by ?? 'month';
   const { periods, undated } = spendByPeriod(zoned === undefined ? report : { spendByDay: zoned, total: report.total }, unit);
-  if (periods.length >= (by === undefined ? 2 : 1)) {
+  /* A ccusage row across a month's edge would land whole in the month it is dated in (#786). `--by` that cuts one was refused. */
+  const monthsCut = by === undefined && ccusageView !== undefined && ccusageView.monthsCut > 0;
+  if (monthsCut && periods.length >= 2) {
+    draw.blank().text(t.bill.ccusageMonthsCut(ccusageView.monthsCut), { tone: 'dim' });
+  } else if (periods.length >= (by === undefined ? 2 : 1)) {
     const keep = unit === 'day' ? 31 : LIMIT;
     const shown: Cell[][] = periods.slice(-keep).map(({ period, calls, usd }) => [period, n(calls), formatUsd(usd), ...shareCells(usd)]);
     if (periods.length > keep) {
@@ -4738,8 +4832,10 @@ function printBillStatement(
 
   // What qualifies the total: when the calls fell, and what it is not.
   draw.blank();
-  if (report.span !== null) {
-    draw.text(t.profile.spanLine(dayAt(report.span.fromMs), dayAt(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs)), { tone: 'dim' });
+  /* A ccusage row covers its whole day, week or month, not the instant it is dated at. */
+  const span = spanWith(report.span, ccusageView?.covers ?? []);
+  if (span !== null) {
+    draw.text(t.profile.spanLine(dayAt(span.fromMs), dayAt(span.toMs), spanDays(span.fromMs, span.toMs)), { tone: 'dim' });
   }
   // Which calendar the days above are on, said whenever it is not UTC.
   if (zone !== undefined) draw.text(t.bill.zoneLine(zone), { tone: 'dim' });
@@ -5611,7 +5707,10 @@ function printCcusageConversion(conversion: CcusageConversion, t: CliMessages): 
   if (conversion.labelledByProject > 0) console.error(t.fromCcusage.labelledByProject(conversion.labelledByProject));
   if (conversion.unruledProject > 0) console.error(t.fromCcusage.unruledProject(conversion.unruledProject));
   if (conversion.projectNotGrouped) console.error(t.fromCcusage.projectNotGrouped());
-  if (conversion.records.length > 0) console.error(t.fromCcusage.notCarried());
+  if (conversion.records.length > 0) {
+    console.error(t.fromCcusage.notCarried());
+    console.error(t.fromCcusage.logCountsCalls());
+  }
 }
 
 /**

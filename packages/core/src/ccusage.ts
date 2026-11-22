@@ -65,6 +65,16 @@
  * report's row is the session's total, and a conversation of one turn the
  * size of the whole session is not what happened.
  *
+ * ## A row covers a stretch of time, and is not cut
+ *
+ * A record is dated at its row's start, or a session's last activity, and a
+ * bill reads that date as an instant. So each row's span is returned beside
+ * the records (`spans`), and `ccusageRowsCut` says which rows a window edge
+ * or a split by day, week or month would fall inside: a bill refuses those
+ * rather than put a month's total on its first day. ccusage cut its days in
+ * the zone it ran in, which its JSON does not say, so a bill does not move
+ * them to another zone either.
+ *
  * ## What does not cross
  *
  * A project as ccusage names it is the folder Claude Code made from a working
@@ -123,6 +133,23 @@ export interface CcusageRecord {
   };
 }
 
+/**
+ * The stretch of time one row's total covers, half-open, in milliseconds.
+ *
+ * A day, week or month runs from its start to the start of the next one, as
+ * ccusage cut it: in the zone ccusage ran in, which the report does not say,
+ * and which is read here as UTC (the fixtures were written with `--timezone
+ * UTC`). A session runs from its first activity to its last, inclusive.
+ * `fromMs` is `null` for a session whose report names only its last activity
+ * (the report across every agent): where it began is not known.
+ */
+export interface CcusageRowSpan {
+  fromMs: number | null;
+  toMs: number;
+  /** The instant the row's records carry: its period's start, or a session's last activity. */
+  atMs: number;
+}
+
 /** ccusage's own figures for one model as it named it, over the rows read. */
 export interface CcusageModelFigure {
   /** The model as ccusage named it, `-fast` included. */
@@ -152,6 +179,13 @@ export interface CcusageConversion {
   agents: string[];
   /** Rows read: days, weeks, months or sessions. A row is a total, not a call. */
   rows: number;
+  /**
+   * The time each row that became records covers, one per row, in the order
+   * read. A bill cuts its windows and its days, weeks and months at instants,
+   * and a row is a total over a stretch of time: `ccusageRowsCut` says which
+   * rows a cut would fall inside.
+   */
+  spans: CcusageRowSpan[];
   /**
    * Other reports in the same file (`--sections`), not read. They are the
    * same usage cut another way, and adding them would count it twice.
@@ -211,6 +245,16 @@ function periodStart(period: unknown): string | null {
   return Number.isNaN(ms) ? null : new Date(ms).toISOString();
 }
 
+const DAY_MS = 86_400_000;
+
+/** Where a day, week or month that starts at `startMs` ends: the start of the next one. */
+function periodEnd(kind: Exclude<CcusageReportKind, 'session'>, startMs: number): number {
+  if (kind === 'daily') return startMs + DAY_MS;
+  if (kind === 'weekly') return startMs + 7 * DAY_MS;
+  const start = new Date(startMs);
+  return Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1);
+}
+
 /** An instant ccusage wrote (an ISO timestamp, or a bare day in versions before 18), or `null`. */
 function instant(value: unknown): string | null {
   if (typeof value !== 'string' || value === '') return null;
@@ -251,6 +295,7 @@ export function ccusageRecords(
     unified: false,
     agents: [],
     rows: 0,
+    spans: [],
     sectionsLeftAside: [],
     byModel: [],
     reportedUsd: null,
@@ -313,6 +358,7 @@ export function ccusageRecords(
   const rules = options.labelByProject;
 
   const records: CcusageRecord[] = [];
+  const spans: CcusageRowSpan[] = [];
   const figures = new Map<string, CcusageModelFigure>();
   const agents = new Set<string>();
   const fastUnpricedModels = new Set<string>();
@@ -344,9 +390,10 @@ export function ccusageRecords(
     /* The row's instant: the start of its day, week or month, or a session's
        last activity, which is where a session that crossed midnight lands. */
     let ts: string | null;
+    let first: string | null = null;
     if (chosen.kind === 'session') {
       ts = instant(row.lastActivity) ?? instant(metadata?.lastActivity);
-      const first = instant(row.firstActivity);
+      first = instant(row.firstActivity) ?? instant(metadata?.firstActivity);
       if (ts !== null && first !== null && first.slice(0, 10) !== ts.slice(0, 10)) sessionsAcrossDays += 1;
     } else {
       ts = periodStart(row.date ?? row.week ?? row.month ?? row.period);
@@ -355,6 +402,12 @@ export function ccusageRecords(
       undatedRows += 1;
       continue;
     }
+    const atMs = Date.parse(ts);
+    const span: CcusageRowSpan =
+      chosen.kind === 'session'
+        ? { fromMs: first === null ? null : Math.min(Date.parse(first), atMs), toMs: atMs + 1, atMs }
+        : { fromMs: atMs, toMs: periodEnd(chosen.kind, atMs), atMs };
+    const recordsBefore = records.length;
     rows += 1;
     const rowCost = money(row.totalCost);
     if (rowCost !== null) reportedUsd = (reportedUsd ?? 0) + rowCost;
@@ -450,6 +503,7 @@ export function ccusageRecords(
       });
       figure.records += 1;
     }
+    if (records.length > recordsBefore) spans.push(span);
   }
 
   return {
@@ -458,6 +512,7 @@ export function ccusageRecords(
     unified,
     agents: [...agents].sort(),
     rows,
+    spans,
     sectionsLeftAside: present.slice(1).map(({ kind }) => kind).filter((kind) => kind !== chosen.kind),
     byModel: [...figures.values()],
     reportedUsd,
@@ -475,6 +530,80 @@ export function ccusageRecords(
     projectNotGrouped: rules !== undefined && !anyProject,
     unparseable: 0,
   };
+}
+
+/** The calendar unit a bill is split by; the same as `BillPeriodUnit`. Weeks are ISO weeks, Monday first, UTC. */
+type CutUnit = 'day' | 'week' | 'month';
+
+/** The start of the UTC day, ISO week or month an instant falls in. */
+function bucketOf(ms: number, unit: CutUnit): number {
+  const day = Math.floor(ms / DAY_MS) * DAY_MS;
+  if (unit === 'day') return day;
+  if (unit === 'week') return day - ((new Date(day).getUTCDay() + 6) % 7) * DAY_MS;
+  const at = new Date(ms);
+  return Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), 1);
+}
+
+/** Rows a cut falls inside, and how many of those are sessions whose start is not known. */
+export interface CcusageCut {
+  rows: number;
+  startUnknown: number;
+}
+
+/**
+ * The rows a bill's window, or its split by day, week or month, would fall
+ * inside (#786).
+ *
+ * A row is a total over its whole span and says nothing of how it was spread
+ * across it. A window edge strictly inside a row would bill all of it or none
+ * of it as if it fell on one side; a split by day of a month's row would put
+ * the month on its first day. Either presents the counts as more precise than
+ * the report is, so a bill refuses the cut instead, and this is how it knows.
+ *
+ * The window is half-open, `[sinceMs, untilMs)`, the profile's own: an edge
+ * on a row's start or end cuts nothing. A session whose start is not known is
+ * counted as cut by any edge at or before its last activity and by any split,
+ * because whether it began before the edge cannot be told.
+ */
+export function ccusageRowsCut(
+  spans: readonly CcusageRowSpan[],
+  cut: { sinceMs?: number; untilMs?: number; unit?: CutUnit },
+): CcusageCut {
+  let rows = 0;
+  let startUnknown = 0;
+  const inside = (span: CcusageRowSpan, edge: number | undefined): boolean =>
+    edge !== undefined && (span.fromMs === null ? edge <= span.atMs : span.fromMs < edge && edge < span.toMs);
+  for (const span of spans) {
+    const split =
+      cut.unit !== undefined && (span.fromMs === null || bucketOf(span.fromMs, cut.unit) !== bucketOf(span.toMs - 1, cut.unit));
+    if (split || inside(span, cut.sinceMs) || inside(span, cut.untilMs)) {
+      rows += 1;
+      if (span.fromMs === null) startUnknown += 1;
+    }
+  }
+  return { rows, startUnknown };
+}
+
+/**
+ * What the rows inside a window cover, from the first one's start to the last
+ * moment of the last one, or `null` when none is inside. A row is inside when
+ * the instant its records carry is: the same test the profile applies, so this
+ * is the span of the rows the bill priced, stated by what each row covers
+ * rather than by the instant it is dated at.
+ */
+export function ccusageCoverage(
+  spans: readonly CcusageRowSpan[],
+  window: { sinceMs?: number; untilMs?: number } = {},
+): { fromMs: number; toMs: number } | null {
+  let fromMs = Number.POSITIVE_INFINITY;
+  let toMs = Number.NEGATIVE_INFINITY;
+  for (const span of spans) {
+    if (window.sinceMs !== undefined && span.atMs < window.sinceMs) continue;
+    if (window.untilMs !== undefined && span.atMs >= window.untilMs) continue;
+    fromMs = Math.min(fromMs, span.fromMs ?? span.atMs);
+    toMs = Math.max(toMs, span.toMs - 1);
+  }
+  return fromMs === Number.POSITIVE_INFINITY ? null : { fromMs, toMs };
 }
 
 /**

@@ -4035,12 +4035,17 @@ is counted as undated rather than given one, and an OpenAI body keeps its
 **A ccusage report is read too** (#786). The JSON `ccusage --json` wrote is
 priced from the catalogue, row by row and model by model, the way
 [`from-ccusage`](#what-ccusage-already-reports-trazum-from-ccusage) reads it.
-Each row is a day's, month's or session's total, so the statement counts rows,
-and says records where rows and calls are billed together. ccusage's own
-figure is set beside the bill on stderr for the models where the two differ,
-and never used to price; with `--since` or `--until` it is not, because it
-covers the whole file. A project ccusage names is not written out: `--label`
-labels the rows, and `from-ccusage --label-by-project` labels them by project.
+Each row is a day's, week's, month's or session's total, so the statement
+counts rows, and says records where rows and calls are billed together.
+ccusage's own figure is set beside the bill on stderr for the models where the
+two differ, and never used to price; with `--since` or `--until` it is not,
+because it covers the whole file. A row is never cut: `--timezone`, a
+`--since`/`--until` edge inside a row, a `--by` that would split one, and the
+files that count calls and split by day (`--markdown-out`, `--html-out`,
+`--pdf-out`, `--csv-out`, `--otlp-out`, `--prom-out`) are refused for a
+ccusage report, each with the reason, and `weekly` does not read one. A
+project ccusage names is not written out: `--label` labels the rows, and
+`from-ccusage --label-by-project` labels them by project.
 
 **A session that searched the web is billed for its searches** (since 2.7.5).
 Claude Code's web search is Anthropic's server-side tool, $10 per 1,000
@@ -4637,7 +4642,12 @@ figure. `bill` prints the same table with only the models that differ.
 session and does not count requests, so every record says `requests: null`.
 The statement `bill` prints counts rows and never calls them calls, and a row
 carries no session: a session's total is not a session of one turn. A session
-row is dated at its last activity.
+row is dated at its last activity. `bill` refuses what would cut a row or
+count it as a call, and [docs/usage-logs.md](usage-logs.md#ccusage) lists
+what. The log written with `-o` is read as any other usage log: its records
+are priced as rows that sum requests and counted as calls, the way the rows of
+Anthropic's usage report are, so bill the ccusage file itself for a statement
+in rows.
 
 **What does not cross.** A project, as ccusage names it, is the folder Claude
 Code made from a working directory, which is a path. It reaches the output
