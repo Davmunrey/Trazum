@@ -267,7 +267,7 @@ describe('the names a release carries are built from its version, one way', () =
 
 describe('the registry entry for the bundle', () => {
   const dir = join(scratch, 'registry');
-  const server = { name: 'io.github.Davmunrey/trazum', version: '9.9.9', packages: [{ registryType: 'npm', identifier: '@trazum/mcp', version: '9.9.9', transport: { type: 'stdio' } }] };
+  const server = { name: 'io.github.TrazumAPP/trazum', version: '9.9.9', packages: [{ registryType: 'npm', identifier: '@trazum/mcp', version: '9.9.9', transport: { type: 'stdio' } }] };
   const file = join(dir, assetNames('9.9.9').mcpb);
   const digest = '59eca0c5163fbbf39d445824a21b7d31db4bf0bd3e04a36fbed93ab9f3534093';
 

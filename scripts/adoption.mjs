@@ -11,7 +11,7 @@
  *
  * - npm's download counts, `GET https://api.npmjs.org/downloads/point/last-month/@trazum/cli`
  * - GitHub's repository record, `GET https://api.github.com/repos/TrazumAPP/Trazum` (`stargazers_count`)
- * - the MCP registry, `GET https://registry.modelcontextprotocol.io/v0/servers?search=io.github.Davmunrey/trazum&version=latest`
+ * - the MCP registry, `GET https://registry.modelcontextprotocol.io/v0/servers?search=io.github.TrazumAPP/trazum&version=latest`
  *
  * **A counter that could not be read is printed as unavailable, never as
  * zero.** A zero would say the product has no users, which is a claim; an
@@ -28,7 +28,7 @@ const SOURCES = {
   downloads: 'https://api.npmjs.org/downloads/point/last-month/@trazum/cli',
   stars: 'https://api.github.com/repos/TrazumAPP/Trazum',
   registry:
-    'https://registry.modelcontextprotocol.io/v0/servers?search=io.github.Davmunrey/trazum&version=latest',
+    'https://registry.modelcontextprotocol.io/v0/servers?search=io.github.TrazumAPP/trazum&version=latest',
 };
 
 /** One counter, or the reason it is not a counter today. */

@@ -671,7 +671,7 @@ jobs:
       # The whole reason this can work without a stored credential. The registry
       # exchanges this job's OIDC token for a short-lived registry token, and
       # grants it the namespace matching the token's `repository_owner` claim —
-      # `io.github.Davmunrey/*` for this repository. Nothing to rotate, nothing
+      # `io.github.TrazumAPP/*` for this repository. Nothing to rotate, nothing
       # to leak, and a fork cannot mint it.
       id-token: write
     env:

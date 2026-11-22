@@ -177,8 +177,10 @@ Claude Desktop and the rest are one paste:
 { "mcpServers": { "trazum": { "command": "npx", "args": ["-y", "@trazum/mcp"] } } }
 ```
 
-The server is listed on the [official MCP registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.Davmunrey/trazum)
-as `io.github.Davmunrey/trazum`, and every release updates the listing.
+The server is listed on the [official MCP registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.TrazumAPP/trazum)
+as `io.github.TrazumAPP/trazum`, and every release updates the listing. Versions up to
+3.0.4 are listed as `io.github.Davmunrey/trazum`, from before the repository moved
+to the organisation.
 
 **[Or run it right now, without installing anything: the Playground](https://trazum.vercel.app/app?tab=playground)**
 

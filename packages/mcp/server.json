@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.Davmunrey/trazum",
+  "name": "io.github.TrazumAPP/trazum",
   "description": "Trazum as an MCP server: let an agent price and budget its own prompts before it sends them.",
   "repository": {
     "url": "https://github.com/TrazumAPP/Trazum",
