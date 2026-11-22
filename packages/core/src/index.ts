@@ -259,6 +259,15 @@ export type {
   OpenrouterWorkspaceLabel,
 } from './openrouter-activity.js';
 export type { OpenaiUsageConversion, OpenaiUsageRecord, ProjectLabel } from './openai-usage.js';
+export { ccusageRecords, compareCcusage, looksLikeCcusage } from './ccusage.js';
+export type {
+  CcusageComparison,
+  CcusageConversion,
+  CcusageModelFigure,
+  CcusageProjectLabel,
+  CcusageRecord,
+  CcusageReportKind,
+} from './ccusage.js';
 export { anthropicUsageRecords, looksLikeAnthropicUsage } from './anthropic-usage.js';
 export type {
   AnthropicUsageConversion,

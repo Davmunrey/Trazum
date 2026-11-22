@@ -1,0 +1,195 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, it } from 'node:test';
+
+import { SPAWN_ENV } from './env.mjs';
+
+/**
+ * `trazum from-ccusage`, and `bill` handed a ccusage report (#786).
+ *
+ * The reports are ccusage 20.0.51's own output on synthetic sessions, in
+ * `packages/core/test/fixtures/ccusage/` with the commands that wrote them.
+ * The arithmetic is held in `packages/core/test/ccusage.test.js`; what is
+ * held here is what reaches a person: the bill is the catalogue's figure and
+ * not ccusage's, a row is printed as a row and never as a call, ccusage's
+ * figure is set beside the catalogue's with both named, no project folder is
+ * printed, and nothing is run but this CLI.
+ */
+
+const CLI = new URL('../dist/index.js', import.meta.url).pathname;
+const FIXTURES = new URL('../../core/test/fixtures/ccusage/', import.meta.url).pathname;
+const REPORTS = readdirSync(FIXTURES).filter((name) => name.endsWith('.json')).sort();
+const DAILY = join(FIXTURES, 'claude-daily.json');
+const SESSIONS = join(FIXTURES, 'sessions', 'projects');
+const PATHS = ['-home-dana-acme-payroll', '-home-dana-side-project', 'acme-payroll', 'side-project', 'home-dana', '/home/dana'];
+
+const run = (args, env = {}) =>
+  spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env: { ...SPAWN_ENV, ...env }, timeout: 60000 });
+const scratch = () => mkdtempSync(join(tmpdir(), 'trazum-ccusage-'));
+const flat = (text) => text.replace(/\s+/g, ' ');
+/** The fixture's folder is named in a path argument; a leak is a project folder anywhere else. */
+const withoutFixturePaths = (text) => text.replaceAll(FIXTURES, '<fixtures>/');
+
+describe('from-ccusage writes the counts and sets the two figures side by side', () => {
+  it('writes one record per model per row, every one a sum of requests', () => {
+    const out = join(scratch(), 'usage.jsonl');
+    const result = run(['from-ccusage', DAILY, '-o', out]);
+    assert.equal(result.status, 0, result.stderr);
+    const records = readFileSync(out, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+    assert.equal(records.length, 8);
+    assert.ok(records.every((record) => record.requests === null), 'a row was written as one call');
+  });
+
+  it('bills what it wrote at the figure worked out by hand, not at ccusage figure', () => {
+    // 1.28275, worked out line by line in packages/core/test/ccusage.test.js;
+    // ccusage's own total for the same rows is 1.38625.
+    const out = join(scratch(), 'usage.jsonl');
+    assert.equal(run(['from-ccusage', DAILY, '-o', out]).status, 0);
+    const receipt = JSON.parse(run(['bill', out, '--receipt']).stdout);
+    assert.ok(Math.abs(receipt.total.usd - 1.28275) < 1e-9, `billed ${receipt.total.usd}`);
+  });
+
+  it('prints ccusage figure, the catalogue figure with its date, and the difference, per model', () => {
+    const result = run(['from-ccusage', DAILY]);
+    assert.equal(result.status, 0, result.stderr);
+    const line = (model) => result.stderr.split('\n').find((text) => text.trim().startsWith(`${model} `));
+    // ccusage $0.915 (past 200,000 tokens at a long-context rate), catalogue 250,000 x $3 + 1,000 x $15.
+    assert.match(line('claude-sonnet-4-20250514'), /\$0\.9150\s+\$0\.7650\s+-\$0\.1500$/);
+    // ccusage request by request; the catalogue at the dearer rate a row has to take.
+    assert.match(line('claude-haiku-5-5'), /\$0\.0128\s+\$0\.0638\s+\+\$0\.0510$/);
+    // Priced by ccusage, not by the catalogue, and not borrowed from ccusage either.
+    assert.match(line('claude-3-7-sonnet-20250219'), /\$0\.00450\s+\S/);
+    assert.doesNotMatch(line('claude-3-7-sonnet-20250219'), /\$0\.00450\s+\$/);
+    assert.match(result.stderr, /2026-11-16/, 'the date the catalogue was read is not named');
+  });
+
+  it('prints nothing on stdout but records, and profile reads them as a usage log', () => {
+    const result = run(['from-ccusage', DAILY]);
+    const lines = result.stdout.trim().split('\n');
+    assert.equal(lines.length, 8);
+    for (const line of lines) assert.ok(JSON.parse(line).model.startsWith('claude-'));
+    const log = join(scratch(), 'usage.jsonl');
+    writeFileSync(log, result.stdout);
+    const profiled = run(['profile', log, '--json']);
+    assert.equal(profiled.status, 0, profiled.stderr);
+    assert.ok(Math.abs(JSON.parse(profiled.stdout).total.totalUsd - 1.28275) < 1e-9);
+  });
+
+  it('labels by project only through a mapping the person wrote', () => {
+    const dir = scratch();
+    const rules = join(dir, 'rules.json');
+    writeFileSync(rules, JSON.stringify([{ project: '-home-dana-acme-payroll', label: 'payroll' }]));
+    const result = run(['from-ccusage', join(FIXTURES, 'claude-daily-instances.json'), '--label-by-project', rules]);
+    assert.equal(result.status, 0, result.stderr);
+    const labels = result.stdout.trim().split('\n').map((line) => JSON.parse(line).label);
+    assert.deepEqual([...new Set(labels)].sort(), ['payroll', undefined].sort());
+    for (const path of PATHS) assert.ok(!result.stdout.includes(path) && !result.stderr.includes(path), `leaked ${path}`);
+  });
+
+  it('refuses a mapping it cannot read, rather than narrow nothing', () => {
+    const dir = scratch();
+    for (const [name, body] of [['empty.json', '[]'], ['bad.json', '[{"project": ""}]'], ['broken.json', '{']]) {
+      writeFileSync(join(dir, name), body);
+      const result = run(['from-ccusage', DAILY, '--label-by-project', join(dir, name)]);
+      assert.equal(result.status, 1, name);
+    }
+  });
+
+  it('refuses a file that is not a ccusage report, and a missing one', () => {
+    const dir = scratch();
+    writeFileSync(join(dir, 'other.json'), '{"data": []}');
+    assert.equal(run(['from-ccusage', join(dir, 'other.json')]).status, 1);
+    assert.equal(run(['from-ccusage', join(dir, 'absent.json')]).status, 1);
+    assert.equal(run(['from-ccusage']).status, 1);
+  });
+});
+
+describe('bill reads a ccusage report as it is', () => {
+  it('prices it at the figure worked out by hand and names the gap a row leaves', () => {
+    const result = run(['bill', DAILY, '--receipt']);
+    assert.equal(result.status, 0, result.stderr);
+    const receipt = JSON.parse(result.stdout);
+    assert.ok(Math.abs(receipt.total.usd - 1.28275) < 1e-9, `billed ${receipt.total.usd}`);
+    const ceiling = receipt.gaps.find((gap) => gap.kind === 'tier-ceiling');
+    assert.ok(ceiling !== undefined && Math.abs(ceiling.floorUsd - 0.01275) < 1e-9, 'the Haiku 5.5 day was priced as one call');
+    assert.deepEqual(receipt.gaps.find((gap) => gap.kind === 'unpriced').models, ['claude-3-7-sonnet-20250219']);
+  });
+
+  it('counts rows, and never prints a row as a call', () => {
+    const result = run(['bill', DAILY, '--table']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /\$1\.28 across 7 priced row\(s\)/);
+    assert.match(result.stdout, /model\s+rows\s+USD\s+share/);
+    assert.match(result.stdout, /month\s+rows\s+USD\s+share/);
+    assert.doesNotMatch(result.stdout, /\bcalls\b|call\(s\)/, 'a row of the report was printed as a call');
+    assert.doesNotMatch(result.stderr, /call\(s\)/, 'a row of the report was printed as a call on stderr');
+  });
+
+  it('says records, not calls, when calls and rows are billed together', () => {
+    const result = run(['bill', SESSIONS, join(FIXTURES, 'claude-monthly.json'), '--table']);
+    assert.equal(result.status, 0, result.stderr);
+    // 10 calls of the sessions (one unpriced), 7 priced rows of the report.
+    assert.match(flat(result.stdout), /across 17 priced record\(s\)/);
+    assert.match(result.stdout, /model\s+records\s+USD\s+share/);
+  });
+
+  it('sets ccusage figure beside the bill only where the two differ', () => {
+    const result = run(['bill', DAILY, '--receipt']);
+    const modelLines = result.stderr.split('\n').filter((text) => /^\s+claude-/.test(text));
+    assert.deepEqual(
+      modelLines.map((text) => text.trim().split(/\s+/)[0]),
+      ['claude-sonnet-4-20250514', 'claude-haiku-5-5', 'claude-3-7-sonnet-20250219'],
+    );
+  });
+
+  it('does not set the whole report beside a bill for part of it', () => {
+    const result = run(['bill', DAILY, '--since', '2026-11-01', '--receipt']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stderr, /\$0\.9150/, "ccusage's figure for the whole file was set beside a windowed bill");
+  });
+
+  it('is what profile points at for a ccusage report', () => {
+    const result = run(['profile', DAILY]);
+    assert.equal(result.status, 1);
+    assert.ok(flat(result.stderr).includes(`trazum from-ccusage ${DAILY} -o usage.jsonl`), result.stderr);
+  });
+});
+
+describe('no project folder reaches anything printed or written', () => {
+  for (const name of REPORTS) {
+    it(`${name}: from-ccusage and bill`, () => {
+      const file = join(FIXTURES, name);
+      const out = join(scratch(), 'usage.jsonl');
+      const converted = run(['from-ccusage', file, '-o', out]);
+      const billed = run(['bill', file, '--receipt']);
+      const statement = run(['bill', file, '--table']);
+      for (const result of [converted, billed, statement]) assert.equal(result.status, 0, result.stderr);
+      const everything = withoutFixturePaths(
+        [readFileSync(out, 'utf8'), converted.stderr, billed.stdout, billed.stderr, statement.stdout, statement.stderr].join('\n'),
+      );
+      for (const path of PATHS) assert.ok(!everything.includes(path), `${name} leaked ${path}`);
+    });
+  }
+});
+
+describe('ccusage is read, never run', () => {
+  it('starts no ccusage, npx or bunx, even with them on the PATH', () => {
+    const dir = scratch();
+    const bin = join(dir, 'bin');
+    mkdirSync(bin);
+    for (const tool of ['ccusage', 'npx', 'bunx', 'pnpm', 'npm']) {
+      const script = join(bin, tool);
+      writeFileSync(script, `#!/bin/sh\ntouch "${join(dir, `ran-${tool}`)}"\n`);
+      chmodSync(script, 0o755);
+    }
+    const env = { PATH: `${bin}:${process.env.PATH ?? ''}` };
+    assert.equal(run(['from-ccusage', DAILY], env).status, 0);
+    assert.equal(run(['bill', DAILY, '--receipt'], env).status, 0);
+    for (const tool of ['ccusage', 'npx', 'bunx', 'pnpm', 'npm']) {
+      assert.equal(existsSync(join(dir, `ran-${tool}`)), false, `${tool} was started`);
+    }
+  });
+});

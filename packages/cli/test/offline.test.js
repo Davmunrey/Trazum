@@ -340,6 +340,8 @@ function workspace() {
       ],
     }),
   );
+  /* ccusage's own daily report, as ccusage 20.0.51 wrote it (packages/core/test/fixtures/ccusage). */
+  write('ccusage.json', readFileSync(join(repoRoot, 'packages/core/test/fixtures/ccusage/claude-daily.json'), 'utf8'));
   write(
     'anthropic-usage.json',
     JSON.stringify({
@@ -482,6 +484,7 @@ const INVOCATION = {
   'from-anthropic': ['anthropic-usage.json', '--label', 'billing', '-o', 'c6.jsonl'],
   'from-openai': ['openai-usage.json', '--label', 'billing', '-o', 'c7.jsonl'],
   'from-openrouter': ['openrouter-activity.json', '--label', 'billing', '-o', 'c8.jsonl'],
+  'from-ccusage': ['ccusage.json', '--label', 'billing', '-o', 'c9.jsonl'],
   bill: ['openrouter-activity.json', '-o', 'b1.json'],
   weekly: ['usage.jsonl', '-o', 'w1.md'],
   reconcile: ['a-receipt.json', '--against', 'anthropic-cost.json', '-o', 'r1.json'],

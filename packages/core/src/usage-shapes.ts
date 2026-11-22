@@ -12,6 +12,7 @@
 import { looksLikeAnthropicCost } from './anthropic-cost.js';
 import { looksLikeAnthropicUsage } from './anthropic-usage.js';
 import { looksLikeBatchResults } from './batch-results.js';
+import { looksLikeCcusage } from './ccusage.js';
 import { looksLikeClaudeCodeTranscript } from './claude-code.js';
 import { looksLikeCodexTranscript } from './codex.js';
 import { looksLikeGeminiCliSession } from './gemini-cli.js';
@@ -37,6 +38,7 @@ export type UsageShape =
   | 'openai-usage'
   | 'batch-results'
   | 'openrouter'
+  | 'ccusage'
   | 'usage-log';
 
 /**
@@ -57,6 +59,7 @@ export const SHAPE_COMMAND: Readonly<Record<UsageShape, string | null>> = {
   'openai-usage': 'from-openai',
   'batch-results': null,
   openrouter: 'from-openrouter',
+  ccusage: 'from-ccusage',
   'usage-log': null,
 };
 
@@ -94,6 +97,7 @@ export function usageShapesOf(text: string): UsageShape[] {
   if (looksLikeOpenaiUsage(text)) claims.push('openai-usage');
   if (looksLikeBatchResults(text)) claims.push('batch-results');
   if (looksLikeOpenrouterActivity(text)) claims.push('openrouter');
+  if (looksLikeCcusage(text)) claims.push('ccusage');
   if (looksLikeHelicone(text)) claims.push('helicone');
   if (looksLikeLangsmith(text)) claims.push('langsmith');
   if (looksLikeLiteLlm(text)) claims.push('litellm');

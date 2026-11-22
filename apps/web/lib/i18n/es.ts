@@ -1138,7 +1138,7 @@ export const es: WebMessages = {
       cli: {
         title: 'La CLI, completa',
         body:
-          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Este checkout tiene 60 comandos; instala la CLI publicada con «npm i -g @trazum/cli». El nuevo flujo task requiere compilar el repositorio hasta su publicación. «help» lista lo que el navegador puede ejecutar.',
+          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Este checkout tiene 61 comandos; instala la CLI publicada con «npm i -g @trazum/cli». El nuevo flujo task requiere compilar el repositorio hasta su publicación. «help» lista lo que el navegador puede ejecutar.',
       },
       finish: {
         title: 'Ese es el tour',
