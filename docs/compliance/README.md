@@ -19,7 +19,11 @@ Three documents an auditor asks for sit beside them, each held to the code by
 with the risk behind every limit the server sets; the [secure coding
 checklist](secure-coding.md), each item naming the test that holds it; and the
 [procedure for rotating each secret](secret-rotation.md). They are drafts for
-the owner to approve; the code already does what they describe.
+the owner to approve; the code already does what they describe. The
+[assurance case](assurance-case.md) ties them into one argument: what is
+protected, where the trust boundaries are, which secure design principles the
+design applies, and which weaknesses it counters, each step pointing at its
+evidence.
 
 ## What each framework is, and who it applies to
 
