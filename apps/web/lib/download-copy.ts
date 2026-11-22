@@ -87,7 +87,7 @@ export const DOWNLOAD_COPY: Record<MarketingLocale, DownloadCopy> = {
     mcpBundleButton: (file) => `Download ${file}`,
     mcpBundleNote: 'Open the file with Claude Desktop to install the server. The bundle is not signed.',
     mcpDocs: 'The same table is in the documentation',
-    mcpGeminiNote: 'This installs the extension from the repository’s default branch. Its gemini-extension.json starts the server at the exact version.',
+    mcpGeminiNote: 'This installs the extension from the repository’s latest release, not its default branch. That release’s gemini-extension.json starts the server at the exact version.',
 
     extTitle: 'Editor extension',
     extLede: 'What the prompt in front of you costs, counted on your machine, in the status bar. It installs from a file in VS Code, and in editors built on it, with Install from VSIX. It needs VS Code 1.90 or newer.',
@@ -137,7 +137,7 @@ export const DOWNLOAD_COPY: Record<MarketingLocale, DownloadCopy> = {
     mcpBundleButton: (file) => `Descargar ${file}`,
     mcpBundleNote: 'Abre el archivo con Claude Desktop para instalar el servidor. El paquete no está firmado.',
     mcpDocs: 'La misma tabla está en la documentación',
-    mcpGeminiNote: 'Esto instala la extensión desde la rama por defecto del repositorio. Su gemini-extension.json arranca el servidor en la versión exacta.',
+    mcpGeminiNote: 'Esto instala la extensión desde la última versión publicada del repositorio, no desde su rama por defecto. El gemini-extension.json de esa versión arranca el servidor en la versión exacta.',
 
     extTitle: 'Extensión del editor',
     extLede: 'Lo que cuesta el prompt que tienes delante, contado en tu máquina, en la barra de estado. Se instala desde un archivo en VS Code, y en editores basados en él, con Instalar desde VSIX. Requiere VS Code 1.90 o superior.',
@@ -187,7 +187,7 @@ export const DOWNLOAD_COPY: Record<MarketingLocale, DownloadCopy> = {
     mcpBundleButton: (file) => `Télécharger ${file}`,
     mcpBundleNote: 'Ouvrez le fichier avec Claude Desktop pour installer le serveur. Le paquet n’est pas signé.',
     mcpDocs: 'Le même tableau figure dans la documentation',
-    mcpGeminiNote: 'Cela installe l’extension depuis la branche par défaut du dépôt. Son gemini-extension.json démarre le serveur à la version exacte.',
+    mcpGeminiNote: 'Cela installe l’extension depuis la dernière version publiée du dépôt, pas depuis sa branche par défaut. Le gemini-extension.json de cette version démarre le serveur à la version exacte.',
 
     extTitle: 'Extension d’éditeur',
     extLede: 'Ce que coûte le prompt que vous avez sous les yeux, compté sur votre machine, dans la barre d’état. Elle s’installe depuis un fichier dans VS Code, et dans les éditeurs qui en dérivent, avec Installer depuis un VSIX. Elle exige VS Code 1.90 ou plus récent.',
@@ -237,7 +237,7 @@ export const DOWNLOAD_COPY: Record<MarketingLocale, DownloadCopy> = {
     mcpBundleButton: (file) => `${file} herunterladen`,
     mcpBundleNote: 'Öffnen Sie die Datei mit Claude Desktop, um den Server zu installieren. Das Bundle ist nicht signiert.',
     mcpDocs: 'Dieselbe Tabelle steht in der Dokumentation',
-    mcpGeminiNote: 'Das installiert die Erweiterung vom Standard-Branch des Repositorys. Ihre gemini-extension.json startet den Server in der genauen Version.',
+    mcpGeminiNote: 'Das installiert die Erweiterung aus dem neuesten Release des Repositorys, nicht vom Standard-Branch. Die gemini-extension.json dieses Releases startet den Server in der genauen Version.',
 
     extTitle: 'Editor-Erweiterung',
     extLede: 'Was der Prompt vor Ihnen kostet, auf Ihrem Rechner gezählt, in der Statusleiste. Sie wird in VS Code und in darauf aufbauenden Editoren aus einer Datei installiert, mit „Aus VSIX installieren“. Sie braucht VS Code 1.90 oder neuer.',
@@ -287,7 +287,7 @@ export const DOWNLOAD_COPY: Record<MarketingLocale, DownloadCopy> = {
     mcpBundleButton: (file) => `Baixar ${file}`,
     mcpBundleNote: 'Abra o arquivo com o Claude Desktop para instalar o servidor. O pacote não é assinado.',
     mcpDocs: 'A mesma tabela está na documentação',
-    mcpGeminiNote: 'Isto instala a extensão a partir do branch padrão do repositório. O gemini-extension.json dela inicia o servidor na versão exata.',
+    mcpGeminiNote: 'Isto instala a extensão a partir da versão mais recente publicada do repositório, não do branch padrão. O gemini-extension.json dessa versão inicia o servidor na versão exata.',
 
     extTitle: 'Extensão do editor',
     extLede: 'O que custa o prompt à sua frente, contado na sua máquina, na barra de status. Instala-se a partir de um arquivo no VS Code, e em editores baseados nele, com Instalar a partir do VSIX. Requer VS Code 1.90 ou superior.',
