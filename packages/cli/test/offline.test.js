@@ -43,6 +43,27 @@ const STUB = (() => {
   return path;
 })();
 
+/*
+  One clock for both runs of a command. `models` prints how many days ago the
+  prices were read, and a pair that straddled midnight UTC answered "16 days"
+  online and "17 days" offline: the comparison below failed on the clock, not
+  on the network, and stopped the 3.0.4 release before it published (#916).
+  The instant is the moment this file loaded, so every run still sees today.
+*/
+const frozenClock = (at) => {
+  const dir = mkdtempSync(join(tmpdir(), 'trazum-clock-'));
+  const path = join(dir, 'frozen-clock.mjs');
+  writeFileSync(
+    path,
+    `const at = ${at};\n`
+      + 'const Real = Date;\n'
+      + 'class Frozen extends Real { constructor(...args) { if (args.length === 0) super(at); else super(...args); } static now() { return at; } }\n'
+      + 'globalThis.Date = Frozen;\n',
+  );
+  return path;
+};
+const CLOCK = frozenClock(Date.now());
+
 const run = (args, { offline }) =>
   spawnSync(
     process.execPath,
@@ -540,8 +561,8 @@ describe('every command works with the network removed', () => {
         execFile(
           process.execPath,
           offline
-            ? ['--import', STUB, CLI, command, ...INVOCATION[command]]
-            : [CLI, command, ...INVOCATION[command]],
+            ? ['--import', CLOCK, '--import', STUB, CLI, command, ...INVOCATION[command]]
+            : ['--import', CLOCK, CLI, command, ...INVOCATION[command]],
           { cwd: dir, encoding: 'utf8', env: SPAWN_ENV, timeout: 60000 },
           (_error, stdout, stderr) => resolve({ stdout, both: `${stdout}${stderr}` }),
         );
