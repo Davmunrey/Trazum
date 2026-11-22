@@ -347,7 +347,7 @@ phone, follows the landing into the dashboard, scrolls the landing's
 story from top to bottom and back, chapter by chapter, and presses every object on its desk, reads the Pro page without it sending
 anything off the site, and reads the Download page against the release it names
 and the same way.
-[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the 31 flows,
+[docs/end-to-end-tests.md](docs/end-to-end-tests.md) has the 32 flows,
 what they do not check, and the lines that install the browser driver outside
 the workspace.
 

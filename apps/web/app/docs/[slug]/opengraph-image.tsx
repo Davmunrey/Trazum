@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import { notFound } from 'next/navigation';
 
 import { DOCS_COPY } from '../../../lib/docs/copy';
 import { docBySlug } from '../../../lib/docs/manifest';
@@ -21,9 +22,10 @@ export default async function OpengraphImage({ params }: { params: Promise<{ slu
   const t = COPY[locale];
   const docs = DOCS_COPY[locale];
   const doc = docBySlug(slug);
+  if (doc === undefined) notFound();
   return socialCard({
-    title: doc?.title ?? docs.indexTitle,
-    line: doc ? `${docs.indexTitle} · ${docs.groups[doc.group].title}` : docs.indexLede,
+    title: doc.title,
+    line: `${docs.indexTitle} · ${docs.groups[doc.group].title}`,
     calls: t.billTotal(ILLUSTRATIVE_BILL.calls),
     note: t.billNote,
   });
