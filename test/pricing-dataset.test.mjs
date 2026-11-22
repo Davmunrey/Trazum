@@ -30,6 +30,7 @@ import {
   schema,
   serialise,
   validate,
+  repositoryAt,
 } from '../scripts/pricing-dataset.mjs';
 import { buildPricing } from '../scripts/release-assets.mjs';
 
@@ -191,7 +192,7 @@ describe('the document is the catalogue, serialised', () => {
     assert.equal(document.catalogue.sha256, catalogueDigest(read(CATALOGUE)));
     assert.equal(document.catalogue.sha256, catalogueDigest(read(CATALOGUE).replace(/\n/g, '\r\n')), 'a Windows checkout reads another digest');
     const core = JSON.parse(read('packages/core/package.json'));
-    assert.deepEqual(document.licence, { spdx: core.license, url: `https://github.com/TrazumAPP/Trazum/blob/v${document.version}/LICENSE` });
+    assert.deepEqual(document.licence, { spdx: core.license, url: `${repositoryAt(document.version)}/blob/v${document.version}/LICENSE` });
     assert.equal(document.$schema, `${core.homepage}${SITE_PATH}/${SCHEMA_FILE}`);
   });
 });
@@ -262,6 +263,14 @@ describe('the published document', () => {
     }
   });
 
+  it('names the repository a version was published from: the old path up to 3.0.4, the organisation after (#925)', () => {
+    assert.equal(repositoryAt('3.0.4'), 'https://github.com/Davmunrey/Trazum');
+    assert.equal(repositoryAt('2.7.12'), 'https://github.com/Davmunrey/Trazum');
+    assert.equal(repositoryAt('3.0.5'), 'https://github.com/TrazumAPP/Trazum');
+    assert.equal(repositoryAt('3.1.0-next.1'), 'https://github.com/TrazumAPP/Trazum');
+    assert.equal(repositoryAt('4.0.0'), 'https://github.com/TrazumAPP/Trazum');
+  });
+
   it('has its schema and its changelog as the script writes them from the published files', () => {
     assert.equal(read(`${DIRECTORY}/${SCHEMA_FILE}`), `${JSON.stringify(schema(catalogue.homepage), null, 2)}\n`);
     const texts = Object.fromEntries(versions.map((version) => [version, read(`${DIRECTORY}/${version}.json`)]));
@@ -270,7 +279,7 @@ describe('the published document', () => {
     assert.deepEqual(changelog.versions.map((entry) => entry.version), [...versions].reverse(), 'the changelog is not newest first, or lists another set');
     for (const entry of changelog.versions) {
       assert.equal(entry.url, `${catalogue.homepage}${SITE_PATH}/${entry.version}.json`);
-      const asset = `https://github.com/TrazumAPP/Trazum/releases/download/v${entry.version}/${assetNames(entry.version).pricing}`;
+      const asset = `${repositoryAt(entry.version)}/releases/download/v${entry.version}/${assetNames(entry.version).pricing}`;
       assert.equal(entry.releaseAsset, WRITTEN_AFTER_RELEASE.includes(entry.version) ? null : asset);
     }
   });
