@@ -108,6 +108,7 @@ export const DOCS: readonly DocEntry[] = [
   { path: 'docs/licensing.md', slug: 'licensing', title: 'What is open, what is not', group: 'decide' },
 
   // I am extending it.
+  { path: 'docs/architecture.md', slug: 'architecture', title: 'Architecture', group: 'extend' },
   { path: 'docs/authoring-rules.md', slug: 'authoring-rules', title: 'Authoring rules', group: 'extend' },
   { path: 'docs/language-maintainer.md', slug: 'language-maintainer', title: 'Maintaining a language', group: 'extend' },
   { path: 'docs/prompt-writer.md', slug: 'prompt-writer', title: 'The prompt writer', group: 'extend' },
@@ -155,6 +156,7 @@ export const NOT_PUBLISHED: readonly { readonly path: string; readonly kind: Not
   { path: 'SECURITY.md', kind: 'policy' },
   { path: 'SUPPORT.md', kind: 'policy' },
   { path: 'CODE_OF_CONDUCT.md', kind: 'policy' },
+  { path: 'GOVERNANCE.md', kind: 'policy' },
   { path: 'CHANGELOG.md', kind: 'history' },
   { path: 'RELEASES.md', kind: 'history' },
   { path: 'ROADMAP.md', kind: 'history' },

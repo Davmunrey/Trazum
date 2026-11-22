@@ -7,7 +7,9 @@ who makes most of them can no longer act.
 
 Trazum has one maintainer, the repository's owner
 ([@Davmunrey](https://github.com/Davmunrey)). **The bus factor is one**, and
-this page says so rather than implying a team. What the project promises
+this page says so rather than implying a team. The owner has chosen a second
+maintainer, another person, who does not have access yet; this page changes
+when they do, and not before. What the project promises
 because of it is stated in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) and in
 [CONTRIBUTING.md](CONTRIBUTING.md#triage): there is no promised response time,
 and an issue is never closed for going quiet.
@@ -64,6 +66,7 @@ of losing its maintainer. These are what that rests on:
   ([npm's documentation](https://docs.npmjs.com/organization-roles-and-permissions)),
   so a release does not wait on the owner's npm account.
 
-**Status on 2026-11-22: the owner has decided to name both, and neither is in
-place yet.** This line changes to say who holds each, by role and not by name,
-once each is in place, and not before.
+**Status on 2026-11-22:** the owner has named a GitHub account successor: the
+person chosen as second maintainer. The same person is to be invited to the
+`@trazum` organisation on npm as its second publisher, and has not been yet.
+This line changes when each is in place, and not before.
