@@ -1470,6 +1470,33 @@ export const FLOWS = [
   },
   {
     /*
+      #954. A link preview's card is drawn on every request, and it was sent
+      with `max-age=0`, so nothing in front of the app could keep one; and a
+      card was drawn for any slug at all, so a list of made-up documents was a
+      list of drawings. A card is now kept for an hour by a browser and a day
+      by a cache, and varies with the language it is drawn in; a document or a
+      release that does not exist has no card.
+    */
+    name: 'social cards: a page’s card is cached by its language, and a document or release that does not exist has none',
+    covers: [],
+    async run({ page, base, is }) {
+      const card = (path) => page.request.get(new URL(path, base).href);
+      for (const path of ['/opengraph-image', '/docs/opengraph-image', '/docs/commands/opengraph-image', '/changelog/2.7.11/opengraph-image']) {
+        const answer = await card(path);
+        is(answer.status(), 200, `the answer for ${path}`);
+        is(answer.headers()['content-type'], 'image/png', `the type of ${path}`);
+        is(answer.headers()['cache-control'], 'public, max-age=3600, s-maxage=86400', `the caching of ${path}`);
+        // Two Vary headers arrive, Next's and the card's; however they are joined, one of the names is Accept-Language.
+        const vary = (answer.headers().vary ?? '').split(/[,\n]/).map((name) => name.trim().toLowerCase());
+        is(vary.includes('accept-language'), true, `${path} varies with Accept-Language (vary: ${vary.join(', ')})`);
+      }
+      for (const path of ['/docs/no-such-document/opengraph-image', '/changelog/9.9.9/opengraph-image']) {
+        is((await card(path)).status(), 404, `the answer for ${path}`);
+      }
+    },
+  },
+  {
+    /*
       #860. The tour said `aria-modal="true"` and the third Tab left it for the
       page under the dim. Tab is walked further than the card has controls, so
       focus has to come round again; leaving it even once fails here. The

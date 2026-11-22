@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import { notFound } from 'next/navigation';
 
 import { loadRelease } from '../../../lib/history/load';
 import { COPY, ILLUSTRATIVE_BILL } from '../../../lib/landing-copy';
@@ -20,9 +21,10 @@ export default async function OpengraphImage({ params }: { params: Promise<{ ver
   const t = COPY[locale];
   const copy = CHANGELOG_COPY[locale];
   const release = await loadRelease((await params).version);
+  if (release === null) notFound();
   return socialCard({
-    title: release?.version === null || release === null ? copy.title : copy.releasePageTitle(release.version),
-    line: release === null ? copy.lede : release.labelKind === 'date' ? copy.dateOf(release.label ?? '') : (release.label ?? copy.title),
+    title: release.version === null ? copy.title : copy.releasePageTitle(release.version),
+    line: release.labelKind === 'date' ? copy.dateOf(release.label ?? '') : (release.label ?? copy.title),
     calls: t.billTotal(ILLUSTRATIVE_BILL.calls),
     note: t.billNote,
   });
