@@ -186,6 +186,57 @@ describe('scorecard.yml is the shape the Scorecard API accepts a result from', (
  * <name>@<version>` commands in workflows: every action was pinned by commit,
  * and those four were the rest.
  */
+/**
+ * The image builds from what the Dockerfile copies, and nothing ran the build
+ * (#932). At 3.0.4 it copied scripts that import three others it did not
+ * copy, and a package whose tsconfig extends a root file it did not copy, so
+ * `docker build` failed and no check said so. CI now builds the image; these
+ * say, without Docker, that the copies are closed under what the build reads.
+ */
+describe('the Dockerfile copies everything the build it runs reads', () => {
+  const dockerfile = read('Dockerfile');
+  const copied = new Set();
+  for (const [, sources] of dockerfile.matchAll(/^COPY (?!--from)(.+) \S+$/gm)) {
+    for (const source of sources.split(/\s+/)) copied.add(source.replace(/\/$/, ''));
+  }
+  const isCopied = (path) => [...copied].some((source) => path === source || path.startsWith(`${source}/`));
+
+  it('every script it copies has its own relative imports copied too', () => {
+    const scripts = [...copied].filter((path) => /^scripts\/[\w-]+\.mjs$/.test(path));
+    assert.ok(scripts.length > 0, 'the Dockerfile copies no script, so this checks nothing');
+    const missing = [];
+    for (const script of scripts) {
+      for (const [, name] of read(script).matchAll(/(?:from |import\()'\.\/([\w-]+\.mjs)'/g)) {
+        if (!isCopied(`scripts/${name}`)) missing.push(`${script} imports scripts/${name}`);
+      }
+    }
+    assert.deepEqual(missing, []);
+  });
+
+  it('every tsconfig a copied package extends is copied', () => {
+    const packages = [...copied].filter((path) => /^(?:packages|apps)\/[\w-]+$/.test(path));
+    assert.ok(packages.length > 0, 'the Dockerfile copies no package, so this checks nothing');
+    const missing = [];
+    for (const dir of packages) {
+      let config;
+      try {
+        config = JSON.parse(read(`${dir}/tsconfig.json`));
+      } catch {
+        continue;
+      }
+      if (typeof config.extends !== 'string' || !config.extends.startsWith('.')) continue;
+      const target = join(dir, config.extends).replaceAll('\\', '/');
+      if (!isCopied(target)) missing.push(`${dir}/tsconfig.json extends ${target}`);
+    }
+    assert.deepEqual(missing, []);
+  });
+
+  it('CI builds the image on every pull request', () => {
+    const ci = read('.github/workflows/ci.yml');
+    assert.match(ci, /^ {6}- run: docker build /m, 'no CI job runs docker build');
+  });
+});
+
 describe('everything CI and the image install is pinned by hash', () => {
   const TOOLS = ['acorn', 'bundle-analyzer', 'playwright-core'];
 
