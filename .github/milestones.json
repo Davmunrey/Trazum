@@ -32,12 +32,12 @@
   {
     "title": "A repository a stranger can contribute to",
     "description": "What a visitor and a contributor need that is not the product: a roadmap that opens with what comes next, a wiki that publishes itself, documents that agree with each other, and Discussions with a form for each kind of question.",
-    "issues": [725, 726, 727, 732, 747, 765, 767, 772, 778, 779, 787, 829, 929, 931, 942, 937, 938, 941, 945, 947, 946, 950]
+    "issues": [725, 726, 727, 732, 747, 765, 767, 772, 778, 779, 787, 829, 929, 931, 942, 937, 938, 941, 945, 947, 946, 950, 954]
   },
   {
     "title": "Tests that would notice a wrong price",
     "description": "Line coverage says the code that prices a call runs under test. Mutation testing says whether a test would notice it pricing a call wrongly, and today it reaches six files of the core and, in two more, the functions that choose a rate and multiply by it. Next: the catalogue's own numbers, where a sample found published prices that no test would notice changing.",
-    "issues": [731, 745, 763, 820]
+    "issues": [731, 745, 763, 820, 911]
   },
   {
     "title": "Every agent's sessions",

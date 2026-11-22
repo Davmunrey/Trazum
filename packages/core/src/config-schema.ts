@@ -1030,7 +1030,7 @@ function parseOutcomes(entry: unknown, source: string): OutcomeVocabulary {
 
 function parseStore(raw: unknown, source: string): { keepDays?: number } {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-    throw new Error(`"store" in ${source} must be an object, for example {"keepDays": 90}.`);
+    throw new ConfigError('"store" must be an object, for example {"keepDays": 90}', source);
   }
   const entry = raw as Record<string, unknown>;
   rejectUnknownKeys(entry, CONFIG_STORE_KEYS, source, 'store.');
@@ -1038,8 +1038,9 @@ function parseStore(raw: unknown, source: string): { keepDays?: number } {
   if (entry.keepDays !== undefined) {
     const days = entry.keepDays;
     if (typeof days !== 'number' || !Number.isInteger(days) || days <= 0) {
-      throw new Error(
-        `"store.keepDays" in ${source} must be a whole number of days above zero, and it is ${JSON.stringify(days)}.`,
+      throw new ConfigError(
+        `"store.keepDays" must be a whole number of days above zero, and it is ${JSON.stringify(days)}`,
+        source,
       );
     }
     out.keepDays = days;
