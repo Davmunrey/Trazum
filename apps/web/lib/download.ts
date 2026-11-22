@@ -36,7 +36,7 @@ export const CLI_COMMANDS = [
 export const VSIX_COMMAND = `code --install-extension ${files.vsix.name}`;
 
 /** The Action's pinned line, as the setup guide writes it. */
-export const ACTION_LINE = `- uses: Davmunrey/Trazum@${action.sha}  # ${action.label}`;
+export const ACTION_LINE = `- uses: TrazumAPP/Trazum@${action.sha}  # ${action.label}`;
 
 /** Checking the files against `SHA256SUMS`, on Linux and on macOS. */
 export const SUMS_COMMAND_LINUX = 'sha256sum --check --ignore-missing SHA256SUMS';

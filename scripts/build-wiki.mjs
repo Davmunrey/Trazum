@@ -56,9 +56,9 @@ const root = join(here, '..');
 const out = join(root, 'wiki');
 
 /** Where a relative link has to point once the text is served from a wiki. */
-const BLOB = 'https://github.com/Davmunrey/Trazum/blob/main/';
-const RAW = 'https://raw.githubusercontent.com/Davmunrey/Trazum/main/';
-const WIKI = 'https://github.com/Davmunrey/Trazum/wiki/';
+const BLOB = 'https://github.com/TrazumAPP/Trazum/blob/main/';
+const RAW = 'https://raw.githubusercontent.com/TrazumAPP/Trazum/main/';
+const WIKI = 'https://github.com/TrazumAPP/Trazum/wiki/';
 
 const read = (path) => readFileSync(join(root, path), 'utf8');
 
@@ -243,7 +243,7 @@ console.error(`Wrote ${wanted.size} pages to wiki/`);
 console.error('');
 console.error('A merge to main that changes wiki/ publishes it (the Wiki workflow). To publish by hand,');
 console.error('which stays the fallback (the wiki is a second repository, and this script holds no credential):');
-console.error('  git clone https://github.com/Davmunrey/Trazum.wiki.git /tmp/trazum-wiki');
+console.error('  git clone https://github.com/TrazumAPP/Trazum.wiki.git /tmp/trazum-wiki');
 console.error('  cp wiki/*.md /tmp/trazum-wiki/ && cd /tmp/trazum-wiki && git add -A && git commit -m "Rebuild from the repository" && git push');
 console.error('');
 console.error('A wiki that has never had a page cannot be cloned. Create one page in the');

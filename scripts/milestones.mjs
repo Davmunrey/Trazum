@@ -68,7 +68,7 @@ export const KEYS = ['title', 'description', 'issues'];
 export const START = '<!-- milestones:start -->';
 export const END = '<!-- milestones:end -->';
 
-const SITE = 'https://github.com/Davmunrey/Trazum';
+const SITE = 'https://github.com/TrazumAPP/Trazum';
 
 export const USAGE = [
   'usage: node scripts/milestones.mjs [--report]',

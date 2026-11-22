@@ -28,7 +28,7 @@ saves.
 The repository ships an Action, which additionally comments on the pull request:
 
 ```yaml
-- uses: Davmunrey/Trazum@<commit-sha>  # pin to a commit, never a tag
+- uses: TrazumAPP/Trazum@<commit-sha>  # pin to a commit, never a tag
   with:
     target: prompts/          # a file, or a directory using the config's budgets
     max-tokens: '900'
@@ -60,7 +60,7 @@ steps:
     with:
       fetch-depth: 0          # the base commit has to be in the clone
       persist-credentials: false
-  - uses: Davmunrey/Trazum@<commit-sha>
+  - uses: TrazumAPP/Trazum@<commit-sha>
     with:
       target: prompts/
       comment: 'true'
@@ -133,7 +133,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: Davmunrey/Trazum@<commit-sha>  # pin to a commit, never a tag
+      - uses: TrazumAPP/Trazum@<commit-sha>  # pin to a commit, never a tag
         with:
           usage-log: logs/usage/
           weekly-summary: comment
@@ -193,7 +193,7 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v7
-      - uses: Davmunrey/Trazum@<commit-sha>  # pin to a commit, never a tag
+      - uses: TrazumAPP/Trazum@<commit-sha>  # pin to a commit, never a tag
         with:
           usage-log: logs/usage/
           plan-pull-request: 'true'

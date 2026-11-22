@@ -1,4 +1,4 @@
-> Generated from [`README.md`](https://github.com/Davmunrey/Trazum/blob/main/README.md) by `scripts/build-wiki.mjs`.
+> Generated from [`README.md`](https://github.com/TrazumAPP/Trazum/blob/main/README.md) by `scripts/build-wiki.mjs`.
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 

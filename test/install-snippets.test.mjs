@@ -37,7 +37,7 @@ describe('the source of the snippets', () => {
     const other = clients({ name: '@trazum/mcp', version: '9.8.7' });
     assert.ok(other.every((entry) => !entry.code.includes(version) || version === '9.8.7'), 'a snippet kept the old version');
     assert.ok(other.find((entry) => entry.id === 'claude-code').code.endsWith('@trazum/mcp@9.8.7'));
-    assert.equal(other.find((entry) => entry.id === 'claude-desktop-bundle').code, 'https://github.com/Davmunrey/Trazum/releases/download/v9.8.7/trazum-mcp-9.8.7.mcpb');
+    assert.equal(other.find((entry) => entry.id === 'claude-desktop-bundle').code, 'https://github.com/TrazumAPP/Trazum/releases/download/v9.8.7/trazum-mcp-9.8.7.mcpb');
   });
 
   it('has a row for each client the issue names, once', () => {
@@ -83,7 +83,7 @@ describe('every snippet names the package at the exact version, or says what hol
 
   it('leaves the version of the Gemini CLI line to the file it installs, and says so', () => {
     assert.equal(row('gemini-cli').pinnedBy, 'gemini-extension.json');
-    assert.equal(row('gemini-cli').code, 'gemini extensions install https://github.com/Davmunrey/Trazum');
+    assert.equal(row('gemini-cli').code, 'gemini extensions install https://github.com/TrazumAPP/Trazum');
   });
 });
 

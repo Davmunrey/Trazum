@@ -332,7 +332,7 @@ describe('it sends nothing, and says what the repository says', () => {
       }
       for (const [address] of code.matchAll(/\bhttps?:[^\s'"`)]*/g)) {
         const url = new URL(address);
-        assert.ok(url.host === 'github.com' && url.pathname.startsWith('/Davmunrey/Trazum'), `${file} names ${address}`);
+        assert.ok(url.host === 'github.com' && url.pathname.startsWith('/TrazumAPP/Trazum'), `${file} names ${address}`);
       }
       assert.ok(!/dangerouslySetInnerHTML/.test(code), `${file} writes HTML`);
     }

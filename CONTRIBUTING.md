@@ -432,7 +432,7 @@ and each starts the issue with its labels:
 
 A security problem is never an issue: report it privately, as
 [SECURITY.md](SECURITY.md) says. A question goes to
-[Discussions](https://github.com/Davmunrey/Trazum/discussions), where the
+[Discussions](https://github.com/TrazumAPP/Trazum/discussions), where the
 Q&A, Ideas and Show and tell categories each have a form in
 `.github/DISCUSSION_TEMPLATE/`. Blank issues stay on for the report no form
 anticipated.

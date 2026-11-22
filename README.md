@@ -10,12 +10,12 @@ what to change and checks whether the change arrived.
 
 **Open source · Local analysis · No provider key needed to get started**
 
-[![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Davmunrey/Trazum/badge)](https://scorecard.dev/viewer/?uri=github.com/Davmunrey/Trazum)
+[![CI](https://github.com/TrazumAPP/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/TrazumAPP/Trazum/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/TrazumAPP/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/TrazumAPP/Trazum/actions/workflows/security.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/TrazumAPP/Trazum/badge)](https://scorecard.dev/viewer/?uri=github.com/TrazumAPP/Trazum)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/16992/badge)](https://www.bestpractices.dev/projects/16992)
 [![OpenSSF Baseline](https://www.bestpractices.dev/projects/16992/baseline)](https://www.bestpractices.dev/projects/16992)
-[![Coverage](https://codecov.io/gh/Davmunrey/Trazum/graph/badge.svg)](https://app.codecov.io/gh/Davmunrey/Trazum)
+[![Coverage](https://codecov.io/gh/TrazumAPP/Trazum/graph/badge.svg)](https://app.codecov.io/gh/TrazumAPP/Trazum)
 [![npm](https://img.shields.io/npm/v/%40trazum%2Fcli.svg?label=npm)](https://www.npmjs.com/package/@trazum/cli)
 [![npm downloads](https://img.shields.io/npm/dm/%40trazum%2Fcli.svg)](https://www.npmjs.com/package/@trazum/cli)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
@@ -163,13 +163,13 @@ call and each naming what it assumes. The ceilings come from your
 already writes. Nothing is called and nothing is spent to answer.
 
 ```bash
-claude plugin marketplace add Davmunrey/Trazum
+claude plugin marketplace add TrazumAPP/Trazum
 claude plugin install trazum@trazum
 ```
 
 That one line brings the skill and the MCP server. An agent that reads Agent
 Skills from the repository instead gets the same skill with
-`npx skills add Davmunrey/Trazum`. Every other MCP client
+`npx skills add TrazumAPP/Trazum`. Every other MCP client
 reads the same `mcpServers` JSON, so Cursor (`.cursor/mcp.json`), Windsurf,
 Claude Desktop and the rest are one paste:
 
@@ -177,8 +177,10 @@ Claude Desktop and the rest are one paste:
 { "mcpServers": { "trazum": { "command": "npx", "args": ["-y", "@trazum/mcp"] } } }
 ```
 
-The server is listed on the [official MCP registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.Davmunrey/trazum)
-as `io.github.Davmunrey/trazum`, and every release updates the listing.
+The server is listed on the [official MCP registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.TrazumAPP/trazum)
+as `io.github.TrazumAPP/trazum`, and every release updates the listing. Versions up to
+3.0.4 are listed as `io.github.Davmunrey/trazum`, from before the repository moved
+to the organisation.
 
 **[Or run it right now, without installing anything: the Playground](https://trazum.vercel.app/app?tab=playground)**
 
@@ -832,7 +834,7 @@ The four you are most likely to want directly:
 [open work](ROADMAP.md#open-work-as-issues) is the list of accepted issues,
 and five of them need nothing but somebody who reads French, German,
 Portuguese, Italian or Dutch:
-[good first issues](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+[good first issues](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 [CONTRIBUTING.md](CONTRIBUTING.md) covers adding a rule or a language, and
 [docs/authoring-rules.md](docs/authoring-rules.md) is the full walkthrough for a
 rule.
@@ -840,8 +842,8 @@ rule.
 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) covers what is expected of everyone
 taking part, and is honest about what a small project can promise.
 [SUPPORT.md](SUPPORT.md) covers what gets answered and how fast. A question
-goes to [Discussions](https://github.com/Davmunrey/Trazum/discussions) and a
-bug goes to an [issue](https://github.com/Davmunrey/Trazum/issues/new/choose),
+goes to [Discussions](https://github.com/TrazumAPP/Trazum/discussions) and a
+bug goes to an [issue](https://github.com/TrazumAPP/Trazum/issues/new/choose),
 through its form.
 [SECURITY.md](SECURITY.md) covers reporting a vulnerability privately.
 

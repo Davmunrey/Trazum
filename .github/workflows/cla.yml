@@ -35,7 +35,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           path-to-signatures: '.github/cla-signatures.json'
-          path-to-document: 'https://github.com/Davmunrey/Trazum/blob/main/docs/cla/CLA.md'
+          path-to-document: 'https://github.com/TrazumAPP/Trazum/blob/main/docs/cla/CLA.md'
           branch: 'cla-signatures'
           # This repository's own agent, listed under both spellings the
           # action can resolve it to. It picks

@@ -6,12 +6,12 @@
   "author": "David Mu\u00f1oz Rey",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Davmunrey/Trazum.git",
+    "url": "git+https://github.com/TrazumAPP/Trazum.git",
     "directory": "packages/cli"
   },
   "homepage": "https://trazum.vercel.app",
   "bugs": {
-    "url": "https://github.com/Davmunrey/Trazum/issues"
+    "url": "https://github.com/TrazumAPP/Trazum/issues"
   },
   "keywords": [
     "claude-code",

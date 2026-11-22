@@ -30,7 +30,7 @@ import { recordedVersion } from './npm-channel.mjs';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-export const REPOSITORY_URL = 'https://github.com/Davmunrey/Trazum';
+export const REPOSITORY_URL = 'https://github.com/TrazumAPP/Trazum';
 
 /** The server's server name inside every client's own config. */
 export const SERVER_KEY = 'trazum';

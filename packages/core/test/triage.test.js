@@ -177,7 +177,7 @@ describe('the roadmap’s open work is the accepted issues', () => {
     const end = next.indexOf('<!-- open-work:end -->');
     assert.ok(start !== -1 && end > start, 'the open-work table is not in the Next section');
     const body = next.slice(start, end);
-    const rows = [...body.matchAll(/^\| \[#(\d+)\]\(https:\/\/github\.com\/Davmunrey\/Trazum\/issues\/(\d+)\) \| .+ \| .+ \|$/gm)];
+    const rows = [...body.matchAll(/^\| \[#(\d+)\]\(https:\/\/github\.com\/TrazumAPP\/Trazum\/issues\/(\d+)\) \| .+ \| .+ \|$/gm)];
     assert.ok(rows.length > 0, 'the table has no rows: was it emptied?');
     for (const [, shown, linked] of rows) assert.equal(shown, linked, `#${shown} links to issue ${linked}`);
     const counted = [...body.matchAll(/\((\d+)\)\.\*\*/g)].reduce((sum, [, n]) => sum + Number(n), 0);

@@ -229,7 +229,7 @@ describe('scorecard.yml is the shape the Scorecard API accepts a result from', (
   });
 
   it('shows its result on the README and says in SECURITY.md what the score covers', () => {
-    assert.ok(read('README.md').includes('https://api.scorecard.dev/projects/github.com/Davmunrey/Trazum/badge'), 'the README has no Scorecard badge');
+    assert.ok(read('README.md').includes('https://api.scorecard.dev/projects/github.com/TrazumAPP/Trazum/badge'), 'the README has no Scorecard badge');
     const security = read('SECURITY.md');
     assert.match(security, /scorecard\.yml/);
     assert.match(security, /does not/i);

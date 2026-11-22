@@ -63,10 +63,27 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { REPOSITORY_URL, assetNames, assetUrl } from './install-snippets.mjs';
+import { REPOSITORY_URL, assetNames } from './install-snippets.mjs';
 import { recordedVersion } from './npm-channel.mjs';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * The repository a published document names. It moved from Davmunrey/Trazum to
+ * the TrazumAPP organisation on 2026-11-22 (#925), after 3.0.4. A published
+ * document is never rewritten, so the versions before the move keep the path
+ * they were published with; GitHub redirects it.
+ */
+export const LAST_BEFORE_MOVE = '3.0.4';
+export const OLD_REPOSITORY_URL = 'https://github.com/Davmunrey/Trazum';
+const parts = (version) => version.split(/[.-]/).slice(0, 3).map(Number);
+const notAfter = (a, b) => {
+  const [x, y] = [parts(a), parts(b)];
+  for (let i = 0; i < 3; i += 1) if (x[i] !== y[i]) return x[i] < y[i];
+  return true;
+};
+export const repositoryAt = (version) => (notAfter(version, LAST_BEFORE_MOVE) ? OLD_REPOSITORY_URL : REPOSITORY_URL);
+const releaseAssetAt = (version, name) => `${repositoryAt(version)}/releases/download/v${version}/${name}`;
 
 export const DATASET = 'trazum-pricing';
 /** The shape of the document. A change a reader's code would notice is a new number and a new schema file. */
@@ -319,7 +336,7 @@ export function buildDocument(catalogue, { version = catalogue.version, previous
     format: FORMAT,
     version,
     currency: 'USD',
-    licence: { spdx: catalogue.licence, url: `${REPOSITORY_URL}/blob/v${version}/LICENSE` },
+    licence: { spdx: catalogue.licence, url: `${repositoryAt(version)}/blob/v${version}/LICENSE` },
     catalogue: { path: CATALOGUE, sha256: catalogue.sha256, reviewed: catalogue.lastReviewed },
     sourcesArePer: 'provider',
     defaults,
@@ -653,7 +670,7 @@ export function buildChangelog(texts, homepage) {
       return {
         version,
         url: siteUrl(homepage, `${version}.json`),
-        releaseAsset: WRITTEN_AFTER_RELEASE.includes(version) ? null : assetUrl(version, assetNames(version).pricing),
+        releaseAsset: WRITTEN_AFTER_RELEASE.includes(version) ? null : releaseAssetAt(version, assetNames(version).pricing),
         sha256: createHash('sha256').update(texts[version]).digest('hex'),
         models: document.models.length,
         rows: document.rows.length,

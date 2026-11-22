@@ -45,14 +45,14 @@ client's model calls, and it cannot see a request the client never sent it.
 | VS Code | .vscode/mcp.json | the snippet under "VS Code" below |
 | Codex, command | a terminal | `codex mcp add trazum -- npx -y @trazum/mcp@3.0.4` |
 | Codex, TOML | ~/.codex/config.toml | the snippet under "Codex, TOML" below |
-| Gemini CLI | a terminal; the version is the one gemini-extension.json names | `gemini extensions install https://github.com/Davmunrey/Trazum` |
+| Gemini CLI | a terminal; the version is the one gemini-extension.json names | `gemini extensions install https://github.com/TrazumAPP/Trazum` |
 
 ### Claude Desktop, one-click bundle
 
 Where: download the file, then open it with Claude Desktop.
 
 ```text
-https://github.com/Davmunrey/Trazum/releases/download/v3.0.4/trazum-mcp-3.0.4.mcpb
+https://github.com/TrazumAPP/Trazum/releases/download/v3.0.4/trazum-mcp-3.0.4.mcpb
 ```
 
 ### Claude Desktop, JSON

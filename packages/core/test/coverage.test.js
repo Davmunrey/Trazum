@@ -471,7 +471,7 @@ describe('the script\'s figure is not passed off as Codecov\'s', () => {
 
   it('the README shows Codecov\'s badge, with no token in its address', () => {
     const readme = read('README.md');
-    assert.ok(readme.includes('[![Coverage](https://codecov.io/gh/Davmunrey/Trazum/graph/badge.svg)](https://app.codecov.io/gh/Davmunrey/Trazum)'));
+    assert.ok(readme.includes('[![Coverage](https://codecov.io/gh/TrazumAPP/Trazum/graph/badge.svg)](https://app.codecov.io/gh/TrazumAPP/Trazum)'));
     assert.doesNotMatch(readme, /badge\.svg\?token=/);
   });
 });

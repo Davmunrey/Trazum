@@ -1,4 +1,4 @@
-> Generated from [`README.md`](https://github.com/Davmunrey/Trazum/blob/main/README.md) by `scripts/build-wiki.mjs`.
+> Generated from [`README.md`](https://github.com/TrazumAPP/Trazum/blob/main/README.md) by `scripts/build-wiki.mjs`.
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
@@ -13,7 +13,7 @@ against your own call volume, and none of them is about making the text shorter:
 | Advisory | Why it matters |
 |---|---|
 | Prompt caching | Reading from cache costs 10% of input. The saving is computed over the **real stable prefix**: in a template with `{{placeholders}}`, only what precedes the first one is cached — not the whole prompt. |
-| Reorder the template | Stable instructions sitting *after* the first variable placeholder never cache today. Trazum prices moving them in front — and with `--reorder`, [does it](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#reordering-for-the-cache---reorder). |
+| Reorder the template | Stable instructions sitting *after* the first variable placeholder never cache today. Trazum prices moving them in front — and with `--reorder`, [does it](https://github.com/TrazumAPP/Trazum/blob/main/docs/commands.md#reordering-for-the-cache---reorder). |
 | Batch API | 50% off input and output when the work tolerates latency. |
 | Cheaper model | Complexity heuristic: if the task looks simple, what dropping a tier would save. |
 | Output-dominated cost | If you pay more for the answer than for the prompt, shortening the prompt has a ceiling. |
@@ -80,7 +80,7 @@ out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
 is the smallest thing here. `optimize` is one of 60 commands — [the table
-above](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-60-commands) names what each answers — because knowing a prompt
+above](https://github.com/TrazumAPP/Trazum/blob/main/README.md#the-60-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -88,7 +88,7 @@ or whether the shorter version still works.
 land in a pull request comment rather than a terminal nobody is looking at.
 
 **It gates in whatever CI you already run.** One binary, two exit codes, and
-[worked recipes for GitLab CI, Jenkins, CircleCI and a pre-commit hook](https://github.com/Davmunrey/Trazum/blob/main/docs/ci.md)
+[worked recipes for GitLab CI, Jenkins, CircleCI and a pre-commit hook](https://github.com/TrazumAPP/Trazum/blob/main/docs/ci.md)
 — no vendor plugin, because each one would be a second code path that drifts
 from the exit codes it is supposed to relay.
 

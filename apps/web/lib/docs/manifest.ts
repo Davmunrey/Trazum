@@ -27,7 +27,7 @@
  */
 
 /** Where the repository lives, and where a document's own file is. */
-export const REPOSITORY = 'https://github.com/Davmunrey/Trazum';
+export const REPOSITORY = 'https://github.com/TrazumAPP/Trazum';
 export const BLOB = `${REPOSITORY}/blob/main/`;
 export const TREE = `${REPOSITORY}/tree/main/`;
 

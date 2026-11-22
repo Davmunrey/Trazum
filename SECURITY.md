@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Report privately through **GitHub Security Advisories**:
-[Report a vulnerability](https://github.com/Davmunrey/Trazum/security/advisories/new).
+[Report a vulnerability](https://github.com/TrazumAPP/Trazum/security/advisories/new).
 
 Please do not open a public issue for something exploitable. There is no bounty
 programme; there is an acknowledgement in the release notes unless you would
@@ -244,7 +244,7 @@ Some of this cannot be committed to a file — it lives in repository settings.
   published from `wiki/` on every merge to `main`, and compared with it every
   Monday. It is the one workflow here whose job writes to something other than
   a release, and the paragraph on it above says why that is limited.
-- `.github/workflows/scorecard.yml`: [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/Davmunrey/Trazum)
+- `.github/workflows/scorecard.yml`: [OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/TrazumAPP/Trazum)
   on every merge to `main` and weekly, its result published to the README's
   badge and the Security tab. It reads how the repository is kept, from
   outside: pinned actions, token permissions, branch protection, review,

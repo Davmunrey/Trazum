@@ -449,7 +449,7 @@ async function checkAuth() {
             'package, on a separate settings page each. '
           : 'Trusted publishing is not configured, or a claim does not match. ') +
         'For each one: npm settings -> Publishing access -> Trusted publisher, with ' +
-        'GitHub Actions, org Davmunrey, repo Trazum, workflow release.yml, environment ' +
+        'GitHub Actions, org TrazumAPP, repo Trazum, workflow release.yml, environment ' +
         'release. The block below prints those values as this run sees them, and whether ' +
         'the token agrees with each. See docs/releasing.md. ' +
         'This check uses an endpoint npm does not document, so it only warns rather ' +

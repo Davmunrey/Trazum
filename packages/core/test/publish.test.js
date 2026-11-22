@@ -152,7 +152,7 @@ describe('what npm would publish', () => {
 
       it('points at the repository, so npm can link back to it', () => {
         assert.equal(manifest.repository?.directory, pkg);
-        assert.ok(manifest.repository?.url?.includes('Davmunrey/Trazum'));
+        assert.ok(manifest.repository?.url?.includes('TrazumAPP/Trazum'));
       });
 
       it('gives a reader somewhere to go and somewhere to complain', () => {
@@ -169,7 +169,7 @@ describe('what npm would publish', () => {
          */
         assert.ok(manifest.homepage, 'no homepage: the npm page links only back to the repository');
         assert.ok(
-          manifest.bugs?.url?.includes('Davmunrey/Trazum'),
+          manifest.bugs?.url?.includes('TrazumAPP/Trazum'),
           'no bugs.url pointing at this repository: npm shows no way to report anything',
         );
       });
@@ -250,7 +250,7 @@ describe('what npm would publish', () => {
     );
     assert.match(
       String(registry.repository?.url ?? ''),
-      /Davmunrey\/Trazum/,
+      /TrazumAPP\/Trazum/,
       'server.json points somewhere other than this repository',
     );
   });
@@ -1912,10 +1912,10 @@ describe('the publish preflight', () => {
      * disagreement is still visible, and nothing the token said is quoted.
      */
     const claims = {
-      repository: 'Davmunrey/Trazum',
-      repository_owner: 'Davmunrey',
+      repository: 'TrazumAPP/Trazum',
+      repository_owner: 'TrazumAPP',
       // Deliberately not what the environment below says, so `DIFFERS` is exercised.
-      workflow_ref: 'Davmunrey/Trazum/.github/workflows/SOMETHING-ELSE.yml@refs/heads/main',
+      workflow_ref: 'TrazumAPP/Trazum/.github/workflows/SOMETHING-ELSE.yml@refs/heads/main',
       // Absent on purpose: it appears only when the job declares an environment,
       // and that absence against a rule requiring one is the likeliest cause of
       // the refusal this block exists to explain.
@@ -1935,16 +1935,16 @@ describe('the publish preflight', () => {
         await run('auth', url, {
           ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
           ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
-          GITHUB_REPOSITORY: 'Davmunrey/Trazum',
+          GITHUB_REPOSITORY: 'TrazumAPP/Trazum',
           GITHUB_REPOSITORY_OWNER: 'Davmunrey',
-          GITHUB_WORKFLOW_REF: 'Davmunrey/Trazum/.github/workflows/release.yml@refs/heads/main',
+          GITHUB_WORKFLOW_REF: 'TrazumAPP/Trazum/.github/workflows/release.yml@refs/heads/main',
         }),
     );
 
     assert.equal(result.status, 0);
 
     // What to type into npm, sourced from the runner.
-    assert.match(result.stdout, /Repository: Davmunrey\/Trazum/, 'the repository to configure is not named');
+    assert.match(result.stdout, /Repository: TrazumAPP\/Trazum/, 'the repository to configure is not named');
     assert.match(result.stdout, /release\.yml/, 'the workflow to configure is not named');
 
     // The token agreeing and disagreeing are both visible, as one word each.
@@ -2195,7 +2195,7 @@ describe('the publish preflight', () => {
      * So the failure step repeats it. A diagnosis printed where the reader is not
      * looking is the same as no diagnosis.
      */
-    const payload = Buffer.from(JSON.stringify({ repository: 'Davmunrey/Trazum' })).toString(
+    const payload = Buffer.from(JSON.stringify({ repository: 'TrazumAPP/Trazum' })).toString(
       'base64url',
     );
     const result = await withRegistry(
@@ -2209,13 +2209,13 @@ describe('the publish preflight', () => {
         await run('claims', url, {
           ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
           ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
-          GITHUB_REPOSITORY: 'Davmunrey/Trazum',
+          GITHUB_REPOSITORY: 'TrazumAPP/Trazum',
         }),
     );
 
     assert.equal(result.status, 0, 'the claims mode failed the job it is diagnosing');
     assert.match(result.stdout, /npm must match/, 'it printed no diagnosis');
-    assert.match(result.stdout, /Davmunrey\/Trazum/, 'it did not name what to configure');
+    assert.match(result.stdout, /TrazumAPP\/Trazum/, 'it did not name what to configure');
   });
 
   it('the failure step prints the diagnosis where the log tail reaches', () => {

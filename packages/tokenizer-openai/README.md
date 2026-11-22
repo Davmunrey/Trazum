@@ -1,6 +1,6 @@
 # @trazum/tokenizer-openai
 
-OpenAI's own tokenizer, as an optional counter for [Trazum](https://github.com/Davmunrey/Trazum).
+OpenAI's own tokenizer, as an optional counter for [Trazum](https://github.com/TrazumAPP/Trazum).
 
 Install it and Trazum counts OpenAI prompts **exactly** instead of estimating
 them. Do not install it and nothing changes: `@trazum/core` declares no

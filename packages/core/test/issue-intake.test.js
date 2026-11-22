@@ -157,7 +157,7 @@ describe('issue intake', () => {
  * one without opening a discussion, so this file holds the shape and no more.
  */
 
-const DISCUSSIONS = 'https://github.com/Davmunrey/Trazum/discussions';
+const DISCUSSIONS = 'https://github.com/TrazumAPP/Trazum/discussions';
 const DEFAULT_SLUGS = ['announcements', 'general', 'ideas', 'polls', 'q-a', 'show-and-tell'];
 const DISCUSSION_FORMS_DIR = '.github/DISCUSSION_TEMPLATE';
 const discussionForms = readdirSync(join(ROOT, DISCUSSION_FORMS_DIR))
@@ -293,13 +293,13 @@ describe('discussion forms', () => {
 
   it('the idea form sends a clear thing to do to the feature request form, which exists', () => {
     const ideas = readForm('ideas.yml').replace(/\s+/g, ' ');
-    assert.ok(ideas.includes('belongs in a [feature request](https://github.com/Davmunrey/Trazum/issues/new?template=feature_request.yml)'));
+    assert.ok(ideas.includes('belongs in a [feature request](https://github.com/TrazumAPP/Trazum/issues/new?template=feature_request.yml)'));
     assert.ok(forms.includes('feature_request.yml'));
   });
 
   it('every form sends a bug to an issue form that exists', () => {
     for (const form of discussionForms) {
-      const targets = [...readForm(form).matchAll(/github\.com\/Davmunrey\/Trazum\/issues\/new\/?([^)\s]*)/g)].map((match) => match[1]);
+      const targets = [...readForm(form).matchAll(/github\.com\/TrazumAPP\/Trazum\/issues\/new\/?([^)\s]*)/g)].map((match) => match[1]);
       assert.ok(targets.length > 0, `${form} does not point anything at an issue`);
       for (const target of targets) {
         const template = /^\?template=(.+)$/.exec(target)?.[1];
@@ -341,7 +341,7 @@ describe('the one address of Discussions', () => {
     assert.ok(
       paragraph
         .replace(/\s+/g, ' ')
-        .includes(`A question goes to [Discussions](${DISCUSSIONS}) and a bug goes to an [issue](https://github.com/Davmunrey/Trazum/issues/new/choose), through its form.`),
+        .includes(`A question goes to [Discussions](${DISCUSSIONS}) and a bug goes to an [issue](https://github.com/TrazumAPP/Trazum/issues/new/choose), through its form.`),
     );
   });
 

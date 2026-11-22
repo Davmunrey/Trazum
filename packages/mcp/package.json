@@ -1,18 +1,18 @@
 {
   "name": "@trazum/mcp",
   "version": "3.0.4",
-  "mcpName": "io.github.Davmunrey/trazum",
+  "mcpName": "io.github.TrazumAPP/trazum",
   "description": "Trazum as an MCP server: let an agent price and budget its own prompts before it sends them.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Davmunrey/Trazum.git",
+    "url": "git+https://github.com/TrazumAPP/Trazum.git",
     "directory": "packages/mcp"
   },
   "homepage": "https://trazum.vercel.app",
   "bugs": {
-    "url": "https://github.com/Davmunrey/Trazum/issues"
+    "url": "https://github.com/TrazumAPP/Trazum/issues"
   },
   "keywords": [
     "mcp",

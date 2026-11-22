@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Davmunrey/Trazum.git"
+    "url": "git+https://github.com/TrazumAPP/Trazum.git"
   },
   "workspaces": [
     "packages/*",

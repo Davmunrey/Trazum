@@ -7,7 +7,7 @@ ask for, and tells you what that is worth per month.
 This library reads your prompts; every dependency would be someone else's code
 reading them too.
 
-Part of [Trazum](https://github.com/Davmunrey/Trazum). For the terminal, see
+Part of [Trazum](https://github.com/TrazumAPP/Trazum). For the terminal, see
 [`@trazum/cli`](https://www.npmjs.com/package/@trazum/cli).
 
 ```bash
@@ -359,7 +359,7 @@ counts and the same advisory ids. Match on ids, not on prose.
 
 ## Versioning
 
-See [VERSIONING.md](https://github.com/Davmunrey/Trazum/blob/main/VERSIONING.md).
+See [VERSIONING.md](https://github.com/TrazumAPP/Trazum/blob/main/VERSIONING.md).
 Rule and advisory **identifiers** are stable across locales and versions on
 purpose; message **text** is copy and gets improved.
 

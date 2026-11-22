@@ -130,7 +130,7 @@ left open at 1.85.0 and 1.86.0 answered it. Provenance is signed with the job's
 OIDC identity either way, so the signed attestation proves nothing about the
 auth — the `Can this workflow authenticate to npm?` step is the only thing that
 does, and on
-[the 1.86.0 run](https://github.com/Davmunrey/Trazum/actions/runs/33274351906)
+[the 1.86.0 run](https://github.com/TrazumAPP/Trazum/actions/runs/33274351906)
 it reported:
 
 > npm refused the OIDC token for `@trazum/cli`, `@trazum/core`, `@trazum/mcp`,
@@ -188,7 +188,7 @@ and `@trazum/tokenizer-openai` — on the package's npm settings page under
 | Field | Value |
 |---|---|
 | Publisher | GitHub Actions |
-| Organization or user | `Davmunrey` |
+| Organization or user | `TrazumAPP` |
 | Repository | `Trazum` |
 | Workflow filename | `release.yml` |
 | Environment | `release` |
@@ -226,8 +226,8 @@ On a refusal the step also prints the claims the token carries:
 
 ```
   The token this run carries:
-    repository: Davmunrey/Trazum
-    workflow_ref: Davmunrey/Trazum/.github/workflows/release.yml@refs/tags/v1.9.0
+    repository: TrazumAPP/Trazum
+    workflow_ref: TrazumAPP/Trazum/.github/workflows/release.yml@refs/tags/v1.9.0
     environment: release
 ```
 
@@ -806,7 +806,7 @@ same. Three things now stand between a lapsing token and that state:
   2026-11-17: a token npm does not know is answered `401`, and so was the
   token stored on the `release` environment, 42 minutes after it failed
   2.7.10's upload
-  ([the dry run](https://github.com/Davmunrey/Trazum/actions/runs/44057560003)).
+  ([the dry run](https://github.com/TrazumAPP/Trazum/actions/runs/44057560003)).
   The token that replaced it was answered `200` the same afternoon. What keeps
   the step a report is the trusted publisher: if npm ever accepts it, an
   upload needs no token, and a gate on a dead one would stop a release that
@@ -848,7 +848,7 @@ disk:
 
 ```bash
 cd /tmp && rm -rf trazum-release
-git clone --depth 1 https://github.com/Davmunrey/Trazum.git trazum-release
+git clone --depth 1 https://github.com/TrazumAPP/Trazum.git trazum-release
 cd trazum-release
 node -p "require('./package.json').version"        # read it: this is what ships
 npm ci
