@@ -120,8 +120,31 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
-  const now = new Date();
   const store = await getStore();
+
+  /*
+    Let in by login, and the login belongs here to another account. GitHub
+    lets a renamed login be claimed by anybody, so the list names a person
+    the operator meant and this is somebody else (penetration test of
+    2026-11-22, finding L-3). An id never changes hands, which is why a
+    match on the id is not asked about.
+  */
+  const policy = signInPolicy();
+  if (!policy.open && !policy.ids.includes(identity.providerId)) {
+    const holder = await store.findUserByLogin(identity.provider, identity.login);
+    if (holder !== null && holder.providerId !== identity.providerId) {
+      securityEvent('auth.sign_in', 'failure', { reason: 'login_reclaimed', route });
+      return jsonError(
+        `${identity.login} cannot sign in: that login belonged to another GitHub account when it last signed in here, `
+          + 'so the operator\'s list may mean somebody else. Ask the operator to list your numeric GitHub id in '
+          + 'TRAZUM_ALLOWED_USERS or TRAZUM_ADMINS instead of the login.',
+        403,
+        { 'set-cookie': cleared },
+      );
+    }
+  }
+
+  const now = new Date();
   const user = await store.upsertUser(identity, now);
   const session = issueSession(user.id, now, config.secure, config.session);
   await store.createSession(session.record);

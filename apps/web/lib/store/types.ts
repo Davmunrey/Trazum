@@ -131,6 +131,16 @@ export interface Store {
    */
   upsertUser(input: NewUser, now: Date): Promise<UserRecord>;
 
+  /**
+   * The account this store knows under `login`, compared without case, or null.
+   *
+   * Asked at sign-in when the operator listed somebody by login: a login can be
+   * renamed away and claimed by another account, and the store remembers which
+   * account held it when they last signed in (penetration test of 2026-11-22,
+   * finding L-3).
+   */
+  findUserByLogin(provider: string, login: string): Promise<UserRecord | null>;
+
   createSession(session: SessionRecord): Promise<void>;
 
   /**

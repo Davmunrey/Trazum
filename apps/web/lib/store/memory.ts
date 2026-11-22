@@ -60,6 +60,14 @@ export function memoryStore(): Store {
       return record;
     },
 
+    async findUserByLogin(provider: string, login: string): Promise<UserRecord | null> {
+      const wanted = login.toLowerCase();
+      for (const user of users.values()) {
+        if (user.provider === provider && user.login.toLowerCase() === wanted) return user;
+      }
+      return null;
+    },
+
     async createSession(session: SessionRecord): Promise<void> {
       sessions.set(session.tokenHash, { ...session });
     },
