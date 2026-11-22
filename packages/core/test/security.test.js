@@ -469,24 +469,37 @@ describe('the gateway, which stands between somebody and their provider', () => 
       door" — until the gateway declared it here. The guard did its job on the
       person adding the feature the guard was written for.
     */
+    /*
+      Moonshot joined on different evidence, and the difference is the point.
+      Its host was in this repository already, in the availability script, and
+      that was not taken as enough: a maintenance script that asks whether a
+      model exists is not a page saying where customer traffic goes. The host,
+      the path and the bearer header were read from Moonshot's own API
+      reference on 2026-11-22, and the comment above the entry names the pages.
+      xAI's reference was read the same day and is not here: it does not say
+      whether its output count includes the reasoning it bills.
+    */
     assert.deepEqual(origins, [
       'https://api.anthropic.com',
       'https://api.deepseek.com',
       'https://api.mistral.ai',
+      'https://api.moonshot.ai',
       'https://api.openai.com',
       'https://generativelanguage.googleapis.com',
     ]);
 
     const paths = [...text.matchAll(/path: '([^']*)'/g)].map((m) => m[1]).sort();
     /*
-      `/v1/chat/completions` appears twice, and the duplicate is the assertion
-      rather than an oversight. OpenAI and Mistral both serve that path, and a
-      list deduplicated for tidiness would pass on a source where one upstream's
-      path had been deleted — which is exactly the edit that would send a key to
-      the wrong place. One entry per compiled upstream, counted.
+      `/v1/chat/completions` appears once per upstream that serves it, and the
+      repetition is the assertion rather than an oversight. OpenAI, Mistral and
+      Moonshot all serve that path, and a list deduplicated for tidiness would
+      pass on a source where one upstream's path had been deleted — which is
+      exactly the edit that would send a key to the wrong place. One entry per
+      compiled upstream, counted.
     */
     assert.deepEqual(paths, [
       '/chat/completions',
+      '/v1/chat/completions',
       '/v1/chat/completions',
       '/v1/chat/completions',
       '/v1/messages',

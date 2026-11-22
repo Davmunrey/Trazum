@@ -28,6 +28,7 @@ spends tokens:
 | `deepseek` | `https://api.deepseek.com` | `/chat/completions` |
 | `mistral` | `https://api.mistral.ai` | `/v1/chat/completions` |
 | `google` | `https://generativelanguage.googleapis.com` | `/v1beta/models/{model}:generateContent` |
+| `moonshot` | `https://api.moonshot.ai` | `/v1/chat/completions` |
 
 ### And two that spend nothing
 
@@ -66,6 +67,26 @@ made of, and the URL sent upstream is then **rebuilt** from what matched rather
 than forwarded as received. `:streamGenerateContent` and `:countTokens` are
 different operations and are not forwarded.
 
+**Moonshot's row was read from Moonshot's own API reference**, on 2026-11-22:
+[the API overview](https://platform.kimi.ai/docs/api/overview.md) gives the
+service address, the path and an `Authorization: Bearer` header, and
+[the Chat Completions page](https://platform.kimi.ai/docs/api/chat.md) gives the
+usage shape, which is OpenAI's. Cache reads and writes are inside
+`prompt_tokens`, reasoning is inside `completion_tokens`, and a stream that asks
+with `stream_options: {include_usage: true}` ends with the totals. That is the
+international platform's host. Moonshot's China platform serves the same API
+from `https://api.moonshot.cn`, which is not fronted.
+
+**A Kimi cache write is priced at the lifetime your request asked for.** Kimi K3
+bills an hour's entry at twice a five-minute one, and the response does not say
+which was written; Moonshot's page says so and tells the caller to keep track of
+the value sent. The gateway reads `prompt_cache_options.ttl` from the request:
+`"5m"`, or no value, is the five-minute entry the page names as the default, and
+`"1h"` is the hour. Any other value leaves the lifetime unknown, and a call with
+an unknown lifetime is not priced at the cheaper one. It is counted and left
+unpriced, the live balance becomes unknown, and `--on-cannot-tell` decides what
+happens to the next call.
+
 Everything else in Trazum either answers a question you can ignore or reports on
 a bill after it arrived. This is the one thing that can say **no**.
 
@@ -88,6 +109,24 @@ compiled origins exactly, for that reason.
 Both are still **priced** and both are still **profiled** from a log you export.
 What the gateway offers and they cannot have is a refusal before the money is
 spent.
+
+**xAI, not yet, and for a different reason.** Its host is not the problem.
+xAI's documentation, read on 2026-11-22, names `https://api.x.ai` as
+[its global endpoint](https://docs.x.ai/developers/advanced-api-usage/regions.md),
+and [its API reference](https://docs.x.ai/developers/rest-api-reference/inference/chat-completions.md)
+gives `POST /v1/chat/completions` with a bearer scheme. What it does not settle
+is what the counts mean. Its schema says
+`total_tokens` is "the sum of prompt token and completion token amount", and its
+own example reports 32 prompt tokens, 9 completion tokens, 94 reasoning tokens
+and a total of 135, which is 32 + 9 + 94. If the example is right, reasoning is
+outside `completion_tokens`, and reading the response the way OpenAI's is read
+would miss every reasoning token xAI bills. And its `max_completion_tokens`
+"only applies to visible output tokens (i.e. does not apply to tokens used for
+reasoning or function calls)", so no field in the request bounds what a
+reasoning call can cost before it is sent, which is what a refusal before the
+money is spent rests on. The same reference calls Chat Completions the
+predecessor of its Responses API. xAI stays priced and profiled from a log, and
+`trazum gateway xai` says so.
 
 ## Why in the path at all
 
@@ -329,7 +368,7 @@ Two causes, and the second is not a failure at all:
 | Cause | What happened | How common |
 | --- | --- | --- |
 | `stream-broke` | The connection died before the event carrying the counts | rare, and a real error |
-| `no-usage-event` | The stream ended cleanly and carried no counts | **every OpenAI streaming call** without `stream_options: {include_usage: true}` |
+| `no-usage-event` | The stream ended cleanly and carried no counts | **every OpenAI streaming call** without `stream_options: {include_usage: true}`, and Moonshot's reference asks for the same field |
 
 The second is the one to act on. On OpenAI a streamed call reports nothing
 unless the caller asks, so a gateway that stayed silent would under-report most

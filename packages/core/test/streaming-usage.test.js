@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { streamingUsageReader } from '../dist/index.js';
+import { streamingUsageReader, usageFromResponse } from '../dist/index.js';
 
 /**
  * Reading a streamed answer's usage without keeping the answer.
@@ -156,6 +156,41 @@ describe('the wire shape a provider speaks', () => {
     });
   });
 
+  it('reads Moonshot as the OpenAI shape, streaming, from its own example', () => {
+    /**
+     * The final chunk is Moonshot's, copied from the streaming example in
+     * platform.kimi.ai/docs/api/chat.md as read on 2026-11-22: empty `choices`,
+     * the totals in the top-level `usage`. The page says cached reads, writes
+     * and the uncached remainder are disjoint and sum to `prompt_tokens`, and
+     * that output "includes both reasoning and answer tokens".
+     *
+     * 373 - 256 written = 117 fresh input. Output is 93, **not** 93 + 71: the
+     * reasoning is already inside it, and adding it would bill it twice. The
+     * request named no lifetime, so the 256 are Kimi's default five-minute
+     * entry, in the short slot.
+     */
+    const reader = streamingUsageReader('moonshot', { cacheTtl: null });
+    feed(
+      reader,
+      [
+        'data: {"id":"chatcmpl-6adb0ef47c3c1358b6a07603","object":"chat.completion.chunk","created":1792741110,"model":"kimi-k3.1-pro","choices":[{"index":0,"delta":{"content":"1"},"finish_reason":null}],"system_fingerprint":"fpv0_e7278693"}',
+        '',
+        'data: {"id":"chatcmpl-6adb0ef47c3c1358b6a07603","object":"chat.completion.chunk","created":1792741110,"model":"kimi-k3.1-pro","choices":[],"usage":{"prompt_tokens":373,"completion_tokens":93,"total_tokens":466,"completion_tokens_details":{"reasoning_tokens":71},"prompt_tokens_details":{"cache_write_tokens":256}}}',
+        '',
+        'data: [DONE]',
+        '',
+      ].join('\n'),
+    );
+    assert.deepEqual(reader.done(), {
+      inputTokens: 117,
+      outputTokens: 93,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 256,
+      cacheWrite5mTokens: 256,
+      cacheWrite1hTokens: 0,
+    });
+  });
+
   it('says nothing for a provider whose shape nobody established', () => {
     /**
      * The important half. A provider absent from `WIRE_SHAPES` gets **null**,
@@ -163,7 +198,7 @@ describe('the wire shape a provider speaks', () => {
      * reports the call as unmeasured, which is true, rather than recording a
      * number nobody can defend.
      */
-    for (const provider of ['mistral', 'xai', 'moonshot']) {
+    for (const provider of ['mistral', 'xai']) {
       const reader = streamingUsageReader(provider);
       feed(reader, 'data: {"usage":{"prompt_tokens":9,"completion_tokens":1}}\n\n');
       assert.equal(reader.done(), null, `${provider} was read with a shape nobody established`);
@@ -190,5 +225,92 @@ describe('the wire shape a provider speaks', () => {
     const geminiish = streamingUsageReader('google');
     feed(geminiish, 'data: {"usageMetadata":{"promptTokenCount":9,"candidatesTokenCount":1}}\n\n');
     assert.equal(geminiish.done(), null, "Google's streamed shape was guessed from its buffered one");
+  });
+});
+
+/**
+ * How long a Kimi cache write lives, which the response does not say.
+ *
+ * Kimi K3 bills a write by its entry's lifetime: input price for five minutes,
+ * twice that for an hour (the catalogue's `cacheWrite5m: 1, cacheWrite1h: 2`,
+ * from platform.kimi.ai/docs/pricing/chat, reviewed 2026-11-05). Moonshot's
+ * API reference, read 2026-11-22, says the request's
+ * `prompt_cache_options.ttl` is `"5m"` or `"1h"`, `"5m"` when omitted, and
+ * that the Chat Completions response "does not echo the applied mode/ttl". So
+ * the reader is told what the request asked. Assuming five minutes when it was
+ * not told would price an hour's write at half its cost, which is the
+ * direction this project must not round to.
+ */
+describe("a Kimi write's lifetime comes from the request", () => {
+  const response = (details) => ({
+    usage: { prompt_tokens: 100_000, completion_tokens: 1_000, prompt_tokens_details: details },
+  });
+
+  it('subtracts reads and writes from the prompt, as the page says they are disjoint', () => {
+    // 100,000 - 60,000 read - 30,000 written = 10,000 fresh, the importer's own case in moonshot-xai.test.js.
+    const usage = usageFromResponse('moonshot', response({ cached_tokens: 60_000, cache_write_tokens: 30_000 }), {
+      cacheTtl: null,
+    });
+    assert.equal(usage.inputTokens, 10_000);
+    assert.equal(usage.cacheReadTokens, 60_000);
+    assert.equal(usage.cacheWriteTokens, 30_000);
+    assert.equal(usage.outputTokens, 1_000);
+  });
+
+  for (const [asked, short, long, what] of [
+    [null, 30_000, 0, 'none named is the five-minute default'],
+    ['5m', 30_000, 0, 'five minutes'],
+    ['1h', 0, 30_000, 'an hour'],
+  ]) {
+    it(`puts the writes where the request said: ${what}`, () => {
+      const buffered = usageFromResponse('moonshot', response({ cached_tokens: 0, cache_write_tokens: 30_000 }), {
+        cacheTtl: asked,
+      });
+      assert.equal(buffered.cacheWrite5mTokens, short);
+      assert.equal(buffered.cacheWrite1hTokens, long);
+
+      const reader = streamingUsageReader('moonshot', { cacheTtl: asked });
+      feed(reader, `data: {"choices":[],"usage":${JSON.stringify(response({ cache_write_tokens: 30_000 }).usage)}}\n\n`);
+      const streamed = reader.done();
+      assert.equal(streamed.cacheWrite5mTokens, short, 'the streaming reader split it differently');
+      assert.equal(streamed.cacheWrite1hTokens, long, 'the streaming reader split it differently');
+    });
+  }
+
+  for (const [asked, what] of [
+    [undefined, 'a reader nobody told what the request asked'],
+    ['24h', 'a lifetime Moonshot does not sell'],
+    ['', 'a value that was not a string'],
+  ]) {
+    it(`leaves the lifetime unknown for ${what}, rather than assuming the cheaper one`, () => {
+      const usage = usageFromResponse(
+        'moonshot',
+        response({ cached_tokens: 0, cache_write_tokens: 30_000 }),
+        asked === undefined ? {} : { cacheTtl: asked },
+      );
+      assert.equal(usage.cacheWriteTokens, 30_000, 'the writes are still counted');
+      assert.equal(usage.cacheWrite5mTokens, undefined);
+      assert.equal(usage.cacheWrite1hTokens, undefined);
+    });
+  }
+
+  it('changes nothing for OpenAI, whose Chat Completions entry has one lifetime', () => {
+    /**
+     * The other direction. The lifetime table is per provider; a request
+     * field Moonshot defines must not move an OpenAI write into the hour slot.
+     */
+    const usage = usageFromResponse('openai', response({ cached_tokens: 0, cache_write_tokens: 30_000 }), {
+      cacheTtl: '1h',
+    });
+    assert.equal(usage.cacheWrite5mTokens, 30_000);
+    assert.equal(usage.cacheWrite1hTokens, 0);
+  });
+
+  it('still refuses, when strict, a read and a write larger than the prompt', () => {
+    const usage = usageFromResponse('moonshot', response({ cached_tokens: 80_000, cache_write_tokens: 30_000 }), {
+      requireComplete: true,
+      cacheTtl: null,
+    });
+    assert.equal(usage, null);
   });
 });
