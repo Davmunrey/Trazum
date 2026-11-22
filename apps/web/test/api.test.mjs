@@ -326,7 +326,7 @@ describe('a provider that answers with an error', () => {
   it('is reported by its status, and its text stays on the server', async () => {
     failWith = { status: 500, body: `internal: upstream db password=hunter2 ${'x'.repeat(100_000)}` };
     try {
-      const { status, body } = await post({ prompt: PROMPT, suggest: true, ...CALLER_KEY });
+      const { status, body } = await post({ prompt: PROMPT, suggest: true, llm: CALLER_KEY });
       assert.equal(status, 502);
       assert.match(body.error, /HTTP 500/);
       assert.doesNotMatch(body.error, /hunter2|upstream|xxxx/, 'the provider\'s text reached the caller');
