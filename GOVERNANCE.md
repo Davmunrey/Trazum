@@ -76,11 +76,11 @@ to the repository, is a member of the `@trazum` organisation on npm, and is the
 owner's named GitHub account successor. With write access either maintainer can
 close issues without waiting on the other.
 
-**Not yet in place:** GitHub enforces the environments' reviewers only once an
-admin applies [`.github/environments.json`](.github/environments.json) with
-`scripts/environments.mjs`. Until the owner has done that, a release still
-waits on the owner's approval, and Trazum cannot release within a week without
-them.
+**In place since 2026-11-22:** the owner applied the ruleset and
+[`.github/environments.json`](.github/environments.json) that day, and both
+read back as the files state them (`npm run ruleset`, `npm run environments`).
+Either maintainer can approve a release, and every merge waits for the other
+maintainer's approval (#922).
 
 ## When the other maintainer cannot approve
 
