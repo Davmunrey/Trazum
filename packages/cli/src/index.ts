@@ -361,6 +361,7 @@ import { readSession, sizeOf } from './waste.js';
 import { commandHelp } from './command-help.js';
 import { MAX_COLUMNS, Report, WINDOW, c, cErr, fitPath, sectionHeading, table, wrap } from './style.js';
 import type { Cell, TableColumn } from './style.js';
+import { guardStream } from './terminal-guard.js';
 
 // --------------------------------------------------------------------------
 // Argument parsing
@@ -15249,6 +15250,11 @@ async function main(): Promise<void> {
     }
     return;
   }
+  // Before anything else prints: a usage log's text reaches the terminal as
+  // text, never as a command to it (L-8). `task` and `filter` above are left
+  // alone on purpose: `filter restore` gives back a tool's log byte for byte.
+  guardStream(process.stdout);
+  guardStream(process.stderr);
   let locale = localeFromArgv(argv);
   let t = getCliMessages(locale);
   const args = parseArgs(argv, t);

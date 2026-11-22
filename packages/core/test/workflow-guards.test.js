@@ -193,6 +193,16 @@ describe('scorecard.yml is the shape the Scorecard API accepts a result from', (
  * `docker build` failed and no check said so. CI now builds the image; these
  * say, without Docker, that the copies are closed under what the build reads.
  */
+describe('the image the web app runs in', () => {
+  it('upgrades its system packages before it drops to the unprivileged user (L-11)', () => {
+    const dockerfile = read('Dockerfile');
+    const runtime = dockerfile.slice(dockerfile.lastIndexOf('\nFROM '));
+    const upgrade = runtime.search(/^RUN apk upgrade --no-cache$/m);
+    assert.ok(upgrade > -1, 'the runtime stage does not run apk upgrade --no-cache');
+    assert.ok(upgrade < runtime.search(/^USER /m), 'apk upgrade runs after USER, where it has no right to');
+  });
+});
+
 describe('the Dockerfile copies everything the build it runs reads', () => {
   const dockerfile = read('Dockerfile');
   const copied = new Set();

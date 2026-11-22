@@ -52,6 +52,13 @@ RUN npm run build --workspace @trazum/core \
  && npm run build --workspace @trazum/web
 
 FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
+# The base's system packages, brought up to Alpine's fixed versions. On
+# 2026-11-22 the digest above, the newest for its tag, carried openssl 3.5.9-r0
+# and zlib 1.3.2-r1 with known CVEs that Alpine had already fixed (penetration
+# test, finding L-11). The digest still decides everything else; this one line
+# trades a byte-for-byte rebuild for packages with no known hole, and goes when
+# the official image catches up.
+RUN apk upgrade --no-cache
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
