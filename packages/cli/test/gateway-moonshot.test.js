@@ -226,6 +226,15 @@ describe("and prices a Kimi write at the lifetime the request asked for", () => 
     assert.equal(priced(g.recorded[0]), null);
   });
 
+  for (const [what, options] of [['a string', '1h'], ['null', null], ['an array', ['1h']]]) {
+    it(`options that are ${what}, not an object, are unreadable too, not "none named"`, async () => {
+      const g = await gateway({}, writes);
+      await post(g.where, body({ prompt_cache_options: options }));
+      assert.equal(g.recorded[0].cacheWriteTokens, 100_000);
+      assert.equal(priced(g.recorded[0]), null);
+    });
+  }
+
   it('and the live budget will not admit the next call on a balance it could not price', async () => {
     let calls = 0;
     const g = await gateway({
