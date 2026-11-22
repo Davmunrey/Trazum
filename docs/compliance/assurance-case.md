@@ -32,7 +32,7 @@ production and npm.
 | Complete mediation | Every library, share and admin route resolves the caller from the session and looks records up by owner | [TRZ-06](controls.md) |
 | Economy of mechanism | The core has no runtime dependency; three of the four published packages have none outside the project | [docs/architecture.md](../architecture.md) |
 | Open design | The source, the threat model and this argument are public | This repository |
-| Separation of privilege | Nothing reaches `main` but through a pull request with required checks, under a ruleset with no bypass actor | [TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md) |
+| Separation of privilege, in part | Nothing reaches `main` but through a pull request with required checks, under a ruleset with no bypass actor. That is enforcement, not separation: the ruleset asks for zero approvals, and a maintainer can change the workflows and the ruleset through the same pull requests, so no independent approval is required yet | [TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md) |
 
 The design decisions behind these, and the ones deliberately not taken, are in
 SECURITY.md's [Deliberate design decisions](../../SECURITY.md#deliberate-design-decisions).

@@ -67,6 +67,15 @@ of losing either maintainer. These are what that rests on:
   ([npm's documentation](https://docs.npmjs.com/organization-roles-and-permissions)),
   so a release does not wait on the owner's npm account.
 
-**Status on 2026-11-22, as the owner reported it:** @munozrey has access to the
-repository, is a member of the `@trazum` organisation on npm, and is the owner's
-named GitHub account successor.
+**Status on 2026-11-22, as the owner reported it:** @munozrey has write access
+to the repository, is a member of the `@trazum` organisation on npm, and is the
+owner's named GitHub account successor. With write access either maintainer can
+close issues and merge without waiting on the other, whether the other has left,
+died or is simply unreachable; the account successor matters only for what needs
+the owner's account itself, such as the repository's settings.
+
+**Not yet in place:** GitHub enforces the environments' reviewers only once an
+admin applies [`.github/environments.json`](.github/environments.json) with
+`scripts/environments.mjs`. Until the owner has done that, a release still
+waits on the owner's approval, and Trazum cannot release within a week without
+them.

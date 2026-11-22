@@ -41,11 +41,17 @@ Dependencies point one way, toward the core, and the core points nowhere.
 
 ## What crosses the network, and when
 
-Nothing, unless the user asks for it: a provider key, a URL or a flag. When
-something does go out, the core's `net.ts` decides where it may go. Endpoints
-are checked against an allowlist that fails closed, and redirects are refused.
-[SECURITY.md](../SECURITY.md#what-trazum-is-exposed-to) lists each surface and
-the control on it.
+From the CLI, the MCP server and the libraries: nothing, unless the user asks
+for it with a provider key, a URL or a flag. What they send goes through the
+core's `net.ts`, which checks the endpoint against an allowlist that fails
+closed and refuses redirects.
+
+The hosted web app has connections of its own that `net.ts` does not govern:
+GitHub for sign-in, its database, a model endpoint the operator allows, and one
+analytics host when the operator configures one. Each is a boundary in the
+[threat model](compliance/threat-model.md#where-the-lines-run), with the control
+that answers it. [SECURITY.md](../SECURITY.md#what-trazum-is-exposed-to) lists
+every surface.
 
 ## How it is built and shipped
 
