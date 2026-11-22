@@ -331,6 +331,13 @@ Some of this cannot be committed to a file — it lives in repository settings.
    than whoever made it (`require_last_push_approval`), so a maintainer cannot
    push to the other's pull request and approve their own commit; a later push
    dismisses it.
+
+   OpenSSF Scorecard's Branch-Protection check asks for two approvals, and its
+   code-scanning alert for the one this asks for was dismissed on purpose on
+   2026-11-22 (#929). With two maintainers, two approvals cannot be given: an
+   author cannot approve their own pull request, which leaves one person who
+   can. It becomes possible, and worth requiring, once a third maintainer can
+   review.
 2. **Code security → Dependency graph**, then add an Actions **variable**
    `DEPENDENCY_REVIEW = enabled` (Settings → Secrets and variables → Actions →
    Variables).
