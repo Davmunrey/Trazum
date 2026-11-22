@@ -3025,3 +3025,14 @@ self-hosted web app could be made to run out of memory by one client. 3.0.5
 closes all three, each proven by planting the fault it catches. It also carries
 the move to the `TrazumAPP` organisation, the rule that every change to main
 waits for the other maintainer's approval, and the end of the N0 deployment.
+
+## 3.0.6 — The rest of the penetration test — released
+
+3.0.5 closed the three findings of the penetration test of 3.0.4 that were
+worth an advisory. 3.0.6 closes the smaller ones that were code: what the CLI
+prints from a log can no longer carry terminal escapes, the gateway refuses a
+body with a key named twice, a provider's error is read only so far and every
+model call has a time limit, and the self-hosted web app refuses a login that
+changed hands, upgrades its image's system packages and caches its link
+previews. It also carries two stack overflows, the Docker build and a config
+error found by property tests.

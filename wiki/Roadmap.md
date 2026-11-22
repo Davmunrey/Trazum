@@ -47,20 +47,18 @@ closed, not when somebody remembers this page. Live:
 [open to a first contribution](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
-**Ready to be picked up (14).**
+**Ready to be picked up (12).**
 
 | Issue | What | Area |
 | --- | --- | --- |
 | [#638](https://github.com/TrazumAPP/Trazum/issues/638) | Evaluate repeat-review-v1 over repeated tasks before making it default | cli |
 | [#642](https://github.com/TrazumAPP/Trazum/issues/642) | Decide whether to ship DeepSeek and Mistral tokenizer packages | core |
-| [#643](https://github.com/TrazumAPP/Trazum/issues/643) | Front xAI and Moonshot in the gateway once endpoints are confirmed | cli |
 | [#648](https://github.com/TrazumAPP/Trazum/issues/648) | Decide when and how to read OpenCode's SQLite sessions | cli |
 | [#680](https://github.com/TrazumAPP/Trazum/issues/680) | Review the French dictionary: 38 entries nobody who reads French has agreed to | core |
 | [#681](https://github.com/TrazumAPP/Trazum/issues/681) | Review the German dictionary: 38 entries nobody who reads German has agreed to | core |
 | [#682](https://github.com/TrazumAPP/Trazum/issues/682) | Review the Portuguese dictionary: 36 entries nobody who reads Portuguese has agreed to | core |
 | [#683](https://github.com/TrazumAPP/Trazum/issues/683) | Review the Italian dictionary: 36 entries nobody who reads Italian has agreed to | core |
 | [#684](https://github.com/TrazumAPP/Trazum/issues/684) | Review the Dutch dictionary: 30 entries nobody who reads Dutch has agreed to | core |
-| [#774](https://github.com/TrazumAPP/Trazum/issues/774) | Gemini CLI and Codex users install the MCP server in one line, and the Gemini gallery lists it | mcp |
 | [#775](https://github.com/TrazumAPP/Trazum/issues/775) | bill reads Amazon Bedrock's model invocation logs | cli |
 | [#780](https://github.com/TrazumAPP/Trazum/issues/780) | The MCP server ships as a one-click bundle for Claude Desktop, and the registry lists it | mcp |
 | [#781](https://github.com/TrazumAPP/Trazum/issues/781) | brew install the CLI from a tap this repository keeps current | cli |

@@ -110,6 +110,8 @@ and is left as it was taken. What has happened to it since:
 | A priced provider is not a typo | yes | none needed — derived from the catalogue |
 | DeepSeek fronted | yes | `scripts/measure-token-band.mjs` sends a key to `https://api.deepseek.com/chat/completions` |
 | Google fronted | yes | `packages/core/src/llm.ts` sends a key to `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`; `packages/core/src/usage.ts` reads `usageMetadata` back |
+| Moonshot fronted | yes (#643) | none already committed: Moonshot's own API reference, platform.kimi.ai/docs/api/overview.md and /docs/api/chat.md, read 2026-11-22, names `https://api.moonshot.ai`, `POST /v1/chat/completions`, a bearer header and OpenAI's usage shape |
+| xAI fronted | no (#959) | xAI's reference, read 2026-11-22, names its host and path, but says `total_tokens` is prompt plus completion while its example adds reasoning on top, and its `max_completion_tokens` does not bound reasoning |
 
 **What is still blocked, and why it is not laziness.** `moonshot`, `xai` and
 `mistral` are priced and unfronted because their hosts appear **nowhere in this

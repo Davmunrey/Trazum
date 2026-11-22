@@ -75,16 +75,26 @@ const HOSTS = {
   'https://api.openai.com': 'gateway upstream',
   'https://api.deepseek.com': 'gateway upstream',
   'https://api.mistral.ai': 'gateway upstream',
+  /*
+    Was an availability check, like xAI below, until Moonshot's own API
+    reference was read on 2026-11-22 and named this host, its
+    `/v1/chat/completions` and a bearer header (#643). The availability script
+    still asks it too; the decision is the stronger of the two uses, because
+    the gateway forwards a customer's key here.
+  */
+  'https://api.moonshot.ai': 'gateway upstream',
 
   /*
     Reached only by `scripts/check-model-availability.mjs`, which asks each
-    provider whether the ids this repository prices still exist. Neither is a
-    gateway upstream: the gateway fronts calls a customer makes, and nothing
-    here routes customer traffic to either. They are named as their own kind so
-    that stays true by inspection rather than by everyone remembering it.
+    provider whether the ids this repository prices still exist. Not a gateway
+    upstream: the gateway fronts calls a customer makes, and nothing here routes
+    customer traffic to it. Its reference was read on 2026-11-22 and left it
+    out: it does not say whether `completion_tokens` includes the reasoning it
+    bills, and its `max_completion_tokens` does not bound that reasoning (#959).
+    Named as its own kind so that stays true by inspection rather than by
+    everyone remembering it.
   */
   'https://api.x.ai': 'availability check, not a customer path',
-  'https://api.moonshot.ai': 'availability check, not a customer path',
   'https://generativelanguage.googleapis.com': 'gateway upstream',
 
   'https://aiplatform.googleapis.com': 'model call, cannot be fronted',
@@ -283,11 +293,12 @@ describe('and a provider endpoint the gateway could front sets off the alarm', (
   /**
    * The point of the whole file.
    *
-   * `mistral`, `xai` and `moonshot` are priced and unfronted because their
-   * hosts are nowhere here. The day one arrives — in a script, a provider, a
-   * test fixture — it fails the decision check above by name, and the only
+   * `mistral`, `xai` and `moonshot` were priced and unfronted because their
+   * hosts were nowhere here. The day one arrived — in a script, a provider, a
+   * test fixture — it failed the decision check above by name, and the only
    * honest label for a plain-credential model endpoint is the one that fails
-   * here with the chapter to write.
+   * here with the chapter to write. Mistral and Moonshot have since been
+   * fronted; xAI's host is here only as an availability check.
    */
   const alarm = (hosts) =>
     Object.entries(hosts)

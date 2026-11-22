@@ -493,6 +493,23 @@ export const WIRE_SHAPES: Readonly<Record<string, WireShape>> = {
    * gateway reads it through the same understanding rather than a second one.
    */
   google: 'google',
+  /**
+   * Moonshot, from its own API reference rather than from recall:
+   * platform.kimi.ai/docs/api/chat.md and /docs/api/overview.md, read
+   * 2026-11-22. `usage.prompt_tokens` "is always the total number of input
+   * tokens", and `prompt_tokens_details.cached_tokens`,
+   * `prompt_tokens_details.cache_write_tokens` and the uncached remainder "are
+   * mutually exclusive and sum to `prompt_tokens`", which is OpenAI's
+   * subtraction. Output "includes both reasoning and answer tokens", so
+   * `completion_tokens` is the whole billed output. A stream asked with
+   * `stream_options.include_usage` ends with a chunk whose `choices` is empty
+   * and whose top-level `usage` has the totals, which is OpenAI's event.
+   *
+   * The one thing the response does not say is how long a write lives, and
+   * Kimi K3 bills an hour's entry at twice a five-minute one. That is
+   * `WRITE_TTL_FROM_REQUEST` below.
+   */
+  moonshot: 'openai',
 };
 
 export type WireShape = 'anthropic' | 'openai' | 'google';
@@ -500,6 +517,59 @@ export type WireShape = 'anthropic' | 'openai' | 'google';
 /** The shape to read, or null when this provider's shape is not established. */
 function shapeOf(provider: string): WireShape | null {
   return WIRE_SHAPES[provider] ?? null;
+}
+
+/**
+ * Providers whose response counts a cache write without saying how long the
+ * entry lives, so that the request has to say it.
+ *
+ * Moonshot's reference, read 2026-11-22: the request's
+ * `prompt_cache_options.ttl` is `"5m"` or `"1h"`, "(default `5m`)", and "The
+ * Chat Completions response does not echo the applied mode/ttl (unlike the
+ * Responses API); keep track of the values used at request time." The gateway
+ * has the request, so it passes that value to the readers as `cacheTtl`.
+ * `null` means the request named none and the default applies. Anything else,
+ * including a reader that was not told what the request asked, leaves the
+ * lifetime unknown, and the CLI's `priceGatewayUsage`
+ * (`packages/cli/src/gateway-spend.ts`) refuses to price an unknown lifetime
+ * rather than assume the cheaper one.
+ *
+ * A provider absent from here keeps the reading it had: OpenAI's own split by
+ * lifetime when the response carries one, its only Chat Completions entry when
+ * it does not.
+ */
+const WRITE_TTL_FROM_REQUEST: Readonly<Record<string, { omitted: string; short: string; long: string }>> = {
+  moonshot: { omitted: '5m', short: '5m', long: '1h' },
+};
+
+/** How the readers read: strictly or not, and with what the request said about its writes. */
+export interface UsageReadOptions {
+  requireComplete?: boolean;
+  /**
+   * The request's own cache-write lifetime, for a provider in
+   * `WRITE_TTL_FROM_REQUEST`. `null` when the request named none. Left out,
+   * the lifetime is unknown.
+   */
+  cacheTtl?: string | null;
+}
+
+/** A response's cache writes, with their lifetime where it can be known. */
+function writesOf(
+  provider: string,
+  details: unknown,
+  cacheTtl: string | null | undefined,
+): Partial<GatewayUsage> & { cacheWriteTokens: number } {
+  const fromRequest = WRITE_TTL_FROM_REQUEST[provider];
+  if (fromRequest === undefined) return openAiWrites(details);
+  const raw = typeof details === 'object' && details !== null
+    ? (details as Record<string, unknown>).cache_write_tokens
+    : undefined;
+  const written = typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : 0;
+  if (written === 0) return { cacheWriteTokens: 0 };
+  const ttl = cacheTtl === null ? fromRequest.omitted : cacheTtl;
+  if (ttl === fromRequest.short) return { cacheWriteTokens: written, cacheWrite5mTokens: written, cacheWrite1hTokens: 0 };
+  if (ttl === fromRequest.long) return { cacheWriteTokens: written, cacheWrite5mTokens: 0, cacheWrite1hTokens: written };
+  return { cacheWriteTokens: written };
 }
 
 /**
@@ -642,7 +712,7 @@ function completeUsage(shape: WireShape, usage: Record<string, unknown>): boolea
 
 export function streamingUsageReader(
   provider: string,
-  options: { requireComplete?: boolean } = {},
+  options: UsageReadOptions = {},
 ): StreamingUsageReader {
   /**
    * `google` is deliberately not among the shapes this reads.
@@ -747,7 +817,7 @@ export function streamingUsageReader(
       // `prompt_tokens` includes the cached ones, and pricing them twice would
       // report a bill above the invoice — the same subtraction the log reader
       // makes, for the same reason.
-      const writes = openAiWrites(details);
+      const writes = writesOf(provider, details, options.cacheTtl);
       usage.inputTokens = Math.max(0, num(o.prompt_tokens) - cached - writes.cacheWriteTokens);
       usage.cacheReadTokens = cached;
       Object.assign(usage, writes);
@@ -796,7 +866,7 @@ export function streamingUsageReader(
 export function usageFromResponse(
   provider: string,
   body: unknown,
-  options: { requireComplete?: boolean } = {},
+  options: UsageReadOptions = {},
 ): GatewayUsage | null {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
   const num = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
@@ -839,16 +909,18 @@ export function usageFromResponse(
       typeof details === 'object' && details !== null
         ? num((details as Record<string, unknown>).cached_tokens)
         : 0;
+    const writes = writesOf(provider, details, options.cacheTtl);
     return {
       // `prompt_tokens` includes the cached ones, so they are subtracted
       // before the fresh input is reported — counting them twice would put
       // the period's total above the invoice, and in the flattering
       // direction. Same correction the connector has made since 1.41.
-      inputTokens: Math.max(0, num(u.prompt_tokens) - cached - openAiWrites(details).cacheWriteTokens),
+      inputTokens: Math.max(0, num(u.prompt_tokens) - cached - writes.cacheWriteTokens),
       outputTokens: num(u.completion_tokens),
       cacheReadTokens: cached,
-      // GPT-5.6 and later bill writes above input; taken out of the prompt the same way.
-      ...openAiWrites(details),
+      // GPT-5.6 and later bill writes above input, and Kimi K3 by lifetime;
+      // taken out of the prompt the same way.
+      ...writes,
       // The tier that answered, which is not always the one asked for: a Fast
       // request downgraded under load says "default" and is billed as such.
       ...(typeof (body as { service_tier?: unknown }).service_tier === 'string'
