@@ -196,6 +196,20 @@ jobs:
       - name: Stress the packed release in an isolated installation
         run: npm run verify:packages
 
+  docker-image:
+    # The self-hosted deployment runs this image. At 3.0.4 it did not build
+    # from the repository and nothing noticed (#932). Built, not pushed: the
+    # job has no credential to push with.
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - run: docker build --tag trazum-web:ci .
+
   action-selftest:
     name: GitHub Action self-test
     runs-on: ubuntu-latest
