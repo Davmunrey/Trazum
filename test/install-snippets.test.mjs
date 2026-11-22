@@ -91,8 +91,10 @@ describe('gemini-extension.json (#774), against Gemini CLI\'s own extension refe
   const manifest = readJson('gemini-extension.json');
 
   it('uses only fields the reference lists', () => {
-    // From docs/extensions/reference.md of google-gemini/gemini-cli, read 2026-11-19.
-    const listed = ['name', 'version', 'description', 'migratedTo', 'mcpServers', 'contextFileName', 'excludeTools', 'plan', 'settings'];
+    // From docs/extensions/reference.md of google-gemini/gemini-cli, read 2026-11-19, and
+    // read again on 2026-11-22, when `themes` was added: the page lists it, is unchanged
+    // since its commit 0c0d88d of 2026-05-14, and is the same at the tag v0.70.0.
+    const listed = ['name', 'version', 'description', 'migratedTo', 'mcpServers', 'contextFileName', 'excludeTools', 'plan', 'settings', 'themes'];
     for (const key of Object.keys(manifest)) assert.ok(listed.includes(key), `"${key}" is not a field of the reference`);
     assert.match(manifest.name, /^[a-z0-9-]+$/, 'the reference wants lowercase, numbers and dashes');
   });

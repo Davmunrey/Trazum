@@ -27,9 +27,10 @@ tools not yet available in an older npm release.
 Every line below starts `@trazum/mcp` at the exact version the repository is
 at, and none asks for a marketplace account. The table and the snippets under
 it are written by `node scripts/install-snippets.mjs --write` from the version
-in `packages/mcp/package.json`, and `packages/core/test/install-snippets.test.js`
-holds each of them to that package name and that version. The same records
-draw the MCP section of the site's [download page](https://trazum.vercel.app/download).
+in `packages/mcp/package.json`, and `install-snippets.test.mjs`, in the
+repository's `test/` folder, holds each of them to that package name and that
+version. The same records draw the MCP section of the site's
+[download page](https://trazum.vercel.app/download).
 
 The server answers when a client asks it. It does not sit in front of the
 client's model calls, and it cannot see a request the client never sent it.
@@ -38,12 +39,12 @@ client's model calls, and it cannot see a request the client never sent it.
 
 | Client | Where | What to run or paste |
 |---|---|---|
-| Claude Code | a terminal | `claude mcp add trazum -- npx -y @trazum/mcp@3.0.5` |
+| Claude Code | a terminal | `claude mcp add trazum -- npx -y @trazum/mcp@3.0.6` |
 | Claude Desktop, one-click bundle | download the file, then open it with Claude Desktop | the address under "Claude Desktop, one-click bundle" below |
 | Claude Desktop, JSON | claude_desktop_config.json | the snippet under "Claude Desktop, JSON" below |
 | Cursor | .cursor/mcp.json | the snippet under "Cursor" below |
 | VS Code | .vscode/mcp.json | the snippet under "VS Code" below |
-| Codex, command | a terminal | `codex mcp add trazum -- npx -y @trazum/mcp@3.0.5` |
+| Codex, command | a terminal | `codex mcp add trazum -- npx -y @trazum/mcp@3.0.6` |
 | Codex, TOML | ~/.codex/config.toml | the snippet under "Codex, TOML" below |
 | Gemini CLI | a terminal; the version is the one gemini-extension.json names | `gemini extensions install https://github.com/TrazumAPP/Trazum` |
 
@@ -52,7 +53,7 @@ client's model calls, and it cannot see a request the client never sent it.
 Where: download the file, then open it with Claude Desktop.
 
 ```text
-https://github.com/TrazumAPP/Trazum/releases/download/v3.0.5/trazum-mcp-3.0.5.mcpb
+https://github.com/TrazumAPP/Trazum/releases/download/v3.0.6/trazum-mcp-3.0.6.mcpb
 ```
 
 ### Claude Desktop, JSON
@@ -64,7 +65,7 @@ Where: claude_desktop_config.json.
   "mcpServers": {
     "trazum": {
       "command": "npx",
-      "args": ["-y", "@trazum/mcp@3.0.5"]
+      "args": ["-y", "@trazum/mcp@3.0.6"]
     }
   }
 }
@@ -79,7 +80,7 @@ Where: .cursor/mcp.json.
   "mcpServers": {
     "trazum": {
       "command": "npx",
-      "args": ["-y", "@trazum/mcp@3.0.5"]
+      "args": ["-y", "@trazum/mcp@3.0.6"]
     }
   }
 }
@@ -95,7 +96,7 @@ Where: .vscode/mcp.json.
     "trazum": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@trazum/mcp@3.0.5"]
+      "args": ["-y", "@trazum/mcp@3.0.6"]
     }
   }
 }
@@ -108,15 +109,27 @@ Where: ~/.codex/config.toml.
 ```toml
 [mcp_servers.trazum]
 command = "npx"
-args = ["-y", "@trazum/mcp@3.0.5"]
+args = ["-y", "@trazum/mcp@3.0.6"]
 ```
 
 <!-- install-table:end -->
 
-The Gemini CLI line installs `gemini-extension.json` from the repository's
-default branch, and that file names the server's version. The `.mcpb` bundle
-is attached to each release after npm serves the packages; if the address
-above is not there yet, the release page lists what the release carries.
+The Gemini CLI line installs the source of the release GitHub marks Latest,
+not the default branch, and the `gemini-extension.json` in that release names
+the server's version. That install was run by hand once, with Gemini CLI
+0.70.0 on 2026-11-22 (#774).
+
+Two more things were read in Gemini CLI 0.70.0's code and not run. It looks
+for an update by comparing the latest release's tag with the one it
+installed. And it takes a release that carries a single file as the
+extension's own archive. A release here is created with one file, its bill
+of materials, and the others are attached after it. An install in that gap
+cannot unpack the release, and Gemini CLI offers to `git clone` the default
+branch instead.
+
+The `.mcpb` bundle is attached to each release after npm serves the packages;
+if the address above is not there yet, the release page lists what the release
+carries.
 
 ## Native import versus generic access
 
