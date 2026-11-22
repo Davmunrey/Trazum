@@ -25,8 +25,9 @@ for going quiet.
   [ROADMAP.md](ROADMAP.md) is drawn. It carries no dates: the order is the
   commitment.
 - **What may merge is decided by the rules, not by the person.** Every change
-  goes through a pull request with required checks, resolved review threads and
-  linear history, under a branch ruleset with no bypass. The ruleset is
+  goes through a pull request with required checks, resolved review threads,
+  linear history and the approval of the maintainer who did not open it, under
+  a branch ruleset with no bypass. The ruleset is
   [`.github/rulesets/main-branch.json`](.github/rulesets/main-branch.json), and a
   weekly workflow compares it with the one GitHub enforces. The bar a change
   has to clear is in [CONTRIBUTING.md](CONTRIBUTING.md#review).

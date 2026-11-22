@@ -679,6 +679,9 @@ An approval with nothing in it is not one.
   it happened on 2026-11-17 (#666). An entry in `changes/` is a file of its own:
   the release folds in the ones on `main` and yours stays pending. `PR
   readiness` refuses a line added to `CHANGELOG.md` outside a release.
+- **One approval, from the other maintainer.** GitHub does not let an author
+  approve their own pull request, so a change merges when the maintainer who
+  did not open it approves (#920, [GOVERNANCE.md](GOVERNANCE.md)).
 - **Required checks:** `Build and tests`, both `GitHub Action self-test` jobs,
   `CodeQL`, `npm audit`, `PR readiness`, `Signed-off-by on every commit` and
   `cla`, listed in `.github/rulesets/main-branch.json`. The `pr-guide` comment
