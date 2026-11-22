@@ -173,13 +173,6 @@ Check it: that run's first step fails on the deployment's state and not with
 "Vercel answered 401" or "403". A refused token is answered before anything
 is changed.
 
-### `N0_GITEA_HOST`, `N0_GITEA_USER`, `N0_GITEA_TOKEN`
-
-Read only by `.github/workflows/mirror-to-n0.yml`, which mirrors the repository
-to N0 and does nothing while they are unset. To rotate the token, mint a new
-one from N0, replace the secret, revoke the old one in Gitea, and push to `main`:
-the mirror job is the check.
-
 ## Not secrets
 
 Listed so nobody rotates them in a hurry, or guards them as if they were:

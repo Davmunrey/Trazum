@@ -1690,8 +1690,8 @@ describe('the packaged Action', () => {
     // by default. A workflow with no `permissions:` block gets whatever the
     // repository's setting says, which is an admin checkbox this repository
     // cannot test, and when it is not set the token can write.
-    // `mirror-to-n0.yml` was the one of 17 without one, and nothing noticed
-    // because each other test reads the workflows it is about.
+    // One of 17 was once without one, and nothing noticed because each other
+    // test reads the workflows it is about.
     //
     // Anchored to column zero: a job-level block six spaces in is not the
     // default for the file, and a loose match accepted it.
@@ -1734,16 +1734,6 @@ describe('the packaged Action', () => {
 
     assert.ok(inspected > 10, `only ${inspected} top-level permissions blocks were read`);
     assert.deepEqual(granting, [], `a workflow grants write at the top level, so every job in it gets it:\n  ${granting.join('\n  ')}`);
-  });
-
-  it('a workflow that pushes with its own secret does not keep the checkout token', () => {
-    // `mirror-to-n0.yml` pushes to another host with a URL-embedded secret, so
-    // the GitHub token the checkout would leave in `.git/config` is used by
-    // nothing and readable by every later step in a job that holds a
-    // third-party secret.
-    const source = readFileSync(join(repoRoot, '.github/workflows/mirror-to-n0.yml'), 'utf8');
-    assert.match(source, /^permissions:\n {2}contents: read$/m, 'mirror-to-n0.yml is not read-only at the top level');
-    assert.match(source, /persist-credentials: false/, 'mirror-to-n0.yml keeps the checkout token');
   });
 
   it('sub-actions of the same action agree on their commit', () => {

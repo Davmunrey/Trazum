@@ -362,7 +362,7 @@ second factor are GitHub's, and GitHub's own assessments cover them.
 | 14.1.1 | Secure, repeatable build and deployment | Met | CI on every change and releases from the merge that bumps the version (`.github/workflows/ci.yml`, `.github/workflows/release.yml`). |
 | 14.1.2 | Compiler hardening flags | N/A | No native code is compiled. |
 | 14.1.3 | Server configuration hardened | Met | `x-powered-by` off, security headers on every page, a standalone non-root server (`apps/web/next.config.mjs`, `Dockerfile`). |
-| 14.1.4 | Redeployable from scripts, or restorable from backups | Partial | The app redeploys from the repository (`Dockerfile`, `n0-app.json`); database backups and a tested restore are the owner's. |
+| 14.1.4 | Redeployable from scripts, or restorable from backups | Partial | The app redeploys from the repository (`Dockerfile`); database backups and a tested restore are the owner's. |
 | 14.2.1 | Components kept up to date | Met | Dependabot, `npm audit` and dependency review (`.github/dependabot.yml`, `.github/workflows/security.yml`). |
 | 14.2.2 | Unneeded features and samples removed | Met | The production image carries the built server only (`Dockerfile`). |
 | 14.2.3 | Subresource integrity for CDN assets | N/A | Nothing is loaded from a CDN; scripts, styles and fonts come from the app's own origin. |

@@ -194,7 +194,7 @@ const nextConfig = {
    * tracing and breaks against `standalone` (ENOENT on
    * `.next/next-server.js.nft.json`, found by deploying). Vercel sets
    * `VERCEL=1` in every build, so the flag applies exactly where the
-   * container image is built — Docker, N0, a local standalone preview —
+   * container image is built — Docker, a local standalone preview —
    * and nowhere it fights the platform.
    */
   ...(process.env.VERCEL ? {} : { output: 'standalone' }),

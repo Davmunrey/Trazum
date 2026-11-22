@@ -47,8 +47,8 @@ and share links backed by the deployment operator's database.
 
 ### Deploying to Vercel
 
-[Deployment instructions](https://github.com/TrazumAPP/Trazum/blob/main/docs/setup.md#deploying-to-vercel),
-[environment variables](https://github.com/TrazumAPP/Trazum/blob/main/.env.example), and [N0 deployment](https://github.com/TrazumAPP/Trazum/blob/main/docs/deploy-n0.md).
+[Deployment instructions](https://github.com/TrazumAPP/Trazum/blob/main/docs/setup.md#deploying-to-vercel) and
+[environment variables](https://github.com/TrazumAPP/Trazum/blob/main/.env.example).
 
 ### Library
 

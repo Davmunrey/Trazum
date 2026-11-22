@@ -1,7 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -10,13 +8,12 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 
 /**
- * Two workflows that do more than build and test, and that nothing read (#779).
+ * A workflow that does more than build and test, and that nothing read (#779).
  *
  * Every workflow is held by the generic checks for pinned actions and
- * permissions. These two act outside the repository: `pr-guide.yml` runs a
+ * permissions. This one acts outside the repository: `pr-guide.yml` runs a
  * script fetched from another repository with write access to pull requests
- * and issues, and `mirror-to-n0.yml` force-pushes `main` to a second host with
- * a token in the URL. What makes each safe is held here, property by property.
+ * and issues. What makes it safe is held here, property by property.
  */
 
 /** One step of a job, by its name, as the text between it and the next step. */
@@ -25,17 +22,6 @@ function step(text, name) {
   assert.notEqual(start, -1, `no step named "${name}"`);
   const next = text.indexOf('\n      - ', start + 1);
   return text.slice(start, next === -1 ? text.length : next);
-}
-
-/**
- * The top-level `permissions:` block as { scope: access }. A job may set its
- * own, which would replace this one for that job, so there must be no other.
- */
-function permissions(text) {
-  const block = /\npermissions:\n((?: {2}[a-z-]+: [a-z]+\n)+)/.exec(text)?.[1];
-  assert.ok(block, 'no top-level permissions block');
-  assert.equal(text.match(/^\s*permissions:/gm).length, 1, 'a job sets permissions of its own, which override the top-level block');
-  return Object.fromEntries(block.trim().split('\n').map((line) => line.trim().split(': ')));
 }
 
 /** The one job's own `permissions:` block as { scope: access }, comment lines skipped. */
@@ -105,60 +91,6 @@ describe('pr-guide.yml runs a fetched script only as the pin says', () => {
     const writes = Object.entries(granted).filter(([, access]) => access === 'write').map(([scope]) => scope).sort();
     assert.deepEqual(writes, ['issues', 'pull-requests']);
     for (const [scope, access] of Object.entries(granted)) assert.ok(['read', 'write'].includes(access), `${scope}: ${access}`);
-  });
-});
-
-describe('mirror-to-n0.yml pushes main and only main, and only when configured', () => {
-  const text = read('.github/workflows/mirror-to-n0.yml');
-  const secrets = ['N0_GITEA_HOST', 'N0_GITEA_USER', 'N0_GITEA_TOKEN'];
-
-  it('does nothing unless all three secrets are set', () => {
-    const check = step(text, 'Check for N0 credentials');
-    for (const name of secrets) assert.ok(check.includes(`secrets.${name}`), `the check does not read ${name}`);
-    // The check itself, run for each of the eight ways the three can be set or not.
-    const work = mkdtempSync(join(tmpdir(), 'trazum-mirror-'));
-    try {
-      for (let mask = 0; mask < 8; mask += 1) {
-        const output = join(work, `out-${mask}`);
-        const env = { PATH: process.env.PATH, GITHUB_OUTPUT: output };
-        ['HOST', 'USER', 'TOKEN'].forEach((name, bit) => { env[name] = mask & (1 << bit) ? `set-${name}` : ''; });
-        const run = spawnSync('bash', ['-e', '-c', script(check)], { env, encoding: 'utf8' });
-        assert.equal(run.status, 0, run.stderr);
-        assert.equal(readFileSync(output, 'utf8').trim(), `configured=${mask === 7}`, `HOST, USER, TOKEN set as ${mask.toString(2).padStart(3, '0')}`);
-      }
-    } finally {
-      rmSync(work, { recursive: true, force: true });
-    }
-    for (const name of ['actions/checkout', 'Push to N0 Gitea over HTTPS']) {
-      const at = text.indexOf(name);
-      const own = text.slice(at, text.indexOf('\n      - ', at + 1) === -1 ? text.length : text.indexOf('\n      - ', at + 1));
-      assert.match(own, /\n {8}if: steps\.creds\.outputs\.configured == 'true'\n/, `${name} runs without the credentials`);
-    }
-  });
-
-  it('runs on a push to main and by hand, never for a pull request', () => {
-    const on = `\n${/\non:\n([\s\S]*?)\n\n/.exec(text)?.[1] ?? ''}`;
-    assert.deepEqual(triggers(text), ['push', 'workflow_dispatch']);
-    assert.match(on, /\n {2}push:\n {4}branches: \[main\]\n/);
-    assert.doesNotMatch(text, /pull_request/);
-    assert.deepEqual(permissions(text), { contents: 'read' });
-  });
-
-  it('never prints or stores the URL that carries the token', () => {
-    const push = step(text, 'Push to N0 Gitea over HTTPS');
-    assert.doesNotMatch(text, /set -x|echo[^\n]*TOKEN|git remote add|git config[^\n]*url/);
-    assert.doesNotMatch(push, /persist-credentials: true/);
-    assert.match(text, /persist-credentials: false/);
-    // The token reaches git as part of one argument, and nowhere else.
-    assert.equal((text.match(/\$\{TOKEN\}/g) ?? []).length, 1);
-  });
-
-  it('pushes HEAD to main and nothing else', () => {
-    const push = step(text, 'Push to N0 Gitea over HTTPS');
-    const lines = push.split('\n').filter((line) => /\bgit push\b/.test(line));
-    assert.equal(lines.length, 1);
-    assert.match(lines[0], /git push --force "https:\/\/\$\{USER\}:\$\{TOKEN\}@\$\{HOST\}\/\$\{USER\}\/trazum\.git" HEAD:main$/);
-    assert.doesNotMatch(push, /--mirror|--all|--tags/);
   });
 });
 
