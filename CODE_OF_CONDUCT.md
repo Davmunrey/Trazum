@@ -31,13 +31,13 @@ anywhere else the project's name is attached.
 
 ## Reporting
 
-Email **davidmunozrey@protonmail.com**. Reports are read by the maintainer and are
+Email **davidmunozrey@protonmail.com**. Reports are read by the owner and are
 not shared further without the reporter's agreement.
 
-If the report concerns the maintainer, say so — there is one maintainer, and
-pretending otherwise would make this section a formality rather than a route.
-That is a real limitation of a single-maintainer project and it is better
-stated than papered over.
+If the report concerns the owner, say so. The project has two maintainers
+([GOVERNANCE.md](GOVERNANCE.md)), but this address reaches only the owner, and
+there is no second route yet. That is a real limitation of a small project, and
+it is better stated than papered over.
 
 ## What happens next
 

@@ -56,5 +56,5 @@ A claim is only as strong as what it leaves out. The risks accepted on purpose
 are in the threat model's [Accepted, and why](threat-model.md#accepted-and-why),
 and every limit the server sets, with the risk behind it, in
 [The limits, and the risk behind each](threat-model.md#the-limits-and-the-risk-behind-each).
-With one maintainer, no second person approves a change
-([TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md)).
+The ruleset asks for zero approvals, so no second person's approval is
+required yet ([TRZ-14](controls.md), [GOVERNANCE.md](../../GOVERNANCE.md)).

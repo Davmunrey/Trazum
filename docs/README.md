@@ -119,7 +119,7 @@ In the order somebody actually meets them:
 - **[Adoption playbook](adoption-playbook.md)** — a 30-day experiment for first-use feedback, repeat use and evidence-based case studies.
 
 - **[Governance](../GOVERNANCE.md)**: how a decision is made, the roles, and
-  what Trazum rests on if its one maintainer can no longer act.
+  what Trazum rests on if one of its maintainers can no longer act.
 - **[Releasing](releasing.md)** — the recipe, and what the workflow does.
 - **[Versioning](../VERSIONING.md)** — what the three numbers mean here, which is
   not quite what semver says.
