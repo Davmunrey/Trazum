@@ -47,6 +47,7 @@ import type {
   PricingCatalogue,
   WaiveEntry,
 } from '@trazum/core';
+import { duplicateKey } from './json-keys.js';
 
 /** Compiled in. See the module note. */
 export const BIND_HOST = '127.0.0.1';
@@ -636,6 +637,24 @@ export function buildGateway(context: GatewayContext): Server {
       if (body === null) {
         response.writeHead(413, { 'content-type': 'application/json' });
         response.end(`${JSON.stringify({ error: 'request body too large' })}\n`);
+        return;
+      }
+
+      /**
+       * Two equal keys are refused before anything is judged. The gateway
+       * prices what JSON.parse keeps, the last; the provider may run the first.
+       */
+      const twice = (() => {
+        try {
+          JSON.parse(body);
+        } catch {
+          return null;
+        }
+        return duplicateKey(body);
+      })();
+      if (twice !== null) {
+        response.writeHead(400, { 'content-type': 'application/json' });
+        response.end(`${JSON.stringify({ error: `the request names the key ${JSON.stringify(twice)} twice, and the provider may read the other one` })}\n`);
         return;
       }
 
