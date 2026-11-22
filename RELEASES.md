@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 3.0.4**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 3.0.5**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: it is not
@@ -166,6 +166,40 @@ The formula in this repository can be behind the manifests, because a release
 pull request bumps them before npm has a tarball to hash, and never ahead.
 
 ---
+
+## 3.0.5 — Three findings of a penetration test, closed
+
+**Adoption, read 2026-11-22:** 4305 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest unavailable (the answer had no such field).
+
+An internal penetration test of 3.0.4 found three things worth an advisory.
+Each one was reproduced before it was fixed, and each fix was proven by
+planting the fault it catches.
+
+- **`trazum gateway` no longer follows a redirect from the provider**
+  (GHSA-xpgw-jj8q-grjp). A 307 or 308 from the provider's endpoint, or from
+  anything able to answer in its place, made the gateway repeat the request to
+  the new host with your API key in it. It now answers 502. If you run
+  `trazum gateway`, upgrade.
+- **The status line keeps its cache in `~/.cache/trazum/statusline`, not in a
+  shared `/tmp`** (GHSA-qrgc-pfrm-49qv). On a machine with other users, one of
+  them could create the shared directory first, plant a link that made your next
+  refresh overwrite one of your files, or write the text your status line showed.
+  The directory is used only when you own it, and it is kept at mode 700. If you
+  turned on `trazum proactive` on a shared machine, upgrade; the old
+  `$TMPDIR/trazum-statusline` can be deleted.
+- **A self-hosted web app can no longer be taken down by one client without an
+  account** (GHSA-xx4w-86jg-r8xr). The rate limiter keys only on an address and
+  holds at most 50,000, and Next buffers at most 4 MB of a body.
+  `packaging/nginx/trazum-web.conf` is the proxy a container needs in front of
+  it, and `docs/setup.md` says why. The deployment on Vercel was not affected in
+  the same way: Vercel caps bodies and sets the client address itself.
+- **The repository moved to `TrazumAPP/Trazum`** (#925), so that a second
+  maintainer can be an admin, and **every change to main now needs the other
+  maintainer's approval** (#920). The MCP server is listed as
+  `io.github.TrazumAPP/trazum` from this version on.
+- **The N0 deployment is retired** (#931). The `Dockerfile` stays.
+
+Upgrade with `npm install -g @trazum/cli@3.0.5`.
 
 ## 3.0.4 — A gateway estimate that counts what it was missing
 

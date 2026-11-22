@@ -16,6 +16,34 @@ merged commit with no entry is a change only `git log` remembers.
 
 Pending changes are files in [`changes/`](changes/README.md), one per change, and a release folds them in under its version.
 
+## 3.0.5 — 2026-11-22
+
+### Added
+
+- **GOVERNANCE.md, docs/architecture.md and an assurance case say who decides, how the parts fit and why the security requirements are met.** (#918) Governance names the two maintainers, the roles and how a decision is made, and what closing issues, accepting changes and releasing rest on if either can no longer act. The second maintainer is a code owner of every path and a reviewer of the environments a release and a deploy run under. The architecture page gives the parts, which way they depend, where data goes and what crosses the network. The assurance case ties the threat model, its trust boundaries, the secure design principles and the weaknesses countered into one argument, each step pointing at evidence a test holds.
+
+### Changed
+
+- **SECURITY.md says why the ruleset asks for one approval and not the two Scorecard looks for.** (#929) With two maintainers a second approval cannot be given, so Scorecard's alert for it was dismissed on purpose, until a third maintainer can review.
+- **Either maintainer can restore merges when the other cannot approve.** (#927) Both are admins of the repository in the `TrazumAPP` organisation, so GOVERNANCE.md no longer describes a week in which nothing could merge while the owner was unreachable.
+- **The repository is now `TrazumAPP/Trazum`, and the MCP server is listed as `io.github.TrazumAPP/trazum`.** (#925) The repository moved to an organisation on 2026-11-22 so that a second maintainer can be an admin. The old path redirects. The MCP registry grants a namespace by GitHub owner, so the next release lists the server under the organisation's name, and the versions up to 3.0.4 stay under `io.github.Davmunrey/trazum`. Releases 3.0.2 to 3.0.4 verify against the old path their signatures name.
+- **GOVERNANCE.md says the review rules are in place.** (#922) The owner applied the branch ruleset and the environments on 2026-11-22, and both read back as their files state them, so the paragraph that said a release still waited on the owner now says what holds.
+- **Every change to main needs the other maintainer's approval.** (#920) The branch ruleset asked for zero approvals because, with one maintainer, one deadlocked the repository: GitHub does not let an author approve their own pull request. With a second maintainer since 2026-11-22 it asks for one again, of the last push and from somebody other than whoever made it, so a change, Dependabot's included, merges only when the maintainer who did not open it approves. GOVERNANCE.md says how an admin restores merges if one maintainer cannot approve.
+
+### Removed
+
+- **The N0 deployment is retired.** (#931) `n0-app.json`, the Gitea workflow that built the image, the workflow that mirrored `main` to N0 and `docs/deploy-n0.md` are removed, with the tests that read them. The `Dockerfile` stays: it is how the web app runs in any container. Deploying to Vercel is unchanged.
+
+### Fixed
+
+- **The offline test no longer fails when its two runs fall either side of midnight.** (#916) It compares each command's answer with and without the network, and `trazum models` says how many days ago the prices were read, so two runs either side of midnight UTC disagreed by the clock. That failure stopped the 3.0.4 release before it published anything. Both runs now share one frozen clock.
+
+### Security
+
+- **The status line keeps its cache in your own cache directory, `~/.cache/trazum/statusline`, not in a shared `/tmp`.** (GHSA-qrgc-pfrm-49qv) On a machine with other users, one of them could create the shared directory first, plant a link that made the next refresh overwrite one of your files, or write the text your status line showed. The directory is now used only when it is a real directory you own, kept at mode 700; control characters are dropped from what the status line prints, and a session id can no longer name a path. The session guard keeps its markers in the same place. Delete the old `$TMPDIR/trazum-statusline` if you like; nothing reads it now.
+- **`trazum gateway` no longer follows a redirect from the provider.** (GHSA-xpgw-jj8q-grjp) A provider endpoint, or anything able to answer in its place, that replied with a 307 or 308 got the request repeated to the new host with the caller's API key in it. The gateway now refuses the redirect and answers 502, as every other outbound call in Trazum already did.
+- **A self-hosted web app can no longer be taken down by one client without an account.** (GHSA-xx4w-86jg-r8xr) The rate limiter keys only on an address, counting an IPv6 caller by its /64, and holds at most 50,000 of them, so rotating `X-Forwarded-For` no longer fills memory or steps around the limits. Next buffers at most 4 MB of a request body instead of 10 MB. `packaging/nginx/trazum-web.conf` is the reverse proxy a container needs in front of it: bodies capped at 4 MB, the client address overwritten, 10 connections per address. Without a proxy like it, a container is still exposed to requests that never finish.
+
 ## 3.0.4 — 2026-11-21
 
 ### Added
