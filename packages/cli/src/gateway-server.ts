@@ -34,7 +34,7 @@
 import { once } from 'node:events';
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
-import { estimateTokens, gatewayDecision, streamingUsageReader, usageFromResponse } from '@trazum/core';
+import { SAFE_FETCH_INIT, estimateTokens, gatewayDecision, streamingUsageReader, usageFromResponse } from '@trazum/core';
 import { GatewaySpend } from './gateway-spend.js';
 import type { GatewayUsage } from './gateway-spend.js';
 import { refuseContentType, refuseHost } from './loopback-guard.js';
@@ -601,6 +601,10 @@ export function buildGateway(context: GatewayContext): Server {
         let free: Response;
         try {
           free = await doFetch(`${upstream.origin}${routed.path}`, {
+            // A redirect is refused, never followed: following one repeats
+            // the request, the caller's key included, to a host this gateway
+            // was never pointed at. SAFE_FETCH_INIT is every outbound call's.
+            ...SAFE_FETCH_INIT,
             method: request.method === 'GET' ? 'GET' : 'POST',
             headers: passthrough,
             ...(request.method === 'GET' ? {} : { body: sent ?? '' }),
@@ -718,6 +722,8 @@ export function buildGateway(context: GatewayContext): Server {
       let upstreamResponse: Response;
       try {
         upstreamResponse = await doFetch(`${upstream.origin}${routed.path}`, {
+          // Refused, never followed, for the reason given on the free path.
+          ...SAFE_FETCH_INIT,
           method: 'POST',
           headers: outgoing,
           body: forwarded,
