@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 3.0.5**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 3.0.6**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: it is not
@@ -166,6 +166,38 @@ The formula in this repository can be behind the manifests, because a release
 pull request bumps them before npm has a tarball to hash, and never ahead.
 
 ---
+
+## 3.0.6 — The rest of the penetration test
+
+**Adoption, read 2026-11-22:** 4305 downloads of @trazum/cli in the last 30 days, GitHub stars: unavailable (HTTP 403), MCP registry latest 3.0.5.
+
+3.0.5 closed the three findings worth an advisory. The same penetration test of
+3.0.4 found smaller things, and 3.0.6 closes the ones that were code. Each was
+reproduced before it was fixed, and each fix was proven by planting the fault
+it catches.
+
+- **What the CLI prints from a usage log can no longer drive your terminal**
+  (#941). A label, model name or session id in a log another tool wrote could
+  carry escape sequences that clear the screen or retitle the window, and
+  `bill`, `profile` and `plan` printed them as they came. They are dropped now,
+  except the CLI's own colours. `trazum filter` is unchanged.
+- **`trazum gateway` refuses a body that names a key twice** (#938), which
+  could be priced as one model and run as another.
+- **A provider's error is read up to 2,000 characters, and every model call
+  gives up after two minutes** (#946). The web app answers with the provider's
+  status and a message of its own, never the provider's text.
+- **The self-hosted web app**: a GitHub login that changed hands no longer
+  signs in on the old holder's place in `TRAZUM_ALLOWED_USERS` or
+  `TRAZUM_ADMINS` (#950); its image upgrades Alpine's system packages to the
+  fixed `openssl` and `zlib` (#945); its link previews are kept for an hour
+  and none is drawn for a page that does not exist (#954). If you list
+  logins, list numeric ids where you can.
+- **A prompt of 200,000 quote characters, or an export of 200,000 rows, no
+  longer overflows the stack** (#937), and the Docker image builds again (#932).
+- **A `"store"` of the wrong shape in `trazum.config.json` is a config error**
+  (#911), found by property tests that now generate valid configs and plans.
+
+Upgrade with `npm install -g @trazum/cli@3.0.6`.
 
 ## 3.0.5 — Three findings of a penetration test, closed
 

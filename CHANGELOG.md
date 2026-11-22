@@ -16,6 +16,28 @@ merged commit with no entry is a change only `git log` remembers.
 
 Pending changes are files in [`changes/`](changes/README.md), one per change, and a release folds them in under its version.
 
+## 3.0.6 — 2026-11-22
+
+### Changed
+
+- **The CLA gate lets through only the bots that commit here, by name.** (#947) Its allowlist carried `*[bot]`, which matched the account of every GitHub App, including any App somebody creates. `dependabot[bot]` and `github-actions[bot]` were already listed, and a test now fails if the list carries a pattern.
+
+### Fixed
+
+- **A page's link preview is kept for an hour, and a page that does not exist has none.** (#954) The web app's social cards were sent with `max-age=0`, so every request drew the image again, and a card was drawn for any made-up document or release. A card now says it may be kept for an hour in a browser and a day in a cache, once per language, and the document and release cards answer 404 where their pages do.
+- **The documented GitHub Action pin names 3.0.5.** (#942) It still named 3.0.3, two releases behind, because 3.0.5 was prepared in a clone that had not fetched the newer tags. The guard that allows one release of lag failed on `main` and on every pull request until the pin moved.
+- **Escape sequences in a usage log no longer reach your terminal.** (#941) A label, model name or session id in a log written by another tool could carry sequences that clear the screen or retitle the window, and `bill`, `profile` and `plan` printed them as they came. What the CLI prints now drops control characters and every escape except its own colours, and on a terminal the characters that reorder text. `trazum filter` is unchanged, so `filter restore` still gives a log back byte for byte.
+- **`trazum gateway` refuses a body that names a key twice.** (#938) It priced a call from the parsed body, where `JSON.parse` keeps the last of two equal keys, and forwarded the bytes it was sent, where a provider may read the first. A body with two `model` keys could be priced as one model and run as another. Such a body is now answered with a 400 before anything is judged or forwarded.
+- **A prompt of quote characters, or a usage export of 200,000 rows, no longer overflows the stack.** (#937) `'"` repeated 200,000 times, which is within the 400,000-character limit, made the optimiser throw and the web app answer 502; a JSON export of 200,000 rows did the same to the Helicone, LiteLLM and LangSmith importers. Each grew an array with a spread `push`, which passes every element as an argument. They push one at a time now, and a test fails if a spread `push` comes back to the core.
+- **The Docker image builds again.** (#932) It did not copy `tsconfig.base.json` and three scripts its build imports, so `docker build` failed and the self-hosted deployment could not take a new version. CI now builds the image on every pull request, and a test checks the Dockerfile copies everything the build reads.
+- **A `trazum.config.json` whose `"store"` is the wrong shape is now refused as a config error, like every other key.** (#911) `"store": []` or a `keepDays` that is not a whole number above zero threw a plain error, so the CLI could not tell a bad config from a crash. The property tests that found it now generate valid configs and savings plans, and change one field at a time.
+
+### Security
+
+- **A GitHub login that changed hands no longer signs in to the web app on the strength of the old holder's place in `TRAZUM_ALLOWED_USERS` or `TRAZUM_ADMINS`.** (#950) A login can be renamed away and claimed by another account, and a list that named the login let the new account in, admin included. A sign-in matched by login alone is now refused when this deployment last knew that login as a different GitHub id, and the refusal says to list the numeric id instead. Logins keep working for the accounts that hold them.
+- **A provider's error no longer reaches the web app's caller as the provider wrote it, and no model call waits for ever.** (#946) Every provider's error was built from its whole body, and the web app handed that text to the caller: a provider's internal message, and in one test 200 MB. The core now reads at most 2,000 characters of an error body and throws a `ProviderError` with the status, and every model call gives up after two minutes. The web routes answer with the status and a message of their own.
+- **The web app's container image upgrades its system packages to Alpine's fixed versions.** (#945) The pinned `node:26-alpine` base carried `openssl` and `zlib` versions with known CVEs that Alpine had already fixed. The runtime stage now runs `apk upgrade --no-cache` before it drops to the unprivileged user, until the official image catches up.
+
 ## 3.0.5 — 2026-11-22
 
 ### Added
