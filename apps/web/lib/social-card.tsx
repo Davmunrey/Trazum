@@ -28,7 +28,7 @@ export const SOCIAL_CARD_SIZE = { width: 1200, height: 630 };
 
 /**
  * A card is drawn on every request it reaches, so it says how long it may be
- * kept: an hour in a browser, a day in a cache in front of the app (#954).
+ * kept: an hour in a browser, a day in a cache in front of the app (issue 954).
  * Next sends `max-age=0` for a route that reads the request's headers unless
  * the response says otherwise. The line under the title is in the reader's
  * language, read from Accept-Language, so a cache keeps one card per language.
