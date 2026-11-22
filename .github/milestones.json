@@ -37,7 +37,7 @@
   {
     "title": "Tests that would notice a wrong price",
     "description": "Line coverage says the code that prices a call runs under test. Mutation testing says whether a test would notice it pricing a call wrongly, and today it reaches six files of the core and, in two more, the functions that choose a rate and multiply by it. Next: the catalogue's own numbers, where a sample found published prices that no test would notice changing.",
-    "issues": [731, 745, 763, 820]
+    "issues": [731, 745, 763, 820, 911]
   },
   {
     "title": "Every agent's sessions",
