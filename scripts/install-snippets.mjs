@@ -10,9 +10,9 @@
  * Three readers, one source. `docs/agents.md` carries the table between two
  * markers, `scripts/prepare-release.mjs` rewrites it when the version moves,
  * and `scripts/build-site-pages.mjs` hands the same records to `/download`.
- * `packages/core/test/install-snippets.test.js` holds every snippet to the
- * package name and the version in `packages/mcp/package.json`, so a snippet
- * cannot say a version the package does not carry, and cannot float: an
+ * `install-snippets.test.mjs`, in the root `test/` folder, holds every snippet
+ * to the package name and the version in `packages/mcp/package.json`, so a
+ * snippet cannot say a version the package does not carry, and cannot float: an
  * `npx` line without `@<version>` is the shape that would fetch whatever npm
  * calls newest on the day it is run.
  *
