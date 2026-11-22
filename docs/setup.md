@@ -543,6 +543,17 @@ never anybody's prompt text, and deliberately not a spend report.
 [docs/accounts.md](../docs/accounts.md) has the setup, the schema, every security
 decision and why, the limits, and an explicit list of what is **not** covered.
 
+### Running the container
+
+The `Dockerfile` builds the web app as one container. It does not face the
+internet on its own: it sits behind a proxy that refuses bodies above 4 MB,
+overwrites `X-Forwarded-For` with the address of the connection, and allows 10
+connections per address.
+[`packaging/nginx/trazum-web.conf`](../packaging/nginx/trazum-web.conf) is that
+proxy for nginx, with the reason for each setting. Without it, one client can
+exhaust the container's memory (GHSA-xx4w-86jg-r8xr). Vercel caps bodies and
+sets the client address on its own.
+
 ### Deploying to Vercel
 
 The repo is an npm workspaces monorepo; Vercel handles it with no special

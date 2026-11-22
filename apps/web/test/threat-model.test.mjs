@@ -100,7 +100,7 @@ function declared(file, name) {
 
 let values;
 before(async () => {
-  const [core, prompts, shares, sharesApi, schemas, usage, session, config, tasks, engine, summaries] = await Promise.all([
+  const [core, prompts, shares, sharesApi, schemas, usage, session, config, tasks, engine, summaries, limiter] = await Promise.all([
     import('@trazum/core'),
     import('../lib/store/prompts.ts'),
     import('../lib/store/shares.ts'),
@@ -112,6 +112,7 @@ before(async () => {
     import('../lib/task-workflow.ts'),
     import('../lib/engine-budget.ts'),
     import('../lib/shares/summary.ts'),
+    import('../lib/rate-limit.ts'),
   ]);
   values = {
     ...prompts,
@@ -130,6 +131,8 @@ before(async () => {
     MAX_ENGINE_CHARS_PER_MINUTE: engine.MAX_ENGINE_CHARS_PER_MINUTE,
     SHARE_SUMMARY_WINDOW_MS: summaries.SHARE_SUMMARY_WINDOW_MS,
     MAX_SHARE_SUMMARIES: summaries.MAX_SHARE_SUMMARIES,
+    MAX_ADDRESS_LENGTH: limiter.MAX_ADDRESS_LENGTH,
+    MAX_BUCKETS: limiter.MAX_BUCKETS,
   };
 });
 
