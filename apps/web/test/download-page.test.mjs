@@ -121,7 +121,7 @@ describe('the page and the documentation are one source', () => {
   });
 
   it('shows the Action line the setup guide documents, and every pin the guide documents is that one', () => {
-    const pins = [...read('docs/setup.md').matchAll(/uses: (Davmunrey\/Trazum@[0-9a-f]{40} {2}# \d+\.\d+\.\d+)/g)].map((match) => match[1]);
+    const pins = [...read('docs/setup.md').matchAll(/uses: (TrazumAPP\/Trazum@[0-9a-f]{40} {2}# \d+\.\d+\.\d+)/g)].map((match) => match[1]);
     assert.ok(pins.length > 0);
     assert.deepEqual([...new Set(pins)], [download.ACTION_LINE.replace('- uses: ', '')]);
     for (const locale of locales.MARKETING_LOCALES) assert.ok(textOf(render(locale)).includes(download.ACTION_LINE.replace(/\s+/g, ' ')), `${locale}: the Action line`);
@@ -130,7 +130,7 @@ describe('the page and the documentation are one source', () => {
 
 describe('the files are the ones a release carries, by one scheme', () => {
   const files = () => download.DOWNLOAD.files;
-  const base = (v) => `https://github.com/Davmunrey/Trazum/releases/download/v${v}`;
+  const base = (v) => `https://github.com/TrazumAPP/Trazum/releases/download/v${v}`;
 
   it('are named from the version, and addressed on the release of that version', () => {
     const v = download.DOWNLOAD.version;
@@ -140,7 +140,7 @@ describe('the files are the ones a release carries, by one scheme', () => {
       sums: { name: 'SHA256SUMS', url: `${base(v)}/SHA256SUMS` },
       sbom: { name: `trazum-v${v}.cdx.json`, url: `${base(v)}/trazum-v${v}.cdx.json` },
     });
-    assert.equal(download.DOWNLOAD.releaseUrl, `https://github.com/Davmunrey/Trazum/releases/tag/v${v}`);
+    assert.equal(download.DOWNLOAD.releaseUrl, `https://github.com/TrazumAPP/Trazum/releases/tag/v${v}`);
   });
 
   it('are the names the release workflow attaches', () => {
@@ -296,7 +296,7 @@ describe('the page sends nothing', () => {
       const main = page.slice(page.indexOf('<main'), page.indexOf('</main>'));
       const hrefs = [...main.matchAll(/<a\b[^>]*\shref="([^"]+)"/g)].map((match) => decode(match[1])).filter((href) => /^https?:/.test(href));
       assert.ok(hrefs.length >= 5, `${locale}: ${hrefs.length} links`);
-      for (const href of hrefs) assert.match(href, /^https:\/\/github\.com\/Davmunrey\/Trazum(\/|$)/, `${locale}: ${href} leaves for somewhere else`);
+      for (const href of hrefs) assert.match(href, /^https:\/\/github\.com\/TrazumAPP\/Trazum(\/|$)/, `${locale}: ${href} leaves for somewhere else`);
     }
   });
 

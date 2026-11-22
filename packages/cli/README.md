@@ -3,7 +3,7 @@
 Find where your AI usage costs money, choose a change, and check the result.
 Local usage analysis, ranked savings opportunities and verification from your terminal.
 
-Part of [Trazum](https://github.com/Davmunrey/Trazum). Open source, with zero
+Part of [Trazum](https://github.com/TrazumAPP/Trazum). Open source, with zero
 third-party runtime dependencies.
 
 ## Start with your bill
@@ -28,7 +28,7 @@ Have a supported provider or observability export? Use your own file path:
 npx @trazum/cli bill ./usage-export.jsonl
 ```
 
-[Supported inputs](https://github.com/Davmunrey/Trazum/blob/main/docs/usage-logs.md) ·
+[Supported inputs](https://github.com/TrazumAPP/Trazum/blob/main/docs/usage-logs.md) ·
 [Try sample data in your browser](https://trazum.vercel.app/app?tab=playground)
 
 ## Choose one change, then check it
@@ -51,22 +51,22 @@ Verification can report that savings arrived, did not arrive, or cannot be
 determined. Estimates are not guaranteed invoice savings; verification is not
 a quality evaluation.
 
-[Walkthrough and import instructions](https://github.com/Davmunrey/Trazum/blob/main/docs/quick-start.md) ·
-[Full documentation](https://github.com/Davmunrey/Trazum/blob/main/docs/README.md)
+[Walkthrough and import instructions](https://github.com/TrazumAPP/Trazum/blob/main/docs/quick-start.md) ·
+[Full documentation](https://github.com/TrazumAPP/Trazum/blob/main/docs/README.md)
 
 ## Using a subscription?
 
 Inspect conversation growth and review prompt changes to improve token use
 without treating API-equivalent estimates as money saved. Trazum does not
 automatically manage the host agent's context or guarantee additional messages.
-[Subscription efficiency workflow](https://github.com/Davmunrey/Trazum/blob/main/docs/quick-start.md#subscription-efficiency).
+[Subscription efficiency workflow](https://github.com/TrazumAPP/Trazum/blob/main/docs/quick-start.md#subscription-efficiency).
 
 ## Filter repetitive tool logs before agent context
 
 The opt-in `trazum filter` workflow compacts repeated display-log lines and
 retains the original locally. It also prints optional concise-output instructions.
 It does not intercept calls automatically or change subscription limits.
-[Setup, recovery and limits](https://github.com/Davmunrey/Trazum/blob/main/docs/tool-output-filter.md).
+[Setup, recovery and limits](https://github.com/TrazumAPP/Trazum/blob/main/docs/tool-output-filter.md).
 
 ## Keep using it
 
@@ -177,7 +177,7 @@ most misleading thing this tool could tell you.
 
 `--markdown-out <file>` writes the report as GitHub-flavoured markdown, for a
 step summary or a pull request comment. There is also a
-[packaged GitHub Action](https://github.com/Davmunrey/Trazum#cli).
+[packaged GitHub Action](https://github.com/TrazumAPP/Trazum#cli).
 
 ## Where the money actually went
 
@@ -414,6 +414,6 @@ MIT.
 
 Read a Codex rollout with `trazum from-codex ./rollout.jsonl -o usage.jsonl` or
 `trazum bill ./rollout.jsonl --table`. Paths are explicit; API-equivalent costs
-are not subscription charges. See [format and limits](https://github.com/Davmunrey/Trazum/blob/main/docs/codex.md).
+are not subscription charges. See [format and limits](https://github.com/TrazumAPP/Trazum/blob/main/docs/codex.md).
 
 </details>

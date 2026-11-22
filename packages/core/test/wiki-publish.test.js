@@ -464,7 +464,7 @@ describe('the build script still never pushes, and says a merge publishes', () =
     const built = spawnSync(process.execPath, [join(root, 'scripts', 'build-wiki.mjs')], { cwd: root, encoding: 'utf8', env: gitEnv });
     assert.equal(built.status, 0, built.stderr);
     assert.match(built.stderr, /A merge to main that changes wiki\/ publishes it \(the Wiki workflow\)/);
-    assert.match(built.stderr, /git clone https:\/\/github\.com\/Davmunrey\/Trazum\.wiki\.git/);
+    assert.match(built.stderr, /git clone https:\/\/github\.com\/TrazumAPP\/Trazum\.wiki\.git/);
     assert.match(built.stderr, /git add -A && git commit -m "Rebuild from the repository" && git push/);
     assert.match(built.stderr, /A wiki that has never had a page cannot be cloned/);
     assert.ok(existsSync(join(root, 'wiki', 'Home.md')));

@@ -791,7 +791,7 @@ describe('there is no telemetry, and the feedback command is not an exception', 
     // rewritten a config on disk point somebody's report, and its prefilled
     // body, at a machine they did not choose.
     const source = cli();
-    assert.match(source, /const FEEDBACK_REPO = 'https:\/\/github\.com\/Davmunrey\/Trazum';/);
+    assert.match(source, /const FEEDBACK_REPO = 'https:\/\/github\.com\/TrazumAPP\/Trazum';/);
     assert.doesNotMatch(feedback(), /stringFlag|config\?\./);
   });
 
@@ -1801,10 +1801,10 @@ describe('the packaged Action', () => {
   it('the docs recommend a SHA pin too, not a tag', () => {
     // The rule above governs what this repository runs. This one governs what it
     // *tells other people to run*, which had drifted: the README recommended
-    // `Davmunrey/Trazum@v1.0.0` for a whole release — a tag that did not exist,
+    // `TrazumAPP/Trazum@v1.0.0` for a whole release — a tag that did not exist,
     // so the copy-pasteable example 404'd, and a tag at all, which is the exact
     // movable ref SECURITY.md warns against. Nothing was checking.
-    const SHA_PIN = /^Davmunrey\/Trazum@[0-9a-f]{40}$/;
+    const SHA_PIN = /^TrazumAPP\/Trazum@[0-9a-f]{40}$/;
     const bad = [];
 
     /**
@@ -1861,7 +1861,7 @@ describe('the packaged Action', () => {
       for (const line of source.split('\n')) {
         // Only `uses:` lines are instructions to run something. Prose naming a
         // version, and the changelog's record of what past releases did, are not.
-        const ref = /^\s*(?:- )?uses:\s*(Davmunrey\/Trazum\S*)/.exec(line);
+        const ref = /^\s*(?:- )?uses:\s*(TrazumAPP\/Trazum\S*)/.exec(line);
         if (!ref) continue;
         pins += 1;
         if (!SHA_PIN.test(ref[1])) {

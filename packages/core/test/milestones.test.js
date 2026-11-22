@@ -466,10 +466,10 @@ describe('the ordered list is drawn from the file alone', () => {
   it('links each title to the live milestone, in bold, with the title encoded', () => {
     assert.equal(
       milestoneUrl('2.7.13: repeated-task evaluation'),
-      'https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%222.7.13%3A+repeated-task+evaluation%22',
+      'https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%222.7.13%3A+repeated-task+evaluation%22',
     );
     for (const [at, entry] of stated.entries()) assert.ok(lines[at + 1].includes(`**[${entry.title}](${milestoneUrl(entry.title)})**`));
-    for (const entry of stated) assert.match(milestoneUrl(entry.title), /^https:\/\/github\.com\/Davmunrey\/Trazum\/issues\?q=is%3Aissue\+milestone%3A%22[^"\s()]+%22$/);
+    for (const entry of stated) assert.match(milestoneUrl(entry.title), /^https:\/\/github\.com\/TrazumAPP\/Trazum\/issues\?q=is%3Aissue\+milestone%3A%22[^"\s()]+%22$/);
   });
 
   it('encodes what would end a Markdown link early', () => {
@@ -482,7 +482,7 @@ describe('the ordered list is drawn from the file alone', () => {
   it('carries each description and each issue as a link, and nothing else', () => {
     stated.forEach((entry, at) => {
       assert.ok(lines[at + 1].includes(` ${entry.description} Issues: `));
-      const linked = [...lines[at + 1].matchAll(/\[#(\d+)\]\(https:\/\/github\.com\/Davmunrey\/Trazum\/issues\/(\d+)\)/g)].map((m) => [Number(m[1]), Number(m[2])]);
+      const linked = [...lines[at + 1].matchAll(/\[#(\d+)\]\(https:\/\/github\.com\/TrazumAPP\/Trazum\/issues\/(\d+)\)/g)].map((m) => [Number(m[1]), Number(m[2])]);
       assert.deepEqual(linked, entry.issues.map((number) => [number, number]));
     });
   });
@@ -1044,7 +1044,7 @@ describe('ROADMAP.md carries the list, and every accepted issue in it is planned
   });
 
   it('links every issue of the list to this repository’s own issue', () => {
-    for (const [, number, linked] of milestoneList(stated).matchAll(/\[#(\d+)\]\(https:\/\/github\.com\/Davmunrey\/Trazum\/issues\/(\d+)\)/g)) assert.equal(number, linked);
+    for (const [, number, linked] of milestoneList(stated).matchAll(/\[#(\d+)\]\(https:\/\/github\.com\/TrazumAPP\/Trazum\/issues\/(\d+)\)/g)) assert.equal(number, linked);
   });
 });
 
@@ -1052,8 +1052,8 @@ describe('the wiki has the roadmap, generated from the same section', () => {
   const page = read('wiki/Roadmap.md');
 
   it('is a page, listed on the sidebar and on Home, and says where it came from', () => {
-    assert.match(page, /^> Generated from \[`ROADMAP\.md`\]\(https:\/\/github\.com\/Davmunrey\/Trazum\/blob\/main\/ROADMAP\.md\) by `scripts\/build-wiki\.mjs`\./);
-    for (const name of ['_Sidebar.md', 'Home.md']) assert.ok(read(`wiki/${name}`).includes('(https://github.com/Davmunrey/Trazum/wiki/Roadmap)'), `${name} does not list the Roadmap page`);
+    assert.match(page, /^> Generated from \[`ROADMAP\.md`\]\(https:\/\/github\.com\/TrazumAPP\/Trazum\/blob\/main\/ROADMAP\.md\) by `scripts\/build-wiki\.mjs`\./);
+    for (const name of ['_Sidebar.md', 'Home.md']) assert.ok(read(`wiki/${name}`).includes('(https://github.com/TrazumAPP/Trazum/wiki/Roadmap)'), `${name} does not list the Roadmap page`);
     assert.match(read('scripts/build-wiki.mjs'), /name: 'Roadmap',\n {4}title: '[^']+',\n {4}source: 'ROADMAP\.md',\n {4}heading: '## Next',/);
   });
 

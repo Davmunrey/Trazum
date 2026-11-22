@@ -576,7 +576,7 @@ export function buildDownload({ root = ROOT } = {}) {
   const names = assetNames(version);
   const file = (name) => ({ name, url: assetUrl(version, name) });
 
-  const PIN = /Davmunrey\/Trazum@([0-9a-f]{40}) {2}# (\d+\.\d+\.\d+)/g;
+  const PIN = /TrazumAPP\/Trazum@([0-9a-f]{40}) {2}# (\d+\.\d+\.\d+)/g;
   const setup = readFileSync(join(root, 'docs/setup.md'), 'utf8');
   const pins = new Set([...setup.matchAll(PIN)].map((match) => `${match[1]} ${match[2]}`));
   if (pins.size !== 1) errors.push(`docs/setup.md pins the Action ${pins.size} different ways; the download page shows one`);

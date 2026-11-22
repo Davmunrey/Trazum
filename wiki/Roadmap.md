@@ -1,4 +1,4 @@
-> Generated from [`ROADMAP.md`](https://github.com/Davmunrey/Trazum/blob/main/ROADMAP.md) by `scripts/build-wiki.mjs`.
+> Generated from [`ROADMAP.md`](https://github.com/TrazumAPP/Trazum/blob/main/ROADMAP.md) by `scripts/build-wiki.mjs`.
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
@@ -20,19 +20,19 @@ is not promised. The list is drawn from `.github/milestones.json` by
 milestone, which holds the same issues.
 
 <!-- milestones:start -->
-1. **[2.7.13: repeated-task evaluation](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%222.7.13%3A+repeated-task+evaluation%22)**. Validate the instruction policy over repeated experiments on accepted tasks before it becomes a default: cost per accepted task, quality, retries and controller overhead, measured together. Issues: [#638](https://github.com/Davmunrey/Trazum/issues/638).
-2. **[A site that carries the brand](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22A+site+that+carries+the+brand%22)**. The landing as the front door, the documentation, the catalogue of models and prices, the roadmap and the changelog as pages of one site, and a brand page, all in the design system the project already chose and each with a way to GitHub. Issues: [#734](https://github.com/Davmunrey/Trazum/issues/734), [#735](https://github.com/Davmunrey/Trazum/issues/735), [#736](https://github.com/Davmunrey/Trazum/issues/736), [#737](https://github.com/Davmunrey/Trazum/issues/737), [#744](https://github.com/Davmunrey/Trazum/issues/744), [#770](https://github.com/Davmunrey/Trazum/issues/770).
-3. **[Trazum speaks first](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Trazum+speaks+first%22)**. The status line, the watcher and the spend guard exist and are off until somebody wires each by hand. Next: one command that turns them on and off, a watcher that reads the agents' sessions directly and says so on the screen, a weekly summary that arrives on its own, a plan that can open the pull request, and a terminal that carries the brand. Issues: [#755](https://github.com/Davmunrey/Trazum/issues/755), [#756](https://github.com/Davmunrey/Trazum/issues/756), [#757](https://github.com/Davmunrey/Trazum/issues/757), [#758](https://github.com/Davmunrey/Trazum/issues/758), [#796](https://github.com/Davmunrey/Trazum/issues/796).
-4. **[3.0.0: the release allowed to break](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%223.0.0%3A+the+release+allowed+to+break%22)**. A major is the only release that may remove something. This one removes `tier` from a model in the pricing catalogue, deprecated since 1.8.0 in favour of `capability`, and nothing its changelog entry does not list. Issues: [#764](https://github.com/Davmunrey/Trazum/issues/764), [#798](https://github.com/Davmunrey/Trazum/issues/798).
-5. **[The price anyone can check](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22The+price+anyone+can+check%22)**. Every comparable tool prices from the same community file and calls the figure an estimate, and a model it cannot price counts as zero. Next: the catalogue published as an open dataset with the provider's page and the date read behind every row, and a pull request comment that says what a change does to a prompt's monthly cost against the base branch, each figure with its dated price. Issues: [#784](https://github.com/Davmunrey/Trazum/issues/784), [#785](https://github.com/Davmunrey/Trazum/issues/785).
-6. **[The bill where a team already looks](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22The+bill+where+a+team+already+looks%22)**. The bill is printed, saved or gated. Next: the same measured figures as metrics for the dashboards a team already runs, and what was spent in a repository while a branch was written, said as a time window and never as the cost of the change. Issues: [#776](https://github.com/Davmunrey/Trazum/issues/776), [#777](https://github.com/Davmunrey/Trazum/issues/777), [#789](https://github.com/Davmunrey/Trazum/issues/789), [#824](https://github.com/Davmunrey/Trazum/issues/824).
-7. **[A repository a stranger can contribute to](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22A+repository+a+stranger+can+contribute+to%22)**. What a visitor and a contributor need that is not the product: a roadmap that opens with what comes next, a wiki that publishes itself, documents that agree with each other, and Discussions with a form for each kind of question. Issues: [#725](https://github.com/Davmunrey/Trazum/issues/725), [#726](https://github.com/Davmunrey/Trazum/issues/726), [#727](https://github.com/Davmunrey/Trazum/issues/727), [#732](https://github.com/Davmunrey/Trazum/issues/732), [#747](https://github.com/Davmunrey/Trazum/issues/747), [#765](https://github.com/Davmunrey/Trazum/issues/765), [#767](https://github.com/Davmunrey/Trazum/issues/767), [#772](https://github.com/Davmunrey/Trazum/issues/772), [#778](https://github.com/Davmunrey/Trazum/issues/778), [#779](https://github.com/Davmunrey/Trazum/issues/779), [#787](https://github.com/Davmunrey/Trazum/issues/787), [#829](https://github.com/Davmunrey/Trazum/issues/829).
-8. **[Tests that would notice a wrong price](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Tests+that+would+notice+a+wrong+price%22)**. Line coverage says the code that prices a call runs under test. Mutation testing says whether a test would notice it pricing a call wrongly, and today it reaches six files of the core and, in two more, the functions that choose a rate and multiply by it. Next: the catalogue's own numbers, where a sample found published prices that no test would notice changing. Issues: [#731](https://github.com/Davmunrey/Trazum/issues/731), [#745](https://github.com/Davmunrey/Trazum/issues/745), [#763](https://github.com/Davmunrey/Trazum/issues/763), [#820](https://github.com/Davmunrey/Trazum/issues/820).
-9. **[Every agent's sessions](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Every+agent%27s+sessions%22)**. The bill reads what each coding agent already keeps on disk. Next: OpenCode's SQLite sessions, and a reader for Cursor, GitHub Copilot CLI, Cline and Amp as soon as somebody supplies one real session of each. Issues: [#645](https://github.com/Davmunrey/Trazum/issues/645), [#648](https://github.com/Davmunrey/Trazum/issues/648), [#728](https://github.com/Davmunrey/Trazum/issues/728), [#729](https://github.com/Davmunrey/Trazum/issues/729), [#730](https://github.com/Davmunrey/Trazum/issues/730), [#782](https://github.com/Davmunrey/Trazum/issues/782), [#786](https://github.com/Davmunrey/Trazum/issues/786), [#821](https://github.com/Davmunrey/Trazum/issues/821), [#822](https://github.com/Davmunrey/Trazum/issues/822), [#823](https://github.com/Davmunrey/Trazum/issues/823), [#825](https://github.com/Davmunrey/Trazum/issues/825), [#826](https://github.com/Davmunrey/Trazum/issues/826).
-10. **[Every provider, counted and priced exactly](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Every+provider%2C+counted+and+priced+exactly%22)**. The estimator's error measured against each provider's own counter, a tokenizer package where the error is large, retired models marked on the provider's own evidence, and the gateway in front of the providers it does not front yet. Issues: [#641](https://github.com/Davmunrey/Trazum/issues/641), [#642](https://github.com/Davmunrey/Trazum/issues/642), [#643](https://github.com/Davmunrey/Trazum/issues/643), [#647](https://github.com/Davmunrey/Trazum/issues/647), [#775](https://github.com/Davmunrey/Trazum/issues/775).
-11. **[Seven dictionaries, each read by a speaker](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Seven+dictionaries%2C+each+read+by+a+speaker%22)**. Five of the seven trimming dictionaries were never read by somebody who reads the language. Each needs a reviewer; docs/language-maintainer.md says what the role is. Issues: [#680](https://github.com/Davmunrey/Trazum/issues/680), [#681](https://github.com/Davmunrey/Trazum/issues/681), [#682](https://github.com/Davmunrey/Trazum/issues/682), [#683](https://github.com/Davmunrey/Trazum/issues/683), [#684](https://github.com/Davmunrey/Trazum/issues/684).
-12. **[Where people meet Trazum](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22Where+people+meet+Trazum%22)**. The editor extension on the VS Code Marketplace, the playground as a Hugging Face Space, the hosted web app measured for how fast it loads, off unless its operator asks, a page that says what Trazum Pro is and that it is not open yet, and a download page at /download for the files each release carries. Issues: [#640](https://github.com/Davmunrey/Trazum/issues/640), [#646](https://github.com/Davmunrey/Trazum/issues/646), [#723](https://github.com/Davmunrey/Trazum/issues/723), [#774](https://github.com/Davmunrey/Trazum/issues/774), [#780](https://github.com/Davmunrey/Trazum/issues/780), [#781](https://github.com/Davmunrey/Trazum/issues/781), [#793](https://github.com/Davmunrey/Trazum/issues/793), [#827](https://github.com/Davmunrey/Trazum/issues/827).
-13. **[The optional model pass](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+milestone%3A%22The+optional+model+pass%22)**. Choose and test a model-side optimiser candidate, behind the opt-in layer, with the deterministic core unchanged. Issues: [#644](https://github.com/Davmunrey/Trazum/issues/644).
+1. **[2.7.13: repeated-task evaluation](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%222.7.13%3A+repeated-task+evaluation%22)**. Validate the instruction policy over repeated experiments on accepted tasks before it becomes a default: cost per accepted task, quality, retries and controller overhead, measured together. Issues: [#638](https://github.com/TrazumAPP/Trazum/issues/638).
+2. **[A site that carries the brand](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22A+site+that+carries+the+brand%22)**. The landing as the front door, the documentation, the catalogue of models and prices, the roadmap and the changelog as pages of one site, and a brand page, all in the design system the project already chose and each with a way to GitHub. Issues: [#734](https://github.com/TrazumAPP/Trazum/issues/734), [#735](https://github.com/TrazumAPP/Trazum/issues/735), [#736](https://github.com/TrazumAPP/Trazum/issues/736), [#737](https://github.com/TrazumAPP/Trazum/issues/737), [#744](https://github.com/TrazumAPP/Trazum/issues/744), [#770](https://github.com/TrazumAPP/Trazum/issues/770).
+3. **[Trazum speaks first](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22Trazum+speaks+first%22)**. The status line, the watcher and the spend guard exist and are off until somebody wires each by hand. Next: one command that turns them on and off, a watcher that reads the agents' sessions directly and says so on the screen, a weekly summary that arrives on its own, a plan that can open the pull request, and a terminal that carries the brand. Issues: [#755](https://github.com/TrazumAPP/Trazum/issues/755), [#756](https://github.com/TrazumAPP/Trazum/issues/756), [#757](https://github.com/TrazumAPP/Trazum/issues/757), [#758](https://github.com/TrazumAPP/Trazum/issues/758), [#796](https://github.com/TrazumAPP/Trazum/issues/796).
+4. **[3.0.0: the release allowed to break](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%223.0.0%3A+the+release+allowed+to+break%22)**. A major is the only release that may remove something. This one removes `tier` from a model in the pricing catalogue, deprecated since 1.8.0 in favour of `capability`, and nothing its changelog entry does not list. Issues: [#764](https://github.com/TrazumAPP/Trazum/issues/764), [#798](https://github.com/TrazumAPP/Trazum/issues/798).
+5. **[The price anyone can check](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22The+price+anyone+can+check%22)**. Every comparable tool prices from the same community file and calls the figure an estimate, and a model it cannot price counts as zero. Next: the catalogue published as an open dataset with the provider's page and the date read behind every row, and a pull request comment that says what a change does to a prompt's monthly cost against the base branch, each figure with its dated price. Issues: [#784](https://github.com/TrazumAPP/Trazum/issues/784), [#785](https://github.com/TrazumAPP/Trazum/issues/785).
+6. **[The bill where a team already looks](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22The+bill+where+a+team+already+looks%22)**. The bill is printed, saved or gated. Next: the same measured figures as metrics for the dashboards a team already runs, and what was spent in a repository while a branch was written, said as a time window and never as the cost of the change. Issues: [#776](https://github.com/TrazumAPP/Trazum/issues/776), [#777](https://github.com/TrazumAPP/Trazum/issues/777), [#789](https://github.com/TrazumAPP/Trazum/issues/789), [#824](https://github.com/TrazumAPP/Trazum/issues/824).
+7. **[A repository a stranger can contribute to](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22A+repository+a+stranger+can+contribute+to%22)**. What a visitor and a contributor need that is not the product: a roadmap that opens with what comes next, a wiki that publishes itself, documents that agree with each other, and Discussions with a form for each kind of question. Issues: [#725](https://github.com/TrazumAPP/Trazum/issues/725), [#726](https://github.com/TrazumAPP/Trazum/issues/726), [#727](https://github.com/TrazumAPP/Trazum/issues/727), [#732](https://github.com/TrazumAPP/Trazum/issues/732), [#747](https://github.com/TrazumAPP/Trazum/issues/747), [#765](https://github.com/TrazumAPP/Trazum/issues/765), [#767](https://github.com/TrazumAPP/Trazum/issues/767), [#772](https://github.com/TrazumAPP/Trazum/issues/772), [#778](https://github.com/TrazumAPP/Trazum/issues/778), [#779](https://github.com/TrazumAPP/Trazum/issues/779), [#787](https://github.com/TrazumAPP/Trazum/issues/787), [#829](https://github.com/TrazumAPP/Trazum/issues/829).
+8. **[Tests that would notice a wrong price](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22Tests+that+would+notice+a+wrong+price%22)**. Line coverage says the code that prices a call runs under test. Mutation testing says whether a test would notice it pricing a call wrongly, and today it reaches six files of the core and, in two more, the functions that choose a rate and multiply by it. Next: the catalogue's own numbers, where a sample found published prices that no test would notice changing. Issues: [#731](https://github.com/TrazumAPP/Trazum/issues/731), [#745](https://github.com/TrazumAPP/Trazum/issues/745), [#763](https://github.com/TrazumAPP/Trazum/issues/763), [#820](https://github.com/TrazumAPP/Trazum/issues/820).
+9. **[Every agent's sessions](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22Every+agent%27s+sessions%22)**. The bill reads what each coding agent already keeps on disk. Next: OpenCode's SQLite sessions, and a reader for Cursor, GitHub Copilot CLI, Cline and Amp as soon as somebody supplies one real session of each. Issues: [#645](https://github.com/TrazumAPP/Trazum/issues/645), [#648](https://github.com/TrazumAPP/Trazum/issues/648), [#728](https://github.com/TrazumAPP/Trazum/issues/728), [#729](https://github.com/TrazumAPP/Trazum/issues/729), [#730](https://github.com/TrazumAPP/Trazum/issues/730), [#782](https://github.com/TrazumAPP/Trazum/issues/782), [#786](https://github.com/TrazumAPP/Trazum/issues/786), [#821](https://github.com/TrazumAPP/Trazum/issues/821), [#822](https://github.com/TrazumAPP/Trazum/issues/822), [#823](https://github.com/TrazumAPP/Trazum/issues/823), [#825](https://github.com/TrazumAPP/Trazum/issues/825), [#826](https://github.com/TrazumAPP/Trazum/issues/826).
+10. **[Every provider, counted and priced exactly](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22Every+provider%2C+counted+and+priced+exactly%22)**. The estimator's error measured against each provider's own counter, a tokenizer package where the error is large, retired models marked on the provider's own evidence, and the gateway in front of the providers it does not front yet. Issues: [#641](https://github.com/TrazumAPP/Trazum/issues/641), [#642](https://github.com/TrazumAPP/Trazum/issues/642), [#643](https://github.com/TrazumAPP/Trazum/issues/643), [#647](https://github.com/TrazumAPP/Trazum/issues/647), [#775](https://github.com/TrazumAPP/Trazum/issues/775).
+11. **[Seven dictionaries, each read by a speaker](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22Seven+dictionaries%2C+each+read+by+a+speaker%22)**. Five of the seven trimming dictionaries were never read by somebody who reads the language. Each needs a reviewer; docs/language-maintainer.md says what the role is. Issues: [#680](https://github.com/TrazumAPP/Trazum/issues/680), [#681](https://github.com/TrazumAPP/Trazum/issues/681), [#682](https://github.com/TrazumAPP/Trazum/issues/682), [#683](https://github.com/TrazumAPP/Trazum/issues/683), [#684](https://github.com/TrazumAPP/Trazum/issues/684).
+12. **[Where people meet Trazum](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22Where+people+meet+Trazum%22)**. The editor extension on the VS Code Marketplace, the playground as a Hugging Face Space, the hosted web app measured for how fast it loads, off unless its operator asks, a page that says what Trazum Pro is and that it is not open yet, and a download page at /download for the files each release carries. Issues: [#640](https://github.com/TrazumAPP/Trazum/issues/640), [#646](https://github.com/TrazumAPP/Trazum/issues/646), [#723](https://github.com/TrazumAPP/Trazum/issues/723), [#774](https://github.com/TrazumAPP/Trazum/issues/774), [#780](https://github.com/TrazumAPP/Trazum/issues/780), [#781](https://github.com/TrazumAPP/Trazum/issues/781), [#793](https://github.com/TrazumAPP/Trazum/issues/793), [#827](https://github.com/TrazumAPP/Trazum/issues/827).
+13. **[The optional model pass](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+milestone%3A%22The+optional+model+pass%22)**. Choose and test a model-side optimiser candidate, behind the opt-in layer, with the deterministic core unchanged. Issues: [#644](https://github.com/TrazumAPP/Trazum/issues/644).
 <!-- milestones:end -->
 
 ### Open work, as issues
@@ -42,50 +42,50 @@ that triage accepted. The table is drawn from the issue list by
 `node scripts/triage.mjs roadmap`, and the weekly `Triage` run fails when the
 two disagree, so an item is here because it is accepted and leaves when it is
 closed, not when somebody remembers this page. Live:
-[ready to be picked up](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3Aaccepted),
-[waiting on something outside](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3Ablocked),
-[open to a first contribution](https://github.com/Davmunrey/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+[ready to be picked up](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3Aaccepted),
+[waiting on something outside](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3Ablocked),
+[open to a first contribution](https://github.com/TrazumAPP/Trazum/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 <!-- open-work:start -->
 **Ready to be picked up (19).**
 
 | Issue | What | Area |
 | --- | --- | --- |
-| [#638](https://github.com/Davmunrey/Trazum/issues/638) | Evaluate repeat-review-v1 over repeated tasks before making it default | cli |
-| [#642](https://github.com/Davmunrey/Trazum/issues/642) | Decide whether to ship DeepSeek and Mistral tokenizer packages | core |
-| [#648](https://github.com/Davmunrey/Trazum/issues/648) | Decide when and how to read OpenCode's SQLite sessions | cli |
-| [#680](https://github.com/Davmunrey/Trazum/issues/680) | Review the French dictionary: 38 entries nobody who reads French has agreed to | core |
-| [#681](https://github.com/Davmunrey/Trazum/issues/681) | Review the German dictionary: 38 entries nobody who reads German has agreed to | core |
-| [#682](https://github.com/Davmunrey/Trazum/issues/682) | Review the Portuguese dictionary: 36 entries nobody who reads Portuguese has agreed to | core |
-| [#683](https://github.com/Davmunrey/Trazum/issues/683) | Review the Italian dictionary: 36 entries nobody who reads Italian has agreed to | core |
-| [#684](https://github.com/Davmunrey/Trazum/issues/684) | Review the Dutch dictionary: 30 entries nobody who reads Dutch has agreed to | core |
-| [#763](https://github.com/Davmunrey/Trazum/issues/763) | Nineteen of sixty-nine sampled prices could change and no test would fail | core |
-| [#774](https://github.com/Davmunrey/Trazum/issues/774) | Gemini CLI and Codex users install the MCP server in one line, and the Gemini gallery lists it | mcp |
-| [#775](https://github.com/Davmunrey/Trazum/issues/775) | bill reads Amazon Bedrock's model invocation logs | cli |
-| [#778](https://github.com/Davmunrey/Trazum/issues/778) | Four counts the documents state in words are not derived by any test | - |
-| [#779](https://github.com/Davmunrey/Trazum/issues/779) | Two workflows that write outside the repository have no test that reads them: pr-guide and the mirror | - |
-| [#780](https://github.com/Davmunrey/Trazum/issues/780) | The MCP server ships as a one-click bundle for Claude Desktop, and the registry lists it | mcp |
-| [#781](https://github.com/Davmunrey/Trazum/issues/781) | brew install the CLI from a tap this repository keeps current | cli |
-| [#786](https://github.com/Davmunrey/Trazum/issues/786) | bill takes what ccusage already reports, and prices it with dated rates, budgets and the ranked changes | cli |
-| [#787](https://github.com/Davmunrey/Trazum/issues/787) | OpenSSF Scorecard runs on main and its result is on the README | - |
-| [#823](https://github.com/Davmunrey/Trazum/issues/823) | Show an agent plan's limit and reset time, from the agent's own signals only | cli |
-| [#824](https://github.com/Davmunrey/Trazum/issues/824) | Prometheus metrics and a Grafana dashboard for the bill and the gateway | cli |
+| [#638](https://github.com/TrazumAPP/Trazum/issues/638) | Evaluate repeat-review-v1 over repeated tasks before making it default | cli |
+| [#642](https://github.com/TrazumAPP/Trazum/issues/642) | Decide whether to ship DeepSeek and Mistral tokenizer packages | core |
+| [#648](https://github.com/TrazumAPP/Trazum/issues/648) | Decide when and how to read OpenCode's SQLite sessions | cli |
+| [#680](https://github.com/TrazumAPP/Trazum/issues/680) | Review the French dictionary: 38 entries nobody who reads French has agreed to | core |
+| [#681](https://github.com/TrazumAPP/Trazum/issues/681) | Review the German dictionary: 38 entries nobody who reads German has agreed to | core |
+| [#682](https://github.com/TrazumAPP/Trazum/issues/682) | Review the Portuguese dictionary: 36 entries nobody who reads Portuguese has agreed to | core |
+| [#683](https://github.com/TrazumAPP/Trazum/issues/683) | Review the Italian dictionary: 36 entries nobody who reads Italian has agreed to | core |
+| [#684](https://github.com/TrazumAPP/Trazum/issues/684) | Review the Dutch dictionary: 30 entries nobody who reads Dutch has agreed to | core |
+| [#763](https://github.com/TrazumAPP/Trazum/issues/763) | Nineteen of sixty-nine sampled prices could change and no test would fail | core |
+| [#774](https://github.com/TrazumAPP/Trazum/issues/774) | Gemini CLI and Codex users install the MCP server in one line, and the Gemini gallery lists it | mcp |
+| [#775](https://github.com/TrazumAPP/Trazum/issues/775) | bill reads Amazon Bedrock's model invocation logs | cli |
+| [#778](https://github.com/TrazumAPP/Trazum/issues/778) | Four counts the documents state in words are not derived by any test | - |
+| [#779](https://github.com/TrazumAPP/Trazum/issues/779) | Two workflows that write outside the repository have no test that reads them: pr-guide and the mirror | - |
+| [#780](https://github.com/TrazumAPP/Trazum/issues/780) | The MCP server ships as a one-click bundle for Claude Desktop, and the registry lists it | mcp |
+| [#781](https://github.com/TrazumAPP/Trazum/issues/781) | brew install the CLI from a tap this repository keeps current | cli |
+| [#786](https://github.com/TrazumAPP/Trazum/issues/786) | bill takes what ccusage already reports, and prices it with dated rates, budgets and the ranked changes | cli |
+| [#787](https://github.com/TrazumAPP/Trazum/issues/787) | OpenSSF Scorecard runs on main and its result is on the README | - |
+| [#823](https://github.com/TrazumAPP/Trazum/issues/823) | Show an agent plan's limit and reset time, from the agent's own signals only | cli |
+| [#824](https://github.com/TrazumAPP/Trazum/issues/824) | Prometheus metrics and a Grafana dashboard for the bill and the gateway | cli |
 
 **Waiting on something outside the repository (11).** Each issue says what.
 
 | Issue | What | Area |
 | --- | --- | --- |
-| [#640](https://github.com/Davmunrey/Trazum/issues/640) | Publish trazum-vscode to the VS Code Marketplace | vscode |
-| [#641](https://github.com/Davmunrey/Trazum/issues/641) | Measure the estimator's error against Google, xAI and Moonshot | core |
-| [#643](https://github.com/Davmunrey/Trazum/issues/643) | Front xAI and Moonshot in the gateway once endpoints are confirmed | cli |
-| [#644](https://github.com/Davmunrey/Trazum/issues/644) | Choose and test a model-side optimiser candidate (arc 1.57.0) | core |
-| [#645](https://github.com/Davmunrey/Trazum/issues/645) | Build from-cursor from a real Cursor usage export | cli |
-| [#646](https://github.com/Davmunrey/Trazum/issues/646) | Publish the web playground as a Hugging Face Space | web |
-| [#647](https://github.com/Davmunrey/Trazum/issues/647) | Mark kimi-k2, the Kimi K2.x models and grok-4 retired on evidence | core |
-| [#728](https://github.com/Davmunrey/Trazum/issues/728) | Read GitHub Copilot CLI's sessions in the bill | cli |
-| [#729](https://github.com/Davmunrey/Trazum/issues/729) | Read Cline's task history in the bill | cli |
-| [#730](https://github.com/Davmunrey/Trazum/issues/730) | Read Amp's threads in the bill | cli |
-| [#782](https://github.com/Davmunrey/Trazum/issues/782) | Read Goose's per-call usage ledger in the bill | cli |
+| [#640](https://github.com/TrazumAPP/Trazum/issues/640) | Publish trazum-vscode to the VS Code Marketplace | vscode |
+| [#641](https://github.com/TrazumAPP/Trazum/issues/641) | Measure the estimator's error against Google, xAI and Moonshot | core |
+| [#643](https://github.com/TrazumAPP/Trazum/issues/643) | Front xAI and Moonshot in the gateway once endpoints are confirmed | cli |
+| [#644](https://github.com/TrazumAPP/Trazum/issues/644) | Choose and test a model-side optimiser candidate (arc 1.57.0) | core |
+| [#645](https://github.com/TrazumAPP/Trazum/issues/645) | Build from-cursor from a real Cursor usage export | cli |
+| [#646](https://github.com/TrazumAPP/Trazum/issues/646) | Publish the web playground as a Hugging Face Space | web |
+| [#647](https://github.com/TrazumAPP/Trazum/issues/647) | Mark kimi-k2, the Kimi K2.x models and grok-4 retired on evidence | core |
+| [#728](https://github.com/TrazumAPP/Trazum/issues/728) | Read GitHub Copilot CLI's sessions in the bill | cli |
+| [#729](https://github.com/TrazumAPP/Trazum/issues/729) | Read Cline's task history in the bill | cli |
+| [#730](https://github.com/TrazumAPP/Trazum/issues/730) | Read Amp's threads in the bill | cli |
+| [#782](https://github.com/TrazumAPP/Trazum/issues/782) | Read Goose's per-call usage ledger in the bill | cli |
 <!-- open-work:end -->
 
 A blocked issue is not a deferred one. Most of them wait on something only
@@ -93,7 +93,7 @@ the owner holds, a provider key, a publisher account, a real export, and each
 says exactly what; the work itself is specified and ready.
 
 **Historical boundary.** [The 2.4
-plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-2.4.md) was the previous plan, 2.4.0 delivered every
+plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-2.4.md) was the previous plan, 2.4.0 delivered every
 move of it that did not need something held outside this repository,
 2.4.1 carried the door to the README's first line and the browser, 2.4.2
 priced the models Claude Code runs today and gave the bill a PDF, 2.4.3
@@ -101,7 +101,7 @@ made the one line work with no path and priced each call at its own moment, and
 2.5.0 priced each request at its own size, which let the current models of
 OpenAI, Moonshot and xAI, Claude Haiku 5.5 and Gemini 3.1 Pro in, and 2.5.1
 billed a period and said what a Claude Code bill's figure is. [The
-1.83–2.0 plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.83-2.0.md) had asked a different question from
+1.83–2.0 plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.83-2.0.md) had asked a different question from
 every other plan in that directory — not what this should do next, but when
 it is finished — and 2.0.0 answered it by freezing the surface at 46
 commands. 2.4.0 lifted that freeze deliberately, from a download count rather
@@ -169,8 +169,8 @@ published token band turned out to be a measurement of its own calibration
 set, and the release replaced it with four that are measurements of the
 estimator. Before it, 1.80.0 was a distribution pass: no new command, no
 new flag, no new analysis, and the feature surface deliberately frozen
-while the doors were fixed. Before that, [the 1.79 plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.79.md)
-and [the 1.77 plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.77.md) were both delivered in full.
+while the doors were fixed. Before that, [the 1.79 plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.79.md)
+and [the 1.77 plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.77.md) were both delivered in full.
 
 **Four things this section listed as waiting have since been built**, and
 they are named here because a forecast that keeps promising delivered work
@@ -181,16 +181,16 @@ the same thing and got it: a format read out of the tool's own source rather tha
 `roadmap-forecast.test.js` fails if this section ever again describes a
 command the CLI already dispatches.
 
-Before it, [the 1.73 plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.73.md) was delivered in
+Before it, [the 1.73 plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.73.md) was delivered in
 full — the guided tour: five doors walked once, offered on first visit and
 launched from the rail forever after, with no tour library, no auto-play, no
 analytics and the one scroll respecting prefers-reduced-motion. No new plan
 is written until one is asked for.
 
-Before it, [the 1.72 plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.72.md) was delivered in full — the
+Before it, [the 1.72 plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.72.md) was delivered in full — the
 playground: the CLI's pure subset runnable in the web app against sample
 files, through the same `@trazum/core` functions the terminal runs.
-Before it, [the 1.71 plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.71.md) was delivered in full —
+Before it, [the 1.71 plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.71.md) was delivered in full —
 the universal cost lens, generalising the `from-claude-code` pattern to the
 whole observability ecosystem: the standards-based `from-otel` (the fortieth
 command) reads OpenTelemetry's GenAI spans as a usage log, so Trazum prices
@@ -203,15 +203,15 @@ inventing a price. All three exist now, and the paragraph above says when.
 No new plan is written until one is asked for: a plan exists to be written
 before the code, not to keep a section warm.
 
-Before it, [the 1.70 plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.70.md) was delivered in
+Before it, [the 1.70 plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.70.md) was delivered in
 full — the whole 1.69 pipe collapsed to a drag of the transcripts folder,
 and the landing gained three machine-drafted languages beside the two
 reviewed ones.
-Before it, [the 1.69 plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.69.md) was delivered in
+Before it, [the 1.69 plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.69.md) was delivered in
 full — the agent's own bill, priced from the transcripts already on disk.
-Before it, [the 1.68 plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.68.md) was delivered in
+Before it, [the 1.68 plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.68.md) was delivered in
 full — the browser caught up with the other three doors in one release.
-Before it, [the 1.65–1.67 plan](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.65-1.67.md) was delivered in
+Before it, [the 1.65–1.67 plan](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.65-1.67.md) was delivered in
 full — the owner's five open-source paths, carried as far as they go as
 code: 1.65.0 (the format anyone can adopt), 1.66.0 (one policy, three
 doors) and 1.67.0 (the month ends on a measured position), every chapter of
@@ -270,7 +270,7 @@ front of: which providers it fronts, which two it can never front and why, and
 which are missing a fact this repository cannot supply without guessing. How
 many of each is a question for `trazum gateway` and `trazum connect`, which
 derive the answer, rather than for this page. What each arc still cannot do is
-in [RELEASES.md](https://github.com/Davmunrey/Trazum/blob/main/RELEASES.md).
+in [RELEASES.md](https://github.com/TrazumAPP/Trazum/blob/main/RELEASES.md).
 
 **1.53.0 closed on less than its title asked for**, deliberately: a gap that is
 named, proven and alarmed is finished work, and a gap papered over with a
@@ -334,7 +334,7 @@ the roadmap of a tool whose first doctrine rule forbids exactly that.
 it is written down at the end of the plan rather than left to be inferred.
 
 **The arc through 1.51.0 is delivered in full**, with its errata on the record:
-[docs/plan-1.51.md](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.51.md). Its thesis was the gap this product had
+[docs/plan-1.51.md](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.51.md). Its thesis was the gap this product had
 carried since the beginning: **every figure it printed was a denominator with no
 numerator.** It could say a workload got 40% cheaper and could not say whether it
 stopped working. Ten chapters answered that — the gateway in the path of the call
@@ -353,7 +353,7 @@ plan; a plan that pretends otherwise goes stale on contact with the first good
 idea. The order is the commitment.
 
 **The arc through 1.50.0 is delivered in full** as well:
-[docs/plan-1.41-1.50.md](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.41-1.50.md). Its thesis was that the loop
+[docs/plan-1.41-1.50.md](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.41-1.50.md). Its thesis was that the loop
 was complete and inert — every command waited for a human to type something, so
 nobody ran it on the afternoon it would have mattered, and the agent actually
 spending the money had no way to ask. Ten releases answered that: the connector
@@ -363,9 +363,9 @@ browser (1.47), cost review in CI (1.48), the live budget (1.49), and the
 format, the guarantees and the doctrine other tools can build on (1.50).
 
 The two arcs before those were also delivered in full:
-[docs/plan-1.36-1.40.md](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.36-1.40.md) introduced Trazum's estimating
+[docs/plan-1.36-1.40.md](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.36-1.40.md) introduced Trazum's estimating
 and measuring halves to each other, and
-[docs/plan-1.30-1.35.md](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-1.30-1.35.md) precedes it.
+[docs/plan-1.30-1.35.md](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-1.30-1.35.md) precedes it.
 
 Everything under *Under consideration* below stays where it is until something
 moves it. An entry there is not a queue with the front of it hidden — it is the

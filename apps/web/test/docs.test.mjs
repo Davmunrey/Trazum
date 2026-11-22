@@ -244,7 +244,7 @@ describe('links and images', () => {
     }
     const kinds = new Set();
     for (const { doc, href } of allLinks()) {
-      if (href.startsWith('https://github.com/Davmunrey/Trazum/')) kinds.add(href.split('/')[5]);
+      if (href.startsWith('https://github.com/TrazumAPP/Trazum/')) kinds.add(href.split('/')[5]);
       assert.ok(!/\/blob\/main\/\//.test(href), `${doc.path}: ${href}`);
     }
     assert.ok(kinds.has('blob') && kinds.has('tree'), `a file and a directory should both appear: ${[...kinds]}`);
@@ -653,7 +653,7 @@ describe('the pages', () => {
       const github = links.filter((a) => 'data-view-on-github' in a);
       assert.ok(github.length >= 1);
       for (const a of github) {
-        assert.equal(a.href, `https://github.com/Davmunrey/Trazum/blob/main/${d.path}`);
+        assert.equal(a.href, `https://github.com/TrazumAPP/Trazum/blob/main/${d.path}`);
         assert.equal(a.target, '_blank');
         assert.equal(a.rel, 'noreferrer noopener');
       }
@@ -670,7 +670,7 @@ describe('the pages', () => {
       assert.ok(html.includes(`>${t.indexTitle}</h1>`));
       for (const d of manifest.DOCS) assert.ok(links.some((a) => a.href === `/docs/${d.slug}`), `${locale}: the index has no ${d.slug}`);
       for (const group of manifest.DOC_GROUPS) assert.ok(html.includes(t.groups[group].title), `${locale}: no ${group}`);
-      for (const item of manifest.KEPT) assert.ok(links.some((a) => a.href === `https://github.com/Davmunrey/Trazum/blob/main/${item.path}`), `${locale}: ${item.id} is not linked on GitHub`);
+      for (const item of manifest.KEPT) assert.ok(links.some((a) => a.href === `https://github.com/TrazumAPP/Trazum/blob/main/${item.path}`), `${locale}: ${item.id} is not linked on GitHub`);
       assert.ok(html.includes('role="search"'));
       assert.ok(html.includes('/docs/quick-start'), 'the task table is not drawn');
       assert.match(html, new RegExp(`>${built.unpublished.plan}<`), 'the count of plans is not shown');
@@ -860,7 +860,7 @@ describe('the build is wired in, and ignored', () => {
       // Each address is parsed and its host compared whole: a pattern that only looks for the name would pass `github.com.example`.
       for (const [address] of code.matchAll(/\bhttps?:[^\s'"`)]*/g)) {
         const url = URL.canParse(address) ? new URL(address) : null;
-        assert.ok(url !== null && url.host === 'github.com' && url.pathname.startsWith('/Davmunrey/'), `${file} names another host: ${address}`);
+        assert.ok(url !== null && url.host === 'github.com' && url.pathname.startsWith('/TrazumAPP/'), `${file} names another host: ${address}`);
       }
     }
   });

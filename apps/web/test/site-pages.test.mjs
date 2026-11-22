@@ -619,7 +619,7 @@ describe('what the three pages never do', () => {
       const code = codeOf(file);
       for (const [address] of code.matchAll(/\bhttps?:[^\s'"`)]*/g)) {
         const url = URL.canParse(address) ? new URL(address) : null;
-        assert.ok(url !== null && url.host === 'github.com' && url.pathname.startsWith('/Davmunrey/'), `${file} names another host: ${address}`);
+        assert.ok(url !== null && url.host === 'github.com' && url.pathname.startsWith('/TrazumAPP/'), `${file} names another host: ${address}`);
       }
       assert.ok(!/\son[A-Z][a-zA-Z]*="/.test(code), `${file} has an inline handler attribute`);
       assert.ok(!/dangerouslySetInnerHTML/.test(code), `${file} writes HTML`);

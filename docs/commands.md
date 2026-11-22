@@ -5521,7 +5521,7 @@ protocol implementation covers and what it does not.
 
 ```yaml
 repos:
-  - repo: https://github.com/Davmunrey/Trazum
+  - repo: https://github.com/TrazumAPP/Trazum
     rev: <a commit SHA>          # not a tag: a tag can be moved after you review it
     hooks:
       - id: trazum-check

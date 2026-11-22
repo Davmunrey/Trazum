@@ -1,4 +1,4 @@
-> Generated from [`README.md`](https://github.com/Davmunrey/Trazum/blob/main/README.md) by `scripts/build-wiki.mjs`.
+> Generated from [`README.md`](https://github.com/TrazumAPP/Trazum/blob/main/README.md) by `scripts/build-wiki.mjs`.
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
@@ -18,7 +18,7 @@ prompt library shipped and made that conditional.
   Postgres — `trazum_prompt_versions.text`, one row per version, because a library
   that cannot show you yesterday's wording is not a library. Nothing is written
   until you save, and the database is the operator's rather than ours.
-  [docs/accounts.md](https://github.com/Davmunrey/Trazum/blob/main/docs/accounts.md) is the full account, including the row
+  [docs/accounts.md](https://github.com/TrazumAPP/Trazum/blob/main/docs/accounts.md) is the full account, including the row
   level security the schema turns on and why it uses `ENABLE` and not `FORCE`.
 - Analytics (PostHog) is **off by default** and never sends prompt content —
   only aggregate metrics (reduction percentage, level, model, locale). It

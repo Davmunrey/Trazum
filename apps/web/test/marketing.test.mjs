@@ -52,7 +52,7 @@ describe('the marketing pages play by the app’s rules', () => {
       const code = codeOf(file);
       assert.equal(/\bfetch\s*\(/.test(code), false, `${file} contains a fetch call`);
       assert.equal(/XMLHttpRequest|sendBeacon|WebSocket|EventSource/.test(code), false, `${file} opens a channel`);
-      assert.equal(/https?:\/\/(?!github\.com\/Davmunrey|www\.npmjs\.com\/package\/@trazum)[\w.-]+/.test(code), false, `${file} names a third-party host`);
+      assert.equal(/https?:\/\/(?!github\.com\/(?:TrazumAPP|Davmunrey)|www\.npmjs\.com\/package\/@trazum)[\w.-]+/.test(code), false, `${file} names a third-party host`);
     }
   });
 

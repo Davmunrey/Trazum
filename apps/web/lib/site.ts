@@ -17,7 +17,7 @@
  */
 
 /** The repository. Every public page carries a button to it. */
-export const GITHUB_URL = 'https://github.com/Davmunrey/Trazum';
+export const GITHUB_URL = 'https://github.com/TrazumAPP/Trazum';
 /** The documentation: an index at `/docs` and one page per document under it. */
 export const DOCS_PATH = '/docs';
 /** The repository's own `docs/` folder, where the records the site does not publish are kept. */

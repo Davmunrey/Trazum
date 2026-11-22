@@ -28,7 +28,7 @@ they spend anything.
 ## Install
 
 ```bash
-claude plugin marketplace add Davmunrey/Trazum
+claude plugin marketplace add TrazumAPP/Trazum
 claude plugin install trazum@trazum
 ```
 
@@ -113,5 +113,5 @@ move the cache off `$TMPDIR`.
 ## The rest of the product
 
 The CLI (60 commands), the HTTP gateway, the GitHub Action and the web app
-are documented in the [repository](https://github.com/Davmunrey/Trazum).
+are documented in the [repository](https://github.com/TrazumAPP/Trazum).
 Everything installable is on npm under `@trazum/*`.

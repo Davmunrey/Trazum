@@ -2,7 +2,7 @@
 
 Which lines of the published packages the tests run. `npm run coverage`
 measures it, the `Coverage` workflow sends it to
-[Codecov](https://app.codecov.io/gh/Davmunrey/Trazum) on every pull request
+[Codecov](https://app.codecov.io/gh/TrazumAPP/Trazum) on every pull request
 and on `main`, and Codecov shows it line by line.
 
 Two more things go to Codecov from the same place, each with a section
@@ -274,7 +274,7 @@ log either way.
 
 ## Codacy
 
-The same reports go to [Codacy](https://app.codacy.com/gh/Davmunrey/Trazum)
+The same reports go to [Codacy](https://app.codacy.com/gh/TrazumAPP/Trazum)
 as well, from the last step of the same workflow. Codecov is where the record
 is kept. Codacy is a second reader: it shows the figure beside what it finds
 in the code, and nothing here waits on it.

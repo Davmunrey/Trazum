@@ -10,7 +10,7 @@ import type { WebMessages } from '../lib/i18n';
 import { appendTaskFiles, createTaskReadGate, readTaskReport, taskDocumentJson, TaskFileError, type TaskFile, type TaskFileErrorCode } from '../lib/task-workflow';
 
 const field = 'mt-1 w-full min-w-0 rounded-none border-2 border-input bg-background px-3 py-2 text-base outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60';
-const guideUrl = 'https://github.com/Davmunrey/Trazum/blob/main/docs/task-efficiency.md#dashboard';
+const guideUrl = 'https://github.com/TrazumAPP/Trazum/blob/main/docs/task-efficiency.md#dashboard';
 type PanelError = TaskFileErrorCode | 'analyzeError' | 'compareError' | 'downloadError';
 
 export function Tasks({ t }: { t: WebMessages }) {

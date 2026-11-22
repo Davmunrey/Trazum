@@ -129,14 +129,14 @@ describe('every public page carries the header, the GitHub button and the way in
       Pinned here because every other check compares against these same
       constants: a wrong one would agree with itself everywhere.
     */
-    assert.equal(site.GITHUB_URL, 'https://github.com/Davmunrey/Trazum');
+    assert.equal(site.GITHUB_URL, 'https://github.com/TrazumAPP/Trazum');
     assert.equal(site.DASHBOARD_PATH, '/app');
     assert.equal(site.HOME_PATH, '/');
     assert.equal(site.SITE_LINKS.docs.href, '/docs');
     assert.equal(site.SITE_LINKS.docs.external, false, 'the Docs entry leaves the site again');
     assert.equal(site.SITE_LINKS.npm.href, 'https://www.npmjs.com/package/@trazum/cli');
     for (const [id, file] of [['licence', 'LICENSE'], ['security', 'SECURITY.md']]) {
-      assert.equal(site.SITE_LINKS[id].href, `https://github.com/Davmunrey/Trazum/blob/main/${file}`, id);
+      assert.equal(site.SITE_LINKS[id].href, `https://github.com/TrazumAPP/Trazum/blob/main/${file}`, id);
       assert.ok(existsSync(new URL(`../../../${file}`, import.meta.url)), `${file} is not in the repository`);
     }
     // The changelog, the roadmap and the models are pages of the site, each built from a file the repository keeps.

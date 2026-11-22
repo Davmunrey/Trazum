@@ -1963,7 +1963,7 @@ const VERSION: string = (() => {
   }
 })();
 
-const FEEDBACK_REPO = 'https://github.com/Davmunrey/Trazum';
+const FEEDBACK_REPO = 'https://github.com/TrazumAPP/Trazum';
 
 /** Problems listed before the rest are counted. A wall of them helps nobody. */
 const MAX_CONFORM_PROBLEMS = 20;

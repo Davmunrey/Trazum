@@ -9,12 +9,12 @@
   "publisher": "Davmunrey",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Davmunrey/Trazum.git",
+    "url": "git+https://github.com/TrazumAPP/Trazum.git",
     "directory": "apps/vscode"
   },
   "homepage": "https://trazum.vercel.app",
   "bugs": {
-    "url": "https://github.com/Davmunrey/Trazum/issues"
+    "url": "https://github.com/TrazumAPP/Trazum/issues"
   },
   "categories": [
     "Other"

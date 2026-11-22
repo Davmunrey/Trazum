@@ -727,7 +727,7 @@ jobs:
         run: |
           set -euo pipefail
           version="$(node -p "require('./packages/mcp/server.json').version")"
-          base="https://github.com/Davmunrey/Trazum/releases/download/v$version"
+          base="https://github.com/TrazumAPP/Trazum/releases/download/v$version"
           mkdir -p /tmp/bundle
           curl -fsSL "$base/trazum-mcp-$version.mcpb" -o "/tmp/bundle/trazum-mcp-$version.mcpb"
           curl -fsSL "$base/SHA256SUMS" -o /tmp/bundle/SHA256SUMS

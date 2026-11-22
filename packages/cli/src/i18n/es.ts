@@ -2866,7 +2866,7 @@ ${bold('EJEMPLOS')}
       'mcp.off': (p) => `Activarlo añade el servidor trazum a ${p.files}.`,
       'mcp.noClient': (p) => `No hay .mcp.json ni carpeta .cursor en ${p.dir}, así que no hay configuración de cliente a la que añadir.`,
       'mcp.noClientClaude': (p) =>
-        `No hay .mcp.json en ${p.dir}. Claude Code recibe el servidor por su plugin; ejecuta tú estos comandos: claude plugin marketplace add Davmunrey/Trazum, y luego claude plugin install trazum@trazum.`,
+        `No hay .mcp.json en ${p.dir}. Claude Code recibe el servidor por su plugin; ejecuta tú estos comandos: claude plugin marketplace add TrazumAPP/Trazum, y luego claude plugin install trazum@trazum.`,
       'mcp.other': (p) => `${p.file} ya tiene una entrada trazum distinta de la que esto escribe. Se deja como está.`,
       'mcp.changed': (p) => `${p.file} tiene una entrada trazum que añadió este comando y alguien ha cambiado después. Se deja como está.`,
       'mcp.notAdded': (p) => `${p.file} ya tiene exactamente esta entrada, puesta a mano. Se queda al apagar esto.`,

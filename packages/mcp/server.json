@@ -3,7 +3,7 @@
   "name": "io.github.Davmunrey/trazum",
   "description": "Trazum as an MCP server: let an agent price and budget its own prompts before it sends them.",
   "repository": {
-    "url": "https://github.com/Davmunrey/Trazum",
+    "url": "https://github.com/TrazumAPP/Trazum",
     "source": "github"
   },
   "version": "3.0.4",

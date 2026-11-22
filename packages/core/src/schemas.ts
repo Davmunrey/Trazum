@@ -24,7 +24,7 @@ const DRAFT = 'https://json-schema.org/draft/2020-12/schema';
 function doc(name: ContractName, properties: Record<string, unknown>): Record<string, unknown> {
   return {
     $schema: DRAFT,
-    $id: `https://github.com/Davmunrey/Trazum/schema/${name}/v1.json`,
+    $id: `https://github.com/TrazumAPP/Trazum/schema/${name}/v1.json`,
     title: `trazum ${name} document, schemaVersion 1`,
     type: 'object',
     required: ['schemaVersion', ...Object.keys(properties)],

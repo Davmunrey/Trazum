@@ -253,7 +253,7 @@ async function recordTheRelease() {
 }
 
 /*
-  The Action pin: every `Davmunrey/Trazum@<sha>  # <version>` in Markdown moves
+  The Action pin: every `TrazumAPP/Trazum@<sha>  # <version>` in Markdown moves
   to the newest tag that exists. It is the newest commit a reader can be told
   to pin, and the docs-pin guard in security.test.js allows one release of lag.
 */
@@ -274,7 +274,7 @@ if (prerelease) {
   const files = execFileSync('git', ['ls-files', '*.md'], { cwd: ROOT, encoding: 'utf8' })
     .split('\n')
     .filter((path) => path !== '' && path !== 'CHANGELOG.md' && path !== 'RELEASES.md' && !path.startsWith('wiki/') && !path.startsWith('changes/'));
-  const PIN = /Davmunrey\/Trazum@([0-9a-f]{40})( {2}# )(\d+\.\d+\.\d+)/g;
+  const PIN = /TrazumAPP\/Trazum@([0-9a-f]{40})( {2}# )(\d+\.\d+\.\d+)/g;
   let moved = 0;
   for (const path of files) {
     const text = edits.get(path) ?? read(path);
@@ -284,7 +284,7 @@ if (prerelease) {
       if (pinned === sha || (atVersion !== null && !newer(parse(label), atVersion))) return whole;
       changed = true;
       moved += 1;
-      return `Davmunrey/Trazum@${sha}${gap}${label}`;
+      return `TrazumAPP/Trazum@${sha}${gap}${label}`;
     });
     if (changed) {
       edits.set(path, updated);

@@ -17,7 +17,7 @@ body:
 
         Start with the problem, not the feature. An idea that is clearly a thing to
         do belongs in a
-        [feature request](https://github.com/Davmunrey/Trazum/issues/new?template=feature_request.yml),
+        [feature request](https://github.com/TrazumAPP/Trazum/issues/new?template=feature_request.yml),
         which the issue list can track. This is the place for the half-formed one.
         Please write in English.
 

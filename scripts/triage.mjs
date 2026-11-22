@@ -94,7 +94,7 @@ const areasOf = (labels) =>
   labels.filter((label) => label.startsWith('area:')).map((label) => label.slice(5)).join(', ') || '-';
 
 const row = (issue) =>
-  `| [#${issue.number}](https://github.com/Davmunrey/Trazum/issues/${issue.number}) | ${issue.title.replaceAll('|', '\\|')} | ${areasOf(issue.labels)} |`;
+  `| [#${issue.number}](https://github.com/TrazumAPP/Trazum/issues/${issue.number}) | ${issue.title.replaceAll('|', '\\|')} | ${areasOf(issue.labels)} |`;
 
 /**
  * ROADMAP.md's table of open work: every open issue triage accepted, the ones

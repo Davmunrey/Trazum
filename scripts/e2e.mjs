@@ -694,7 +694,7 @@ export const FLOWS = [
       await see(page.locator('[data-command]').filter({ hasText: 'npx @trazum/cli bill' }).first(), 'the command, with its copy control');
       is(
         await page.locator('[data-site-header] [data-github-button]').first().getAttribute('href'),
-        'https://github.com/Davmunrey/Trazum',
+        'https://github.com/TrazumAPP/Trazum',
         'where the header’s GitHub button goes',
       );
       await page.locator('[data-site-header]').getByRole('link', { name: 'Open the dashboard' }).click();
@@ -751,7 +751,7 @@ export const FLOWS = [
       is(await page.locator('[data-doc="commands"]').getAttribute('lang'), 'en', 'the language the document is marked in');
       is(
         await page.locator('[data-view-on-github]').first().getAttribute('href'),
-        'https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md',
+        'https://github.com/TrazumAPP/Trazum/blob/main/docs/commands.md',
         'where View on GitHub goes',
       );
     },
@@ -954,12 +954,12 @@ export const FLOWS = [
       is(JSON.stringify(vscode.servers.trazum), JSON.stringify({ type: 'stdio', command: 'npx', args: ['-y', pinned] }), 'the VS Code entry');
       is(
         await page.locator('[data-client="gemini-cli"] [data-command] code').evaluate((code) => code.textContent.replace(/^\$\s*/, '').trim()),
-        'gemini extensions install https://github.com/Davmunrey/Trazum',
+        'gemini extensions install https://github.com/TrazumAPP/Trazum',
         'the Gemini CLI line',
       );
 
       // The files: one release, one scheme. The extension, the bundle, the sums and the bill of materials.
-      const release = `https://github.com/Davmunrey/Trazum/releases/download/v${version}`;
+      const release = `https://github.com/TrazumAPP/Trazum/releases/download/v${version}`;
       const files = await page.locator('a[data-download-file]').evaluateAll((links) => links.map((link) => [link.getAttribute('data-download-file'), link.getAttribute('href')]));
       is(
         JSON.stringify(files),
@@ -980,7 +980,7 @@ export const FLOWS = [
 
       // The Action: one pinned commit, as the setup guide writes it.
       const action = await page.locator('[data-snippet="action"] code').textContent();
-      is(/^- uses: Davmunrey\/Trazum@[0-9a-f]{40} {2}# \d+\.\d+\.\d+$/.test(action), true, `the Action line (${action})`);
+      is(/^- uses: TrazumAPP\/Trazum@[0-9a-f]{40} {2}# \d+\.\d+\.\d+$/.test(action), true, `the Action line (${action})`);
 
       // Checksums, and that they are not a signature.
       await see(page.locator('[data-download-sums-note]'), 'what a checksum does not show');

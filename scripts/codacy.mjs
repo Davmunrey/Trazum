@@ -58,7 +58,7 @@ export const BATCH = 100;
 export const MAX_PAGES = 200;
 
 export const API = 'https://app.codacy.com/api/v3';
-export const REPOSITORY = { provider: 'gh', organization: 'Davmunrey', name: 'Trazum' };
+export const REPOSITORY = { provider: 'gh', organization: 'TrazumAPP', name: 'Trazum' };
 
 /** The keys each part of the file may have. Anything else is refused: a key the script does not read is a decision nobody applies. */
 export const KEYS = {

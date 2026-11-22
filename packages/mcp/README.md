@@ -154,7 +154,7 @@ The JSON returned in MCP text content has this structure:
 
 `plan` is a standard Trazum plan document: the CLI can verify it, and this tool
 can verify a plan saved by the CLI. Save **the plan field**, not the surrounding
-evidence envelope. [Plan contract](https://github.com/Davmunrey/Trazum/blob/main/docs/plan-format.md).
+evidence envelope. [Plan contract](https://github.com/TrazumAPP/Trazum/blob/main/docs/plan-format.md).
 
 `evidence` names priced calls and USD, unpriced calls/models, skipped line
 numbers, time coverage and the pricing review date. Its `complete` flag means
@@ -220,4 +220,4 @@ it rests on. Nothing is called and nothing is spent to answer.
 
 ## Licence
 
-MIT. Part of [Trazum](https://github.com/Davmunrey/Trazum).
+MIT. Part of [Trazum](https://github.com/TrazumAPP/Trazum).

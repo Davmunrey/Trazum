@@ -477,7 +477,7 @@
       "file": "apps/web/components/docs/DocsIndex.tsx",
       "count": 1,
       "reason": "FalsePositive",
-      "why": "href={DOCS_ON_GITHUB} is a constant of lib/site.ts, https://github.com/Davmunrey/Trazum/tree/main/docs; no visitor value can make it javascript:."
+      "why": "href={DOCS_ON_GITHUB} is a constant of lib/site.ts, https://github.com/TrazumAPP/Trazum/tree/main/docs; no visitor value can make it javascript:."
     },
     {
       "pattern": "Semgrep_typescript.react.security.audit.react-href-var.react-href-var",

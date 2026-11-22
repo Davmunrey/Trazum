@@ -105,13 +105,13 @@ without attaching anything.
 To check who made a file, with the GitHub CLI, ask GitHub's attestations API:
 
 ```bash
-gh attestation verify trazum-mcp-<version>.mcpb --repo Davmunrey/Trazum
+gh attestation verify trazum-mcp-<version>.mcpb --repo TrazumAPP/Trazum
 ```
 
 or check it against the bundle attached to the release:
 
 ```bash
-gh attestation verify trazum-mcp-<version>.mcpb --repo Davmunrey/Trazum \
+gh attestation verify trazum-mcp-<version>.mcpb --repo TrazumAPP/Trazum \
   --bundle trazum-v<version>.sigstore.json
 ```
 
@@ -120,9 +120,15 @@ is that bundle with its whitespace taken out.
 
 Either one passes only for a file whose digest the attestation names, signed by
 a workflow of this repository. Add
-`--signer-workflow Davmunrey/Trazum/.github/workflows/release.yml` to hold it to
+`--signer-workflow TrazumAPP/Trazum/.github/workflows/release.yml` to hold it to
 the release workflow alone; the job runs that same check on every file before it
 attaches the bundle. Releases up to 3.0.1 carry no attestation.
+
+The repository moved from `Davmunrey/Trazum` to the `TrazumAPP` organisation
+on 2026-11-22. Releases 3.0.2 to 3.0.4 were signed before the move, and their
+signatures name the workflow at its old path: check them with
+`--repo Davmunrey/Trazum` and
+`--signer-workflow Davmunrey/Trazum/.github/workflows/release.yml`.
 
 **The MCP registry listing** names the bundle and its digest, and only for a
 version whose bundle exists: the `mcp-registry` job waits for the `assets` job,
@@ -2959,7 +2965,7 @@ skipping every claim above it — extended to forty-four, its first covered
 run caught a stale "thirty-four commands" that had drifted invisibly.
 
 This release also carries what merged unreleased before it: **Trazum as a
-Claude Code plugin** (`claude plugin marketplace add Davmunrey/Trazum`,
+Claude Code plugin** (`claude plugin marketplace add TrazumAPP/Trazum`,
 then `claude plugin install trazum@trazum` — the skill derived from the
 project's own by script, the MCP server through the registry, versions in
 lockstep with these manifests), and six vendored agent skills with their
@@ -7663,7 +7669,7 @@ What a maintainer will ask for
   That is the whole of it. Nothing about your work is here.
 
 A blank issue with the above already filled in
-  https://github.com/Davmunrey/Trazum/issues/new?body=…
+  https://github.com/TrazumAPP/Trazum/issues/new?body=…
 ```
 
 The link is **printed in full before it is offered**, so nothing travels that

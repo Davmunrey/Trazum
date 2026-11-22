@@ -278,7 +278,7 @@ describe('the registry entry for the bundle', () => {
     assert.equal(next.packages.length, 2);
     assert.deepEqual(next.packages[1], {
       registryType: 'mcpb',
-      identifier: 'https://github.com/Davmunrey/Trazum/releases/download/v9.9.9/trazum-mcp-9.9.9.mcpb',
+      identifier: 'https://github.com/TrazumAPP/Trazum/releases/download/v9.9.9/trazum-mcp-9.9.9.mcpb',
       fileSha256: digest,
       transport: { type: 'stdio' },
     });
@@ -471,7 +471,7 @@ describe('the release workflow attests what it attaches', () => {
     const releases = read('RELEASES.md');
     const intro = releases.slice(0, releases.indexOf('\n## '));
     assert.match(intro, /trazum-v<version>\.sigstore\.json/, 'the bundle is not named');
-    assert.match(intro, /gh attestation verify trazum-mcp-<version>\.mcpb --repo Davmunrey\/Trazum/, 'no command checks a file against GitHub');
+    assert.match(intro, /gh attestation verify trazum-mcp-<version>\.mcpb --repo TrazumAPP\/Trazum/, 'no command checks a file against GitHub');
     assert.match(intro, /--bundle trazum-v<version>\.sigstore\.json/, 'no command checks a file against the bundle on the release');
     assert.doesNotMatch(intro, /None of them is signed\s+or attested/, 'RELEASES.md still says nothing is attested');
   });

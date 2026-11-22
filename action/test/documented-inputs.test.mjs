@@ -42,7 +42,7 @@ const inputsOf = () => {
 /** Every `with:` block following a `uses:` line that names this Action. */
 const examplesIn = (text) => {
   const found = [];
-  for (const match of text.matchAll(/uses: Davmunrey\/Trazum@[^\n]*\n([\s\S]*?)(?=\n```|\n\n)/g)) {
+  for (const match of text.matchAll(/uses: TrazumAPP\/Trazum@[^\n]*\n([\s\S]*?)(?=\n```|\n\n)/g)) {
     const body = match[1];
     const withAt = body.indexOf('with:');
     if (withAt === -1) continue;

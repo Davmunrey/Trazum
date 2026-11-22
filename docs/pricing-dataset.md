@@ -18,7 +18,7 @@ Every version is at two addresses, which serve the same bytes:
 | What | Address |
 | --- | --- |
 | A version's document, on the site | `https://trazum.vercel.app/datasets/pricing/<version>.json` |
-| The same file, on the release | `https://github.com/Davmunrey/Trazum/releases/download/v<version>/trazum-pricing-<version>.json` |
+| The same file, on the release | `https://github.com/TrazumAPP/Trazum/releases/download/v<version>/trazum-pricing-<version>.json` |
 | The JSON Schema of the format | `https://trazum.vercel.app/datasets/pricing/schema-1.json` |
 | Every version, with its digest and its changes | `https://trazum.vercel.app/datasets/pricing/changelog.json` |
 

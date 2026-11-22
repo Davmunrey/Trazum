@@ -10,7 +10,7 @@
 # Add to that file:
 #
 #     repos:
-#       - repo: https://github.com/Davmunrey/Trazum
+#       - repo: https://github.com/TrazumAPP/Trazum
 #         rev: <a commit SHA>
 #         hooks:
 #           - id: trazum-check

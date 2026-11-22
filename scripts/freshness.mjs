@@ -78,7 +78,7 @@ if (tags.length === 0) {
   const pinned = new Set();
   for (const path of git('ls-files', '*.md').split('\n')) {
     if (path === '' || path === 'CHANGELOG.md' || path === 'RELEASES.md' || path.startsWith('changes/')) continue;
-    for (const match of readFileSync(join(ROOT, path), 'utf8').matchAll(/Davmunrey\/Trazum@[0-9a-f]{40} {2}# (\d+\.\d+\.\d+)/g)) {
+    for (const match of readFileSync(join(ROOT, path), 'utf8').matchAll(/TrazumAPP\/Trazum@[0-9a-f]{40} {2}# (\d+\.\d+\.\d+)/g)) {
       pinned.add(match[1]);
     }
   }

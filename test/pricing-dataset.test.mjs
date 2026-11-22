@@ -191,7 +191,7 @@ describe('the document is the catalogue, serialised', () => {
     assert.equal(document.catalogue.sha256, catalogueDigest(read(CATALOGUE)));
     assert.equal(document.catalogue.sha256, catalogueDigest(read(CATALOGUE).replace(/\n/g, '\r\n')), 'a Windows checkout reads another digest');
     const core = JSON.parse(read('packages/core/package.json'));
-    assert.deepEqual(document.licence, { spdx: core.license, url: `https://github.com/Davmunrey/Trazum/blob/v${document.version}/LICENSE` });
+    assert.deepEqual(document.licence, { spdx: core.license, url: `https://github.com/TrazumAPP/Trazum/blob/v${document.version}/LICENSE` });
     assert.equal(document.$schema, `${core.homepage}${SITE_PATH}/${SCHEMA_FILE}`);
   });
 });
@@ -270,7 +270,7 @@ describe('the published document', () => {
     assert.deepEqual(changelog.versions.map((entry) => entry.version), [...versions].reverse(), 'the changelog is not newest first, or lists another set');
     for (const entry of changelog.versions) {
       assert.equal(entry.url, `${catalogue.homepage}${SITE_PATH}/${entry.version}.json`);
-      const asset = `https://github.com/Davmunrey/Trazum/releases/download/v${entry.version}/${assetNames(entry.version).pricing}`;
+      const asset = `https://github.com/TrazumAPP/Trazum/releases/download/v${entry.version}/${assetNames(entry.version).pricing}`;
       assert.equal(entry.releaseAsset, WRITTEN_AFTER_RELEASE.includes(entry.version) ? null : asset);
     }
   });
