@@ -88,6 +88,7 @@ const SERVED = {
   '2.7.12': '0a75291b4e6099bd7c44e3732d53ace96da18a4b1c5192040490eda2aebfd510',
   '3.0.0': 'd334f005d3d4eaad49ed1c89722246bfcb25a1e2c43a62d04811b303150d8fea',
   '3.0.1': '59eb2a96c430896ba55000a6004f19eac1c30c00ea107f999ebe5e6e1c39079a',
+  '3.0.6': 'ed292e75551e41ffca34b02378dadf96fe362c61cd8c684a48a786de1ea974fc',
 };
 
 describe('the formula in this repository', () => {
