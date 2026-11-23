@@ -112,6 +112,6 @@ move the cache off `$TMPDIR`.
 
 ## The rest of the product
 
-The CLI (60 commands), the HTTP gateway, the GitHub Action and the web app
+The CLI (61 commands), the HTTP gateway, the GitHub Action and the web app
 are documented in the [repository](https://github.com/TrazumAPP/Trazum).
 Everything installable is on npm under `@trazum/*`.

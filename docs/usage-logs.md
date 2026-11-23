@@ -250,6 +250,76 @@ and `expired`, an OpenAI line without a 200) are counted and left out. Nothing
 but the model, the usage and the end reason crosses: the generated text and
 your `custom_id` stay in your file.
 
+## ccusage
+
+If you already run [ccusage](https://github.com/ccusage/ccusage), the JSON it
+writes is a log Trazum reads. Nothing runs ccusage for you, and nothing looks
+for its output: you pass the file.
+
+```bash
+ccusage daily --json > ccusage.json
+npx @trazum/cli bill ccusage.json
+npx @trazum/cli from-ccusage ccusage.json -o usage.jsonl
+```
+
+What is read, from ccusage 20.0.51's own source and output:
+
+| ccusage writes | Trazum reads it as |
+| --- | --- |
+| `daily`, `weekly`, `monthly`, `session` or `sessions` rows, or `projects` (from `claude daily --instances`) | one row each. A file holding several (`--sections`) is read for the first of daily, weekly, monthly and session, and the others are named and not added: they are the same usage cut another way |
+| `date`, `week`, `month` or `period` | the record's time, at the start of that day, week or month in UTC. ccusage cut its days in the zone it ran in, which its JSON does not say, so the day is taken as ccusage named it |
+| a session's `lastActivity` | the record's time, so a session that crossed midnight is placed on its last day |
+| a session's `firstActivity` | where the session began, so a bill knows which days it covers. The report across every agent does not carry it |
+| each of `modelBreakdowns` | one record: `modelName` as the model |
+| `inputTokens`, `outputTokens`, `cacheReadTokens`, `cacheCreationTokens` | the four token counts |
+| `cacheCreation1hTokens` | the 1-hour part of the cache writes, the rest at 5 minutes; without it the lifetime is unknown and the bill says the 5-minute rate was assumed |
+| a model named `claude-…-fast` | fast mode on that model, priced from its fast rate |
+| `cost`, `totalCost`, `missingPricing` | nothing that is priced: set beside the catalogue's figure, model by model, and never added to it |
+| `project`, `projectPath` | nothing, unless `from-ccusage --label-by-project` names it: then the label you wrote. `bill` takes `--label` only |
+
+Every record is written with `"requests": null`. A row is a day's, week's,
+month's or session's total, and ccusage does not say how many requests it
+sums, so nothing counts it as a call: the bill's statement counts rows, and a
+model priced by prompt length is billed at the dearer rate with the cheaper
+one beside it. The receipt's `calls` fields count records, so for a ccusage
+report they are its rows by model.
+
+A row is never cut, because it does not say how its total was spread across
+its day, week, month or session. So `bill` on a ccusage report refuses, and
+says why:
+
+- `--timezone`. A row moved to another zone would land whole on another day.
+  Run ccusage with its own `--timezone` instead.
+- A `--since` or `--until` that falls inside a row: `--since 2026-11-10` on a
+  monthly report, or on a session that began on 2026-11-09. A session in the
+  report across every agent names only its last activity, so any edge at or
+  before it is refused; `ccusage claude session --json` names both ends.
+- A `--by` that would split a row: `--by day` on a monthly report, or `--by
+  week` on `ccusage claude weekly`, whose weeks start on Sunday where the
+  bill's ISO weeks start on Monday. Where the by-month table would split one,
+  it is left out and the statement says so.
+- The files that count calls and split the bill by day: `--markdown-out`,
+  `--html-out`, `--pdf-out`, `--csv-out`, `--otlp-out` and `--prom-out`. The
+  statement and the receipt bill the rows.
+
+`weekly` does not read a ccusage report at all: it cuts at `--until` and
+counts calls. The statement's "This log covers" line runs from the first row's
+start to the last row's end.
+
+The usage log `from-ccusage` writes is read by every command as any other
+log. Its records say `"requests": null`, so they are priced as rows that sum
+requests, and they are counted as calls, the way the rows of Anthropic's usage
+report are. Nothing refuses `--timezone`, `--since`, `--until` or `--by` on
+that log either, so they can move a row to another day or cut it at a
+window's edge. `bill` on the ccusage file itself counts them as rows and
+refuses what would move or cut one: bill the file rather than the log. Counting
+such a record as a row everywhere is #961.
+
+What the report never carried is not in the bill: US-only inference
+(`inference_geo`) and web searches (`server_tool_use`), both in Claude Code's
+own transcripts and both billed by Anthropic. `trazum bill` on the sessions
+themselves has them.
+
 ## Checking a log before you trust it
 
 ```

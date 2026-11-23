@@ -4,6 +4,13 @@ import type { CliMessages } from './types.js';
 const count = (value: number): string => value.toLocaleString('es-ES');
 
 /** Un contador agrupado y su sustantivo, concordando. Ver `plural` en en.ts. */
+/** Un informe de ccusage de este tipo, y de qué es total cada una de sus filas. */
+const ccusageUnitEs = (report: 'daily' | 'weekly' | 'monthly' | 'session'): { report: string; whole: string } =>
+  report === 'daily' ? { report: 'diario', whole: 'un día entero' }
+  : report === 'weekly' ? { report: 'semanal', whole: 'una semana entera' }
+  : report === 'monthly' ? { report: 'mensual', whole: 'un mes entero' }
+  : { report: 'de sesiones', whole: 'una sesión entera' };
+
 const plural = (value: number, one: string, many = `${one}s`): string =>
   `${count(value)} ${value === 1 ? one : many}`;
 
@@ -194,6 +201,7 @@ ${bold('USO')}
   trazum from-anthropic <usage.json> [--label <nombre>] [--label-by-workspace <fichero>] [-o <fichero>]
   trazum from-openai <usage.json> [--label <nombre>] [--label-by-project <fichero>] [-o <fichero>]
   trazum from-openrouter <activity.json> [--label <nombre>] [--label-by-workspace <fichero>] [-o <fichero>]
+  trazum from-ccusage <ccusage.json> [--label <nombre>] [--label-by-project <fichero>] [-o <fichero>]
   trazum reconcile <receipt.json> --against <cost.json> [-o <fichero>]
   trazum from-helicone <fichero|dir> [-o <fichero>]
   trazum from-langsmith <fichero|dir> [-o <fichero>]
@@ -517,6 +525,26 @@ ${bold('OPCIONES DE from-openrouter')}
   junto a la cifra de Trazum y nunca se suma a ella. Los tokens de razonamiento
   se cuentan y no se añaden, porque el esquema no dice si el recuento de
   completado ya los incluye.
+
+${bold('OPCIONES DE from-ccusage')}
+  --label <nombre>            El proyecto al que pertenece este uso.
+  --label-by-project <fichero> Una etiqueta por proyecto tal como lo nombra
+                              ccusage, como array JSON de {"project": "…",
+                              "label": "nombre"}. Coincidencia exacta; --label
+                              es el respaldo. ccusage nombra proyectos en
+                              claude daily --instances y en claude session.
+  -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
+
+  El JSON que escribe ccusage --json (sus informes daily, weekly, monthly y
+  session, solo de Claude Code o de todos los agentes que encontró), leído como
+  log de uso: un registro por cada modelo de cada fila, valorado con el
+  catálogo. Lo que ccusage cobró por las mismas cuentas se imprime al lado,
+  modelo a modelo, y nunca se usa para valorar. Una fila es el total de un
+  día, una semana, un mes o una sesión, no una llamada. El nombre de un
+  proyecto, que es una ruta, solo se escribe como la etiqueta que tú le des.
+  Lee el archivo que recibe: no ejecuta ccusage. bill lee el mismo archivo y
+  cuenta sus filas como filas; el log que se escribe aquí se lee como
+  cualquier otro, y sus registros se cuentan como llamadas.
 
 ${bold('OPCIONES DE from-helicone')}
   -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
@@ -2332,6 +2360,8 @@ ${bold('EJEMPLOS')}
       `${lines} línea(s), ${usd} con precio. Cada cifra lleva la tarifa que la produjo y la fecha en que se revisó esa tarifa.`,
     unpriced: (models, calls) =>
       `${models} modelo(s) que el catálogo no precia, con ${calls} llamada(s): nombrados en los huecos del recibo y fuera del total, en vez de costados a cero.`,
+    unpricedRecords: (models, records) =>
+      `${models} modelo(s) que el catálogo no precia, con ${records} registro(s): nombrados en los huecos del recibo y fuera del total, en vez de costados a cero.`,
     unread: (count) => `${count} línea(s) del log no se pudieron leer, y el recibo lo dice.`,
     noClock: () =>
       'El log no lleva reloj, así que el recibo no está acotado en el tiempo y lo declara en vez de inventarse un periodo.',
@@ -2528,6 +2558,12 @@ ${bold('EJEMPLOS')}
       `${files} archivo(s): ${shape}${records === null ? ', leídos tal cual' : `, ${records} registro(s)`}${leftOut > 0 ? `, ${leftOut} fila(s) fuera${command === null ? '.' : `. trazum ${command} sobre un archivo dice por qué.`}` : '.'}`,
     statementHeading: () => 'Tu factura',
     statementTotal: (usd, calls) => `${usd} en ${calls.toLocaleString('es-ES')} llamada(s) con precio`,
+    statementTotalRows: (usd, rows) =>
+      `${usd} en ${rows.toLocaleString('es-ES')} fila(s) con precio de un informe de ccusage, cada una el total de un periodo para un modelo y no una llamada`,
+    statementTotalMixed: (usd, records) =>
+      `${usd} en ${records.toLocaleString('es-ES')} registro(s) con precio, llamadas y filas de ccusage juntas`,
+    statementMixedRows: () =>
+      'Algunos de estos registros son filas de un informe de ccusage, cada una el total de un día, una semana, un mes o una sesión para un modelo, así que estas cuentas suman llamadas y filas. ccusage no cuenta peticiones.',
     colProject: () => 'proyecto',
     colWorkload: () => 'carga',
     colModel: () => 'modelo',
@@ -2553,6 +2589,8 @@ ${bold('EJEMPLOS')}
     zoneReceiptNote: (zone) =>
       `--timezone ${zone}: el recibo guarda instantes y ningún día, así que la zona solo decide qué significa un día suelto de --since/--until.`,
     colCalls: () => 'llamadas',
+    colRows: () => 'filas',
+    colRecords: () => 'registros',
     colShare: () => 'parte',
     moreRows: (count) => `… y ${count} más`,
     colMonth: () => 'mes',
@@ -2562,9 +2600,24 @@ ${bold('EJEMPLOS')}
     monthHint: (since, until) => `Un mes por separado: --since ${since} --until ${until}.`,
     statementUnpriced: (models, calls) =>
       `Fuera del total: ${calls} llamada(s) a ${models}, que el catálogo no tiene con precio. Se nombran, nunca se cuentan como $0.`,
+    statementUnpricedRecords: (models, records) =>
+      `Fuera del total: ${records} registro(s) de ${models}, que el catálogo no tiene con precio. Se nombran, nunca se cuentan como $0 y nunca se valoran con la cifra de ccusage.`,
+    ccusageWindowed: () =>
+      'Las cifras propias de ccusage cubren el informe entero, no el periodo pedido, así que no se ponen junto a esta factura. trazum from-ccusage sobre el archivo las pone junto a las del catálogo, modelo a modelo.',
+    ccusageTimezone: () =>
+      '--timezone corta los días de la factura en esa zona, y una fila de un informe de ccusage ya es el total de un día, una semana, un mes o una sesión enteros, con los días cortados por ccusage en la zona en que se ejecutó, que su JSON no dice. Llevada a otra zona, una fila entera caería en otro día o en otro mes. Ejecuta ccusage con su propio --timezone y factura su archivo sin esta opción.',
+    ccusageSideFile: (flag) =>
+      `${flag} cuenta lo que factura como llamadas y lo reparte por día, y una fila de un informe de ccusage es el total de un periodo, no una llamada: escrito a partir de una, imprimiría el total de un día o de un mes como una llamada en un solo día. Así que no se escribe para un informe de ccusage. El extracto (--table) lo factura, y también el recibo (--receipt), cuyos campos calls cuentan registros.`,
+    ccusageWindowCuts: (rows, startUnknown, report) =>
+      `--since/--until cae dentro de ${rows} fila(s) de este informe ${ccusageUnitEs(report).report} de ccusage. Cada fila es el total de ${ccusageUnitEs(report).whole} y no dice cómo se repartió dentro, así que no se puede facturar una parte, y facturarla entera o nada pasaría por el periodo pedido. Pon --since y --until en los bordes de las filas, o factura un informe más fino (ccusage daily --json).${startUnknown > 0 ? ` ${startUnknown} de ellas son sesiones cuyo informe solo nombra su última actividad, así que no se puede saber si empezaron antes del borde; ccusage claude session --json nombra también la primera.` : ''}`,
+    ccusageByCuts: (unit, rows, startUnknown, report) =>
+      `--by ${unit} repartiría ${rows} fila(s) de este informe ${ccusageUnitEs(report).report} de ccusage entre ${unit === 'day' ? 'días' : unit === 'week' ? 'semanas' : 'meses'}. Cada fila es el total de ${ccusageUnitEs(report).whole} y no dice cómo se repartió dentro, así que no se puede poner en ${unit === 'day' ? 'un solo día' : unit === 'week' ? 'una sola semana' : 'un solo mes'}. Factúralo por una unidad dentro de la que quepan sus filas, o factura un informe más fino (ccusage daily --json).${startUnknown > 0 ? ` ${startUnknown} de ellas son sesiones cuyo informe solo nombra su última actividad, así que no se puede saber en qué ${unit === 'day' ? 'día' : unit === 'week' ? 'semana' : 'mes'} empezaron.` : ''}`,
+    ccusageMonthsCut: (rows) =>
+      `Sin reparto por mes: ${rows} fila(s) del informe de ccusage cruzan el borde de un mes, o son sesiones cuyo inicio no se conoce, y una fila no dice cómo se repartió dentro de su periodo.`,
     statementUnread: (lines) => `${lines} línea(s) no se pudieron leer como uso y no están en el total.`,
     statementNext: () =>
       'El recibo como datos: --receipt, o -o recibo.json. El documento para quien paga: --pdf-out factura.pdf.',
+    statementNextReceipt: () => 'El recibo como datos: --receipt, o -o recibo.json.',
     notFound: (path) => `${path}: no encontrado`,
     noFiles: (path) => `${path}: no hay archivos .json, .jsonl, .ndjson ni .log dentro, ni sin comprimir ni en .gz.`,
     file: (path, shape, records, leftOut, command) =>
@@ -2604,6 +2657,8 @@ ${bold('EJEMPLOS')}
       `${ids}: el modelo tras la barra tiene precio aquí con su propio nombre. El prefijo no se quita por ti, porque el mismo modelo a través de un router puede facturarse distinto. Si esas llamadas fueron directas al proveedor, registra el modelo sin el prefijo.`,
     windowMatchesNothing: (from, to) =>
       `Ninguna llamada cae dentro de este periodo. Lo leído cubre ${from} → ${to}. Un periodo sin nada dentro no es una factura de $0: revisa las fechas, o quita --since/--until para facturarlo todo.`,
+    windowMatchesNothingRows: (from, to, mixed) =>
+      `${mixed ? 'Ninguna llamada ni ninguna fila del informe de ccusage cae' : 'Ninguna fila del informe de ccusage cae'} dentro de este periodo. Lo leído cubre ${from} → ${to}. Un periodo sin nada dentro no es una factura de $0: revisa las fechas, o quita --since/--until para facturarlo todo.`,
     written: (file) => `Escrito ${file}.`,
     rangeConflict: (flag) =>
       `--git-range fija el periodo por sí mismo, a partir de los commits, e imprime su propio extracto: no se puede combinar con ${flag}.`,
@@ -2666,6 +2721,70 @@ ${bold('EJEMPLOS')}
     rulesEmpty: (file) =>
       `${file}: no hay reglas dentro. Pasaste --label-by-workspace para repartir algo, y un archivo vacío repartiría nada en silencio.`,
     written: (file) => `Escrito ${file}.`,
+  },
+
+  fromCcusage: {
+    noPath: () =>
+      'from-ccusage necesita el JSON que escribió ccusage: ccusage daily --json > ccusage.json, y luego trazum from-ccusage ccusage.json. No ejecuta ccusage.',
+    notFound: (path) => `${path}: no encontrado`,
+    unparseable: () =>
+      'Eso no es un informe de los que escribe ccusage --json: no tiene filas daily, weekly, monthly, session ni projects. Pasa el archivo entero que imprimió ccusage.',
+    written: (file) => `Escrito ${file}.`,
+    summary: (report, rows, records) =>
+      `${rows} fila(s) de ${report === 'session' ? 'sesión' : report === 'daily' ? 'día' : report === 'weekly' ? 'semana' : 'mes'} leída(s) del informe ${report} de ccusage, ${records} registro(s) escrito(s), uno por cada modelo de cada fila. Una fila es un total, no una llamada: el informe de ccusage no cuenta peticiones, así que cada registro dice requests: null.`,
+    unified: (agents) =>
+      `El informe es el de ccusage para todos los agentes que encontró (${agents === '' ? 'ninguno nombrado' : agents}). Sus filas se leen tal cual, y un modelo se valora por su propio nombre lo haya ejecutado el agente que sea.`,
+    sectionsLeftAside: (report, others) =>
+      `El archivo trae también los informes ${others} de ccusage. Solo se leyó el ${report}: son el mismo uso cortado de otra manera, y sumarlos lo contaría dos veces.`,
+    sessionsAcrossDays: (count) =>
+      `${count} fila(s) de sesión duraron más de un día UTC. Cada una se fecha en su última actividad, así que un día o un mes se parte en ella donde terminó; el informe diario de ccusage es el que sirve para facturar por días.`,
+    unnamedModel: (count) =>
+      `${count} desglose(s) por modelo no nombraron modelo y no están en la salida: nada en ellos dice qué respondió.`,
+    unreadable: (count) =>
+      `${count} desglose(s) por modelo traían una cuenta de tokens que no es un número entero y no están en la salida.`,
+    noBreakdown: (count) =>
+      `${count} fila(s) traían tokens y ningún modelBreakdowns, así que nada dice de qué modelo son. No están en la salida.`,
+    undated: (count) =>
+      `${count} fila(s) no traían un día, una semana, un mes ni una última actividad legibles y no están en la salida.`,
+    fastUnpriced: (count, models) =>
+      `${count} desglose(s) se ejecutaron en modo rápido (${models}) con un modelo para el que el catálogo no tiene tarifa rápida. Quedan fuera en vez de valorarse a la tarifa estándar, que los dejaría muy por debajo de su coste.`,
+    unsplitTokens: (tokens) =>
+      `${tokens} token(s) están en el totalTokens de ccusage y en ninguna de las cuatro cuentas, así que no se sabe de qué tipo son. Se cuentan aquí y no se valoran.`,
+    writeTtlUnsplit: (count) =>
+      `${count} registro(s) traen escrituras de caché sin cacheCreation1hTokens, así que no se sabe su vida y se supone la tarifa de 5 minutos. La factura dice cuáles.`,
+    labelledByProject: (count) => `${count} fila(s) tomaron su etiqueta del mapeo de proyectos.`,
+    unruledProject: (count) =>
+      `${count} fila(s) nombraban un proyecto que ninguna regla nombra. Conservan --label si lo diste y quedan sin etiqueta si no; el nombre del proyecto no se escribe.`,
+    projectNotGrouped: () =>
+      'Diste un mapeo de proyectos y ninguna fila nombraba un proyecto, así que el reparto que pediste no se hizo. ccusage nombra proyectos en claude daily --instances y en claude session.',
+    notCarried: () =>
+      'El informe de ccusage no trae la inferencia solo en EE. UU. ni las búsquedas web, que las sesiones de Claude Code sí registran y Anthropic sí cobra. Valorado desde este informe, eso es un mínimo; trazum bill sobre las sesiones mismas sí lo tiene.',
+    logCountsCalls: () =>
+      'Todos los comandos leen el log escrito aquí como cualquier otro log de uso: sus registros se valoran como filas que suman peticiones, y se cuentan como llamadas, igual que las filas del informe de uso de Anthropic. Tampoco se rechaza sobre él --timezone, --since, --until ni --by, así que pueden mover una fila a otro día o cortarla en el borde de una ventana. trazum bill sobre el archivo de ccusage mismo las cuenta como filas y rechaza lo que movería o cortaría una.',
+    comparisonHeading: () => 'La cifra de ccusage y la del catálogo, para las mismas cuentas:',
+    colModel: () => 'modelo, como lo nombra ccusage',
+    colCcusage: () => 'ccusage',
+    colTrazum: (reviewed) => (reviewed === '' ? 'catálogo de Trazum' : `catálogo de Trazum, leído ${reviewed}`),
+    colDifference: () => 'diferencia',
+    noFigure: () => 'sin cifra',
+    unpriced: () => 'sin precio',
+    same: () => 'igual',
+    ceiling: (model, ceiling, floor) =>
+      `${model}: ${ceiling} es la más cara de dos tarifas. Sus filas suman peticiones y el modelo se cobra según la longitud del prompt de cada petición, que un total no da; a la tarifa barata los mismos tokens salen a ${floor}, y ccusage, que leyó cada petición, las valoró una a una.`,
+    trazumUnpriced: (models) =>
+      `${models}: no está en el catálogo, porque ninguna página de proveedor leída le da precio. Fuera de la factura y nombrado, nunca valorado con la cifra de ccusage.`,
+    ccusageUnpriced: (models) => `${models}: ccusage dice que no tenía precio para algunas de estas filas.`,
+    allAgree: (models, reviewed) =>
+      `La cifra de ccusage y la del catálogo${reviewed === '' ? '' : ` (leído ${reviewed})`} coinciden en los ${models} modelo(s) del informe.`,
+    othersAgree: (models) => `Los otros ${models} modelo(s) coinciden.`,
+    sources: () =>
+      'Las cifras de ccusage son de ccusage, de los precios que trae o descarga: primero el archivo de LiteLLM, luego su propia tabla y la de models.dev, y cualquier ajuste de tu configuración de ccusage. Las del catálogo se leen de la página de cada proveedor en la fecha indicada, y son las que imprime una factura de este archivo. Las de ccusage se ponen al lado y nunca se usan para valorar.',
+    rulesUnreadable: (file) =>
+      `${file}: no se puede leer como mapeo de proyectos. Es un array JSON de {"project": "<el proyecto como lo nombra ccusage>", "label": "nombre"}.`,
+    ruleBad: (file, at) =>
+      `${file}: la entrada ${at} no es una regla. Cada una necesita un "project" y una "label", ambos cadenas no vacías.`,
+    rulesEmpty: (file) =>
+      `${file}: no hay reglas dentro. Pasaste --label-by-project para repartir algo, y un archivo vacío repartiría nada en silencio.`,
   },
 
   fromHelicone: {
@@ -2809,6 +2928,8 @@ ${bold('EJEMPLOS')}
     movedHeading: (firstDay, lastDay) => `Frente a la semana anterior (${firstDay} a ${lastDay})`,
     noWeekBefore: () =>
       'Ninguna llamada de los logs cae en la semana anterior, así que no hay con qué comparar. No se imprime un porcentaje de nada.',
+    ccusageRows: () =>
+      'weekly factura los siete días anteriores a --until y cuenta llamadas, y una fila de un informe de ccusage es el total de un día, una semana, un mes o una sesión enteros, no una llamada: la semana cortaría filas por sus bordes y las contaría como llamadas. Así que weekly no lee un informe de ccusage. trazum bill sobre el archivo lo factura.',
     moved: (delta, pct, now, before, calls) =>
       `La factura se movió ${delta}${pct === null ? '' : ` (${pct})`} frente a la anterior: ${now} ahora, ${before} entonces en ${calls} ${calls === '1' ? 'llamada' : 'llamadas'}. Las dos son medidas.`,
     unchanged: (now, before) => `La semana costó lo mismo que la anterior: ${now} ahora, ${before} entonces. Las dos son medidas.`,

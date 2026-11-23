@@ -17,7 +17,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 | Improve prompts | [use measured traffic](#the-multiplication-stops-guessing---from-log) · [reorder](#reordering-for-the-cache---reorder) · [rank](#which-prompt-to-fix-first-trazum-rank) · [prune](#which-few-shot-examples-earn-their-tokens-trazum-prune) · [evaluate](#does-the-shorter-prompt-still-work) |
 | Integrate and report | [MCP](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) · [conform](#building-on-the-format-trazum-conform) · [rollup](#more-than-one-machine-trazum-rollup) · [receipt](#a-figure-that-still-answers-elsewhere-trazum-receipt) · [report](#the-year-from-what-was-already-written-down-trazum-report) |
 
-[All commands](../README.md#the-60-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
+[All commands](../README.md#the-61-commands) · [Usage inputs](usage-logs.md) · [JSON output](json-output.md)
 
 <details>
 <summary>All chapters on this page</summary>
@@ -91,6 +91,7 @@ detailed recipes and their limitations. `trazum <command> --help` lists flags.
 - [What OpenAI says: `trazum from-openai`](#what-openai-says-trazum-from-openai)
 - [One door: `trazum bill`](#one-door-trazum-bill)
 - [What the router says: `trazum from-openrouter`](#what-the-router-says-trazum-from-openrouter)
+- [What ccusage already reports: `trazum from-ccusage`](#what-ccusage-already-reports-trazum-from-ccusage)
 - [When does the switch pay: `trazum switch`](#when-does-the-switch-pay-trazum-switch)
 - [The model you run yourself: `trazum ownrate`](#the-model-you-run-yourself-trazum-ownrate)
 - [The rates your organisation already gave Claude Code: `trazum model-pricing`](#the-rates-your-organisation-already-gave-claude-code-trazum-model-pricing)
@@ -4031,6 +4032,21 @@ line with no 200 response are left out and counted. The generated text, the
 is counted as undated rather than given one, and an OpenAI body keeps its
 `created_at`.
 
+**A ccusage report is read too** (#786). The JSON `ccusage --json` wrote is
+priced from the catalogue, row by row and model by model, the way
+[`from-ccusage`](#what-ccusage-already-reports-trazum-from-ccusage) reads it.
+Each row is a day's, week's, month's or session's total, so the statement
+counts rows, and says records where rows and calls are billed together.
+ccusage's own figure is set beside the bill on stderr for the models where the
+two differ, and never used to price; with `--since` or `--until` it is not,
+because it covers the whole file. A row is never cut: `--timezone`, a
+`--since`/`--until` edge inside a row, a `--by` that would split one, and the
+files that count calls and split by day (`--markdown-out`, `--html-out`,
+`--pdf-out`, `--csv-out`, `--otlp-out`, `--prom-out`) are refused for a
+ccusage report, each with the reason, and `weekly` does not read one. A
+project ccusage names is not written out: `--label` labels the rows, and
+`from-ccusage --label-by-project` labels them by project.
+
 **A session that searched the web is billed for its searches** (since 2.7.5).
 Claude Code's web search is Anthropic's server-side tool, $10 per 1,000
 searches on top of the tokens it reads, and every transcript line counts them
@@ -4565,6 +4581,87 @@ a JSON array of `{"workspace": "…", "label": "name"}` matched exactly, with
 `--label` as the fallback. A `null` workspace here means one thing only — the
 request did not group by workspace — so there is no default named by absence
 and nothing to derive.
+
+### What ccusage already reports: `trazum from-ccusage`
+
+ccusage is how most people already read their coding agents' usage, and its
+`--json` output already holds per-day, per-model token counts. Somebody who
+runs it has no reason to read their sessions a second time. This reads what it
+wrote and prices it the way every bill here is priced: from the catalogue, with
+the date each price was read, so budgets, the gate and the ranked changes work
+on it.
+
+```bash
+ccusage daily --json > ccusage.json          # your ccusage, in your shell
+trazum from-ccusage ccusage.json -o usage.jsonl
+trazum bill ccusage.json                     # or straight to the bill
+```
+
+It reads the file it is given. It does not run ccusage, install it or look for
+its output.
+
+**Written against ccusage's own source and its real output.** The shapes are
+ccusage 20.0.51's (tag `v20.0.51`): the daily, weekly, monthly and session
+reports, both the one focused on Claude Code (`ccusage claude daily --json`,
+and everything ccusage wrote before version 18) and the one across every agent
+it found (`ccusage daily --json`, its default since), `claude daily
+--instances`, and a `--sections` file. The fixtures are that version's output
+on synthetic sessions, with the commands that wrote them, in
+[`packages/core/test/fixtures/ccusage/`](../packages/core/test/fixtures/ccusage/README.md).
+
+**The counts are kept and ccusage's dollars are not.** A record is one model on
+one row: input, output, cache writes and cache reads, under the model's id,
+priced from the catalogue. A model ccusage names `-fast` is that model in fast
+mode, priced from its fast rate, and left out and named if the catalogue has
+none. `cacheCreation1hTokens` splits the writes by lifetime; without it the
+5-minute rate is assumed and the bill says so. ccusage's `cost` is never
+written into a record. It is printed beside the catalogue's figure, model by
+model, with both sources named:
+
+```text
+ccusage's figure and the catalogue's, for the same counts:
+  model, as ccusage names it   ccusage  Trazum catalogue, read 2026-11-16  difference
+  claude-opus-5-5              $0.2000                            $0.2000        same
+  claude-opus-5-5-fast         $0.2160                            $0.2160        same
+  claude-sonnet-5-5            $0.0340                            $0.0340        same
+  claude-sonnet-4-20250514     $0.9150                            $0.7650    -$0.1500
+  claude-haiku-5-5             $0.0128                            $0.0638    +$0.0510
+  claude-3-7-sonnet-20250219  $0.00450                         not priced
+  claude-haiku-4-5-20251001   $0.00400                           $0.00400        same
+```
+
+That is the fixture's daily report. Sonnet 4 differs because ccusage prices
+its tokens past 200,000 at a long-context rate; Haiku 5.5 because it is priced
+by each request's prompt length, which ccusage read request by request and a
+day's total does not give, so the bill takes the dearer rate and prints the
+cheaper one beside it; Sonnet 3.7 because no provider page that was read
+prices it, and it is left out of the bill rather than priced at ccusage's
+figure. `bill` prints the same table with only the models that differ.
+
+**A row is a total, not a call.** ccusage's report sums a day, week, month or
+session and does not count requests, so every record says `requests: null`.
+The statement `bill` prints counts rows and never calls them calls, and a row
+carries no session: a session's total is not a session of one turn. A session
+row is dated at its last activity. `bill` refuses what would cut a row or
+count it as a call, and [docs/usage-logs.md](usage-logs.md#ccusage) lists
+what. The log written with `-o` is read as any other usage log: its records
+are priced as rows that sum requests and counted as calls, the way the rows of
+Anthropic's usage report are, and nothing refuses `--timezone`, `--since`,
+`--until` or `--by` on it, so they can move a row to another day or cut it at
+a window's edge. Bill the ccusage file itself for a statement in rows that
+none of them moves or cuts; #961 is counting such a record as a row everywhere.
+
+**What does not cross.** A project, as ccusage names it, is the folder Claude
+Code made from a working directory, which is a path. It reaches the output
+only as a label you write: `--label-by-project rules.json`, a JSON array of
+`{"project": "…", "label": "name"}` matched exactly, with `--label` as the
+fallback. ccusage names projects in `claude daily --instances` and `claude
+session`. Session ids, versions and every other field reach nothing.
+
+**What ccusage's report never had.** US-only inference and web searches are in
+Claude Code's own transcripts and on Anthropic's bill, and not in ccusage's
+JSON, so a bill from it is a floor on those. `trazum bill` on the sessions
+themselves has them.
 
 ### When does the switch pay: `trazum switch`
 

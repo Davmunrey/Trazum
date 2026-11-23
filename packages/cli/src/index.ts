@@ -144,6 +144,13 @@ import {
   openaiCostReport,
   openaiUsageRecords,
   openrouterActivityRecords,
+  ccusageCoverage,
+  ccusageRecords,
+  ccusageRowsCut,
+  compareCcusage,
+  type CcusageComparison,
+  type CcusageConversion,
+  type CcusageProjectLabel,
   reconcile,
   heliconeRecords,
   langsmithRecords,
@@ -947,6 +954,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
+  'from-ccusage': ['label', 'label-by-project', 'out', 'o'],
   bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'send', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'otlp-out', 'prom-out', 'git-range', 'delivery', 'since', 'until', 'by', 'agent', 'timezone'],
   weekly: ['label', 'label-from-project', 'out', 'o', 'until', 'notify', 'pricing', 'pricing-live'],
   'from-helicone': ['out', 'o'],
@@ -3037,6 +3045,44 @@ async function openrouterWorkspaceRulesFrom(
   return rules;
 }
 
+/**
+ * The project mapping `from-ccusage` labels a ccusage report by, under the
+ * refusals the other mappings have. A project here is the folder
+ * name ccusage reports (`-home-dana-acme-payroll`), which is a path: the
+ * person writes the label it becomes, and nothing else of it is written out.
+ */
+async function ccusageProjectRulesFrom(
+  file: string | undefined,
+  t: CliMessages,
+): Promise<CcusageProjectLabel[] | undefined> {
+  if (file === undefined) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(file, 'utf8'));
+  } catch {
+    throw new Error(t.fromCcusage.rulesUnreadable(file));
+  }
+  if (!Array.isArray(parsed)) throw new Error(t.fromCcusage.rulesUnreadable(file));
+
+  const rules: CcusageProjectLabel[] = [];
+  for (const [at, entry] of parsed.entries()) {
+    const rule = entry as Record<string, unknown> | null;
+    if (
+      typeof rule !== 'object'
+      || rule === null
+      || typeof rule.project !== 'string'
+      || rule.project === ''
+      || typeof rule.label !== 'string'
+      || rule.label === ''
+    ) {
+      throw new Error(t.fromCcusage.ruleBad(file, at));
+    }
+    rules.push({ project: rule.project, label: rule.label });
+  }
+  if (rules.length === 0) throw new Error(t.fromCcusage.rulesEmpty(file));
+  return rules;
+}
+
 async function cwdRulesFrom(
   file: string | undefined,
   t: CliMessages,
@@ -3563,17 +3609,72 @@ function refuseEmptyPeriod(
   pricing: PricingCatalogue,
   t: CliMessages,
   zone?: string,
+  rows: { counting: BillCounting; covers: ReadonlyArray<{ fromMs: number; toMs: number }> } = { counting: 'calls', covers: [] },
 ): void {
   if (period.words === undefined || report.total.calls > 0 || report.unpriced.calls > 0) return;
   const whole = profileUsage(text, { catalogue: pricing });
   if (whole.total.calls === 0 && whole.unpriced.calls === 0) return;
-  if (whole.span === null) throw new Error(t.profile.windowNeedsClock());
+  /* A ccusage row covers its whole period, not only the instant it is dated at. */
+  const span = spanWith(whole.span, rows.covers);
+  if (span === null) throw new Error(t.profile.windowNeedsClock());
+  const from = zone === undefined ? dayOf(span.fromMs) : dayInZone(span.fromMs, zone);
+  const to = zone === undefined ? dayOf(span.toMs) : dayInZone(span.toMs, zone);
   throw new Error(
-    `${t.bill.windowMatchesNothing(
-      zone === undefined ? dayOf(whole.span.fromMs) : dayInZone(whole.span.fromMs, zone),
-      zone === undefined ? dayOf(whole.span.toMs) : dayInZone(whole.span.toMs, zone),
-    )}${period.relative ? ` ${t.profile.windowRelativeEmpty()}` : ''}`,
+    `${rows.counting === 'calls' ? t.bill.windowMatchesNothing(from, to) : t.bill.windowMatchesNothingRows(from, to, rows.counting === 'mixed')}${period.relative ? ` ${t.profile.windowRelativeEmpty()}` : ''}`,
   );
+}
+
+/** A report's span, widened to what the ccusage rows in it cover. */
+function spanWith(
+  span: { fromMs: number; toMs: number } | null,
+  covers: ReadonlyArray<{ fromMs: number; toMs: number }>,
+): { fromMs: number; toMs: number } | null {
+  let out = span;
+  for (const covered of covers) {
+    out = out === null ? { ...covered } : { fromMs: Math.min(out.fromMs, covered.fromMs), toMs: Math.max(out.toMs, covered.toMs) };
+  }
+  return out;
+}
+
+/**
+ * What `bill` will not do to a ccusage report (#786). Each of its rows is the
+ * total of a whole day, week, month or session and does not say how it was
+ * spread across it, so nothing here may present it as finer than that:
+ *
+ * - `--timezone`: ccusage cut its days in the zone it ran in, and a row moved
+ *   to another zone would land whole on another day.
+ * - The side files that count calls and split by day: Markdown, HTML, PDF,
+ *   CSV, OTLP and Prometheus. The statement and the receipt bill the rows.
+ * - A `--since`/`--until` edge inside a row, or a `--by` unit that would split
+ *   one: either would bill a row's total as if it fell on one side.
+ *
+ * Refused before anything is written, so a refusal never follows a file.
+ */
+function refuseCcusageCuts(
+  args: Args,
+  conversions: readonly CcusageConversion[],
+  zone: string | undefined,
+  period: ReturnType<typeof billingPeriod>,
+  by: BillPeriodUnit | undefined,
+  t: CliMessages,
+): void {
+  if (conversions.length === 0) return;
+  if (zone !== undefined) throw new Error(t.bill.ccusageTimezone());
+  for (const flag of ['markdown-out', 'html-out', 'pdf-out', 'csv-out', 'otlp-out', 'prom-out']) {
+    if (args.flags.has(flag)) throw new Error(t.bill.ccusageSideFile(`--${flag}`));
+  }
+  for (const conversion of conversions) {
+    if (conversion.report === null) continue;
+    const window = ccusageRowsCut(conversion.spans, {
+      ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+      ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+    });
+    if (window.rows > 0) throw new Error(t.bill.ccusageWindowCuts(window.rows, window.startUnknown, conversion.report));
+    if (by !== undefined) {
+      const split = ccusageRowsCut(conversion.spans, { unit: by });
+      if (split.rows > 0) throw new Error(t.bill.ccusageByCuts(by, split.rows, split.startUnknown, conversion.report));
+    }
+  }
 }
 
 async function commandReceipt(
@@ -3617,7 +3718,7 @@ async function commandReceipt(
  * reader is told and what the file carries cannot drift apart. Shared with
  * `bill`, which ends on the same receipt.
  */
-function printReceiptSummary(document: ReceiptDocument, t: CliMessages): void {
+function printReceiptSummary(document: ReceiptDocument, t: CliMessages, counting: BillCounting = 'calls'): void {
   if (document.lines.length === 0) {
     console.error(t.receipt.nothingToBill());
   } else {
@@ -3625,7 +3726,11 @@ function printReceiptSummary(document: ReceiptDocument, t: CliMessages): void {
   }
 
   for (const gap of document.gaps) {
-    if (gap.kind === 'unpriced') console.error(t.receipt.unpriced(gap.models.length, gap.calls));
+    if (gap.kind === 'unpriced') {
+      console.error(
+        counting === 'calls' ? t.receipt.unpriced(gap.models.length, gap.calls) : t.receipt.unpricedRecords(gap.models.length, gap.calls),
+      );
+    }
     if (gap.kind === 'unread-lines') console.error(t.receipt.unread(gap.count));
     if (gap.kind === 'no-clock') console.error(t.receipt.noClock());
     if (gap.kind === 'undated-excluded') console.error(t.receipt.undatedExcluded(gap.calls));
@@ -3757,7 +3862,10 @@ async function commandWeekly(args: Args, pricing: PricingCatalogue, t: CliMessag
   const now = Date.now();
   const until = parseWhen(args, 'until', true, t, now);
   const windows = weekWindows(until.ms ?? now);
-  const { lines } = await gatherUsageLines(args, t);
+  const { lines, ccusageRows } = await gatherUsageLines(args, t);
+  /* A ccusage row is a whole period's total and not a call: the week would
+     cut rows at its edges and count them as calls (#786). */
+  if (ccusageRows > 0) throw new Error(t.weekly.ccusageRows());
   const text = lines.join('\n');
   const profileWeek = (week: WeekWindow): UsageProfileReport =>
     profileUsage(text, { catalogue: pricing, sinceMs: week.sinceMs, untilMs: week.untilMs });
@@ -3810,6 +3918,10 @@ interface GatheredUsage {
   /** The records no coding agent's session folder produced: a log, a provider export, spans. */
   otherLines: string[];
   labelledByProject: number;
+  /** Each ccusage report read, for the comparison with ccusage's own figures. */
+  ccusage: CcusageConversion[];
+  /** Records out of ccusage reports: each a row's total for one model, never a call. */
+  ccusageRows: number;
 }
 
 async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsage> {
@@ -3889,6 +4001,8 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
   /* Each agent's own records, so a bill that read more than one can say which spent what. */
   const agentLines = new Map<AgentId, string[]>();
   const otherLines: string[] = [];
+  const ccusage: CcusageConversion[] = [];
+  let ccusageRows = 0;
   const codexEvidence = { source: 'codex', basis: 'api-equivalent-telemetry', files: 0, duplicates: 0, missingModel: 0, unsupported: 0, unparseable: 0 };
   const lines: string[] = [];
   let sources = 0;
@@ -4011,6 +4125,17 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
         leftOut = c.unnamedModel + c.undatedRows;
         break;
       }
+      case 'ccusage': {
+        /* ccusage's report: its counts, never its dollars, and never its
+           project folders, which are paths. `--label` is the one label it
+           takes here; `from-ccusage --label-by-project` labels by project. */
+        const c = ccusageRecords(text, withLabel);
+        ccusage.push(c);
+        ccusageRows += c.records.length;
+        records = c.records;
+        leftOut = c.unnamedModel + c.unreadable + c.rowsWithoutBreakdown + c.undatedRows + c.fastUnpriced;
+        break;
+      }
       case 'usage-log': {
         /* Already the shape every door reads: passed through line by line,
            and what does not parse is the receipt's own unread-lines gap. */
@@ -4073,7 +4198,7 @@ async function gatherUsageLines(args: Args, t: CliMessages): Promise<GatheredUsa
   if (geminiRemainder > 0) console.error(t.fromGeminiCli.remainder(geminiRemainder));
 
   if (sources === 0) throw new Error(t.bill.nothingRead());
-  return { lines, sources, fileCount: files.length, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, otherLines, labelledByProject };
+  return { lines, sources, fileCount: files.length, claudeCodeFiles, codexFiles, geminiCliFiles, codexEvidence, agentLines, otherLines, labelledByProject, ccusage, ccusageRows };
 }
 
 /**
@@ -4270,6 +4395,25 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
   const agentLines = agent === undefined || only === null ? gathered.agentLines : new Map<AgentId, string[]>([[agent, only]]);
   const otherLines = only === null ? gathered.otherLines : [];
   const codexFiles = agent === undefined || agent === 'codex' ? gathered.codexFiles : 0;
+  /*
+    A row of a ccusage report is a period's total for one model, not a call:
+    the statement counts rows where every record is one, and says which are
+    which where they are mixed. And a row is not cut: a zone, a window edge or
+    a split that would fall inside one is refused before anything is written.
+  */
+  const ccusageRead = only === null ? gathered.ccusage : [];
+  const ccusageRows = only === null ? gathered.ccusageRows : 0;
+  const counting: BillCounting = ccusageRows === 0 ? 'calls' : ccusageRows === lines.length ? 'rows' : 'mixed';
+  refuseCcusageCuts(args, ccusageRead, zone, period, by, t);
+  const windowed = {
+    ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+    ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+  };
+  const ccusageCovers = (window: { sinceMs?: number; untilMs?: number }): Array<{ fromMs: number; toMs: number }> =>
+    ccusageRead.flatMap((conversion) => {
+      const covered = ccusageCoverage(conversion.spans, window);
+      return covered === null ? [] : [covered];
+    });
 
   const text = lines.join('\n');
   const report = profileUsage(text, {
@@ -4277,7 +4421,7 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
     ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
     ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
   });
-  refuseEmptyPeriod(text, report, period, pricing, t, zone);
+  refuseEmptyPeriod(text, report, period, pricing, t, zone, { counting, covers: ccusageCovers({}) });
   const document = receiptFrom(report, pricing, boolFlag(args, 'stamp') ? { emittedAt: new Date() } : {});
   const billDocument = codexFiles === 0 ? document : {
     ...document,
@@ -4348,9 +4492,20 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
       process.exitCode = BILL_SEND_FAILED;
     }
   }
+  /* ccusage reads the same agent sessions, so its counts are priced at the same API rates and carry the same caveat. */
   console.error(t.bill.sources(sources, fileCount));
-  printReceiptSummary(document, t);
-  const agentSessions = claudeCodeFiles + codexFiles + geminiCliFiles > 0;
+  printReceiptSummary(document, t, counting);
+  /*
+    A ccusage report read beside, or instead of, everything else: what ccusage
+    charged for the same counts, per model, where it differs from this bill.
+    Over the whole file, so a window asked for gets a pointer instead of a
+    table that would not be the window's.
+  */
+  if (ccusageRead.length > 0) {
+    if (period.sinceMs !== undefined || period.untilMs !== undefined) console.error(t.bill.ccusageWindowed());
+    else for (const conversion of ccusageRead) printCcusageComparison(compareCcusage(conversion, pricing), t, true);
+  }
+  const agentSessions = claudeCodeFiles + codexFiles + geminiCliFiles + ccusageRead.length > 0;
   /*
     By agent, once more than one agent's sessions were read: each agent's own
     records priced through the same catalogue and window as the whole, so the
@@ -4370,7 +4525,25 @@ async function billBody(args: Args, pricing: PricingCatalogue, t: CliMessages): 
     .sort((a, b) => b.usd - a.usd);
   if (statement) {
     const zoned = zone === undefined ? undefined : zonedSpendByDay(lines, zone, pricing, period);
-    printBillStatement(report, labelledByProject > 0, t, period.words, agentSessions, byAgent.length > 1 ? byAgent : [], by, zone, zoned);
+    /* What the rows cover, start to end, rather than the instants they are dated at; and whether the months would cut one. */
+    const ccusageView =
+      ccusageRead.length === 0
+        ? undefined
+        : {
+            covers: ccusageCovers(windowed),
+            monthsCut: ccusageRead.reduce(
+              (sum, conversion) =>
+                sum
+                + ccusageRowsCut(
+                  conversion.spans.filter(
+                    (span) => (windowed.sinceMs === undefined || span.atMs >= windowed.sinceMs) && (windowed.untilMs === undefined || span.atMs < windowed.untilMs),
+                  ),
+                  { unit: 'month' },
+                ).rows,
+              0,
+            ),
+          };
+    printBillStatement(report, labelledByProject > 0, t, period.words, agentSessions, byAgent.length > 1 ? byAgent : [], by, zone, zoned, counting, ccusageView);
   } else if (zone !== undefined) {
     console.error(t.bill.zoneReceiptNote(zone));
   }
@@ -4542,6 +4715,13 @@ async function geminiProjectLabelFor(file: string): Promise<string | undefined> 
 }
 
 /**
+ * What the statement's counts are: calls, rows of a report that sums them
+ * (ccusage's, #786), or both at once. A row is a period's total and is never
+ * printed as a call.
+ */
+type BillCounting = 'calls' | 'rows' | 'mixed';
+
+/**
  * The bill as a person reads it: the total, by project, by model, and what
  * is not in the total, on stdout. The receipt's figures, rendered: nothing
  * here is computed that the receipt does not carry.
@@ -4556,6 +4736,8 @@ function printBillStatement(
   by?: BillPeriodUnit,
   zone?: string,
   zoned?: UsageProfileReport['spendByDay'],
+  counting: BillCounting = 'calls',
+  ccusageView?: { covers: ReadonlyArray<{ fromMs: number; toMs: number }>; monthsCut: number },
 ): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   /* The day an instant falls on: UTC, or the zone `--timezone` named (#826). */
@@ -4574,7 +4756,7 @@ function printBillStatement(
   };
   const columns = (first: string): TableColumn[] => [
     { header: first, align: 'left' },
-    { header: t.bill.colCalls(), align: 'right' },
+    { header: counting === 'calls' ? t.bill.colCalls() : counting === 'rows' ? t.bill.colRows() : t.bill.colRecords(), align: 'right' },
     { header: 'USD', align: 'right' },
     { header: t.bill.colShare(), align: 'left' },
     { header: '', align: 'right' },
@@ -4587,7 +4769,11 @@ function printBillStatement(
   */
   const draw = new Report();
   const totalUsd = formatUsd(total);
-  draw.blank().headline(t.bill.statementHeading(), t.bill.statementTotal(totalUsd, report.total.calls), totalUsd);
+  const headline =
+    counting === 'calls' ? t.bill.statementTotal(totalUsd, report.total.calls)
+    : counting === 'rows' ? t.bill.statementTotalRows(totalUsd, report.total.calls)
+    : t.bill.statementTotalMixed(totalUsd, report.total.calls);
+  draw.blank().headline(t.bill.statementHeading(), headline, totalUsd);
 
   // Which agent spent what, first: it is the split a person running more than one asks for.
   if (byAgent.length > 1) draw.blank().table(columns(t.bill.colAgent()), rowsOf(byAgent));
@@ -4621,7 +4807,11 @@ function printBillStatement(
   */
   const unit = by ?? 'month';
   const { periods, undated } = spendByPeriod(zoned === undefined ? report : { spendByDay: zoned, total: report.total }, unit);
-  if (periods.length >= (by === undefined ? 2 : 1)) {
+  /* A ccusage row across a month's edge would land whole in the month it is dated in (#786). `--by` that cuts one was refused. */
+  const monthsCut = by === undefined && ccusageView !== undefined && ccusageView.monthsCut > 0;
+  if (monthsCut && periods.length >= 2) {
+    draw.blank().text(t.bill.ccusageMonthsCut(ccusageView.monthsCut), { tone: 'dim' });
+  } else if (periods.length >= (by === undefined ? 2 : 1)) {
     const keep = unit === 'day' ? 31 : LIMIT;
     const shown: Cell[][] = periods.slice(-keep).map(({ period, calls, usd }) => [period, n(calls), formatUsd(usd), ...shareCells(usd)]);
     if (periods.length > keep) {
@@ -4642,8 +4832,10 @@ function printBillStatement(
 
   // What qualifies the total: when the calls fell, and what it is not.
   draw.blank();
-  if (report.span !== null) {
-    draw.text(t.profile.spanLine(dayAt(report.span.fromMs), dayAt(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs)), { tone: 'dim' });
+  /* A ccusage row covers its whole day, week or month, not the instant it is dated at. */
+  const span = spanWith(report.span, ccusageView?.covers ?? []);
+  if (span !== null) {
+    draw.text(t.profile.spanLine(dayAt(span.fromMs), dayAt(span.toMs), spanDays(span.fromMs, span.toMs)), { tone: 'dim' });
   }
   // Which calendar the days above are on, said whenever it is not UTC.
   if (zone !== undefined) draw.text(t.bill.zoneLine(zone), { tone: 'dim' });
@@ -4656,15 +4848,22 @@ function printBillStatement(
   */
   if (apiEquivalent) draw.note('caution', t.bill.apiEquivalent());
   if (report.unpricedModels.length > 0) {
-    draw.note('caution', t.bill.statementUnpriced(report.unpricedModels.join(', '), report.unpriced.calls));
+    draw.note(
+      'caution',
+      counting === 'calls'
+        ? t.bill.statementUnpriced(report.unpricedModels.join(', '), report.unpriced.calls)
+        : t.bill.statementUnpricedRecords(report.unpricedModels.join(', '), report.unpriced.calls),
+    );
   }
+  if (counting === 'mixed') draw.note('aside', t.bill.statementMixedRows());
   const ceiling = tierCeilingLine(report, t);
   if (ceiling !== null) draw.note('caution', ceiling);
   if (report.skippedLines.length > 0) draw.note('caution', t.bill.statementUnread(report.skippedLines.length));
   if (report.timeWindow !== null && report.timeWindow.undatedExcluded > 0) {
     draw.note('caution', t.receipt.undatedExcluded(report.timeWindow.undatedExcluded));
   }
-  draw.blank().text(t.bill.statementNext(), { tone: 'dim' }).blank();
+  /* On a ccusage report the side files are refused (#786), so the line names only the receipt. */
+  draw.blank().text(ccusageView === undefined ? t.bill.statementNext() : t.bill.statementNextReceipt(), { tone: 'dim' }).blank();
   draw.print();
 }
 
@@ -5443,6 +5642,117 @@ async function commandFromOpenrouter(args: Args, t: CliMessages): Promise<void> 
   }
   if (conversion.unruledWorkspace > 0) console.error(t.fromOpenrouter.unruledWorkspace(conversion.unruledWorkspace));
   if (conversion.workspaceNotGrouped) console.error(t.fromOpenrouter.workspaceNotGrouped());
+}
+
+/**
+ * `from-ccusage`: the JSON `ccusage --json` wrote, read as a usage log (#786).
+ * The token counts become records priced from the catalogue; what ccusage
+ * charged for the same counts is printed beside, per model, and never merged.
+ * It reads the file it is given and nothing else: it does not run ccusage,
+ * install it, or look for its output. The reasoning is in `ccusage.ts`.
+ */
+async function commandFromCcusage(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromCcusage.noPath());
+
+  let text: string;
+  try {
+    text = await readFile(target, 'utf8');
+  } catch {
+    throw new Error(t.fromCcusage.notFound(target));
+  }
+
+  const label = stringFlag(args, 'label');
+  const byProject = await ccusageProjectRulesFrom(stringFlag(args, 'label-by-project'), t);
+  const conversion = ccusageRecords(text, {
+    ...(label === undefined ? {} : { label }),
+    ...(byProject === undefined ? {} : { labelByProject: byProject }),
+    catalogue: pricing,
+  });
+  if (conversion.unparseable > 0) throw new Error(t.fromCcusage.unparseable());
+
+  const lines = conversion.records.map((record) => JSON.stringify(record));
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    console.error(t.fromCcusage.written(out));
+  } else if (lines.length > 0) {
+    console.log(lines.join('\n'));
+  }
+
+  /* On stderr, in the order somebody acts in: what was read and what a row
+     is, what was left out, then the two price tables side by side. */
+  printCcusageConversion(conversion, t);
+  printCcusageComparison(compareCcusage(conversion, pricing), t, false);
+}
+
+/** What a ccusage conversion read and left out, on stderr. Counts only: no project, no session. */
+function printCcusageConversion(conversion: CcusageConversion, t: CliMessages): void {
+  if (conversion.report !== null) {
+    console.error(t.fromCcusage.summary(conversion.report, conversion.rows, conversion.records.length));
+  }
+  if (conversion.unified) console.error(t.fromCcusage.unified(conversion.agents.join(', ')));
+  if (conversion.sectionsLeftAside.length > 0 && conversion.report !== null) {
+    console.error(t.fromCcusage.sectionsLeftAside(conversion.report, conversion.sectionsLeftAside.join(', ')));
+  }
+  if (conversion.sessionsAcrossDays > 0) console.error(t.fromCcusage.sessionsAcrossDays(conversion.sessionsAcrossDays));
+  if (conversion.unnamedModel > 0) console.error(t.fromCcusage.unnamedModel(conversion.unnamedModel));
+  if (conversion.unreadable > 0) console.error(t.fromCcusage.unreadable(conversion.unreadable));
+  if (conversion.rowsWithoutBreakdown > 0) console.error(t.fromCcusage.noBreakdown(conversion.rowsWithoutBreakdown));
+  if (conversion.undatedRows > 0) console.error(t.fromCcusage.undated(conversion.undatedRows));
+  if (conversion.fastUnpriced > 0) {
+    console.error(t.fromCcusage.fastUnpriced(conversion.fastUnpriced, conversion.fastUnpricedModels.join(', ')));
+  }
+  if (conversion.unsplitTokens > 0) console.error(t.fromCcusage.unsplitTokens(conversion.unsplitTokens));
+  if (conversion.writeTtlUnsplit > 0) console.error(t.fromCcusage.writeTtlUnsplit(conversion.writeTtlUnsplit));
+  if (conversion.labelledByProject > 0) console.error(t.fromCcusage.labelledByProject(conversion.labelledByProject));
+  if (conversion.unruledProject > 0) console.error(t.fromCcusage.unruledProject(conversion.unruledProject));
+  if (conversion.projectNotGrouped) console.error(t.fromCcusage.projectNotGrouped());
+  if (conversion.records.length > 0) {
+    console.error(t.fromCcusage.notCarried());
+    console.error(t.fromCcusage.logCountsCalls());
+  }
+}
+
+/**
+ * ccusage's figure and the catalogue's for the same counts, per model, both
+ * sources named, on stderr. `onlyDifferences` is `bill`'s view: the models
+ * that differ, and a count of the rest. The catalogue's figure is the one the
+ * bill prints; ccusage's is only ever this column.
+ */
+function printCcusageComparison(rows: CcusageComparison[], t: CliMessages, onlyDifferences: boolean): void {
+  if (rows.length === 0) return;
+  const reviewed = [...new Set(rows.flatMap((row) => (row.reviewedOn === null ? [] : [row.reviewedOn])))].sort().join(', ');
+  const shown = onlyDifferences ? rows.filter((row) => !row.agrees) : rows;
+  if (shown.length === 0) {
+    console.error(t.fromCcusage.allAgree(rows.length, reviewed));
+    return;
+  }
+  console.error(t.fromCcusage.comparisonHeading());
+  const columns: TableColumn[] = [
+    { header: t.fromCcusage.colModel(), align: 'left' },
+    { header: t.fromCcusage.colCcusage(), align: 'right' },
+    { header: t.fromCcusage.colTrazum(reviewed), align: 'right' },
+    { header: t.fromCcusage.colDifference(), align: 'right' },
+  ];
+  const cells: Cell[][] = shown.map((row) => [
+    row.name,
+    row.ccusageUsd === null ? t.fromCcusage.noFigure() : formatUsd(row.ccusageUsd),
+    row.trazumUsd === null ? t.fromCcusage.unpriced() : formatUsd(row.trazumUsd),
+    row.differenceUsd === null ? '' : row.agrees ? t.fromCcusage.same() : formatSignedUsd(row.differenceUsd),
+  ]);
+  for (const line of table(columns, cells, '  ', Number.POSITIVE_INFINITY, cErr)) console.error(line);
+  for (const row of shown) {
+    if (row.trazumFloorUsd !== null && row.trazumUsd !== null) {
+      console.error(t.fromCcusage.ceiling(row.name, formatUsd(row.trazumUsd), formatUsd(row.trazumFloorUsd)));
+    }
+  }
+  const trazumUnpriced = shown.filter((row) => row.trazumUsd === null).map((row) => row.name);
+  if (trazumUnpriced.length > 0) console.error(t.fromCcusage.trazumUnpriced(trazumUnpriced.join(', ')));
+  const ccusageUnpriced = shown.filter((row) => row.ccusageUnpriced).map((row) => row.name);
+  if (ccusageUnpriced.length > 0) console.error(t.fromCcusage.ccusageUnpriced(ccusageUnpriced.join(', ')));
+  if (shown.length < rows.length) console.error(t.fromCcusage.othersAgree(rows.length - shown.length));
+  console.error(t.fromCcusage.sources());
 }
 
 async function commandFromHelicone(args: Args, t: CliMessages): Promise<void> {
@@ -15499,6 +15809,9 @@ async function main(): Promise<void> {
       break;
     case 'from-openrouter':
       await commandFromOpenrouter(args, t);
+      break;
+    case 'from-ccusage':
+      await commandFromCcusage(args, pricing, t);
       break;
     case 'bill':
       await commandBill(args, pricing, t);

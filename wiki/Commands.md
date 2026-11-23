@@ -2,7 +2,7 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 60 commands
+## The 61 commands
 
 | Command | What it answers |
 |---|---|
@@ -55,6 +55,7 @@
 | [`trazum reconcile`](https://github.com/TrazumAPP/Trazum/blob/main/docs/commands.md#what-you-were-actually-billed-trazum-reconcile) | Does what Trazum computed match what the provider charged? *Sets the two figures beside each other, never merges them, and leaves the unexplained remainder standing on its own.* |
 | [`trazum bill`](https://github.com/TrazumAPP/Trazum/blob/main/docs/commands.md#one-door-trazum-bill) | What did all of this cost? *One door: reads a file or a directory of anything the converters read, tells each file's shape from its own text (Batch API results files included, at the batch rate), converts, prices (web searches at $10 per 1,000 included), and ends on the receipt. A file no shape claims is named, never guessed.* |
 | [`trazum from-openrouter`](https://github.com/TrazumAPP/Trazum/blob/main/docs/commands.md#what-the-router-says-trazum-from-openrouter) | What does OpenRouter say I used? *Reads the activity report your own management key fetched, keyed by the same slugs the live pricing overlay uses; what OpenRouter charged is printed beside Trazum's figure and never merged, and reasoning tokens are counted, not added.* |
+| [`trazum from-ccusage`](https://github.com/TrazumAPP/Trazum/blob/main/docs/commands.md#what-ccusage-already-reports-trazum-from-ccusage) | I already run ccusage: what do its counts cost at dated prices? *Reads the JSON `ccusage --json` wrote, daily, weekly, monthly or session; keeps the token counts and prices them from the catalogue, sets ccusage's own figure beside it model by model and never uses it, bills a day's total as a row and never as a call (the log it writes with `-o` is read as any other, so bill the ccusage file itself for rows), and writes a project only as the label you give it. It does not run ccusage.* |
 | [`trazum from-openai`](https://github.com/TrazumAPP/Trazum/blob/main/docs/commands.md#what-openai-says-trazum-from-openai) | What does OpenAI say my organisation used? *Reads the completions usage report your own admin key fetched; the record keeps OpenAI's own cached-inside-prompt shape, Flex, Fast and Ultrafast rows are priced from their own tables, batch rows at the model's batch rate, tiers with no table are left out and named, and audio or image tokens are never priced at a text rate.* |
 | [`trazum from-anthropic`](https://github.com/TrazumAPP/Trazum/blob/main/docs/commands.md#what-the-provider-itself-says-trazum-from-anthropic) | What does the provider itself say my organisation used? *Reads the usage report your own admin key fetched; Trazum never holds the credential, prices a batch row at the batch rate and never the standard one, prices fast-mode rows from the model's own fast rate, bills each row's web searches, and labels by workspace only from a mapping you write.* |
 | [`trazum from-helicone`](https://github.com/TrazumAPP/Trazum/blob/main/docs/commands.md#the-proxy-that-kept-every-request-trazum-from-helicone) | What did the requests my Helicone proxy kept cost? *Prices the model that answered, not the one that was asked for, and counts the substitutions.* |

@@ -711,6 +711,8 @@ export interface CliMessages {
     written(file: string, lines: number): string;
     summary(lines: number, usd: string): string;
     unpriced(models: number, calls: number): string;
+    /** The same, where the records are rows of a ccusage report rather than calls. */
+    unpricedRecords(models: number, records: number): string;
     unread(count: number): string;
     noClock(): string;
     /** Calls a --since/--until window left out because they carry no timestamp. */
@@ -880,6 +882,11 @@ export interface CliMessages {
     /** The human statement a terminal gets instead of the JSON receipt. */
     statementHeading(): string;
     statementTotal(usd: string, calls: number): string;
+    /** Every record is a row of a ccusage report: a period's total for one model, not a call (#786). */
+    statementTotalRows(usd: string, rows: number): string;
+    /** Calls and ccusage rows in one bill, counted together and said so. */
+    statementTotalMixed(usd: string, records: number): string;
+    statementMixedRows(): string;
     colProject(): string;
     colWorkload(): string;
     colModel(): string;
@@ -908,6 +915,8 @@ export interface CliMessages {
     /** On a receipt there is no day to cut: what `--timezone` did decide. */
     zoneReceiptNote(zone: string): string;
     colCalls(): string;
+    colRows(): string;
+    colRecords(): string;
     colShare(): string;
     moreRows(count: number): string;
     /** The by-month table, shown when a bill spans two calendar months or more. */
@@ -918,8 +927,23 @@ export interface CliMessages {
     /** How to bill the newest month on its own. */
     monthHint(since: string, until: string): string;
     statementUnpriced(models: string, calls: number): string;
+    /** The same, where the records are not all calls. */
+    statementUnpricedRecords(models: string, records: number): string;
+    /** A bill with --since or --until over a ccusage report: the comparison is the whole file's. */
+    ccusageWindowed(): string;
+    /** `--timezone` over a ccusage report: refused, because a row is a whole period ccusage already cut. */
+    ccusageTimezone(): string;
+    /** A side file that counts calls and splits by day, asked for over a ccusage report: refused. */
+    ccusageSideFile(flag: string): string;
+    /** `--since`/`--until` falls inside rows of a ccusage report: refused, never billed as if it fell on an edge. */
+    ccusageWindowCuts(rows: number, startUnknown: number, report: 'daily' | 'weekly' | 'monthly' | 'session'): string;
+    /** `--by` would split rows of a ccusage report across periods: refused. */
+    ccusageByCuts(unit: 'day' | 'week' | 'month', rows: number, startUnknown: number, report: 'daily' | 'weekly' | 'monthly' | 'session'): string;
+    /** The by-month table left out, because rows of a ccusage report run across a month's edge. */
+    ccusageMonthsCut(rows: number): string;
     statementUnread(lines: number): string;
     statementNext(): string;
+    statementNextReceipt(): string;
     notFound(path: string): string;
     noFiles(path: string): string;
     /** One line per file: its shape, what it became, what was left out. */
@@ -951,6 +975,8 @@ export interface CliMessages {
     apiEquivalent(): string;
     /** A --since/--until window no record falls in: refused, never a $0 bill. */
     windowMatchesNothing(from: string, to: string): string;
+    /** The same, where what was read is rows of a ccusage report, alone or beside calls. */
+    windowMatchesNothingRows(from: string, to: string, mixed: boolean): string;
     written(file: string): string;
     /** --git-range cannot be combined with a flag that sets the period, the project or an output. */
     rangeConflict(flag: string): string;
@@ -1002,6 +1028,52 @@ export interface CliMessages {
     ruleBad(file: string, at: number): string;
     rulesEmpty(file: string): string;
     written(file: string): string;
+  };
+
+  fromCcusage: {
+    noPath(): string;
+    notFound(path: string): string;
+    unparseable(): string;
+    written(file: string): string;
+    /** What was read, and what a row is: a period's total, never a call. */
+    summary(report: 'daily' | 'weekly' | 'monthly' | 'session', rows: number, records: number): string;
+    /** A report across every agent ccusage found. */
+    unified(agents: string): string;
+    /** Other reports in the same file, not added. */
+    sectionsLeftAside(report: string, others: string): string;
+    sessionsAcrossDays(count: number): string;
+    unnamedModel(count: number): string;
+    unreadable(count: number): string;
+    noBreakdown(count: number): string;
+    undated(count: number): string;
+    fastUnpriced(count: number, models: string): string;
+    unsplitTokens(tokens: number): string;
+    writeTtlUnsplit(count: number): string;
+    labelledByProject(count: number): string;
+    unruledProject(count: number): string;
+    projectNotGrouped(): string;
+    /** What ccusage's report never carried, which makes the bill a floor on it. */
+    notCarried(): string;
+    /** The log written is read as any other: its records are counted as calls downstream. */
+    logCountsCalls(): string;
+    comparisonHeading(): string;
+    colModel(): string;
+    colCcusage(): string;
+    colTrazum(reviewed: string): string;
+    colDifference(): string;
+    noFigure(): string;
+    unpriced(): string;
+    same(): string;
+    ceiling(model: string, ceiling: string, floor: string): string;
+    trazumUnpriced(models: string): string;
+    ccusageUnpriced(models: string): string;
+    allAgree(models: number, reviewed: string): string;
+    othersAgree(models: number): string;
+    /** Both sources named, and which one prices. */
+    sources(): string;
+    rulesUnreadable(file: string): string;
+    ruleBad(file: string, at: number): string;
+    rulesEmpty(file: string): string;
   };
 
   fromHelicone: {
@@ -2524,6 +2596,8 @@ export interface CliMessages {
     movedHeading(firstDay: string, lastDay: string): string;
     /** The week before holds no call, so there is nothing to compare with. */
     noWeekBefore(): string;
+    /** A ccusage report among what was read: refused, since the week counts calls and cuts at --until. */
+    ccusageRows(): string;
     moved(delta: string, pct: string | null, now: string, before: string, calls: string): string;
     unchanged(now: string, before: string): string;
     moversHeading(): string;

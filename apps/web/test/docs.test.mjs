@@ -224,7 +224,7 @@ describe('links and images', () => {
     const quick = built.documents.find((doc) => doc.slug === 'commands');
     const hrefs = [];
     md.walkInlines(quick.blocks, (node) => node.t === 'a' && hrefs.push(node.href));
-    for (const wanted of ['/docs/quick-start', '/docs/setup', '/docs/usage-logs', '/docs/json-output', '/docs/overview#the-60-commands', '/docs']) {
+    for (const wanted of ['/docs/quick-start', '/docs/setup', '/docs/usage-logs', '/docs/json-output', '/docs/overview#the-61-commands', '/docs']) {
       assert.ok(hrefs.includes(wanted), `the command reference has no link to ${wanted}`);
     }
     const tasks = JSON.stringify(built.tasks);

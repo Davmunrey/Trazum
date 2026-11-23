@@ -271,8 +271,8 @@ first**: it tells each file's shape from its own text, converts it with the
 right converter, prices it and ends on the receipt, naming any file it could
 not read rather than guessing. The dedicated converters below are for when
 the user wants the log itself, a label mapping, or the reasons behind a row
-that was left out. Eight of them read a format somebody else already writes,
-and all eight are built:
+that was left out. Each reads a format somebody else already writes, and all
+of them are built:
 
 | They have | Command |
 |---|---|
@@ -286,6 +286,7 @@ and all eight are built:
 | Nothing local at all, but an Anthropic admin key | `trazum from-anthropic usage.json --label <project> -o usage.jsonl` |
 | Nothing local at all, but an OpenAI admin key | `trazum from-openai usage.json --label <project> -o usage.jsonl` |
 | Nothing local at all, but an OpenRouter management key | `trazum from-openrouter activity.json --label <project> -o usage.jsonl`, then price with `--pricing-live` |
+| ccusage, already run (`ccusage daily --json > ccusage.json`) | `trazum bill ccusage.json`; ccusage's own figure is printed beside, never used, and a row is a day's total, not a call. `trazum from-ccusage ccusage.json -o usage.jsonl` writes a log other commands read as any other, which counts its rows as calls. Trazum does not run ccusage |
 
 **Once they have both, offer `trazum reconcile`.** `receipt.json` against the
 provider's cost report, Anthropic's or OpenAI's, prints what Trazum computed
