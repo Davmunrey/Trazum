@@ -1,7 +1,7 @@
 # Every change needs a review from a maintainer (GOVERNANCE.md). Paired with a ruleset that
 # requires code-owner approval, this is what stops a pull request from merging
 # itself.
-*                           @Davmunrey @munozrey
+*                           @Davmunrey @Hatidog
 
 # Security-critical surfaces, called out so a reviewer knows to slow down:
 #
@@ -10,7 +10,7 @@
 #  llm.ts        outbound requests and the checks that accept an LLM candidate
 #  route.ts      the public HTTP surface: rate limiting, size caps, key handling
 #  .github/      anything that runs in CI, with CI's permissions
-/packages/core/src/net.ts   @Davmunrey @munozrey
-/packages/core/src/llm.ts   @Davmunrey @munozrey
-/apps/web/app/api/          @Davmunrey @munozrey
-/.github/                   @Davmunrey @munozrey
+/packages/core/src/net.ts   @Davmunrey @Hatidog
+/packages/core/src/llm.ts   @Davmunrey @Hatidog
+/apps/web/app/api/          @Davmunrey @Hatidog
+/.github/                   @Davmunrey @Hatidog
