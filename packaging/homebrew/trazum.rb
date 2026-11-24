@@ -2,8 +2,8 @@
 class Trazum < Formula
   desc "Prices AI agent usage from the logs on this machine, offline"
   homepage "https://trazum.vercel.app"
-  url "https://registry.npmjs.org/@trazum/cli/-/cli-3.0.1.tgz"
-  sha256 "59eb2a96c430896ba55000a6004f19eac1c30c00ea107f999ebe5e6e1c39079a"
+  url "https://registry.npmjs.org/@trazum/cli/-/cli-3.0.6.tgz"
+  sha256 "ed292e75551e41ffca34b02378dadf96fe362c61cd8c684a48a786de1ea974fc"
   license "MIT"
 
   depends_on "node"
