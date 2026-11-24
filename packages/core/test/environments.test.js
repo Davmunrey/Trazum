@@ -54,6 +54,21 @@ describe('the file states the three environments, each with a reviewer', () => {
     assert.doesNotMatch(read(FILE), /npm_[A-Za-z0-9]{20,}|\bprj_[A-Za-z0-9]{12,}|\bteam_[A-Za-z0-9]{12,}|ghp_|github_pat_/);
   });
 
+  it('names as reviewers the maintainers CODEOWNERS names for every path', () => {
+    // A maintainer's login can change (`munozrey` became `Hatidog`), and a
+    // rename caught in one file and not the other leaves a reviewer, or a
+    // code owner, that GitHub no longer resolves to the person.
+    const owners = read('.github/CODEOWNERS')
+      .split('\n')
+      .filter((line) => line.trim() !== '' && !line.startsWith('#'))
+      .map((line) => line.trim().split(/\s+/).slice(1).map((owner) => owner.replace(/^@/, '')).sort());
+    assert.ok(owners.length > 0, 'CODEOWNERS names nobody');
+    for (const named of owners) assert.deepEqual(named, owners[0], 'CODEOWNERS names different maintainers on different paths');
+    for (const entry of policy.environments) {
+      assert.deepEqual([...entry.reviewers].sort(), owners[0], `${entry.name}'s reviewers are not the code owners`);
+    }
+  });
+
   it('lets main alone into staging and production', () => {
     for (const name of ['staging', 'production']) {
       assert.deepEqual(env(name).branches, ['main'], name);
@@ -127,7 +142,7 @@ describe('GitHub is compared with the file, environment by environment', () => {
 
   it('reads reviewers, timer and policies off what GitHub answers', () => {
     const terms = liveTerms(liveOf(env('production')).environment, liveOf(env('production')).policies);
-    assert.deepEqual(terms, { reviewers: ['Davmunrey', 'munozrey'], prevent_self_review: false, wait_timer: 0, protected_branches: false, branches: ['main'], tags: [] });
+    assert.deepEqual(terms, { reviewers: ['Davmunrey', 'Hatidog'], prevent_self_review: false, wait_timer: 0, protected_branches: false, branches: ['main'], tags: [] });
   });
 
   it('sends reviewers as ids, and a branch policy only where the file limits one', () => {
